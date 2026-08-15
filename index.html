@@ -280,14 +280,28 @@ section{padding:74px 0;position:relative}
 
 /* CLINIC ACTIVATION + QR CORE */
 #clinic{background:linear-gradient(180deg,#FFF,#F2F8FD)}
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-.step{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 18px;box-shadow:var(--shadow-sm);
-  transition:transform .25s,box-shadow .25s;position:relative}
-.step:hover{transform:translateY(-5px);box-shadow:var(--shadow-md)}
-.step .sn{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-deep));
-  color:#fff;font-family:'Fraunces';font-weight:700;font-size:1.15rem;display:grid;place-items:center;margin-bottom:12px}
-.step h4{margin:0 0 6px;font-size:1rem;font-family:'Inter';font-weight:700}
-.step p{margin:0;font-size:.84rem;color:var(--ink-2);line-height:1.5}
+.pillars{display:grid;grid-template-columns:1.15fr .85fr;gap:22px}
+.pillar{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:26px;box-shadow:var(--shadow-md)}
+.pillar-tag{display:inline-block;background:linear-gradient(135deg,var(--brand),var(--brand-deep));color:#fff;
+  font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;border-radius:999px;padding:8px 18px;margin-bottom:10px}
+.pillar-sub{color:var(--ink-2);font-size:.92rem;margin:.2rem 0 18px}
+.pitem{display:flex;gap:14px;margin-bottom:16px}
+.pitem .sn{flex:0 0 auto;width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--brand),var(--brand-deep));
+  color:#fff;font-family:'Fraunces';font-weight:700;font-size:1.1rem;display:grid;place-items:center}
+.pitem h4{margin:2px 0 4px;font-size:.98rem;font-family:'Inter';font-weight:700}
+.pitem p{margin:0;font-size:.84rem;color:var(--ink-2);line-height:1.55}
+.offer{margin-top:20px;background:linear-gradient(150deg,var(--brand-soft),#FFF);border:1.5px dashed var(--brand);
+  border-radius:18px;padding:20px;text-align:center}
+.offer-eyebrow{font-size:.74rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--brand-deep)}
+.offer-worth{font-size:1.05rem;color:var(--ink);margin-top:8px}
+.offer-worth b{font-family:'Fraunces';font-size:2rem;color:var(--brand-deep)}
+.offer-worth span{color:var(--muted)}
+.values{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:26px}
+.value{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 14px;text-align:center;box-shadow:var(--shadow-sm)}
+.value .v-ic{font-size:1.6rem;margin-bottom:8px}
+.value b{display:block;font-size:.92rem;color:var(--ink)}
+.value span{font-size:.74rem;color:var(--muted);line-height:1.4;display:block;margin-top:3px}
+@media(max-width:900px){.pillars{grid-template-columns:1fr}.values{grid-template-columns:1fr 1fr}}
 #qrcore{background:linear-gradient(180deg,#F2F8FD,#FFF)}
 .qr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,340px));gap:24px;justify-content:center}
 .qr-card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:26px;text-align:center;box-shadow:var(--shadow-md)}
@@ -297,8 +311,8 @@ section{padding:74px 0;position:relative}
   border:1px solid var(--line);overflow:hidden}
 .qr-slot img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
 .qr-slot.pending{border:2px dashed var(--brand);background:var(--surface-2);font-size:.78rem;color:var(--ink-2);padding:18px;line-height:1.5}
-@media(max-width:900px){.steps{grid-template-columns:1fr 1fr}.qr-grid{grid-template-columns:1fr}}
-@media(max-width:520px){.steps{grid-template-columns:1fr}}
+@media(max-width:900px){.qr-grid{grid-template-columns:1fr}}
+
 
 /* BUBBLE LAB BANNER */
 .bubble-banner{display:grid;grid-template-columns:200px 1fr;gap:26px;align-items:center;margin-top:26px;
@@ -560,17 +574,48 @@ section{padding:74px 0;position:relative}
 <section id="clinic">
   <div class="wrap">
     <div class="sec-head reveal">
-      <span class="eyebrow">For Clinics · Partnership</span>
-      <h2>Clinic Activation Programme</h2>
-      <p>Bring FACERINNA's evidence-based range into your practice — four steps from this booth to a stocked, supported clinic.</p>
+      <span class="eyebrow">Clinic Partnership Program</span>
+      <h2>Grow your clinic together with FACERINNA</h2>
+      <p>A clinic partnership programme designed to increase awareness, drive trials and build long-term clinic growth.</p>
     </div>
-    <div class="steps reveal">
-      <div class="step"><div class="sn">1</div><h4>Register your clinic</h4><p>Scan the Registration QR below (or speak to the booth team) and leave your clinic details — it takes under a minute.</p></div>
-      <div class="step"><div class="sn">2</div><h4>Detailing visit</h4><p>Our medical rep visits with the 2026 Detailing Aid, full clinical dossiers and product testers for your team.</p></div>
-      <div class="step"><div class="sn">3</div><h4>Starter kit</h4><p>Receive the clinic starter kit — hero-product stock, patient sampling sachets and shelf/counter materials.</p></div>
-      <div class="step"><div class="sn">4</div><h4>Ongoing support</h4><p>Quarterly clinical updates, patient-education content and priority access to new study data and launches.</p></div>
+
+    <div class="pillars reveal">
+      <div class="pillar">
+        <div class="pillar-tag">Social Media Exposure</div>
+        <p class="pillar-sub">Increase clinic visibility and credibility through engaging content.</p>
+        <div class="pitem"><div class="sn">1</div><div><h4>Content creation by HCP / clinic staff</h4>
+          <p>Educational episodes featuring doctors or clinic staff · dermatology tips, skin concerns &amp; solutions · professional, trustworthy content that builds credibility.</p></div></div>
+        <div class="pitem"><div class="sn">2</div><div><h4>KOL store visit &amp; content shoot</h4>
+          <p>A KOL visits your clinic, experiences the Tester Zone and creates engaging content to drive awareness.</p></div></div>
+        <div class="pitem"><div class="sn">3</div><div><h4>Social media boosting by Facerinna</h4>
+          <p>Your clinic's content featured across Facerinna's social platforms — amplified reach, engagement and visibility to a wider audience.</p></div></div>
+      </div>
+
+      <div class="pillar">
+        <div class="pillar-tag">Tester Zone</div>
+        <p class="pillar-sub">To drive trials and consumer experience.</p>
+        <div class="pitem"><div class="sn">1</div><div><h4>Testing zone</h4>
+          <p>A counter display in your clinic where consumers get first-hand trials on FACERINNA products.</p></div></div>
+        <div class="pitem"><div class="sn">2</div><div><h4>Free product giveaway</h4>
+          <p>Added value to enhance the patient experience for trials.</p></div></div>
+
+        <div class="offer">
+          <div class="offer-eyebrow">The B5 Series · Free Sample Giveaway</div>
+          <div class="offer-worth">TOTAL WORTH <b>RM1,047</b><span>*</span> / clinic</div>
+          <a class="btn btn-primary" href="#qrcore" style="margin-top:14px">Register your clinic →</a>
+        </div>
+      </div>
     </div>
-    <div class="clin-note reveal" style="margin-top:20px">🩺 All four hero products carry NPRA notification numbers and per-product clinical data sheets — tap any product above to review before you register.</div>
+
+    <div class="values reveal">
+      <div class="value"><div class="v-ic">🤝</div><b>Build Trust</b><span>Through professional content</span></div>
+      <div class="value"><div class="v-ic">✨</div><b>Drive Trials</b><span>With hands-on product experience</span></div>
+      <div class="value"><div class="v-ic">💬</div><b>Increase Engagement</b><span>With consumers</span></div>
+      <div class="value"><div class="v-ic">🏆</div><b>Grow Together</b><span>For long-term success</span></div>
+    </div>
+
+    <p class="reveal" style="text-align:center;color:var(--ink-2);font-size:.92rem;margin-top:26px">
+      Partner with Facerinna and experience a <b>risk-free way</b> to grow your clinic and your patients' confidence.</p>
   </div>
 </section>
 
