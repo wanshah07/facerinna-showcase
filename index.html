@@ -274,6 +274,65 @@ section{padding:74px 0;position:relative}
 .metric .sub{font-size:.68rem;color:var(--muted);margin-top:3px;line-height:1.4}
 @media(max-width:900px){.metric-row{grid-template-columns:1fr 1fr}.chead{flex-direction:column;text-align:center}.mbar{grid-template-columns:120px 1fr 64px}}
 
+/* BUBBLE LAB BANNER */
+.bubble-banner{display:grid;grid-template-columns:200px 1fr;gap:26px;align-items:center;margin-top:26px;
+  background:linear-gradient(135deg,#D8F0FF,#EAF7FF 55%,#FFF);border:1px solid var(--line);border-radius:26px;
+  padding:26px 30px;box-shadow:var(--shadow-md);overflow:hidden;position:relative}
+.bubble-banner::after{content:"";position:absolute;right:-40px;top:-40px;width:190px;height:190px;border-radius:50%;
+  background:radial-gradient(circle,rgba(72,152,216,.16),transparent 70%)}
+.bb-mascot{display:grid;place-items:center}
+.bb-mascot svg{width:170px;height:auto;filter:drop-shadow(0 14px 18px rgba(23,50,79,.18));animation:bob 5s ease-in-out infinite}
+.bb-body h3{font-size:1.5rem;margin:.25rem 0 .4rem}
+.bb-body p{color:var(--ink-2);font-size:.94rem;margin:0 0 16px;max-width:34rem}
+.bb-tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+@media(max-width:700px){.bubble-banner{grid-template-columns:1fr;text-align:center}.bb-body p{margin-inline:auto}.bb-tags{justify-content:center}}
+
+/* RINNA CHAT WIDGET */
+.chat-fab{position:fixed;right:22px;bottom:22px;z-index:90;width:64px;height:64px;border-radius:50%;
+  background:linear-gradient(135deg,#3FA6EE,var(--brand-deep));border:0;cursor:pointer;box-shadow:0 12px 28px rgba(46,124,190,.45);
+  display:grid;place-items:center;transition:transform .25s}
+.chat-fab:hover{transform:scale(1.08)}
+.chat-fab svg{width:46px;height:46px}
+.chat-fab .dot{position:absolute;top:4px;right:4px;width:13px;height:13px;border-radius:50%;background:#2ECC8F;border:2.5px solid #fff}
+.chat-hint{position:fixed;right:94px;bottom:38px;z-index:90;background:var(--surface);border:1px solid var(--line);
+  border-radius:999px;padding:8px 15px;font-size:.8rem;font-weight:600;color:var(--ink);box-shadow:var(--shadow-md);
+  animation:hintpulse 5s ease-in-out infinite}
+@keyframes hintpulse{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.chat-panel{position:fixed;right:22px;bottom:98px;z-index:95;width:min(370px,calc(100vw - 32px));height:min(540px,calc(100vh - 130px));
+  background:var(--surface);border-radius:22px;box-shadow:0 24px 60px rgba(23,50,79,.3);display:none;flex-direction:column;overflow:hidden;
+  border:1px solid var(--line)}
+.chat-panel.open{display:flex;animation:cpop .3s cubic-bezier(.2,.7,.3,1.1)}
+.chat-head{background:linear-gradient(135deg,#3FA6EE,var(--brand-deep));color:#fff;padding:13px 16px;display:flex;gap:11px;align-items:center}
+.chat-head .av{width:42px;height:42px;border-radius:50%;background:#fff;display:grid;place-items:center;flex:0 0 auto}
+.chat-head .av svg{width:34px;height:34px}
+.chat-head .nm{font-weight:700;font-size:.95rem;line-height:1.2}
+.chat-head .st{font-size:.72rem;opacity:.85;display:flex;align-items:center;gap:5px}
+.chat-head .st::before{content:"";width:7px;height:7px;border-radius:50%;background:#7FFFC4;display:inline-block}
+.chat-head .x{margin-left:auto;background:rgba(255,255,255,.18);border:0;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:.9rem}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.cmsg{max-width:86%;padding:10px 13px;border-radius:16px;font-size:.86rem;line-height:1.45}
+.cmsg.bot{background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:6px;align-self:flex-start;box-shadow:var(--shadow-sm)}
+.cmsg.user{background:linear-gradient(135deg,#3FA6EE,var(--brand-deep));color:#fff;border-bottom-right-radius:6px;align-self:flex-end}
+.cmsg b{color:var(--brand-deep)}
+.cmsg.user b{color:#fff}
+.cprod{display:flex;gap:10px;align-items:center;background:var(--surface-2);border-radius:12px;padding:8px 10px;margin-top:8px}
+.cprod img{height:46px;width:auto}
+.cprod .n{font-size:.78rem;font-weight:700;line-height:1.25}
+.cprod button{margin-top:3px;background:none;border:0;color:var(--brand-deep);font-size:.72rem;font-weight:700;cursor:pointer;padding:0;text-decoration:underline}
+.chips-row{display:flex;flex-wrap:wrap;gap:7px;padding:0 14px 10px;background:var(--bg)}
+.cchip{background:var(--surface);border:1.5px solid var(--brand-soft);color:var(--brand-deep);font-size:.76rem;font-weight:600;
+  border-radius:999px;padding:6px 12px;cursor:pointer;transition:.15s}
+.cchip:hover{background:var(--brand-soft)}
+.chat-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--surface)}
+.chat-input input{flex:1;border:1.5px solid var(--line);border-radius:999px;padding:9px 15px;font:inherit;font-size:.86rem;outline:none}
+.chat-input input:focus{border-color:var(--brand)}
+.chat-input button{width:40px;height:40px;border-radius:50%;border:0;background:var(--brand);color:#fff;cursor:pointer;font-size:1rem}
+.typing{display:inline-flex;gap:4px;padding:4px 2px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:tbounce 1.1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes tbounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+@media(max-width:520px){.chat-hint{display:none}}
+
 /* FOOTER */
 .footer{background:var(--navy);color:#D7E5F2;padding:52px 0 30px}
 .footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:34px}
@@ -476,8 +535,47 @@ section{padding:74px 0;position:relative}
   <div class="wrap">
     <div class="sec-head center reveal">
       <span class="eyebrow">Interactive · Booth Engagement</span>
-      <h2>The Skin IQ Challenge</h2>
-      <p>Five quick questions on FACERINNA's actives, the barrier and photoprotection. Score 4+ to reveal a booth reward.</p>
+      <h2>Two games, one booth</h2>
+      <p>Warm up with the Skin IQ quiz, then take a full shift in our 3D Bubble Lab. Score well and claim your reward at the booth.</p>
+    </div>
+    <div class="bubble-banner reveal">
+      <div class="bb-mascot"><svg viewBox="0 0 240 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M52 78 Q46 22 88 44 Q70 52 66 84 Z" fill="#3FA6EE"/>
+  <path d="M188 78 Q194 22 152 44 Q170 52 174 84 Z" fill="#3FA6EE"/>
+  <circle cx="120" cy="122" r="84" fill="#3FA6EE"/>
+  <ellipse cx="120" cy="134" rx="60" ry="54" fill="#FFF9F7"/>
+  <ellipse cx="80" cy="152" rx="10" ry="7" fill="#FFC2CE"/>
+  <ellipse cx="160" cy="152" rx="10" ry="7" fill="#FFC2CE"/>
+  <ellipse cx="96" cy="126" rx="13" ry="16" fill="#10222F"/>
+  <ellipse cx="144" cy="126" rx="13" ry="16" fill="#10222F"/>
+  <ellipse cx="96" cy="132" rx="6" ry="5" fill="#3FA6EE"/>
+  <ellipse cx="144" cy="132" rx="6" ry="5" fill="#3FA6EE"/>
+  <circle cx="92" cy="120" r="4.2" fill="#fff"/><circle cx="140" cy="120" r="4.2" fill="#fff"/>
+  <circle cx="100" cy="129" r="1.8" fill="#fff"/><circle cx="148" cy="129" r="1.8" fill="#fff"/>
+  <path d="M111 158 Q120 167 129 158" stroke="#E85B5B" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+  <rect x="56" y="98" width="128" height="54" rx="27" fill="#E8F4FC" opacity="0.42"/>
+  <rect x="56" y="98" width="128" height="54" rx="27" fill="none" stroke="#3FA6EE" stroke-width="6"/>
+  <path d="M70 108 Q86 100 104 104" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".7" fill="none"/>
+  <path d="M74 206 Q74 194 88 194 L152 194 Q166 194 166 206 L166 262 Q166 274 154 274 L86 274 Q74 274 74 262 Z" fill="#FBFDFF"/>
+  <path d="M106 194 L134 194 L128 236 Q120 242 112 236 Z" fill="#3FA6EE"/>
+  <path d="M106 194 L114 214 L100 210 Z" fill="#EDF4FA"/>
+  <path d="M134 194 L126 214 L140 210 Z" fill="#EDF4FA"/>
+  <g fill="#3FA6EE"><circle cx="146" cy="222" r="2.3"/><circle cx="152" cy="222" r="2.3"/><circle cx="158" cy="222" r="2.3"/><circle cx="146" cy="229" r="2.3"/><circle cx="146" cy="236" r="2.3"/><circle cx="152" cy="236" r="2.3"/><circle cx="146" cy="243" r="2.3"/><circle cx="146" cy="250" r="2.3"/></g>
+  <rect x="88" y="240" width="22" height="16" rx="5" fill="#EDF4FA"/>
+  <rect x="58" y="210" width="20" height="42" rx="10" fill="#FBFDFF"/>
+  <rect x="162" y="210" width="20" height="42" rx="10" fill="#FBFDFF"/>
+  <circle cx="68" cy="258" r="11" fill="#FFF9F7"/><circle cx="172" cy="258" r="11" fill="#FFF9F7"/>
+  <rect x="88" y="268" width="64" height="20" rx="10" fill="#3FA6EE"/>
+  <ellipse cx="103" cy="292" rx="19" ry="9" fill="#FBFDFF"/><ellipse cx="137" cy="292" rx="19" ry="9" fill="#FBFDFF"/>
+</svg></div>
+      <div class="bb-body">
+        <span class="eyebrow">3D Arcade · NPRA Training</span>
+        <h3>Bubble Lab — Claim Catcher</h3>
+        <div class="bb-tags"><span class="chip">3D · Three.js</span><span class="chip">NPRA Annex I Part 8</span><span class="chip">Mobile-friendly</span></div>
+        <p>Steer our lab mascot and catch only the claims you could legally put in a FACERINNA ad — judged live against
+          the NPRA cosmetic claims guideline. Catching an unacceptable claim costs a heart.</p>
+        <a class="btn btn-primary" href="bubble-lab.html" target="_blank" rel="noopener">🫧 Play Bubble Lab →</a>
+      </div>
     </div>
     <div class="game-shell reveal">
       <div class="game-inner">
@@ -525,6 +623,79 @@ section{padding:74px 0;position:relative}
 <div class="cmodal" id="cmodal" role="dialog" aria-modal="true" aria-label="Product clinical data">
   <div class="backdrop" id="cmBackdrop"></div>
   <div class="cpanel" id="cpanel"></div>
+</div>
+
+<!-- RINNA CHAT ASSISTANT -->
+<div class="chat-hint" id="chatHint">💬 Ask Rinna about any product</div>
+<button class="chat-fab" id="chatFab" aria-label="Chat with Rinna"><svg viewBox="20 24 200 176" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M52 78 Q46 22 88 44 Q70 52 66 84 Z" fill="#3FA6EE"/>
+  <path d="M188 78 Q194 22 152 44 Q170 52 174 84 Z" fill="#3FA6EE"/>
+  <circle cx="120" cy="122" r="84" fill="#3FA6EE"/>
+  <ellipse cx="120" cy="134" rx="60" ry="54" fill="#FFF9F7"/>
+  <ellipse cx="80" cy="152" rx="10" ry="7" fill="#FFC2CE"/>
+  <ellipse cx="160" cy="152" rx="10" ry="7" fill="#FFC2CE"/>
+  <ellipse cx="96" cy="126" rx="13" ry="16" fill="#10222F"/>
+  <ellipse cx="144" cy="126" rx="13" ry="16" fill="#10222F"/>
+  <ellipse cx="96" cy="132" rx="6" ry="5" fill="#3FA6EE"/>
+  <ellipse cx="144" cy="132" rx="6" ry="5" fill="#3FA6EE"/>
+  <circle cx="92" cy="120" r="4.2" fill="#fff"/><circle cx="140" cy="120" r="4.2" fill="#fff"/>
+  <circle cx="100" cy="129" r="1.8" fill="#fff"/><circle cx="148" cy="129" r="1.8" fill="#fff"/>
+  <path d="M111 158 Q120 167 129 158" stroke="#E85B5B" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+  <rect x="56" y="98" width="128" height="54" rx="27" fill="#E8F4FC" opacity="0.42"/>
+  <rect x="56" y="98" width="128" height="54" rx="27" fill="none" stroke="#3FA6EE" stroke-width="6"/>
+  <path d="M70 108 Q86 100 104 104" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".7" fill="none"/>
+  <path d="M74 206 Q74 194 88 194 L152 194 Q166 194 166 206 L166 262 Q166 274 154 274 L86 274 Q74 274 74 262 Z" fill="#FBFDFF"/>
+  <path d="M106 194 L134 194 L128 236 Q120 242 112 236 Z" fill="#3FA6EE"/>
+  <path d="M106 194 L114 214 L100 210 Z" fill="#EDF4FA"/>
+  <path d="M134 194 L126 214 L140 210 Z" fill="#EDF4FA"/>
+  <g fill="#3FA6EE"><circle cx="146" cy="222" r="2.3"/><circle cx="152" cy="222" r="2.3"/><circle cx="158" cy="222" r="2.3"/><circle cx="146" cy="229" r="2.3"/><circle cx="146" cy="236" r="2.3"/><circle cx="152" cy="236" r="2.3"/><circle cx="146" cy="243" r="2.3"/><circle cx="146" cy="250" r="2.3"/></g>
+  <rect x="88" y="240" width="22" height="16" rx="5" fill="#EDF4FA"/>
+  <rect x="58" y="210" width="20" height="42" rx="10" fill="#FBFDFF"/>
+  <rect x="162" y="210" width="20" height="42" rx="10" fill="#FBFDFF"/>
+  <circle cx="68" cy="258" r="11" fill="#FFF9F7"/><circle cx="172" cy="258" r="11" fill="#FFF9F7"/>
+  <rect x="88" y="268" width="64" height="20" rx="10" fill="#3FA6EE"/>
+  <ellipse cx="103" cy="292" rx="19" ry="9" fill="#FBFDFF"/><ellipse cx="137" cy="292" rx="19" ry="9" fill="#FBFDFF"/>
+</svg><span class="dot"></span></button>
+<div class="chat-panel" id="chatPanel" role="dialog" aria-label="Rinna lab assistant">
+  <div class="chat-head">
+    <div class="av"><svg viewBox="24 28 192 170" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M52 78 Q46 22 88 44 Q70 52 66 84 Z" fill="#3FA6EE"/>
+  <path d="M188 78 Q194 22 152 44 Q170 52 174 84 Z" fill="#3FA6EE"/>
+  <circle cx="120" cy="122" r="84" fill="#3FA6EE"/>
+  <ellipse cx="120" cy="134" rx="60" ry="54" fill="#FFF9F7"/>
+  <ellipse cx="80" cy="152" rx="10" ry="7" fill="#FFC2CE"/>
+  <ellipse cx="160" cy="152" rx="10" ry="7" fill="#FFC2CE"/>
+  <ellipse cx="96" cy="126" rx="13" ry="16" fill="#10222F"/>
+  <ellipse cx="144" cy="126" rx="13" ry="16" fill="#10222F"/>
+  <ellipse cx="96" cy="132" rx="6" ry="5" fill="#3FA6EE"/>
+  <ellipse cx="144" cy="132" rx="6" ry="5" fill="#3FA6EE"/>
+  <circle cx="92" cy="120" r="4.2" fill="#fff"/><circle cx="140" cy="120" r="4.2" fill="#fff"/>
+  <circle cx="100" cy="129" r="1.8" fill="#fff"/><circle cx="148" cy="129" r="1.8" fill="#fff"/>
+  <path d="M111 158 Q120 167 129 158" stroke="#E85B5B" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+  <rect x="56" y="98" width="128" height="54" rx="27" fill="#E8F4FC" opacity="0.42"/>
+  <rect x="56" y="98" width="128" height="54" rx="27" fill="none" stroke="#3FA6EE" stroke-width="6"/>
+  <path d="M70 108 Q86 100 104 104" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".7" fill="none"/>
+  <path d="M74 206 Q74 194 88 194 L152 194 Q166 194 166 206 L166 262 Q166 274 154 274 L86 274 Q74 274 74 262 Z" fill="#FBFDFF"/>
+  <path d="M106 194 L134 194 L128 236 Q120 242 112 236 Z" fill="#3FA6EE"/>
+  <path d="M106 194 L114 214 L100 210 Z" fill="#EDF4FA"/>
+  <path d="M134 194 L126 214 L140 210 Z" fill="#EDF4FA"/>
+  <g fill="#3FA6EE"><circle cx="146" cy="222" r="2.3"/><circle cx="152" cy="222" r="2.3"/><circle cx="158" cy="222" r="2.3"/><circle cx="146" cy="229" r="2.3"/><circle cx="146" cy="236" r="2.3"/><circle cx="152" cy="236" r="2.3"/><circle cx="146" cy="243" r="2.3"/><circle cx="146" cy="250" r="2.3"/></g>
+  <rect x="88" y="240" width="22" height="16" rx="5" fill="#EDF4FA"/>
+  <rect x="58" y="210" width="20" height="42" rx="10" fill="#FBFDFF"/>
+  <rect x="162" y="210" width="20" height="42" rx="10" fill="#FBFDFF"/>
+  <circle cx="68" cy="258" r="11" fill="#FFF9F7"/><circle cx="172" cy="258" r="11" fill="#FFF9F7"/>
+  <rect x="88" y="268" width="64" height="20" rx="10" fill="#3FA6EE"/>
+  <ellipse cx="103" cy="292" rx="19" ry="9" fill="#FBFDFF"/><ellipse cx="137" cy="292" rx="19" ry="9" fill="#FBFDFF"/>
+</svg></div>
+    <div><div class="nm">Rinna</div><div class="st">FACERINNA Lab Assistant</div></div>
+    <button class="x" id="chatClose" aria-label="Close chat">✕</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs"></div>
+  <div class="chips-row" id="chatChips"></div>
+  <div class="chat-input">
+    <input id="chatIn" type="text" placeholder="Ask about products, clinical data…" autocomplete="off">
+    <button id="chatSend" aria-label="Send">➤</button>
+  </div>
 </div>
 
 <!-- FOOTER -->
@@ -973,6 +1144,155 @@ function launchConfetti(){
       {duration:dur,easing:'cubic-bezier(.2,.6,.3,1)'}).onfinish=()=>c.remove();
   }
 }
+
+/* ============================================================
+   RINNA — on-page lab assistant (scripted, no server needed)
+   ============================================================ */
+(function(){
+  var fab=document.getElementById('chatFab'), panel=document.getElementById('chatPanel'),
+      msgs=document.getElementById('chatMsgs'), chips=document.getElementById('chatChips'),
+      inp=document.getElementById('chatIn'), send=document.getElementById('chatSend'),
+      hint=document.getElementById('chatHint'), closeBtn=document.getElementById('chatClose');
+  var opened=false;
+
+  function esc(s){return s.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function push(html,who){
+    var d=document.createElement('div');d.className='cmsg '+who;d.innerHTML=html;
+    msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;
+  }
+  function typing(){
+    var d=push('<span class="typing"><i></i><i></i><i></i></span>','bot');return d;
+  }
+  function bot(html,delay){
+    var t=typing();
+    setTimeout(function(){t.innerHTML=html;msgs.scrollTop=msgs.scrollHeight;},delay||650);
+  }
+  function prodCard(name){
+    var p=PRODUCTS.find(function(x){return x.name===name;});
+    if(!p)return '';
+    return '<div class="cprod"><img src="'+p.img+'" alt=""><div><div class="n">'+esc(p.name)+'</div>'+
+      '<button onclick="openClin(\''+name.replace(/'/g,"\\'")+'\')">📋 View clinical data</button></div></div>';
+  }
+  function setChips(list){
+    chips.innerHTML=list.map(function(c){return '<button class="cchip">'+esc(c)+'</button>';}).join('');
+    chips.querySelectorAll('.cchip').forEach(function(b){
+      b.addEventListener('click',function(){handle(b.textContent);});
+    });
+  }
+  var HOME_CHIPS=['Hero products','Clinical proof','Find my routine','Play a game','Visit the booth'];
+
+  function welcome(){
+    bot('Hai! 👋 I\'m <b>Rinna</b>, the FACERINNA lab assistant. Ask me about any product, its <b>clinical data</b>, or let me match a routine to your skin concern.',500);
+    setChips(HOME_CHIPS);
+  }
+
+  function matchProduct(m){
+    var best=null,score=0;
+    PRODUCTS.forEach(function(p){
+      var words=p.name.toLowerCase().split(/[^a-z0-9%]+/).filter(function(w){return w.length>2;});
+      var s=words.reduce(function(a,w){return a+(m.indexOf(w)>=0?1:0);},0);
+      if(s>score){score=s;best=p;}
+    });
+    return score>=2?best:null;
+  }
+
+  function handle(raw){
+    var text=raw.trim(); if(!text)return;
+    push(esc(text),'user');
+    var m=text.toLowerCase();
+
+    var p=matchProduct(m);
+    if(p){
+      var has=CLIN[p.name];
+      bot('Here\'s <b>'+esc(p.name)+'</b> ('+esc(p.cat)+' series) — '+esc(p.active)+'.'+
+        prodCard(p.name)+(has?'<br>It has its own clinical data sheet — tap the button above. 🔬':'<br>Full dossier available at the booth.'));
+      setChips(['Clinical proof','Find my routine','Hero products']);
+      return;
+    }
+    if(/^(hi|hello|hey|hai|salam|helo)\b/.test(m)){welcome();return;}
+    if(m.indexOf('hero')>=0||m.indexOf('best')>=0){
+      bot('Our three heroes for the AGM: 🏆'+prodCard('10% Niacinamide 3% TXA Bright Dark Spot Serum')+
+        prodCard('Niacinamide Brightening Serum Sunscreen SPF50 PA++++')+prodCard('Low pH B5 Gel Cleanser'));
+      setChips(['Clinical proof','Find my routine','Play a game']);return;
+    }
+    if(m.indexOf('clinical')>=0||m.indexOf('proof')>=0||m.indexOf('study')>=0||m.indexOf('data')>=0||m.indexOf('bukti')>=0){
+      bot('FACERINNA\'s evidence base: <b>330/330 zero irritation</b> in SGS patch tests, in-vivo <b>SPF 63.8</b> (ISO 24444), and 28-day efficacy studies with every endpoint at <b>P&lt;0.01</b> or better — plus EpiOcular/EpiDerm in-vitro safety with Universiti Kebangsaan Malaysia. 🧪<br><br>Click any product card on the page (or ask me about one) for its full data sheet with report numbers.');
+      setChips(['Hero products','Find my routine','Visit the booth']);return;
+    }
+    if(m.indexOf('routine')>=0||m.indexOf('recommend')>=0||m.indexOf('which product')>=0||m.indexOf('skin type')>=0){
+      bot('Tell me your main concern and I\'ll match the routine 👇');
+      setChips(['Acne & oily skin','Dark spots & dullness','Sensitive / redness','Dry & dehydrated','Fine lines & ageing']);return;
+    }
+    if(m.indexOf('acne')>=0||m.indexOf('jerawat')>=0||m.indexOf('oily')>=0||m.indexOf('breakout')>=0){
+      bot('For breakout-prone skin, the <b>Salicylic Acid series</b> — clinically, acne bump volume dropped up to <b>−80.98%</b> in 28 days. 💚'+
+        prodCard('Salicylic Acid Acne Gel Cleanser')+prodCard('2% Salicylic Acid Acne Serum')+prodCard('Salicylic Acid Acne Moisturizer'));
+      setChips(['Clinical proof','Dark spots & dullness','Visit the booth']);return;
+    }
+    if(m.indexOf('dark spot')>=0||m.indexOf('pigment')>=0||m.indexOf('dull')>=0||m.indexOf('jeragat')>=0||m.indexOf('kusam')>=0||m.indexOf('bright')>=0){
+      bot('For dark spots and dull tone: the <b>10% Niacinamide + 3% TXA</b> pair — melanin <b>−18.97%</b> and hydration <b>+49.41%</b> in 28 days (P&lt;0.01). ✨'+
+        prodCard('10% Niacinamide 3% TXA Bright Dark Spot Serum')+prodCard('5% Niacinamide 1% TXA Bright Dark Spot Moisturizer'));
+      setChips(['Clinical proof','Sunscreen & SPF','Visit the booth']);return;
+    }
+    if(m.indexOf('sensitive')>=0||m.indexOf('redness')>=0||m.indexOf('merah')>=0||m.indexOf('barrier')>=0||m.indexOf('irritat')>=0){
+      bot('For sensitive, reactive skin: the <b>B5 barrier range</b> — COLIPA 48H tested with <b>Grade 0 irritation</b> in all 31 subjects. 🛡️'+
+        prodCard('5% B5 Centella Calming Gel Cream')+prodCard('5% B5 Intensive Barrier Cream')+prodCard('Low pH B5 Gel Cleanser'));
+      setChips(['Clinical proof','Dry & dehydrated','Visit the booth']);return;
+    }
+    if(m.indexOf('dry')>=0||m.indexOf('kering')>=0||m.indexOf('dehydrat')>=0||m.indexOf('hydrat')>=0){
+      bot('For dryness: the <b>Ceramide B5 series</b> — toner hydration <b>+47.01%</b> and barrier (TEWL) <b>−24.28%</b> in 28 days. 💧'+
+        prodCard('Ceramide B5 Balancing Toner')+prodCard('Ceramide B5 Balancing Moisturizer'));
+      setChips(['Clinical proof','Sensitive / redness','Visit the booth']);return;
+    }
+    if(m.indexOf('aging')>=0||m.indexOf('ageing')>=0||m.indexOf('wrinkle')>=0||m.indexOf('kedut')>=0||m.indexOf('fine line')>=0||m.indexOf('retinol')>=0){
+      bot('For first signs of ageing: the <b>Retinol series</b> — wrinkle depth <b>−42.47%</b> in 28 days (P&lt;0.001), with significant dermatologist-graded improvement in crow\'s feet and under-eye lines. 🕰️'+
+        prodCard('Retinol Anti-Aging Serum')+prodCard('Retinol Anti-Aging Moisturizer'));
+      setChips(['Clinical proof','Sunscreen & SPF','Visit the booth']);return;
+    }
+    if(m.indexOf('spf')>=0||m.indexOf('sunscreen')>=0||m.indexOf('sun')>=0||m.indexOf('uv')>=0||m.indexOf('matahari')>=0){
+      bot('Our Serum Sunscreen achieved a mean in-vivo <b>SPF 63.8</b> against the 50 target (ISO 24444:2019, double-blind, dermatologist-supervised). ☀️'+
+        prodCard('Niacinamide Brightening Serum Sunscreen SPF50 PA++++')+prodCard('Acne Defense Matte Serum Sunscreen SPF50')+prodCard('Physical Defense Barrier Serum Sunscreen SPF50'));
+      setChips(['Clinical proof','Find my routine','Visit the booth']);return;
+    }
+    if(m.indexOf('game')>=0||m.indexOf('play')>=0||m.indexOf('main')>=0||m.indexOf('quiz')>=0||m.indexOf('bubble')>=0){
+      bot('Two games at this booth 🎮<br><br>🧠 <b>Skin IQ Challenge</b> — 5 questions, score 4+ for a reward → <a href="#game">play here</a><br>🫧 <b>Bubble Lab</b> — 3D claim-catcher judged against NPRA rules → <a href="bubble-lab.html" target="_blank" rel="noopener">launch it</a>');
+      setChips(['Hero products','Visit the booth']);return;
+    }
+    if(m.indexOf('booth')>=0||m.indexOf('sample')>=0||m.indexOf('prize')>=0||m.indexOf('reward')>=0||m.indexOf('visit')>=0){
+      bot('Come find the <b>FACERINNA booth</b> at the PDM AGM! 🎁 Play the Skin IQ Challenge (score 4+) and show your result screen to claim a deluxe sample. Our team can also walk you through any clinical dossier in person.');
+      setChips(['Play a game','Hero products','Clinical proof']);return;
+    }
+    if(m.indexOf('price')>=0||m.indexOf('harga')>=0||m.indexOf('buy')>=0||m.indexOf('beli')>=0||m.indexOf('order')>=0){
+      bot('Pricing and trade terms are handled by the team at the booth — drop by, or ask them for the distributor pack. 🛍️');
+      setChips(['Visit the booth','Hero products']);return;
+    }
+    if(m.indexOf('ingredient')>=0||m.indexOf('free')>=0||m.indexOf('paraben')>=0||m.indexOf('halal')>=0||m.indexOf('kandungan')>=0){
+      bot('Every FACERINNA formula is <b>paraben-free, alcohol-free, fragrance-free and colourant-free</b>, built on the patented Pure Ceramide platform. Full INCI lists are in each product dossier at the booth. 🌿');
+      setChips(['Hero products','Clinical proof']);return;
+    }
+    if(m.indexOf('thank')>=0||m.indexOf('terima kasih')>=0||m.indexOf('tq')>=0){
+      bot('Sama-sama! 💙 Anything else — products, data, or games — I\'m right here.');
+      setChips(HOME_CHIPS);return;
+    }
+    bot('Hmm, I\'m not sure about that one 😅 — I\'m best at <b>products</b>, <b>clinical data</b>, <b>routines</b> and the <b>booth games</b>. Try one of these:');
+    setChips(HOME_CHIPS);
+  }
+
+  // chip labels that aren't literal questions map through handle() keywords:
+  // 'Acne & oily skin' hits 'acne', 'Sunscreen & SPF' hits 'spf', etc.
+
+  function openChat(){
+    panel.classList.add('open');hint.style.display='none';
+    if(!opened){opened=true;welcome();}
+    setTimeout(function(){inp.focus();},200);
+  }
+  function closeChat(){panel.classList.remove('open');}
+  fab.addEventListener('click',function(){panel.classList.contains('open')?closeChat():openChat();});
+  closeBtn.addEventListener('click',closeChat);
+  send.addEventListener('click',function(){handle(inp.value);inp.value='';});
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){handle(inp.value);inp.value='';}});
+  setTimeout(function(){if(!opened)hint.style.display='block';},1500);
+})();
+
 </script>
 </body>
 </html>
