@@ -344,7 +344,7 @@ section{padding:74px 0;position:relative}
       <div class="hero-stats">
         <div class="hstat"><div class="n" data-count="8">0</div><div class="l">Product series</div></div>
         <div class="hstat"><div class="n" data-count="20" data-suffix="+">0</div><div class="l">Formulas in range</div></div>
-        <div class="hstat"><div class="n" data-count="198" data-suffix="/198">0</div><div class="l">Zero-irritation subjects</div></div>
+        <div class="hstat"><div class="n" data-count="330" data-suffix="/330">0</div><div class="l">Zero-irritation subjects</div></div>
         <div class="hstat"><div class="n">63.8</div><div class="l">Mean in-vivo SPF</div></div>
       </div>
     </div>
@@ -412,7 +412,7 @@ section{padding:74px 0;position:relative}
     </div>
 
     <div class="metric-row reveal">
-      <div class="metric"><div class="big">198/198</div><div class="lbl">Zero irritation</div><div class="sub">SGS patch tests · Niacinamide + Retinol ranges · sensitive skin</div></div>
+      <div class="metric"><div class="big">330/330</div><div class="lbl">Zero irritation</div><div class="sub">SGS patch tests · Niacinamide, Retinol &amp; Salicylic ranges</div></div>
       <div class="metric"><div class="big">63.8</div><div class="lbl">Mean in-vivo SPF</div><div class="sub">ISO 24444:2019 · target 50 · Serum Sunscreen</div></div>
       <div class="metric"><div class="big">+49.4%</div><div class="lbl">Skin hydration · 28 days</div><div class="sub">10% Nia 3% TXA Serum · n=30 · P&lt;0.01</div></div>
       <div class="metric"><div class="big">0</div><div class="lbl">Adverse events</div><div class="sub">across all published efficacy &amp; patch studies</div></div>
@@ -441,7 +441,7 @@ section{padding:74px 0;position:relative}
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
             <h4>SGS patch tests · 0% irritation</h4>
-            <p>Single-application 24h occlusion patch tests on sensitive skin — 198/198 subjects (Niacinamide + Retinol ranges) with zero irritation at 0.5h, 24h and 48h (COLIPA 1997, Declaration of Helsinki).</p>
+            <p>Single-application 24h occlusion patch tests on sensitive skin — 330/330 subjects across the Niacinamide, Retinol and Salicylic ranges with zero irritation at 0.5h, 24h and 48h (COLIPA 1997, Declaration of Helsinki).</p>
           </div>
           <div class="ev-card">
             <div class="ic" style="background:var(--gold)">
@@ -462,7 +462,7 @@ section{padding:74px 0;position:relative}
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </div>
             <h4>28-day efficacy · P &lt; 0.01</h4>
-            <p>Instrumented 28-day studies on the Niacinamide and Retinol ranges: hydration, oil, melanin, wrinkles, firmness and brightness — every endpoint statistically significant (P&lt;0.01 / P&lt;0.001).</p>
+            <p>Instrumented 28-day studies across the Niacinamide, Retinol, Salicylic and Ceramide/B5 ranges: hydration, oil, acne, melanin, wrinkles and barrier — every endpoint statistically significant (P&lt;0.01 / P&lt;0.001).</p>
           </div>
         </div>
         <p style="font-size:.82rem;color:var(--ink-2);margin-top:14px">💡 <b>Tip:</b> click any product card above — each opens its own clinical data sheet with study design, results and report numbers.</p>
@@ -785,13 +785,57 @@ const CLIN = {
     notes:['0 new acne — clinically non-comedogenic','No adverse events reported during the study'],
     report:'E202501279',lab:BAOHUA,date:'Aug 2025'},
    patchSGS('GZCPCH25004933-02_EN','Jul 2025')]},
- "Ceramide B5 Balancing Moisturizer":{studies:[patchSGS('GZCPCH25004933-01_EN','Jul 2025')]},
- "Ceramide B5 Balancing Toner":{studies:[patchSGS('GZCPCH25005558-02_EN','Aug 2025')]},
- "Low pH B5 Gel Cleanser":{studies:[patchSGS('GZCPCH25005558-01_EN','Aug 2025')]},
- "Salicylic Acid Acne Gel Cleanser":{studies:[patchSGS('GZCPCH25005558-03_EN','Aug 2025')]},
- "Salicylic Acid Acne Toner":{studies:[patchSGS('GZCPCH25005558-04_EN','Aug 2025')]},
- "2% Salicylic Acid Acne Serum":{studies:[patchSGS('GZCPCH25005558-05_EN','Aug 2025')]},
- "Salicylic Acid Acne Moisturizer":{studies:[patchSGS('GZCPCH25004964-01_EN','Jul 2025')]},
+ "Ceramide B5 Balancing Moisturizer":{studies:[
+   {kind:'patch',title:'Patch test — 96.97% no reaction',
+    sub:'Single application, 24h occlusion · 33 sensitive-skin subjects (25F/8M, 25–57 y)',
+    stats:[['96.97%','No reaction (32/33 subjects)'],['3.03%','One subject: mild grade-1 erythema (0.5–48h)'],['0','Reactions in negative control']],
+    report:'GZCPCH25004933-01_EN',lab:SGS,date:'Jul 16 2025'},
+   {kind:'invitro',title:'In-vitro skin irritation — EpiDerm™',sub:'Reconstructed human epidermis model',
+    stats:[['102.4%','Cell viability — classified NON-IRRITANT'],['6.5%','Positive control viability']],
+    notes:['Well above the 50% viability non-irritant threshold']}]},
+ "Ceramide B5 Balancing Toner":{studies:[
+   {kind:'efficacy',title:'28-day clinical efficacy — statistically significant',sub:'30 subjects (4M/26F, 23–45 y, avg 36.5) · Jul 20 – Aug 17 2025',
+    metrics:[['Skin hydration',47.01],['Oil control',-59.73],['Redness & sting',-32.19],['Skin barrier (TEWL)',-24.28]],
+    notes:['>90% positive feedback on all key parameters','Non-comedogenic · no adverse events'],
+    report:'E202501297',lab:BAOHUA},
+   patchSGS('GZCPCH25005558-02_EN (33/33 no reaction)','Aug 2025')]},
+ "Low pH B5 Gel Cleanser":{studies:[
+   {kind:'efficacy',title:'28-day clinical efficacy — P < 0.001',sub:'30 subjects (25F/5M) · dermatological test',
+    metrics:[['Skin hydration',25.79],['Sting score (6 → 3)',-46.58],['Redness — a* value',-19.52],['Redness — haemoglobin',-12.05]],
+    notes:['Non-comedogenic — no increase in acne lesions','Zero adverse reactions · >90% subject approval'],
+    report:'E202501350',lab:BAOHUA},
+   {kind:'invitro',title:'In-vitro eye irritation — EpiOcular™ OECD TA',sub:'Collaboration with Universiti Kebangsaan Malaysia',
+    stats:[['85%','Tissue viability — classified NON-IRRITANT'],['100%','Negative control viability'],['22.2%','Positive control viability']],
+    notes:['Key actives scientifically identified: D-Panthenol, Betaine, Niacinamide derivatives']},
+   patchSGS('GZCPCH25005558-01_EN (33/33 no reaction · sample at 1%)','Aug 2025')]},
+ "Salicylic Acid Acne Gel Cleanser":{studies:[
+   {kind:'efficacy',title:'28-day clinical efficacy — P < 0.01',sub:'31 subjects (9M/22F, 18–50 y, avg 34.6) · instrumental + dermatologist assessment',
+    metrics:[['Acne bump volume',-80.59],['Acne bump height',-59.62],['Sting score (tolerance)',-40.01],['Oil content',-24.87],['Skin hydration',22.65],['Melanin — acne marks',-13.65]],
+    notes:['Dermatologist assessment: 64.52% of subjects cured or significantly improved at day 28 (38.71% at day 14)'],
+    selfEval:['100% — mild & non-irritating','100% — reduces acne symptoms','100% — hydration & smoothness','100% — suitable for sensitive skin'],
+    report:'E202501349',lab:BAOHUA,date:'Aug 2025'},
+   patchSGS('GZCPCH25005558-03_EN','Aug 2025')]},
+ "Salicylic Acid Acne Toner":{studies:[
+   {kind:'efficacy',title:'28-day clinical efficacy — P < 0.01',sub:'31 subjects (23F/8M, 18–45 y, avg 31.9) · acne-prone & sensitive skin',
+    metrics:[['Acne bulge volume',-69.61],['Max acne height',-57.24],['Oil content',-49.15],['Sting score (sensitivity)',-45.28],['Blackhead count',-38.81],['Skin hydration',38.28],['Barrier (TEWL)',-20.10],['Texture roughness (Ra)',-14.90]],
+    notes:['Acne clinic improvement: 61.29% at day 28 (29.03% at day 14)','Non-comedogenic — lesion count decreased throughout'],
+    selfEval:['96.77% — overall satisfaction','>85% — oil control, acne & blackheads, pores, mildness'],
+    report:'E202501298',lab:BAOHUA},
+   patchSGS('GZCPCH25005558-04_EN','Aug 2025')]},
+ "2% Salicylic Acid Acne Serum":{studies:[
+   {kind:'efficacy',title:'28-day clinical efficacy — P < 0.001',sub:'30 subjects (25F/5M, 18–45 y, avg 34.2) · Antera 3D + VISIA imaging',
+    metrics:[['Acne bump volume',-76.72],['Acne bump height',-59.58],['Skin glossiness',50.61],['Sting score (tolerance)',-44.92],['Barrier (TEWL)',-28.36],['Melanin — acne marks',-24.87],['Redness (chromaticity)',-17.43],['Redness (haemoglobin)',-14.06]],
+    notes:['No adverse events reported during the study'],
+    selfEval:['100% — roughness, acne & marks improved','100% — mild, non-irritating, sensitive-skin suitable','94–100% — improvements across all categories'],
+    report:'E202501287',lab:BAOHUA},
+   patchSGS('GZCPCH25005558-05_EN','Aug 2025')]},
+ "Salicylic Acid Acne Moisturizer":{studies:[
+   {kind:'efficacy',title:'28-day clinical efficacy — P < 0.001',sub:'30 subjects (8M/22F, 18–44 y) · Jul 19 – Aug 16 2025',
+    metrics:[['Acne bump volume',-80.98],['Acne bump height',-61.98],['Sting tolerance',43.49],['Skin glossiness',41.82],['Barrier (TEWL)',-32.92],['Skin hydration',24.34],['Melanin — dark spots',-20.45],['Redness (haemoglobin)',-17.45],['Texture roughness (Ra)',-15.76]],
+    notes:['Clinical skin-lesion improvement: 76.67% of subjects cured or significantly improved at day 28','Non-comedogenic · no adverse events'],
+    selfEval:['100% — overall satisfaction','100% — moisturising, brighter & glowing, smoother','100% — mild, non-irritating, no clogged pores'],
+    report:'E202501289',lab:BAOHUA},
+   patchSGS('GZCPCH25004964-01_EN','Jul 2025')]},
  "Acne Defense Matte Serum Sunscreen SPF50":{studies:[
    {kind:'doc',title:'In-vitro & in-vivo SPF test reports',sub:'SPF 50 PA++++ broad-spectrum · next-gen filters (Tinosorb S/M, Uvinul A Plus)',
     notes:['Full in-vitro and in-vivo test reports available at the booth']}]},
@@ -803,8 +847,8 @@ const CLIN = {
 /* ============================================================
    CLINICAL DATA MODAL
    ============================================================ */
-const ICONS={patch:'🧪',efficacy:'📈',spf:'☀️',visia:'📷',doc:'📄'};
-const ICON_BG={patch:'var(--teal)',efficacy:'var(--brand)',spf:'var(--gold)',visia:'var(--brand-deep)',doc:'var(--muted)'};
+const ICONS={patch:'🧪',efficacy:'📈',spf:'☀️',visia:'📷',doc:'📄',invitro:'🔬'};
+const ICON_BG={patch:'var(--teal)',efficacy:'var(--brand)',spf:'var(--gold)',visia:'var(--brand-deep)',doc:'var(--muted)',invitro:'var(--teal-deep)'};
 function studyHTML(s){
   let body='';
   if(s.stats) body+=`<div class="stat-grid">${s.stats.map(x=>`<div class="stat-box"><div class="v">${x[0]}</div><div class="l">${x[1]}</div></div>`).join('')}</div>`;
