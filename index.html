@@ -1467,6 +1467,22 @@ function launchConfetti(){
   setTimeout(function(){if(!opened)hint.style.display='block';},1500);
 })();
 
+
+/* Flyer lightbox */
+(function(){
+  var box=document.getElementById('flyerBox');
+  var thumb=document.getElementById('flyerThumb');
+  var view=document.getElementById('flyerView');
+  var closeBtn=document.getElementById('flyerClose');
+  if(!box||!thumb||!view||!closeBtn) return;
+  function open(){box.classList.add('open');document.body.style.overflow='hidden';}
+  function close(){box.classList.remove('open');document.body.style.overflow='';}
+  thumb.addEventListener('click',open);
+  view.addEventListener('click',open);
+  closeBtn.addEventListener('click',close);
+  box.addEventListener('click',function(e){if(e.target===box)close();});
+  addEventListener('keydown',function(e){if(e.key==='Escape')close();});
+})();
 </script>
 </body>
 </html>
