@@ -92,12 +92,33 @@ section{padding:74px 0;position:relative}
 
 /* RANGE / THUMBNAILS */
 #range{background:linear-gradient(180deg,var(--surface),#FFF)}
+.range-filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:38px}
+.rf-chip{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1.5px solid var(--line);
+  color:var(--ink-2);font-size:.83rem;font-weight:600;padding:8px 16px;border-radius:999px;cursor:pointer;
+  transition:.18s;font-family:'Inter'}
+.rf-chip .rf-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:var(--accent,var(--brand))}
+.rf-chip .rf-n{font-variant-numeric:tabular-nums;opacity:.65;font-weight:500}
+.rf-chip:hover{border-color:var(--brand);color:var(--ink)}
+.rf-chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.rf-chip[aria-pressed="true"] .rf-dot{background:#fff}
+.rf-chip[aria-pressed="true"] .rf-n{opacity:.75;color:#fff}
+.series-group{margin-bottom:44px}
+.series-group:last-child{margin-bottom:0}
+.series-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px;padding-bottom:14px;
+  border-bottom:2px solid var(--accent,var(--line))}
+.series-head .sdot{width:11px;height:11px;border-radius:50%;background:var(--accent,var(--brand));flex:0 0 auto;
+  align-self:center}
+.series-head h3{font-size:1.28rem;margin:0;font-weight:600}
+.series-head .scount{font-size:.76rem;color:var(--muted);font-weight:600;background:var(--surface-2);
+  padding:3px 10px;border-radius:999px;align-self:center}
+.series-desc{color:var(--ink-2);font-size:.87rem;margin:8px 0 20px}
 .thumb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:20px}
-.thumb{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;
+.thumb{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--accent,var(--line));
+  border-radius:var(--radius);padding:18px;
   box-shadow:var(--shadow-sm);transition:transform .3s,box-shadow .3s,border-color .3s;cursor:pointer;position:relative;overflow:hidden}
 .thumb:hover{transform:translateY(-8px);box-shadow:var(--shadow-lg);border-color:var(--brand)}
-.thumb .cat{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal-deep)}
-.thumb .art{height:158px;display:grid;place-items:center;margin:6px 0 12px;border-radius:14px;
+.thumb:hover{border-top-color:var(--accent,var(--brand))}
+.thumb .art{height:158px;display:grid;place-items:center;margin:2px 0 12px;border-radius:14px;
   background:radial-gradient(circle at 50% 30%,#fff,var(--surface-2))}
 .thumb .art img{max-height:142px;width:auto;filter:drop-shadow(0 12px 16px rgba(23,50,79,.16));transition:transform .35s}
 .thumb:hover .art img{transform:translateY(-6px) scale(1.05)}
@@ -443,12 +464,13 @@ section{padding:74px 0;position:relative}
 <section id="range">
   <div class="wrap">
     <div class="sec-head reveal">
-      <span class="eyebrow">The Full Range · 8 Series · 20 Products</span>
+      <span class="eyebrow">The Full Range · 7 Series · 20 Products</span>
       <h2>A complete, layer-able routine</h2>
       <p>Cleanse · treat · protect — organised into targeted series so every skin concern has a science-led answer.
         All visuals are official FACERINNA pack shots — <b>click any product to open its clinical data sheet</b>.</p>
     </div>
-    <div class="thumb-grid reveal" id="thumbGrid"></div>
+    <div class="range-filters reveal" id="rangeFilters" role="tablist" aria-label="Filter by series"></div>
+    <div id="rangeGroups"></div>
   </div>
 </section>
 
@@ -913,18 +935,63 @@ const QUESTIONS = [
 /* ============================================================
    RENDER
    ============================================================ */
-document.getElementById('thumbGrid').innerHTML = PRODUCTS.map(p=>`
-  <div class="thumb" tabindex="0" role="button" aria-label="${p.name} — view clinical data" data-name="${p.name}">
+const SERIES = [
+  {key:"Niacinamide",     desc:"Dark spots, dullness &amp; uneven tone",        accent:"#4898D8"},
+  {key:"Salicylic Acid",  desc:"Breakouts, blemishes &amp; oil control",        accent:"#12A79B"},
+  {key:"Ceramide",        desc:"Barrier repair &amp; everyday hydration",       accent:"#3FA7D6"},
+  {key:"Retinol",         desc:"Fine lines, texture &amp; renewal",             accent:"#B4557C"},
+  {key:"B5 Barrier",      desc:"Soothing comfort for sensitive skin",           accent:"#C9A24B"},
+  {key:"Gentle Cleanse",  desc:"Daily pH-balanced cleansing",                   accent:"#7C9CC2"},
+  {key:"Sunscreen",       desc:"Daily broad-spectrum UV defence",               accent:"#E8A13B"},
+];
+function thumbHTML(p, accent){
+  return `<div class="thumb" tabindex="0" role="button" aria-label="${p.name} — view clinical data" data-name="${p.name}" style="--accent:${accent}">
     ${p.best?'<span class="tag-best">BEST-SELLER</span>':''}
-    <div class="cat">${p.cat}</div>
     <div class="art"><img src="${p.img}" alt="${p.name}" loading="lazy"></div>
     <h3>${p.name}</h3>
     <div class="active">${p.active}</div>
     <div class="clin-chip">📋 View clinical data</div>
-  </div>`).join('');
-document.querySelectorAll('#thumbGrid .thumb').forEach(t=>{
-  t.addEventListener('click',()=>openClin(t.dataset.name));
-  t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openClin(t.dataset.name);}});
+  </div>`;
+}
+const rangeGroups = document.getElementById('rangeGroups');
+rangeGroups.innerHTML = SERIES.map(s=>{
+  const items = PRODUCTS.filter(p=>p.cat===s.key);
+  return `<div class="series-group" data-series="${s.key}" style="--accent:${s.accent}">
+    <div class="series-head">
+      <span class="sdot"></span>
+      <h3>${s.key}</h3>
+      <span class="scount">${items.length} ${items.length===1?'product':'products'}</span>
+    </div>
+    <p class="series-desc">${s.desc}</p>
+    <div class="thumb-grid">${items.map(p=>thumbHTML(p,s.accent)).join('')}</div>
+  </div>`;
+}).join('');
+
+const rangeFilters = document.getElementById('rangeFilters');
+const filterChips = [{key:'all',label:'All series',accent:'var(--brand)'}, ...SERIES.map(s=>({key:s.key,label:s.key,accent:s.accent}))];
+rangeFilters.innerHTML = filterChips.map((c,i)=>{
+  const count = c.key==='all' ? PRODUCTS.length : PRODUCTS.filter(p=>p.cat===c.key).length;
+  return `<button class="rf-chip" role="tab" aria-pressed="${i===0}" data-filter="${c.key}" style="--accent:${c.accent}">
+    <span class="rf-dot"></span>${c.label} <span class="rf-n">${count}</span>
+  </button>`;
+}).join('');
+rangeFilters.addEventListener('click', e=>{
+  const btn = e.target.closest('.rf-chip');
+  if(!btn) return;
+  rangeFilters.querySelectorAll('.rf-chip').forEach(b=>b.setAttribute('aria-pressed', b===btn));
+  const key = btn.dataset.filter;
+  document.querySelectorAll('.series-group').forEach(g=>{
+    g.hidden = !(key==='all' || g.dataset.series===key);
+  });
+});
+
+rangeGroups.addEventListener('click', e=>{
+  const t = e.target.closest('.thumb');
+  if(t) openClin(t.dataset.name);
+});
+rangeGroups.addEventListener('keydown', e=>{
+  const t = e.target.closest('.thumb');
+  if(t && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); openClin(t.dataset.name); }
 });
 
 document.getElementById('heroProducts').innerHTML = HEROES.map(h=>`
