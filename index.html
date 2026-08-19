@@ -139,19 +139,24 @@ section{padding:74px 0;position:relative}
 .hp-visual{position:absolute;inset:0;display:grid;place-items:center;padding:34px 22px 92px}
 .hp-visual img{height:220px;width:auto;filter:drop-shadow(0 20px 26px rgba(23,50,79,.2));
   transition:transform .4s cubic-bezier(.22,1,.36,1)}
-.hero-prod:hover .hp-visual img,.hero-prod:focus-within .hp-visual img,.hero-prod.open .hp-visual img{transform:translateY(-12px) scale(1.03)}
+.hero-prod.open .hp-visual img{transform:translateY(-12px) scale(1.03)}
 .hp-rank{position:absolute;top:16px;left:18px;font-family:'Fraunces';font-weight:700;font-size:2rem;color:var(--brand-soft);z-index:2}
 .hp-drawer{position:relative;z-index:3;background:var(--surface);border-top:1px solid var(--line);
   border-radius:22px 22px 0 0;box-shadow:0 -14px 26px rgba(23,50,79,.1);
   padding:14px 22px 20px;transform:translateY(calc(100% - 82px));
   transition:transform .45s cubic-bezier(.22,1,.36,1)}
-.hero-prod:hover .hp-drawer,.hero-prod:focus-within .hp-drawer,.hero-prod.open .hp-drawer{transform:translateY(0)}
+.hero-prod.open .hp-drawer{transform:translateY(0)}
 .hp-drag{width:34px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 12px}
 .hp-peek .sub{color:var(--teal-deep);font-weight:600;font-size:.76rem;letter-spacing:.03em;text-transform:uppercase}
 .hp-peek h3{margin:.15rem 0 0;font-size:1.15rem;line-height:1.3}
 .hp-body{max-height:0;opacity:0;overflow:hidden;transition:max-height .45s ease,opacity .3s ease}
-.hero-prod:hover .hp-body,.hero-prod:focus-within .hp-body,.hero-prod.open .hp-body{max-height:480px;opacity:1;margin-top:12px}
+.hero-prod.open .hp-body{max-height:480px;opacity:1;margin-top:12px}
 .hp-body p{color:var(--ink-2);margin:0 0 12px;font-size:.9rem;line-height:1.5}
+@media (hover:hover) and (pointer:fine){
+  .hero-prod:hover .hp-visual img,.hero-prod:focus-within .hp-visual img{transform:translateY(-12px) scale(1.03)}
+  .hero-prod:hover .hp-drawer,.hero-prod:focus-within .hp-drawer{transform:translateY(0)}
+  .hero-prod:hover .hp-body,.hero-prod:focus-within .hp-body{max-height:480px;opacity:1;margin-top:12px}
+}
 .kmsg{margin:12px 0 0;padding:12px 16px;border-left:4px solid var(--brand);background:var(--surface-2);
   border-radius:0 14px 14px 0;font-size:.86rem;color:var(--ink-2);font-style:italic;line-height:1.5}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
@@ -1018,6 +1023,9 @@ document.querySelectorAll('.hero-prod').forEach(card=>{
     if(e.target.closest('a,button')) return;
     card.classList.toggle('open');
   });
+  card.addEventListener('keydown', e=>{
+    if(e.key==='Enter'||e.key===' '){ e.preventDefault(); card.classList.toggle('open'); }
+  });
 });
 
 /* ============================================================
@@ -1126,18 +1134,36 @@ const CLIN = {
    patchSGS('GZCPCH25005220-01_EN','Jul 2025')]},
  "5% B5 Centella Calming Gel Cream":{studies:[
    {kind:'efficacy',title:'Immediate relief — single application',sub:'30 subjects · post redness-challenge · NPRA NOT260105619K',
-    metrics:[['Barrier (TEWL) @1h',-22.3],['Redness @1h',-18.1],['Redness @15min',-8.8]],
+    metrics:[['Barrier (TEWL) @1h',-22.34],['Redness (hemoglobin) @1h',-18.05],['Redness @15min',-8.80],['Red area @1h',-21.52]],
     notes:['Powered by SymCalmin® — patented anti-redness active (INCI: Hydroxyphenyl Propamidobenzoic Acid), targets histamine release'],
-    report:'G. Baohua, 2025',lab:BAOHUA},
+    report:'E202600150',lab:BAOHUA,date:'Mar 2026'},
    {kind:'efficacy',title:'7-day sustained results',sub:'30 subjects · continuous use',
-    metrics:[['Papule volume',-47.1],['Barrier (TEWL)',-24.4],['Redness',-17.0]],
-    notes:['Consumer panel (n=30, D3 & D7): 100% agreement across all 20 self-assessment items','Second safety panel: 0% irritation in 25 subjects (Equilab, ICDRG, 48h)'],
-    report:'G. Baohua, 2025',lab:BAOHUA},
-   colipa('31 (6M/25F, 25–59 y)','(6626) 014-0790 · Bureau Veritas REF FMS113001','Feb 2026')]},
+    metrics:[['Papule volume',-47.10],['Barrier (TEWL)',-24.37],['Redness (hemoglobin)',-17.02],['Pore count',-7.67],['Roughness',-12.42]],
+    notes:['Consumer panel (n=30, D3 & D7): 100% agreement across all 20 self-assessment items','ISGA response: 60% of subjects at Day 7'],
+    report:'E202600150',lab:BAOHUA,date:'Mar 2026'},
+   colipa('31 (6M/25F, 25–59 y)','(6626) 014-0790','Jan 2026'),
+   colipa('25 (48h occlusive Finn-chamber, ICDRG)','CR.205E/EQL/2025','Apr 2026','PT Equilab International')]},
  "5% B5 Niacinamide Bright Barrier Cream":{studies:[
-   colipa('31 (25–59 y, avg 42.1)','Bureau Veritas REF FMS112001','Feb 2026')]},
+   {kind:'efficacy',title:'Immediate hydration — single application',sub:'31 subjects',
+    metrics:[['Hydration @15sec',112.03],['Hydration @3min',56.35]],
+    report:'E202600151',lab:BAOHUA,date:'Mar 2026'},
+   {kind:'efficacy',title:'7-day clinical efficacy',sub:'31 subjects · continuous use',
+    metrics:[['Redness (hemoglobin)',-57.38],['Sting tolerance',39.29],['Dark spots (melanin)',-17.30],['Barrier (TEWL)',-13.70],['Pore count',-6.32],['Pore area',-5.29],['Skin tone (ITA°) @3d',1.37]],
+    notes:['Brightness (L*) +0.83% and dullness (b*) +2.20% measured at Day 3','Consumer panel (n=31, D7): 100% agreement across texture, hydration, brightening, redness, sensitivity, tolerance & comedogenicity'],
+    report:'E202600151',lab:BAOHUA,date:'Mar 2026'},
+   colipa('31 (25–59 y, avg 42.1)','(6626) 014-0791','Jan 2026'),
+   colipa('25 — no subject reached a positive ICDRG grade','CR.205E/EQL/2025','Apr 2026','PT Equilab International')]},
  "5% B5 Intensive Barrier Cream":{studies:[
-   colipa('31 (4M/27F, 20–57 y)','(6626) 099-1225','Apr 2026')]},
+   {kind:'efficacy',title:'Immediate relief & anti-itch — single application',sub:'30 subjects · post redness-modeling · anti-itch histamine-challenge sub-study (forearm)',
+    metrics:[['Redness',-16.19],['Barrier (TEWL)',-13.71],['Hydration',37.46],['Redness (hemoglobin)',-10.29],['Itch (pruritus, forearm)',-85.56],['Barrier (TEWL, forearm)',-36.97]],
+    notes:['Anti-itch sub-study measured on a tape-stripped, histamine-challenged forearm site, not the face'],
+    report:'E202600409a',lab:BAOHUA,date:'May 2026'},
+   {kind:'efficacy',title:'7-day sustained results',sub:'30 subjects · continuous use',
+    metrics:[['Hydration',29.99],['Redness (hemoglobin)',-18.63]],
+    notes:['Consumer panel (n=30, D7): 100% agreement on 16 of 19 self-assessment items'],
+    report:'E202600409a',lab:BAOHUA,date:'May 2026'},
+   colipa('31 (4M/27F, 20–57 y)','(6626) 099-1225','Apr 2026'),
+   colipa('25 — MCII 0.00, matches saline exactly','CR.205G/EQL/2025','Apr 2026','PT Equilab International')]},
  "Retinol Anti-Aging Serum":{studies:[
    {kind:'efficacy',title:'28-day clinical study — all endpoints P < 0.001',sub:'30 subjects (27–50 y) · sensitive skin included · Antera 3D, VISIA, TEWL & elasticity probes',
     metrics:[['Wrinkle depression volume',-44.40],['Average wrinkle depth',-42.47],['Sting-test tolerance',48.72],['Skin barrier (TEWL)',41.32],['Skin firmness (F4)',29.13],['Roughness (Ra)',-15.39],['Skin elasticity (R2)',14.33],['Skin tone (ITA°)',7.85]],
@@ -1215,11 +1241,32 @@ const CLIN = {
     report:'E202501289',lab:BAOHUA},
    patchSGS('GZCPCH25004964-01_EN','Jul 2025')]},
  "Acne Defense Matte Serum Sunscreen SPF50":{studies:[
-   {kind:'doc',title:'In-vitro & in-vivo SPF test reports',sub:'SPF 50 PA++++ broad-spectrum · next-gen filters (Tinosorb S/M, Uvinul A Plus)',
-    notes:['Full in-vitro and in-vivo test reports available at the booth']}]},
+   {kind:'patch',title:'COLIPA 48h patch test — 0% reactions',
+    sub:'31 sensitive-skin subjects (20–58 y), Bergman-screened',
+    stats:[['0/31','Adverse reactions reported'],['100%','Reaction-free']],
+    notes:['Dermatologically tested · suitable for sensitive skin','Formulated with next-gen filters (Tinosorb S/M, Uvinul A Plus)','SPF50 / PA++++ label claim not yet substantiated — in-vivo SPF, water-resistance and UVA reports pending; full dossier available at the booth'],
+    report:'66261741562',lab:'Bureau Veritas',date:'Jul 2026'}]},
  "Physical Defense Barrier Serum Sunscreen SPF50":{studies:[
-   {kind:'doc',title:'In-vitro & in-vivo SPF test reports + AvoBrite™ US patent',sub:'100% mineral · Zinc Oxide + Titanium Dioxide',
-    notes:['US-patented AvoBrite™ photostable UV-boosting technology','Full test reports available at the booth']}]},
+   {kind:'spf',title:'In-vivo SPF evaluation — ISO 24444',sub:'100% mineral · Zinc Oxide + Titanium Dioxide · AvoBrite™ photostable UV-boosting technology',
+    target:50, achieved:56.3,
+    stats:[['56.3','Mean in-vivo SPF value'],['+6.3','Above the SPF 50 target'],['55.5%','Water resistance retained after 40-min immersion (ISO 16217)']],
+    notes:['SPF 31.7 measured after 40-minute water immersion','US-patented AvoBrite™ photostable UV-boosting technology','PA++++ / UVA rating not yet tested — do not claim broad-spectrum until an ISO 24442 report is on file'],
+    report:'GXYZ2606090009EN',lab:'Guangdong Youzhi Testing Technology Co., Ltd.',date:'Aug 2026'},
+   {kind:'patch',title:'COLIPA 48h patch test — 0% reactions',
+    sub:'31 sensitive-skin subjects (20–58 y), Bergman-screened',
+    stats:[['0/31','Adverse reactions reported'],['100%','Reaction-free']],
+    notes:['Dermatologically tested · suitable for sensitive skin'],
+    report:'66261741561',lab:'Bureau Veritas',date:'Jul 2026'}]},
+ "Amino Acid pH-Balanced Cream Cleanser":{studies:[
+   {kind:'patch',title:'COLIPA 48h patch test — 0% reactions',
+    sub:'1% dilution · 31 sensitive-skin subjects (25–59 y)',
+    stats:[['0/31','Adverse reactions reported'],['100%','Reaction-free']],
+    notes:['Dermatologically tested · suitable for sensitive skin','No efficacy report on file yet — cleansing-performance and pH-balancing claims pending substantiation'],
+    report:'(6626) 072-0816',lab:'Bureau Veritas',date:'Mar 2026'},
+   {kind:'patch',title:'48h occlusive patch test — non-irritating',
+    sub:'25 sensitive-skin subjects (20–47 y)',
+    notes:['Categorised non-irritating / negligible — dermatologically and clinically tested'],
+    report:'CR.205H/EQL/2025',lab:'PT Equilab International',date:'Apr 2026'}]},
 };
 
 /* ============================================================
@@ -1231,8 +1278,8 @@ function studyHTML(s){
   let body='';
   if(s.stats) body+=`<div class="stat-grid">${s.stats.map(x=>`<div class="stat-box"><div class="v">${x[0]}</div><div class="l">${x[1]}</div></div>`).join('')}</div>`;
   if(s.kind==='spf') body+=`<div class="spf-compare">
-      <div class="spf-row"><span>SPF 50 target</span><div class="strack"><div class="sfill" style="background:var(--surface-2);border:1px solid var(--line);width:${50/80*100}%"></div></div><b style="text-align:right">50</b></div>
-      <div class="spf-row"><span><b>FACERINNA result</b></span><div class="strack"><div class="sfill mfill-anim" style="background:linear-gradient(90deg,var(--gold),#E8A13B);width:0" data-w="${63.8/80*100}"></div></div><b style="text-align:right;color:var(--brand-deep)">63.8</b></div>
+      <div class="spf-row"><span>SPF ${s.target} target</span><div class="strack"><div class="sfill" style="background:var(--surface-2);border:1px solid var(--line);width:${s.target/80*100}%"></div></div><b style="text-align:right">${s.target}</b></div>
+      <div class="spf-row"><span><b>FACERINNA result</b></span><div class="strack"><div class="sfill mfill-anim" style="background:linear-gradient(90deg,var(--gold),#E8A13B);width:0" data-w="${s.achieved/80*100}"></div></div><b style="text-align:right;color:var(--brand-deep)">${s.achieved}</b></div>
     </div>`;
   if(s.metrics){
     const mx=Math.max(...s.metrics.map(m=>Math.abs(m[1])));
