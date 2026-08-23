@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Facerinna Bubble Lab — Claim Catcher</title>
+<title>Facerinna Match Lab — Concern &amp; Product</title>
 <style>
   :root{
     --blue:#2CA9F0; --deep:#0A5480; --ink:#08344F;
@@ -207,7 +207,7 @@
 <div class="hud">
   <div class="row">
     <div class="card concern">
-      <div class="lbl">Skin concern</div>
+      <div class="lbl">Match this concern</div>
       <div class="name" id="cName">—</div>
       <div class="sku" id="cSku">—</div>
       <div class="timerbar"><i id="cBar"></i></div>
@@ -241,19 +241,19 @@
     </svg>
     <div>
       <span class="wm">FACERINNA</span>
-      <span class="sub">DERMOCOSMETIC LAB</span>
+      <span class="sub">CONCERN &amp; PRODUCT</span>
     </div>
   </div>
-  <h1>BUBBLE<br>LAB</h1>
-  <p class="lede">Catch only the claims you could legally put in a Facerinna ad. Every bubble is judged against NPRA Annex I, Part 8 — Guideline for Cosmetic Claims.</p>
+  <h1>MATCH<br>LAB</h1>
+  <p class="lede">A skin concern appears at the top. Catch the Facerinna SKUs that belong to it and let the wrong ones fall. Six concerns, the full range, and a reason given for every call.</p>
   <div class="legend">
-    <div class="leg"><span class="swatch" style="background:#6FDCC6"></span>Catch it — acceptable claim for this concern</div>
-    <div class="leg"><span class="swatch" style="background:#F5A524"></span>Careful — acceptable, but only with evidence on file</div>
-    <div class="leg"><span class="swatch" style="background:#EF4B3C"></span>Let it fall — unacceptable claim, costs a heart</div>
+    <div class="leg"><span class="swatch" style="background:#6FDCC6"></span>Catch it — the right SKU for this concern</div>
+    <div class="leg"><span class="swatch" style="background:#F5A524"></span>Half credit — supports the routine but is not the lead</div>
+    <div class="leg"><span class="swatch" style="background:#EF4B3C"></span>Let it fall — wrong SKU for this concern, costs a heart</div>
   </div>
-  <button class="btn" id="playBtn">Start the shift</button>
+  <button class="btn" id="playBtn">Start matching</button>
   <a class="btn ghost" href="index.html" style="text-decoration:none">← Back to showcase</a>
-  <p class="fine">Training tool only. Colour coding is applied after you catch a bubble, never before — the reading is the game. Final ad copy still needs substantiation and your own regulatory sign-off.</p>
+  <p class="fine">Internal detailing trainer. Concern-to-product routing only — it is not a diagnosis aid and none of the wording here is cleared ad copy. Verdicts appear after you catch, never before.</p>
 </div>
 
 <div class="screen hidden" id="over">
@@ -398,94 +398,149 @@ var FXUI = (function(){
    Products in Malaysia (2nd Ed.), Annex I Part 8 —
    Guideline for Cosmetic Claims, Aug 2022. Section 3, row 2
    (Skin product) + row 11 (Others) + 3(a) other claims.
-   verdict: 'ok' | 'evidence' | 'no'
+   verdict: 'ok' | 'partial' | 'no'
+   ============================================================ */
+/* ============================================================
+   CONCERN → PRODUCT MATCHING
+   Each round shows one skin concern. Catch the Facerinna SKUs
+   that belong to it; let the wrong ones fall.
+
+   Wording note: concerns are described as concerns, and the
+   rationale lines stay descriptive (what the product is for,
+   which actives it carries). No treatment verbs, no disease
+   names — this is a detailing trainer, not ad copy.
    ============================================================ */
 var CONCERNS = [
   {
-    id:'dry',
-    name:'Dry, tight, flaky skin',
-    sku:'5% B5 Intensive Barrier Cream',
-    claims:[
-      {t:'Moisturises dry skin', v:'ok', w:'Core cosmetic function — keeping skin in good condition.'},
-      {t:'Softens rough, flaky skin', v:'ok', w:'Acceptable: soften/treat hard skin, cracked heel sits in the acceptable column.'},
-      {t:'Leaves skin feeling supple', v:'ok', w:'Appearance and feel claim, no physiological function claimed.'},
-      {t:'Locks in moisture for 24 hours', v:'evidence', w:'Quantitative claims are acceptable only if substantiated — you need the instrumental study on file.'},
-      {t:'Repairs damaged skin cells', v:'no', w:'Unacceptable: reference to regenerating or repairing cells.'},
-      {t:'Treats eczema and dermatitis', v:'no', w:'Unacceptable: reference to skin diseases such as eczema, psoriasis, atopic dermatitis.'},
-      {t:'Heals cracked, broken skin', v:'no', w:'Unacceptable: treatment on compromised skin — wounds, burns, bruises.'},
-      {t:'Medicated moisture therapy', v:'no', w:'Unacceptable: the word "medicated" is listed outright.'}
+    id:'acne',
+    name:'Congested, breakout-prone',
+    hint:'Oily T-zone, frequent breakouts, visible marks left behind',
+    series:'Salicylic Acid Acne Series',
+    products:[
+      {t:'2% Salicylic Acid Acne Serum', v:'ok',
+       w:'The anchor SKU for this concern — 2% salicylic acid, the acne series lead.'},
+      {t:'5% B5 Centella Calming Gel Cream', v:'ok',
+       w:'Pairs as the buffer step: Centella and B5 keep the routine comfortable alongside an acid.'},
+      {t:'Niacinamide Brightening Sunscreen SPF50 PA++++', v:'partial',
+       w:'Not for the congestion itself — but daily SPF belongs in any routine using an acid.'},
+      {t:'Retinol Early Aging Moisturizer', v:'no',
+       w:'Wrong concern. Layering retinol with 2% salicylic acid also stacks two actives on one routine.'},
+      {t:'Ceramide B5 Balancing Moisturizer', v:'partial',
+       w:'Barrier support rather than a congestion answer; useful as the finishing step.'},
+      {t:'5% B5 Niacinamide Bright Barrier Cream', v:'no',
+       w:'This is the tone SKU. Reach for it when marks are the concern, not active congestion.'}
+    ]
+  },
+  {
+    id:'barrier',
+    name:'Compromised moisture barrier',
+    hint:'Tight after cleansing, flaking, stings with actives',
+    series:'Ceramide B5 Balancing Series',
+    products:[
+      {t:'Ceramide B5 Balancing Moisturizer', v:'ok',
+       w:'The anchor — Ceramide NS with Panthenol, Ectoin and Squalane.'},
+      {t:'5% B5 Intensive Barrier Cream', v:'ok',
+       w:'The richest B5 option in the range for this concern.'},
+      {t:'5% B5 Centella Calming Gel Cream', v:'ok',
+       w:'The lighter texture in the same territory — for humid weather or oilier skin.'},
+      {t:'2% Salicylic Acid Acne Serum', v:'no',
+       w:'Wrong direction while the barrier is the concern.'},
+      {t:'Retinol Early Aging Moisturizer', v:'no',
+       w:'Wrong concern, and retinol is the usual reason a barrier is struggling in the first place.'},
+      {t:'Physical UV Defense Barrier Serum Sunscreen SPF50', v:'partial',
+       w:'100% mineral filters, so it suits this skin — but it is the SPF step, not the barrier step.'}
     ]
   },
   {
     id:'sensitive',
-    name:'Sensitive, reactive skin',
-    sku:'5% B5 Centella Calming Gel Cream',
-    claims:[
-      {t:'Soothes and comforts skin', v:'ok', w:'Soothing and calming are acceptable cosmetic claims.'},
-      {t:'Gentle on sensitive skin', v:'ok', w:'Describes suitability, not treatment.'},
-      {t:'Helps skin feel calm after sun exposure', v:'ok', w:'Comfort claim — stays clear of treating sunburn as an injury.'},
-      {t:'Soothes the look of redness', v:'evidence', w:'Appearance wording is usually passable, but the moment it is tied to rosacea, eczema or fragile capillaries it becomes a disease claim.'},
-      {t:'Anti-inflammatory action', v:'no', w:'Pharmacological action — outside cosmetic scope.'},
-      {t:'Treats atopic dermatitis', v:'no', w:'Unacceptable: named skin disease.'},
-      {t:'Improves microcirculation', v:'no', w:'Unacceptable: reference to blood circulation / microcirculation.'},
-      {t:'Numbs stinging, irritated skin', v:'no', w:'Unacceptable: numbing effect on the skin.'}
+    name:'Sensitive, easily flushed',
+    hint:'Reacts to new products, visible redness, warm to the touch',
+    series:'B5 Series',
+    products:[
+      {t:'5% B5 Centella Calming Gel Cream', v:'ok',
+       w:'The anchor for this concern — Centella with 5% Panthenol.'},
+      {t:'Physical UV Defense Barrier Serum Sunscreen SPF50', v:'ok',
+       w:'100% mineral filters (Zinc Oxide + Titanium Dioxide), the usual pick for reactive skin.'},
+      {t:'Ceramide B5 Balancing Moisturizer', v:'ok',
+       w:'Supports the same routine; patch-tested on sensitive-skin panels.'},
+      {t:'2% Salicylic Acid Acne Serum', v:'no',
+       w:'An acid is the wrong opening move while skin is reacting.'},
+      {t:'Retinol Early Aging Moisturizer', v:'no',
+       w:'Wrong concern for reactive skin.'},
+      {t:'5% B5 Niacinamide Bright Barrier Cream', v:'partial',
+       w:'Has B5 behind it, but lead with the Centella SKU when reactivity is the presenting concern.'}
     ]
   },
   {
-    id:'dull',
-    name:'Dull tone, dark marks',
-    sku:'5% B5 Niacinamide Bright Barrier Cream',
-    claims:[
-      {t:'Brightens dull-looking skin', v:'ok', w:'Appearance claim — cosmetic in nature.'},
-      {t:'Helps reduce the appearance of dark spots', v:'ok', w:'Acceptable: prevent / reduce dark spot, acne mark, pigmentation.'},
-      {t:'Evens out the look of skin tone', v:'ok', w:'Cosmetic, temporary, appearance-based.'},
-      {t:'Visibly brighter in 7 days', v:'evidence', w:'Numerical performance claims are fine only with relevant evidence behind them.'},
-      {t:'Inhibits melanin synthesis', v:'no', w:'Unacceptable: reference to inhibition of melanin synthesis.'},
-      {t:'Treats melasma and freckles', v:'no', w:'Unacceptable: treatment of a pigmentation condition.'},
-      {t:'Permanently whitens skin', v:'no', w:'Permanent physiological change falls outside the cosmetic definition.'},
-      {t:'100% flawless, spotless skin', v:'no', w:'Absolute claims like 100% are not acceptable.'}
-    ]
-  },
-  {
-    id:'acne',
-    name:'Breakout-prone skin',
-    sku:'5% B5 Centella Calming Gel Cream',
-    claims:[
-      {t:'Helps prevent breakouts', v:'ok', w:'Acceptable: prevent / control / reduce acne or breakout.'},
-      {t:'Reduces the appearance of acne marks', v:'ok', w:'Acceptable: reduce the appearance of acne mark.'},
-      {t:'Kills bacteria on skin', v:'ok', w:'Surprisingly acceptable — antibacterial and germ protection sit in the acceptable column. Antimicrobial and disinfectant do not.'},
-      {t:'Mattifies excess shine', v:'ok', w:'Appearance claim, no disease reference.'},
-      {t:'Heals and clears acne', v:'no', w:'Unacceptable: heals, treats or stops acne.'},
-      {t:'Removes acne scars completely', v:'no', w:'Unacceptable: remove or eliminate scars — only reducing their appearance is allowed.'},
-      {t:'Antimicrobial protection', v:'no', w:'Unacceptable: antimicrobial, disinfectant, fungicidal or virucidal action.'},
-      {t:'Cosmeceutical-grade treatment', v:'no', w:'Unacceptable: cosmeceutical, mesotherapy, microneedling and similar terms.'}
+    id:'tone',
+    name:'Uneven tone, dark marks',
+    hint:'Post-breakout marks, patchy tone, dullness',
+    series:'Niacinamide Brightening Series',
+    products:[
+      {t:'5% B5 Niacinamide Bright Barrier Cream', v:'ok',
+       w:'The anchor — niacinamide on a 5% B5 base.'},
+      {t:'Niacinamide Brightening Sunscreen SPF50 PA++++', v:'ok',
+       w:'Daily SPF is the non-negotiable half of any tone routine.'},
+      {t:'Physical UV Defense Barrier Serum Sunscreen SPF50', v:'ok',
+       w:'The mineral alternative for the same SPF slot.'},
+      {t:'Ceramide B5 Balancing Moisturizer', v:'partial',
+       w:'A sound base layer, but it is not the tone SKU.'},
+      {t:'2% Salicylic Acid Acne Serum', v:'partial',
+       w:'Relevant only where marks follow congestion — otherwise the wrong lead.'},
+      {t:'Retinol Early Aging Moisturizer', v:'no',
+       w:'Belongs to the ageing conversation, not the tone one.'}
     ]
   },
   {
     id:'aging',
-    name:'First signs of ageing',
-    sku:'5% B5 Intensive Barrier Cream',
-    claims:[
-      {t:'Slows down the signs of ageing', v:'ok', w:'Acceptable: slows down or delays the signs of ageing.'},
-      {t:'Reduces the look of fine lines', v:'ok', w:'Acceptable: reduce the appearance of wrinkles.'},
-      {t:'Firms and contours the look of skin', v:'ok', w:'Firming and contouring are in the acceptable column.'},
-      {t:'Clinically proven, 10x smoother', v:'evidence', w:'A 10x claim needs the clinical data to match, or it fails on substantiation.'},
-      {t:'Boosts collagen and elastin production', v:'no', w:'Unacceptable: reference to production of collagen and elastin.'},
-      {t:'Reverses the ageing process', v:'no', w:'Unacceptable: prevent, reduce, reverse or delay the ageing process.'},
-      {t:'Repairs DNA damage', v:'no', w:'Unacceptable: reference to DNA repair.'},
-      {t:'Accelerates skin cell turnover', v:'no', w:'Unacceptable: stimulate or accelerate skin renewal and cell turnover.'}
+    name:'Early fine lines',
+    hint:'Fine lines around the eyes, texture, loss of bounce',
+    series:'Retinol Early Aging Series',
+    products:[
+      {t:'Retinol Early Aging Moisturizer', v:'ok',
+       w:'The anchor SKU for this concern.'},
+      {t:'Niacinamide Brightening Sunscreen SPF50 PA++++', v:'ok',
+       w:'Daily SPF is the other half of the routine, and mandatory alongside retinol.'},
+      {t:'Ceramide B5 Balancing Moisturizer', v:'ok',
+       w:'The buffer step — ceramide support makes a retinol routine liveable.'},
+      {t:'2% Salicylic Acid Acne Serum', v:'no',
+       w:'Wrong concern, and doubling actives with retinol is a hard sell.'},
+      {t:'5% B5 Centella Calming Gel Cream', v:'partial',
+       w:'A comfort layer rather than the answer to this concern.'},
+      {t:'5% B5 Niacinamide Bright Barrier Cream', v:'partial',
+       w:'Overlaps if tone is a secondary concern — not the lead for fine lines.'}
+    ]
+  },
+  {
+    id:'uv',
+    name:'Daily UV exposure',
+    hint:'Outdoors often, wants everyday protection',
+    series:'Sunscreen',
+    products:[
+      {t:'Niacinamide Brightening Sunscreen SPF50 PA++++', v:'ok',
+       w:'SPF50 PA++++ with niacinamide — the chemical-filter option.'},
+      {t:'Physical UV Defense Barrier Serum Sunscreen SPF50', v:'ok',
+       w:'SPF50 PA++++, 100% mineral filters — for sensitive or reactive skin.'},
+      {t:'Ceramide B5 Balancing Moisturizer', v:'no',
+       w:'A moisturizer carries no SPF. It cannot fill this slot.'},
+      {t:'5% B5 Intensive Barrier Cream', v:'no',
+       w:'No SPF. This is the moisturizer step.'},
+      {t:'2% Salicylic Acid Acne Serum', v:'no',
+       w:'No SPF — and an acid routine makes daily SPF more important, not less.'},
+      {t:'5% B5 Centella Calming Gel Cream', v:'no',
+       w:'No SPF in this SKU.'}
     ]
   }
 ];
 
-// traps that can appear under any concern
+// traps that can surface under any concern
 var UNIVERSAL = [
-  {t:'No side effects, totally safe', v:'no', w:'Safety claims implying freedom from side effects are not allowed.'},
-  {t:'Approved by the Ministry of Health', v:'no', w:'Unacceptable: MOH approval cannot be claimed. Notification is not approval.'},
-  {t:'GMP certified formula', v:'no', w:'Unacceptable: GMP or ISO 22716 logos and statements cannot be used as a claim.'},
-  {t:'Blessed formula, as in the scripture', v:'no', w:'Unacceptable: any religious reference attached to a cosmetic product.'},
-  {t:'Natural, so it cannot harm you', v:'no', w:'Natural ingredients must not be used to imply the product is safe.'},
-  {t:'Dermatologically tested', v:'evidence', w:'Usable, but only with the test report to back it. Undocumented, it is a misleading claim.'}
+  {t:'A prescription-strength cream', v:'no',
+   w:'Not a cosmetic at all. Anything prescription sits outside the Facerinna range.'},
+  {t:'An oral supplement for skin', v:'no',
+   w:'Different product category entirely — not part of this range.'},
+  {t:'A competitor ceramide moisturizer', v:'no',
+   w:'Not a Facerinna SKU. Keep detailing inside your own range.'}
 ];
 
 /* ============================================================
@@ -1052,7 +1107,7 @@ function labelTexture(text){
   return t;
 }
 
-var VCOL = {ok:0x6FDCC6, evidence:0xF5A524, no:0xEF4B3C};
+var VCOL = {ok:0x6FDCC6, partial:0xF5A524, no:0xEF4B3C};
 var bubbles = [];
 
 function makeBubble(claim){
@@ -1120,7 +1175,7 @@ var S = {
   playing:false, x:0, targetX:0, t:0,
   score:0, hearts:3, streak:0, bestStreak:0,
   caught:0, correct:0, mistakes:[],
-  concern:0, concernT:0, CONCERN_LEN:24,
+  concern:0, concernT:0, CONCERN_LEN:26,
   spawnT:0, spawnGap:1.7, armT:0, blinkT:2
 };
 
@@ -1174,7 +1229,7 @@ function setConcern(i){
   S.concernT = 0;
   var c = CONCERNS[i];
   el.cName.textContent = c.name;
-  el.cSku.textContent = c.sku;
+  el.cSku.textContent = c.hint;
 }
 
 /* ============================================================
@@ -1182,9 +1237,9 @@ function setConcern(i){
    ============================================================ */
 function pickClaim(){
   var c = CONCERNS[S.concern];
-  var pool = c.claims;
+  var pool = c.products;
   // ~18% chance of a universal trap
-  if (Math.random() < 0.18) return UNIVERSAL[(Math.random()*UNIVERSAL.length)|0];
+  if (Math.random() < 0.14) return UNIVERSAL[(Math.random()*UNIVERSAL.length)|0];
   return pool[(Math.random()*pool.length)|0];
 }
 
@@ -1220,17 +1275,17 @@ function catchBubble(b){
     setHearts();
     S.mistakes.push(c);
     popBubble(b, VCOL.no);
-    toast('Cannot be used', c.t, c.w, '#EF4B3C');
+    toast('Wrong for this concern', c.t, c.w, '#EF4B3C');
     floatText('✕', '#EF4B3C');
     blip(150, 0.28, 'sawtooth', 0.05);
     if (S.hearts <= 0) endGame();
-  } else if (c.v === 'evidence'){
+  } else if (c.v === 'partial'){
     S.correct++;
     S.streak++;
     var pts = 6;
     S.score += pts;
-    popBubble(b, VCOL.evidence);
-    toast('Only with proof', c.t, c.w, '#F5A524');
+    popBubble(b, VCOL.partial);
+    toast('Supporting, not the lead', c.t, c.w, '#F5A524');
     floatText('+' + pts, '#F5A524');
     blip(520, 0.16, 'triangle', 0.05);
   } else {
@@ -1240,7 +1295,7 @@ function catchBubble(b){
     var p = 10 * mult;
     S.score += p;
     popBubble(b, VCOL.ok);
-    toast('Acceptable', c.t, c.w, '#12A47F');
+    toast('Right match', c.t, c.w, '#12A47F');
     floatText('+' + p, '#12A47F');
     blip(660, 0.13, 'sine', 0.05);
     blip(880, 0.18, 'sine', 0.035);
@@ -1285,7 +1340,7 @@ function startGame(){
   el.hint.style.display = 'block';
   setTimeout(function(){ el.hint.style.display = 'none'; }, 3000);
   FXUI.setPlaying(true);
-  FXUI.setSub('Catch the compliant claims');
+  FXUI.setSub('Match SKUs to the concern');
 }
 
 function endGame(){
@@ -1296,11 +1351,11 @@ function endGame(){
   el.fCaught.textContent = S.caught;
   el.fAcc.textContent = acc + '%';
   el.fBest.textContent = '×' + Math.min(3, 1 + Math.floor(S.bestStreak/4));
-  el.rank.textContent = acc >= 90 ? 'Regulatory clean' :
-                        acc >= 70 ? 'Needs a second reviewer' : 'Send it back to copy';
+  el.rank.textContent = acc >= 90 ? 'Detailing sharp' :
+                        acc >= 70 ? 'Nearly there' : 'Review the range again';
   var html = '';
   if (S.mistakes.length){
-    html += '<h3>Claims you let through</h3>';
+    html += '<h3>Mismatches you caught</h3>';
     var seen = {};
     for (var i=0;i<S.mistakes.length && i<6;i++){
       var m = S.mistakes[i];
@@ -1310,8 +1365,8 @@ function endGame(){
     }
   } else {
     html += '<h3>Clean sheet</h3><div class="miss" style="border-left-color:#6FDCC6">' +
-            '<b>No unacceptable claims caught</b><span>Every bubble you took would survive an NPRA check on wording. ' +
-            'Substantiation is still a separate battle.</span></div>';
+            '<b>Clean routing</b><span>Every SKU you caught belonged to the concern on screen. ' +
+            'That is the detailing conversation working as intended.</span></div>';
   }
   el.report.innerHTML = html;
   el.over.classList.remove('hidden');

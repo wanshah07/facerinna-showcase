@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Lab Run</title>
+<style>
+  :root{
+    --blue:#2CA9F0;
+    --deep:#0B5C8C;
+    --mint:#7FE3D0;
+    --pink:#FFB3C4;
+    --paper:#F2FAFF;
+    --ink:#083A57;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;overflow:hidden;background:#0B1A26;
+    font-family:var(--fx-font);color:var(--ink);}
+  #app{position:fixed;inset:0;}
+  canvas{display:block;width:100%;height:100%;}
+
+  .hud{position:fixed;inset:0;pointer-events:none;padding:calc(14px + env(safe-area-inset-top)) 16px 16px;}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .chip{background:rgba(255,255,255,.82);border:2px solid rgba(11,92,140,.14);
+    border-radius:18px;padding:8px 14px;backdrop-filter:blur(6px);
+    box-shadow:0 6px 18px rgba(11,92,140,.12);}
+  .label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.7;font-weight:800;}
+  .value{font-size:26px;font-weight:800;line-height:1;color:var(--deep);font-variant-numeric:tabular-nums;}
+  .value small{font-size:13px;opacity:.6;font-weight:700;}
+
+  .shield-bar{margin-top:8px;height:6px;border-radius:99px;background:rgba(11,92,140,.15);overflow:hidden;display:none;}
+  .shield-bar i{display:block;height:100%;background:var(--mint);width:100%;}
+
+  .pop{position:fixed;left:50%;top:26%;transform:translate(-50%,-50%) scale(.8);
+    font-size:34px;font-weight:800;color:#fff;text-shadow:0 3px 0 rgba(11,92,140,.35);
+    opacity:0;pointer-events:none;transition:none;}
+
+  .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:flex-end;padding:0 24px calc(48px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg,rgba(7,20,30,0) 32%,rgba(7,20,30,.93) 66%);}
+  .screen.hidden{display:none;}
+  .title{font-size:15vw;font-weight:800;letter-spacing:-.03em;line-height:.86;
+    color:#fff;text-shadow:0 5px 0 var(--blue),0 10px 22px rgba(11,92,140,.3);margin:0 0 6px;text-align:center;}
+  @media(min-width:520px){.title{font-size:74px;}}
+  .sub{font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;opacity:.6;margin:0 0 22px;text-align:center;}
+  .rules{display:flex;gap:18px;margin:0 0 26px;flex-wrap:wrap;justify-content:center;}
+  .rule{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;opacity:.8;}
+  .dot{width:16px;height:16px;border-radius:50%;box-shadow:0 2px 6px rgba(11,92,140,.25);}
+    .btn.ghost{background:transparent;color:#9FD8FF;box-shadow:none;font-size:13px;padding:12px;opacity:.7}
+.btn{pointer-events:auto;border:0;cursor:pointer;font:inherit;font-weight:800;letter-spacing:.06em;
+    background:var(--blue);color:#fff;padding:17px 44px;border-radius:99px;font-size:17px;
+    box-shadow:0 6px 0 #1B87C6,0 14px 26px rgba(11,92,140,.3);transition:transform .12s,box-shadow .12s;}
+  .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #1B87C6,0 8px 16px rgba(11,92,140,.3);}
+  .btn:focus-visible{outline:3px solid var(--deep);outline-offset:4px;}
+  .final{font-size:64px;font-weight:800;color:var(--deep);line-height:1;margin:0;}
+
+  .pad{position:fixed;left:0;right:0;bottom:0;padding:0 14px calc(16px + env(safe-area-inset-bottom));
+    display:flex;gap:12px;justify-content:center;pointer-events:none;}
+  .pad.hidden{display:none;}
+  .key{pointer-events:auto;flex:1;max-width:130px;height:66px;border:0;border-radius:22px;
+    background:rgba(255,255,255,.16);color:#DCF3FF;font-size:24px;font-weight:800;
+    box-shadow:0 4px 0 rgba(11,92,140,.18);backdrop-filter:blur(6px);}
+  .key:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(11,92,140,.18);}
+  .hint{position:fixed;left:0;right:0;bottom:calc(96px + env(safe-area-inset-bottom));text-align:center;
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.45;}
+  @media(prefers-reduced-motion:reduce){.btn{transition:none;}}
+
+  /* --- Facerinna wordmark (typographic stand-in for the real lock-up) --- */
+  .fmark{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 14px;color:#fff}
+  .fmark svg{width:22px;height:30px;flex:none}
+  .fmark .wm{font-size:22px;font-weight:700;letter-spacing:.30em;line-height:1;text-indent:.30em}
+  .fmark .subm{display:block;font-size:8px;letter-spacing:.34em;font-weight:700;
+    margin-top:5px;opacity:.6;text-indent:.34em}
+
+/* ═══════════════════════════════════════════════════════════
+   FACERINNA CLINICAL — shared UI kit
+   One design language across all four games: tokens, controls,
+   pause layer, transitions, accessibility floor.
+   ═══════════════════════════════════════════════════════════ */
+:root{
+  --fx-brand:#2CA9F0;    --fx-brand-lo:#14608F;  --fx-brand-hi:#7FE3FF;
+  --fx-ink:#08344F;      --fx-deep:#0A5480;
+  --fx-night:#0B1A26;    --fx-night-2:#12283A;
+  --fx-amber:#FFD84D;    --fx-mint:#6FDCC6;      --fx-rose:#FF7BA6;
+  --fx-card:rgba(255,255,255,.90);
+  --fx-veil:rgba(255,255,255,.11);
+  --fx-r-lg:22px; --fx-r-md:16px; --fx-r-sm:12px;
+  --fx-ease:cubic-bezier(.22,.9,.28,1);
+}
+
+/* every number in the UI is tabular so the HUD never jitters */
+.val,.big,.stars,.n,.n2,.st,.stat .n,#hScore,#score,#drops{
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
+}
+
+/* ── control cluster: pause + mute ───────────────────────── */
+#fxControls{
+  position:fixed;z-index:50;display:none;gap:8px;
+  right:12px;top:calc(10px + env(safe-area-inset-top));
+}
+#fxControls.on{display:flex}
+.fx-ctl{
+  width:44px;height:44px;border:0;border-radius:50%;cursor:pointer;
+  background:rgba(255,255,255,.90);color:var(--fx-deep);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 18px rgba(3,18,30,.34);backdrop-filter:blur(10px);
+  transition:transform .14s var(--fx-ease), background .14s;
+  padding:0;-webkit-appearance:none;
+}
+.fx-ctl:active{transform:scale(.92)}
+.fx-ctl:focus-visible{outline:3px solid var(--fx-brand-hi);outline-offset:3px}
+.fx-ctl svg{width:19px;height:19px;display:block;fill:currentColor}
+.fx-ctl.off{background:rgba(255,255,255,.44);color:#5B7286}
+
+/* ── pause layer ─────────────────────────────────────────── */
+#fxPause{
+  position:fixed;inset:0;z-index:60;display:none;
+  align-items:center;justify-content:center;padding:24px;
+  background:rgba(6,18,28,.80);backdrop-filter:blur(14px);
+}
+#fxPause.on{display:flex;animation:fxIn .22s var(--fx-ease)}
+.fx-sheet{
+  width:100%;max-width:330px;text-align:center;
+  background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.07));
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:26px;padding:26px 22px 22px;
+  box-shadow:0 26px 60px rgba(0,0,0,.5);
+}
+.fx-sheet h2{
+  margin:0 0 4px;font-size:11px;letter-spacing:.34em;text-transform:uppercase;
+  font-weight:800;color:var(--fx-brand-hi);text-indent:.34em;
+}
+.fx-sheet .fx-sub{
+  margin:0 0 20px;font-size:14px;font-weight:700;color:rgba(255,255,255,.62);
+}
+.fx-stack{display:flex;flex-direction:column;gap:9px}
+.fx-btn{
+  border:0;cursor:pointer;font:inherit;font-weight:800;letter-spacing:.04em;
+  font-size:15px;padding:15px 20px;border-radius:99px;min-height:48px;
+  background:var(--fx-veil);color:#DCF3FF;
+  transition:transform .12s var(--fx-ease), background .14s;
+}
+.fx-btn:hover{background:rgba(255,255,255,.18)}
+.fx-btn:active{transform:translateY(2px)}
+.fx-btn:focus-visible{outline:3px solid var(--fx-brand-hi);outline-offset:3px}
+.fx-btn.pri{
+  background:linear-gradient(180deg,#4CBBFA,#2490D8);color:#fff;
+  box-shadow:0 5px 0 var(--fx-brand-lo);
+}
+.fx-btn.pri:hover{background:linear-gradient(180deg,#5CC4FC,#2C99E0)}
+.fx-btn.pri:active{transform:translateY(3px);box-shadow:0 2px 0 var(--fx-brand-lo)}
+
+/* ── screen polish ───────────────────────────────────────── */
+.screen{z-index:40}
+.screen:not(.hidden){animation:fxIn .3s var(--fx-ease)}
+@keyframes fxIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* buttons and cards get a consistent press feel */
+.btn,.lvb,.lv,.key{transition:transform .12s var(--fx-ease), box-shadow .12s var(--fx-ease), background .14s}
+.lvb:hover:not(:disabled),.lv:hover:not(:disabled){background:rgba(255,255,255,.18)}
+.lvb:focus-visible,.lv:focus-visible{outline:3px solid var(--fx-brand-hi);outline-offset:3px}
+
+/* ── accessibility floor ─────────────────────────────────── */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+  }
+}
+
+  /* Aptos where it exists (Windows / Microsoft 365), with a clean fallback
+     chain everywhere else. One token, used by CSS and the canvas textures. */
+  :root{ --fx-font:'Aptos','Aptos Display','Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif; }
+  html,body,button,input{ font-family:var(--fx-font); }
+  body{ -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div class="hud">
+  <div class="topbar">
+    <div class="chip">
+      <div class="label">Score</div>
+      <div class="value" id="score">0</div>
+    </div>
+    <div class="chip" style="text-align:right">
+      <div class="label">Drops</div>
+      <div class="value"><span id="drops">0</span><small> / <span id="best">0</span> best</small></div>
+      <div class="shield-bar" id="shieldBar"><i></i></div>
+    </div>
+  </div>
+</div>
+
+<div class="pop" id="pop"></div>
+
+<div class="screen" id="start">
+  <div class="fmark">
+    <svg viewBox="0 0 40 56" aria-hidden="true"><g fill="#2CA9F0">
+      <circle cx="6" cy="6" r="5.2"/><circle cx="19" cy="6" r="5.2"/><circle cx="32" cy="6" r="5.2"/>
+      <circle cx="6" cy="19" r="5.2"/><circle cx="6" cy="32" r="5.2"/><circle cx="19" cy="32" r="5.2"/>
+      <circle cx="6" cy="45" r="5.2"/></g></svg>
+    <div><span class="wm">FACERINNA</span><span class="subm">DERMOCOSMETIC LAB</span></div>
+  </div>
+  <h1 class="title">LAB RUN</h1>
+  <p class="sub">Catch the serum. Dodge the germs.</p>
+  <div class="rules">
+    <div class="rule"><span class="dot" style="background:#31D6FF"></span>Serum drop +10</div>
+    <div class="rule"><span class="dot" style="background:#7FE3D0"></span>Barrier shield</div>
+    <div class="rule"><span class="dot" style="background:#F0503C"></span>Germ — avoid</div>
+  </div>
+  <button class="btn" id="playBtn">Start running</button>
+  <a class="btn ghost" href="index.html" style="text-decoration:none">← Back to showcase</a>
+</div>
+
+<div class="screen hidden" id="over">
+  <p class="sub" style="margin-bottom:6px">Run over</p>
+  <p class="final" id="finalScore">0</p>
+  <p class="sub" id="finalLine" style="margin:10px 0 24px">0 drops collected</p>
+  <button class="btn" id="againBtn">Run again</button>
+  <a class="btn ghost" href="index.html" style="text-decoration:none">← Back to showcase</a>
+</div>
+
+<div class="pad hidden" id="pad">
+  <button class="key" id="kL" aria-label="Move left">◀</button>
+  <button class="key" id="kJ" aria-label="Jump">▲</button>
+  <button class="key" id="kR" aria-label="Move right">▶</button>
+</div>
+<div class="hint" id="hint" style="display:none">Swipe or use the pad · Arrow keys work too</div>
+
+
+<div id="fxControls">
+  <button class="fx-ctl" id="fxMute" aria-label="Mute sound" title="Sound">
+    <svg id="fxMuteIcon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3c0-1.6-.9-3-2.2-3.7v7.3c1.3-.6 2.2-2 2.2-3.6zM14.3 4.5v1.9c2.6.8 4.5 3.2 4.5 6.1s-1.9 5.3-4.5 6.1v1.9c3.7-.8 6.5-4.1 6.5-8s-2.8-7.2-6.5-8z"/>
+    </svg>
+  </button>
+  <button class="fx-ctl" id="fxPauseBtn" aria-label="Pause" title="Pause">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z"/></svg>
+  </button>
+</div>
+
+<div id="fxPause" role="dialog" aria-modal="true" aria-label="Paused">
+  <div class="fx-sheet">
+    <h2>Paused</h2>
+    <p class="fx-sub" id="fxPauseSub">Take your time</p>
+    <div class="fx-stack">
+      <button class="fx-btn pri" id="fxResume">Resume</button>
+      <button class="fx-btn" id="fxRestart">Restart</button>
+      <button class="fx-btn" id="fxQuit">Back to menu</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+
+/* ═══════════════════════════════════════════════════════════
+   FXUI — shared control layer (pause, mute, keyboard)
+   Games supply callbacks; the kit owns the markup and state.
+   ═══════════════════════════════════════════════════════════ */
+var FXUI = (function(){
+  var els = {
+    wrap:   document.getElementById('fxControls'),
+    mute:   document.getElementById('fxMute'),
+    icon:   document.getElementById('fxMuteIcon'),
+    pause:  document.getElementById('fxPauseBtn'),
+    layer:  document.getElementById('fxPause'),
+    sub:    document.getElementById('fxPauseSub'),
+    resume: document.getElementById('fxResume'),
+    restart:document.getElementById('fxRestart'),
+    quit:   document.getElementById('fxQuit')
+  };
+  var SPEAKER = 'M4 9v6h4l5 4V5L8 9H4zm12.5 3c0-1.6-.9-3-2.2-3.7v7.3c1.3-.6 2.2-2 2.2-3.6zM14.3 4.5v1.9c2.6.8 4.5 3.2 4.5 6.1s-1.9 5.3-4.5 6.1v1.9c3.7-.8 6.5-4.1 6.5-8s-2.8-7.2-6.5-8z';
+  var MUTED   = 'M4 9v6h4l5 4V5L8 9H4zm15.1 3l2.4-2.4-1.3-1.3-2.4 2.4-2.4-2.4-1.3 1.3 2.4 2.4-2.4 2.4 1.3 1.3 2.4-2.4 2.4 2.4 1.3-1.3z';
+
+  var cb = {}, paused = false, muted = false, playing = false;
+
+  function setIcon(){
+    els.icon.setAttribute('d', muted ? MUTED : SPEAKER);
+    els.mute.classList.toggle('off', muted);
+    els.mute.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+  }
+  function open(){
+    if (paused || !playing) return;
+    paused = true;
+    els.layer.classList.add('on');
+    if (cb.onPause) cb.onPause();
+    els.resume.focus();
+  }
+  function close(){
+    if (!paused) return;
+    paused = false;
+    els.layer.classList.remove('on');
+    if (cb.onResume) cb.onResume();
+  }
+
+  els.pause.addEventListener('click', open);
+  els.resume.addEventListener('click', close);
+  els.restart.addEventListener('click', function(){
+    close();
+    if (cb.onRestart) cb.onRestart();
+  });
+  els.quit.addEventListener('click', function(){
+    close();
+    setPlaying(false);
+    if (cb.onQuit) cb.onQuit();
+  });
+  els.mute.addEventListener('click', function(){
+    muted = !muted;
+    setIcon();
+    if (cb.onMute) cb.onMute(muted);
+  });
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' || e.key === 'p' || e.key === 'P'){
+      if (!playing) return;
+      paused ? close() : open();
+      e.preventDefault();
+    }
+    if (e.key === 'm' || e.key === 'M'){ els.mute.click(); e.preventDefault(); }
+  });
+
+  // pause automatically when the tab loses focus, so nothing runs unseen
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden && playing && !paused) open();
+  });
+
+  function setPlaying(v){
+    playing = v;
+    els.wrap.classList.toggle('on', v);
+    if (!v && paused) close();
+  }
+
+  return {
+    init: function(c){
+      cb = c || {};
+      // a game with no audio must not show a mute button that does nothing
+      if (cb.hasSound === false) els.mute.style.display = 'none';
+      setIcon();
+    },
+    setPlaying: setPlaying,
+    setSub: function(t){ els.sub.textContent = t; },
+    isPaused: function(){ return paused; },
+    isMuted: function(){ return muted; }
+  };
+})();
+
+(function(){
+"use strict";
+
+// ---------- palette ----------
+var C = {
+  blue:0x2CA9F0, deepBlue:0x1B87C6, white:0xFFFFFF, offWhite:0xF2FAFF,
+  ink:0x0B3D5C, pink:0xFFB3C4, red:0xE8433E, cyan:0x31D6FF,
+  mint:0x7FE3D0, germ:0xF0503C, germDark:0xB8301F, floor:0xE6F6FF, sky:0xCFEEFF
+};
+var LANES = [-2.0, 0, 2.0];
+
+// ---------- renderer / scene ----------
+var app = document.getElementById('app');
+var renderer = new THREE.WebGLRenderer({antialias:true, alpha:false});
+var SMALL = Math.min(window.innerWidth, window.innerHeight) < 820;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, SMALL ? 1.5 : 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.95;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0B1A26);
+scene.fog = new THREE.Fog(0x0B1A26, 18, 58);
+
+var camera = new THREE.PerspectiveCamera(52, window.innerWidth/window.innerHeight, 0.1, 200);
+// Raised and pulled back, with a steeper look-down. The old rig sat level
+// with the runner's head, so the hood covered the lane ahead.
+camera.position.set(0, 6.2, 9.0);
+camera.lookAt(0, 0.9, -14);
+
+scene.add(new THREE.HemisphereLight(0x8FB4D0, 0x181310, 0.22));
+scene.add(new THREE.AmbientLight(0x33465C, 0.30));
+var key = new THREE.DirectionalLight(0xFFE3B8, 2.3);
+key.position.set(5, 14, 8);
+key.castShadow = true;
+key.shadow.mapSize.width = key.shadow.mapSize.height = SMALL ? 768 : 1024;
+key.shadow.camera.near = 1; key.shadow.camera.far = 44;
+key.shadow.camera.left = -10; key.shadow.camera.right = 10;
+key.shadow.camera.top = 14; key.shadow.camera.bottom = -6;
+key.shadow.bias = -0.001; key.shadow.normalBias = 0.02;
+scene.add(key);
+var rim = new THREE.DirectionalLight(0x6FC4FF, 1.15);
+rim.position.set(-7, 6, -14);
+scene.add(rim);
+// warm practical travelling with the runner
+var runnerLamp = new THREE.PointLight(0xFFEFD2, 2.4, 20, 2);
+runnerLamp.position.set(0, 5, 3);
+scene.add(runnerLamp);
+
+// ---------- materials ----------
+function mat(color, rough, opts){
+  var o = opts || {};
+  return new THREE.MeshStandardMaterial({
+    color:color, roughness:(rough===undefined?0.45:rough), metalness:0.0,
+    transparent:!!o.transparent, opacity:(o.opacity===undefined?1:o.opacity),
+    side:(o.side||THREE.FrontSide), emissive:(o.emissive||0x000000),
+    emissiveIntensity:(o.ei===undefined?1:o.ei), depthWrite:(o.depthWrite===undefined?true:o.depthWrite)
+  });
+}
+var M = {
+  blue: mat(C.blue,0.38), white: mat(C.white,0.42), coat: mat(C.offWhite,0.5,{side:THREE.DoubleSide}),
+  ink: mat(C.ink,0.2), pink: mat(C.pink,0.7), red: mat(C.red,0.4),
+  glass: mat(0xFFFFFF,0.05,{transparent:true,opacity:0.22,depthWrite:false}),
+  cyan: mat(C.cyan,0.25,{emissive:C.cyan, ei:0.45}),
+  mint: mat(C.mint,0.3,{emissive:C.mint, ei:0.4}),
+  germ: mat(C.germ,0.5), germDark: mat(C.germDark,0.5),
+  shadow: mat(0x0B3D5C,1,{transparent:true,opacity:0.16,depthWrite:false})
+};
+
+// "F" badge texture for the coat
+function badgeTexture(){
+  var s = 128, cv = document.createElement('canvas');
+  cv.width = cv.height = s;
+  var g = cv.getContext('2d');
+  g.clearRect(0,0,s,s);
+  g.fillStyle = '#2CA9F0';
+  // dotted capital F
+  var cells = [[0,0],[1,0],[2,0],[3,0],[0,1],[0,2],[1,2],[2,2],[0,3],[0,4],[0,5]];
+  var u = 18, ox = 34, oy = 14, r = 6;
+  for (var i=0;i<cells.length;i++){
+    var cx = ox + cells[i][0]*u, cy = oy + cells[i][1]*u;
+    g.beginPath(); g.arc(cx, cy, r, 0, Math.PI*2); g.fill();
+  }
+  var t = new THREE.CanvasTexture(cv);
+  return t;
+}
+
+// ---------- the mascot ----------
+function buildMascot(){
+  var g = new THREE.Group();
+  var parts = {};
+
+  // ---- hood ----
+  var hood = new THREE.Mesh(new THREE.SphereGeometry(0.98, 30, 26), M.blue);
+  hood.scale.set(1.0, 0.98, 0.92);
+  hood.position.y = 2.32;
+  g.add(hood);
+
+  function ear(sign){
+    var e = new THREE.Mesh(new THREE.ConeGeometry(0.36, 0.95, 18), M.blue);
+    e.position.set(sign*0.52, 3.18, -0.02);
+    e.rotation.z = -sign*0.30;
+    e.rotation.x = -0.12;
+    return e;
+  }
+  g.add(ear(1)); g.add(ear(-1));
+
+  // ---- face ----
+  var face = new THREE.Mesh(new THREE.SphereGeometry(0.80, 28, 24), M.white);
+  face.scale.set(1.0, 0.94, 0.7);
+  face.position.set(0, 2.30, 0.44);
+  g.add(face);
+
+  function eye(sign){
+    var eg = new THREE.Group();
+    var b = new THREE.Mesh(new THREE.SphereGeometry(0.155, 20, 18), M.ink);
+    b.scale.set(1, 1.12, 0.7);
+    eg.add(b);
+    var hi = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 10), M.white);
+    hi.position.set(-0.05, 0.07, 0.10);
+    eg.add(hi);
+    var lo = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 10), M.blue);
+    lo.position.set(0.02, -0.07, 0.10);
+    eg.add(lo);
+    eg.position.set(sign*0.30, 2.38, 0.95);
+    return eg;
+  }
+  var eyeL = eye(-1), eyeR = eye(1);
+  g.add(eyeL); g.add(eyeR);
+  parts.eyes = [eyeL, eyeR];
+
+  // goggles
+  function ring(sign){
+    var r = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.042, 10, 28), M.blue);
+    r.position.set(sign*0.30, 2.38, 0.96);
+    return r;
+  }
+  g.add(ring(-1)); g.add(ring(1));
+  var bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.20, 10), M.blue);
+  bridge.rotation.z = Math.PI/2;
+  bridge.position.set(0, 2.38, 0.95);
+  g.add(bridge);
+  var strap = new THREE.Mesh(new THREE.TorusGeometry(0.92, 0.045, 10, 32), M.blue);
+  strap.position.set(0, 2.38, 0.30);
+  g.add(strap);
+  var lens = new THREE.Mesh(new THREE.SphereGeometry(0.86, 24, 20), M.glass);
+  lens.scale.set(1, 0.62, 0.55);
+  lens.position.set(0, 2.40, 0.52);
+  g.add(lens);
+
+  // blush
+  function blush(sign){
+    var b = new THREE.Mesh(new THREE.CircleGeometry(0.14, 16), M.pink);
+    b.position.set(sign*0.60, 2.18, 0.79);
+    b.rotation.y = sign*0.5;
+    return b;
+  }
+  g.add(blush(-1)); g.add(blush(1));
+
+  // smile
+  var smile = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.028, 8, 20, Math.PI), M.red);
+  smile.rotation.z = Math.PI;
+  smile.position.set(0, 2.12, 1.02);
+  g.add(smile);
+
+  // ---- body ----
+  var torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.95, 18), M.blue);
+  torso.position.y = 1.20;
+  g.add(torso);
+
+  // lab coat: open-front cylinder shell
+  var coat = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.52, 0.60, 1.10, 20, 1, true, Math.PI*0.20, Math.PI*1.60),
+    M.coat
+  );
+  coat.position.y = 1.15;
+  coat.rotation.y = Math.PI*0.30;
+  g.add(coat);
+
+  function lapel(sign){
+    var l = new THREE.Mesh(new THREE.BoxGeometry(0.26, 1.02, 0.10), M.coat);
+    l.position.set(sign*0.26, 1.16, 0.44);
+    l.rotation.z = sign*0.08;
+    l.rotation.y = -sign*0.30;
+    return l;
+  }
+  g.add(lapel(-1)); g.add(lapel(1));
+
+  var collar = new THREE.Mesh(new THREE.TorusGeometry(0.40, 0.055, 8, 22, Math.PI*1.3), M.coat);
+  collar.rotation.x = Math.PI/2;
+  collar.rotation.z = -Math.PI*0.15;
+  collar.position.y = 1.62;
+  g.add(collar);
+
+  var badge = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.26),
+    new THREE.MeshBasicMaterial({map:badgeTexture(), transparent:true}));
+  badge.position.set(0.26, 1.25, 0.52);
+  badge.rotation.y = -0.32;
+  g.add(badge);
+
+  // arms
+  function arm(sign){
+    var a = new THREE.Group();
+    var upper = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.14, 0.62, 14), M.coat);
+    upper.position.y = -0.31;
+    a.add(upper);
+    var hand = new THREE.Mesh(new THREE.SphereGeometry(0.19, 16, 14), M.white);
+    hand.position.y = -0.68;
+    a.add(hand);
+    a.position.set(sign*0.60, 1.58, 0);
+    return a;
+  }
+  var armL = arm(-1), armR = arm(1);
+  g.add(armL); g.add(armR);
+  parts.arms = [armL, armR];
+
+  // legs
+  function leg(sign){
+    var l = new THREE.Group();
+    var thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.18, 0.55, 14), M.blue);
+    thigh.position.y = -0.28;
+    l.add(thigh);
+    var shoe = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 14), M.white);
+    shoe.scale.set(1, 0.72, 1.25);
+    shoe.position.set(0, -0.60, 0.06);
+    l.add(shoe);
+    l.position.set(sign*0.23, 0.72, 0);
+    return l;
+  }
+  var legL = leg(-1), legR = leg(1);
+  g.add(legL); g.add(legR);
+  parts.legs = [legL, legR];
+
+
+  // The head gets its own pivot at the neck so it can turn independently of
+  // the body: the body always faces the direction of travel, the head turns
+  // back far enough that his face still reads on screen.
+  var head = new THREE.Group();
+  head.position.set(0, 1.95, 0);
+  var headParts = g.children.filter(function(o){ return o.position.y >= 1.9; });
+  for (var hi=0; hi<headParts.length; hi++){
+    headParts[hi].position.y -= 1.95;
+    head.add(headParts[hi]);
+  }
+  g.add(head);
+  parts.head = head;
+
+  g.userData.parts = parts;
+  return g;
+}
+
+// ---------- world ----------
+var world = new THREE.Group();
+scene.add(world);
+
+var floor = new THREE.Mesh(new THREE.BoxGeometry(8.4, 0.5, 240),
+  new THREE.MeshStandardMaterial({color:0x232D38, roughness:0.42, metalness:0.22}));
+floor.position.set(0, -0.25, -100);
+floor.receiveShadow = true;
+world.add(floor);
+
+function rail(sign){
+  var r = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 240),
+    new THREE.MeshStandardMaterial({color:0x2CA9F0, emissive:0x2CA9F0,
+      emissiveIntensity:0.9, roughness:0.4}));
+  r.position.set(sign*4.1, 0.16, -100);
+  return r;
+}
+world.add(rail(-1)); world.add(rail(1));
+
+// corridor walls + ceiling close the space in
+function corridorWall(sign){
+  var w = new THREE.Mesh(new THREE.BoxGeometry(0.4, 9, 240),
+    new THREE.MeshStandardMaterial({color:0x1E2A36, roughness:0.95}));
+  w.position.set(sign*7.2, 4.5, -100);
+  w.receiveShadow = true;
+  return w;
+}
+world.add(corridorWall(-1)); world.add(corridorWall(1));
+var roof = new THREE.Mesh(new THREE.BoxGeometry(15, 0.4, 240),
+  new THREE.MeshStandardMaterial({color:0x141C25, roughness:1}));
+roof.position.set(0, 9, -100);
+world.add(roof);
+
+// scrolling floor rungs
+var rungs = [];
+var RUNG_GAP = 4, RUNG_N = 44;
+for (var i=0;i<RUNG_N;i++){
+  var rg = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.06, 0.30),
+    new THREE.MeshStandardMaterial({color:0x3C5568, emissive:0x2A4C63,
+      emissiveIntensity:0.6, roughness:0.6}));
+  rg.position.set(0, 0.02, -i*RUNG_GAP);
+  world.add(rg); rungs.push(rg);
+}
+
+// Facerinna wall signage, recycled down the corridor as you run
+// NOTE: typographic stand-in, not the real brand asset.
+var LOGO_IMAGE_URL = null;
+var signs = [];
+(function(){
+  function drawTracked(g, text, cx, y, size, tracking){
+    g.font = '700 ' + size + 'px "Aptos","Segoe UI",system-ui,-apple-system,Arial,sans-serif';
+    var widths = [], total = 0, i;
+    for (i=0;i<text.length;i++){
+      var w = g.measureText(text[i]).width;
+      widths.push(w); total += w + (i<text.length-1?tracking:0);
+    }
+    var x = cx - total/2;
+    for (i=0;i<text.length;i++){ g.fillText(text[i], x, y); x += widths[i] + tracking; }
+  }
+  var cv = document.createElement('canvas');
+  cv.width = 1024; cv.height = 300;
+  var g = cv.getContext('2d');
+  g.textBaseline = 'middle'; g.textAlign = 'left';
+  var cells = [[0,0],[1,0],[2,0],[3,0],[0,1],[0,2],[1,2],[2,2],[0,3],[0,4],[0,5]];
+  g.fillStyle = '#2CA9F0';
+  for (var i=0;i<cells.length;i++){
+    g.beginPath(); g.arc(96 + cells[i][0]*15, 108 + cells[i][1]*15, 5.4, 0, Math.PI*2); g.fill();
+  }
+  g.fillStyle = '#FFFFFF';
+  drawTracked(g, 'FACERINNA', 512, 150, 116, 15);
+  g.strokeStyle = '#2CA9F0'; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(272, 208); g.lineTo(752, 208); g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.72)';
+  drawTracked(g, 'DERMOCOSMETIC LAB', 512, 240, 30, 11);
+  var tex = new THREE.CanvasTexture(cv);
+  tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+
+  for (var k=0;k<6;k++){
+    var side = k % 2 ? 1 : -1;
+    var grp = new THREE.Group();
+    var panel = new THREE.Mesh(new THREE.PlaneGeometry(9, 3.2),
+      new THREE.MeshStandardMaterial({color:0x16202C, roughness:0.55, metalness:0.3}));
+    grp.add(panel);
+    var face = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 2.2),
+      new THREE.MeshBasicMaterial({map:tex, transparent:true, opacity:0.95, depthWrite:false}));
+    face.position.z = 0.06;
+    grp.add(face);
+    grp.position.set(side*6.95, 4.6, -k*36 - 14);
+    grp.rotation.y = -side*Math.PI/2;
+    world.add(grp);
+    signs.push(grp);
+  }
+})();
+
+// background beakers
+var beakers = [];
+for (var b=0;b<18;b++){
+  var side = b%2 ? 1 : -1;
+  var h = 1.4 + Math.random()*2.6;
+  var bk = new THREE.Group();
+  var body = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, h, 14), mat(0xFFFFFF, 0.3, {transparent:true, opacity:0.55}));
+  body.position.y = h/2;
+  bk.add(body);
+  var liq = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.57, h*0.45, 14), mat(b%3?C.cyan:C.mint, 0.3));
+  liq.position.y = h*0.225;
+  bk.add(liq);
+  bk.position.set(side*(5.6 + Math.random()*2.4), 0, -b*14 - Math.random()*8);
+  world.add(bk); beakers.push(bk);
+}
+
+// ---------- pickups & obstacles ----------
+function buildDrop(){
+  var g = new THREE.Group();
+  var ball = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 14), M.cyan);
+  g.add(ball);
+  var tip = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.40, 16), M.cyan);
+  tip.position.y = 0.29;
+  g.add(tip);
+  var glow = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 12),
+    mat(C.cyan, 1, {transparent:true, opacity:0.16, depthWrite:false}));
+  g.add(glow);
+  g.position.y = 1.0;
+  return g;
+}
+function buildShield(){
+  var g = new THREE.Group();
+  var core = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 14), M.mint);
+  g.add(core);
+  var r1 = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 8, 24), M.mint);
+  g.add(r1);
+  var r2 = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 8, 24), M.mint);
+  r2.rotation.y = Math.PI/2;
+  g.add(r2);
+  g.position.y = 1.05;
+  return g;
+}
+function buildGerm(){
+  var g = new THREE.Group();
+  var core = new THREE.Mesh(new THREE.SphereGeometry(0.52, 18, 16), M.germ);
+  g.add(core);
+  for (var i=0;i<9;i++){
+    var sp = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.34, 8), M.germDark);
+    var a = (i/9)*Math.PI*2, t = (i%3)*0.7 - 0.7;
+    var dir = new THREE.Vector3(Math.cos(a)*Math.cos(t), Math.sin(t), Math.sin(a)*Math.cos(t));
+    sp.position.copy(dir.clone().multiplyScalar(0.58));
+    sp.lookAt(dir.clone().multiplyScalar(2.2));
+    sp.rotateX(Math.PI/2);
+    g.add(sp);
+  }
+  var eyeGeo = new THREE.SphereGeometry(0.09, 10, 10);
+  var e1 = new THREE.Mesh(eyeGeo, M.ink); e1.position.set(-0.17, 0.12, 0.47); g.add(e1);
+  var e2 = new THREE.Mesh(eyeGeo, M.ink); e2.position.set(0.17, 0.12, 0.47); g.add(e2);
+  var frown = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.03, 8, 16, Math.PI), M.ink);
+  frown.position.set(0, -0.18, 0.46);
+  g.add(frown);
+  g.position.y = 0.85;
+  return g;
+}
+
+var POOL = {drop:[], shield:[], germ:[]};
+function spawnPool(kind, n, builder){
+  for (var i=0;i<n;i++){
+    var m = builder();
+    m.visible = false;
+    m.userData.active = false;
+    world.add(m);
+    POOL[kind].push(m);
+  }
+}
+spawnPool('drop', 34, buildDrop);
+spawnPool('shield', 3, buildShield);
+spawnPool('germ', 16, buildGerm);
+
+function take(kind){
+  var arr = POOL[kind];
+  for (var i=0;i<arr.length;i++){
+    if (!arr[i].userData.active){
+      arr[i].userData.active = true;
+      arr[i].visible = true;
+      return arr[i];
+    }
+  }
+  return null;
+}
+function release(m){ m.userData.active = false; m.visible = false; }
+
+// ---------- player ----------
+var player = buildMascot();
+player.traverse(function(o){ if (o.isMesh) o.castShadow = true; });
+scene.add(player);
+var blob = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), M.shadow);
+blob.rotation.x = -Math.PI/2;
+blob.position.y = 0.03;
+scene.add(blob);
+
+var shieldBubble = new THREE.Mesh(new THREE.SphereGeometry(1.45, 20, 16),
+  mat(C.mint, 0.1, {transparent:true, opacity:0.24, depthWrite:false}));
+shieldBubble.visible = false;
+scene.add(shieldBubble);
+
+// ---------- state ----------
+var S = {
+  running:false, over:false,
+  lane:1, targetX:0, x:0,
+  y:0, vy:0, grounded:true,
+  speed:14, dist:0, score:0, drops:0, bonus:0,
+  shield:0, spawnZ:-40, t:0, shake:0
+};
+var GRAVITY = -30, JUMP_V = 10.2;
+var best = 0;
+
+var el = {
+  score:document.getElementById('score'), drops:document.getElementById('drops'),
+  best:document.getElementById('best'), pop:document.getElementById('pop'),
+  start:document.getElementById('start'), over:document.getElementById('over'),
+  finalScore:document.getElementById('finalScore'), finalLine:document.getElementById('finalLine'),
+  pad:document.getElementById('pad'), hint:document.getElementById('hint'),
+  shieldBar:document.getElementById('shieldBar')
+};
+el.best.textContent = best;
+
+function popText(txt, color){
+  el.pop.textContent = txt;
+  el.pop.style.color = color || '#fff';
+  el.pop.style.transition = 'none';
+  el.pop.style.opacity = '1';
+  el.pop.style.transform = 'translate(-50%,-50%) scale(1)';
+  requestAnimationFrame(function(){
+    el.pop.style.transition = 'opacity .6s ease, transform .6s ease';
+    el.pop.style.opacity = '0';
+    el.pop.style.transform = 'translate(-50%,-120%) scale(1.15)';
+  });
+}
+
+// ---------- controls ----------
+function move(dir){
+  if (!S.running) return;
+  var n = S.lane + dir;
+  if (n < 0 || n > 2) return;
+  S.lane = n;
+  S.targetX = LANES[n];
+}
+function jump(){
+  if (!S.running || !S.grounded) return;
+  S.vy = JUMP_V;
+  S.grounded = false;
+}
+
+document.addEventListener('keydown', function(e){
+  var k = e.key;
+  if (k==='ArrowLeft'||k==='a'||k==='A'){ move(-1); e.preventDefault(); }
+  else if (k==='ArrowRight'||k==='d'||k==='D'){ move(1); e.preventDefault(); }
+  else if (k===' '||k==='ArrowUp'||k==='w'||k==='W'){
+    if (!S.running) startGame(); else jump();
+    e.preventDefault();
+  }
+});
+
+document.getElementById('kL').addEventListener('click', function(){ move(-1); });
+document.getElementById('kR').addEventListener('click', function(){ move(1); });
+document.getElementById('kJ').addEventListener('click', jump);
+
+var tStart = null;
+renderer.domElement.addEventListener('touchstart', function(e){
+  var t = e.changedTouches[0];
+  tStart = {x:t.clientX, y:t.clientY};
+}, {passive:true});
+renderer.domElement.addEventListener('touchend', function(e){
+  if (!tStart) return;
+  var t = e.changedTouches[0];
+  var dx = t.clientX - tStart.x, dy = t.clientY - tStart.y;
+  if (Math.abs(dx) > 32 && Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1);
+  else if (dy < -32) jump();
+  else if (Math.abs(dx) < 20 && Math.abs(dy) < 20) jump();
+  tStart = null;
+}, {passive:true});
+
+FXUI.init({
+  hasSound:  false,          // this game has no audio, so no mute control
+  onRestart: function(){ startGame(); },
+  onQuit:    function(){
+    S.running = false; S.over = false;
+    clearField();
+    el.over.classList.add('hidden');
+    el.pad.classList.add('hidden');
+    el.hint.style.display = 'none';
+    el.start.classList.remove('hidden');
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', startGame);
+document.getElementById('againBtn').addEventListener('click', startGame);
+
+// ---------- spawning ----------
+function clearField(){
+  ['drop','shield','germ'].forEach(function(k){
+    POOL[k].forEach(function(m){ release(m); });
+  });
+}
+
+function spawnRow(z){
+  var roll = Math.random();
+  if (roll < 0.42){
+    // a lane of drops
+    var lane = (Math.random()*3)|0;
+    var n = 3 + ((Math.random()*3)|0);
+    for (var i=0;i<n;i++){
+      var d = take('drop');
+      if (!d) break;
+      d.position.set(LANES[lane], 1.0, z - i*2.2);
+      d.userData.kind = 'drop';
+      d.userData.lane = lane;
+    }
+  } else if (roll < 0.86){
+    // germs blocking one or two lanes
+    var blocked = (Math.random()*3)|0;
+    var two = Math.random() < 0.35 && S.dist > 260;
+    for (var l=0;l<3;l++){
+      if (l===blocked || (two && l===(blocked+1)%3)){
+        var gm = take('germ');
+        if (!gm) continue;
+        gm.position.set(LANES[l], 0.85, z);
+        gm.userData.kind = 'germ';
+        gm.userData.lane = l;
+      } else if (Math.random() < 0.5){
+        var dd = take('drop');
+        if (dd){
+          dd.position.set(LANES[l], 1.0, z);
+          dd.userData.kind = 'drop';
+          dd.userData.lane = l;
+        }
+      }
+    }
+  } else {
+    var sh = take('shield');
+    if (sh){
+      var sl = (Math.random()*3)|0;
+      sh.position.set(LANES[sl], 1.05, z);
+      sh.userData.kind = 'shield';
+      sh.userData.lane = sl;
+    }
+  }
+}
+
+// ---------- game flow ----------
+function startGame(){
+  clearField();
+  S.running = true; S.over = false;
+  S.lane = 1; S.targetX = 0; S.x = 0;
+  S.y = 0; S.vy = 0; S.grounded = true;
+  S.speed = 14; S.dist = 0; S.score = 0; S.drops = 0; S.bonus = 0;
+  S.shield = 0; S.spawnZ = -46; S.shake = 0;
+  shieldBubble.visible = false;
+  el.shieldBar.style.display = 'none';
+  el.score.textContent = '0';
+  el.drops.textContent = '0';
+  el.start.classList.add('hidden');
+  el.over.classList.add('hidden');
+  el.pad.classList.remove('hidden');
+  el.hint.style.display = 'block';
+  setTimeout(function(){ el.hint.style.display = 'none'; }, 3200);
+  FXUI.setPlaying(true);
+  FXUI.setSub('Catch the serum, dodge the germs');
+}
+
+function endGame(){
+  S.running = false; S.over = true;
+  FXUI.setPlaying(false);
+  if (S.drops > best){
+    best = S.drops;
+    el.best.textContent = best;
+  }
+  el.finalScore.textContent = S.score;
+  el.finalLine.textContent = S.drops + ' serum drops · ' + Math.floor(S.dist) + 'm';
+  el.over.classList.remove('hidden');
+  el.pad.classList.add('hidden');
+  el.hint.style.display = 'none';
+}
+
+function hit(){
+  if (S.shield > 0){
+    S.shield = 0;
+    shieldBubble.visible = false;
+    el.shieldBar.style.display = 'none';
+    popText('Barrier broke!', '#7FE3D0');
+    S.shake = 0.35;
+    return;
+  }
+  S.shake = 0.6;
+  endGame();
+}
+
+// ---------- loop ----------
+var clock = new THREE.Clock();
+
+function tick(){
+  requestAnimationFrame(tick);
+  var dt = Math.min(clock.getDelta(), 0.05);
+  S.t += dt;
+
+  if (FXUI.isPaused()){ renderer.render(scene, camera); return; }
+
+  var speed = S.running ? S.speed : 5;
+
+  if (S.running){
+    S.speed = Math.min(30, S.speed + dt*0.42);
+    S.dist += speed*dt;
+    // Score is a whole number by construction: distance points are derived
+    // from metres run, never accumulated as a float frame by frame.
+    S.score = Math.floor(S.dist * 0.6) + S.bonus;
+    el.score.textContent = S.score;
+
+    // lane glide
+    S.x += (S.targetX - S.x) * Math.min(1, dt*13);
+
+    // jump
+    S.y += S.vy*dt;
+    S.vy += GRAVITY*dt;
+    if (S.y <= 0){ S.y = 0; S.vy = 0; S.grounded = true; }
+
+    // shield timer
+    if (S.shield > 0){
+      S.shield -= dt;
+      el.shieldBar.firstElementChild.style.width = Math.max(0, (S.shield/6)*100) + '%';
+      if (S.shield <= 0){
+        shieldBubble.visible = false;
+        el.shieldBar.style.display = 'none';
+      }
+    }
+
+    // spawn ahead
+    S.spawnZ += speed*dt;
+    if (S.spawnZ > 0){
+      var gap = 12 - Math.min(4, S.speed*0.12);
+      spawnRow(-58);
+      S.spawnZ = -gap;
+    }
+  } else {
+    S.x += (0 - S.x) * Math.min(1, dt*6);
+  }
+
+  // scroll props
+  var i, m;
+  for (i=0;i<rungs.length;i++){
+    rungs[i].position.z += speed*dt;
+    if (rungs[i].position.z > 12) rungs[i].position.z -= RUNG_GAP*RUNG_N;
+  }
+  for (i=0;i<beakers.length;i++){
+    beakers[i].position.z += speed*dt*0.7;
+    if (beakers[i].position.z > 16) beakers[i].position.z -= 250;
+  }
+  for (i=0;i<signs.length;i++){
+    signs[i].position.z += speed*dt;
+    if (signs[i].position.z > 14) signs[i].position.z -= 216;
+  }
+
+  // move & test pickups
+  ['drop','shield','germ'].forEach(function(kind){
+    var arr = POOL[kind];
+    for (var j=0;j<arr.length;j++){
+      m = arr[j];
+      if (!m.userData.active) continue;
+      m.position.z += speed*dt;
+
+      if (kind === 'drop'){
+        m.rotation.y += dt*2.4;
+        m.position.y = 1.0 + Math.sin(S.t*3 + m.position.z)*0.10;
+      } else if (kind === 'shield'){
+        m.rotation.y += dt*1.6;
+        m.rotation.x += dt*1.1;
+      } else {
+        m.rotation.y += dt*1.3;
+        m.rotation.x += dt*0.6;
+      }
+
+      if (m.position.z > 8){ release(m); continue; }
+
+      if (!S.running) continue;
+      var dz = Math.abs(m.position.z - 0);
+      var dx = Math.abs(m.position.x - S.x);
+      if (dz < 0.85 && dx < 0.95){
+        if (kind === 'germ'){
+          if (S.y < 1.15){ release(m); hit(); }
+        } else if (kind === 'drop'){
+          release(m);
+          S.drops++; S.bonus += 10;
+          S.score = Math.floor(S.dist * 0.6) + S.bonus;
+          el.drops.textContent = S.drops;
+          el.score.textContent = S.score;
+        } else {
+          release(m);
+          S.shield = 6;
+          shieldBubble.visible = true;
+          el.shieldBar.style.display = 'block';
+          el.shieldBar.firstElementChild.style.width = '100%';
+          popText('Barrier up!', '#7FE3D0');
+        }
+      }
+    }
+  });
+
+  // ---- animate the mascot ----
+  player.position.x = S.x;
+  player.position.y = S.y;
+  player.position.z = 0;
+
+  var run = S.t * (S.running ? 9 + S.speed*0.16 : 5);
+  var parts = player.userData.parts;
+  if (S.grounded && S.running){
+    parts.legs[0].rotation.x = Math.sin(run)*0.85;
+    parts.legs[1].rotation.x = -Math.sin(run)*0.85;
+    parts.arms[0].rotation.x = -Math.sin(run)*0.65;
+    parts.arms[1].rotation.x = Math.sin(run)*0.65;
+    player.position.y += Math.abs(Math.sin(run))*0.085;
+  } else if (!S.running){
+    parts.legs[0].rotation.x = parts.legs[1].rotation.x = 0;
+    parts.arms[0].rotation.x = parts.arms[1].rotation.x = Math.sin(S.t*2)*0.12;
+    player.position.y += Math.sin(S.t*2)*0.06;
+  }
+
+  // Facing. The lane runs toward -Z, so running forward means turning away
+  // from the camera; idling on the menu he turns back to face it.
+  var tilt = S.running ? (S.targetX - S.x) * -0.22 : 0;
+  var faceWant = S.running ? (Math.PI + tilt*0.8) : Math.sin(S.t*0.6)*0.5;
+  player.rotation.y += (faceWant - player.rotation.y) * Math.min(1, dt*7);
+  // roll is mirrored once he is turned around, so the lean still goes
+  // into the direction he is moving
+  player.rotation.z = S.running ? -tilt : 0;
+
+  // Head turn. Body points down the lane; the head looks back over the
+  // shoulder far enough to show the goggles, and leads into each dodge.
+  var headWant = S.running ? (-0.78 + tilt * 2.4) : Math.sin(S.t*1.3)*0.25;
+  headWant = Math.max(-1.25, Math.min(0.35, headWant));
+  parts.head.rotation.y += (headWant - parts.head.rotation.y) * Math.min(1, dt*8);
+  parts.head.rotation.z = S.running ? tilt*0.5 : 0;
+
+  if (S.running){
+    if (!S.grounded){
+      parts.legs[0].rotation.x = -0.5; parts.legs[1].rotation.x = 0.35;
+      parts.arms[0].rotation.x = parts.arms[1].rotation.x = -1.1;
+    }
+  }
+
+  runnerLamp.position.set(player.position.x, 4.6, player.position.z + 3.5);
+  blob.position.x = player.position.x;
+  blob.scale.setScalar(Math.max(0.42, 1 - S.y*0.18));
+  blob.material.opacity = Math.max(0.05, 0.16 - S.y*0.02);
+
+  shieldBubble.position.set(player.position.x, player.position.y + 1.5, 0);
+  shieldBubble.rotation.y += dt*0.9;
+  shieldBubble.scale.setScalar(1 + Math.sin(S.t*6)*0.03);
+
+  // ---- camera ----
+  var shakeX = 0, shakeY = 0;
+  if (S.shake > 0){
+    S.shake = Math.max(0, S.shake - dt*1.6);
+    shakeX = (Math.random()-0.5)*S.shake*0.7;
+    shakeY = (Math.random()-0.5)*S.shake*0.7;
+  }
+  camera.position.x += (S.x*0.32 + shakeX - camera.position.x) * Math.min(1, dt*5);
+  camera.position.y += (6.2 + S.y*0.30 + shakeY - camera.position.y) * Math.min(1, dt*5);
+  camera.lookAt(S.x*0.32, 0.9 + S.y*0.3, -14);
+
+  renderer.render(scene, camera);
+}
+tick();
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+})();
+</script>
+</body>
+</html>
