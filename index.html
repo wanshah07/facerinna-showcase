@@ -94,9 +94,9 @@ section{padding:74px 0;position:relative}
 
 /* RANGE / THUMBNAILS */
 #range{background:linear-gradient(180deg,var(--surface),#FFF)}
-/* 3D PRODUCT SHELF */
-.shelf-wrap{margin:0 0 34px}
-.shelf-stage{position:relative;height:380px;border-radius:26px;overflow:hidden;
+/* 3D PRODUCT SHELF — full-screen, full-bleed section */
+.shelf-wrap{margin:8px 0 34px;width:100%}
+.shelf-stage{position:relative;width:100%;height:100vh;min-height:520px;max-height:900px;overflow:hidden;
   background:linear-gradient(180deg,#EAF3FB 0%,#DCE7F1 62%,#CFDDEA 100%);
   box-shadow:var(--shadow-md);cursor:grab}
 .shelf-stage.dragging{cursor:grabbing}
@@ -104,16 +104,16 @@ section{padding:74px 0;position:relative}
 .shelf-fallback-note{position:absolute;inset:0;display:none;place-items:center;color:var(--muted);
   font-size:.92rem;text-align:center;padding:20px;background:var(--surface-2)}
 .shelf-fallback-note:not([hidden]){display:grid}
-.shelf-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:16px}
-.shelf-nav{width:44px;height:44px;flex:0 0 auto;border-radius:50%;border:1px solid var(--line);
-  background:var(--surface);font-size:1.4rem;line-height:1;cursor:pointer;box-shadow:var(--shadow-sm);
+.shelf-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:20px}
+.shelf-nav{width:48px;height:48px;flex:0 0 auto;border-radius:50%;border:1px solid var(--line);
+  background:var(--surface);font-size:1.5rem;line-height:1;cursor:pointer;box-shadow:var(--shadow-sm);
   color:var(--brand-deep);transition:transform .2s}
 .shelf-nav:hover{transform:scale(1.08)}
-.shelf-label{text-align:center;min-width:220px}
-.shelf-series{display:block;font-size:.74rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-deep)}
-.shelf-name{display:block;font-size:1.05rem;font-weight:700;color:var(--ink);margin-top:2px}
-.shelf-hint{text-align:center;margin-top:10px;font-size:.8rem;color:var(--muted)}
-@media(max-width:700px){.shelf-stage{height:300px}.shelf-nav{width:38px;height:38px;font-size:1.2rem}}
+.shelf-label{text-align:center;min-width:240px}
+.shelf-series{display:block;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-deep)}
+.shelf-name{display:block;font-size:1.15rem;font-weight:700;color:var(--ink);margin-top:2px}
+.shelf-hint{text-align:center;margin-top:12px;font-size:.82rem;color:var(--muted)}
+@media(max-width:700px){.shelf-stage{height:70vh;min-height:420px}.shelf-nav{width:40px;height:40px;font-size:1.25rem}}
 .range-filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:38px}
 .rf-chip{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1.5px solid var(--line);
   color:var(--ink-2);font-size:.83rem;font-weight:600;padding:8px 16px;border-radius:999px;cursor:pointer;
@@ -532,21 +532,23 @@ section{padding:74px 0;position:relative}
       <h2>A complete, layer-able routine</h2>
       <p><b>Click any product to open its clinical data sheet.</b></p>
     </div>
-    <div class="shelf-wrap reveal" id="shelfWrap">
-      <div class="shelf-stage" id="shelfStage">
-        <canvas id="shelfCanvas"></canvas>
-        <div class="shelf-fallback-note" id="shelfFallback" hidden>3D shelf unavailable in this browser — browse the full range below.</div>
-      </div>
-      <div class="shelf-controls">
-        <button class="shelf-nav" id="shelfPrev" aria-label="Previous product" type="button">‹</button>
-        <div class="shelf-label">
-          <span class="shelf-series" id="shelfSeries">—</span>
-          <span class="shelf-name" id="shelfName">—</span>
-        </div>
-        <button class="shelf-nav" id="shelfNext" aria-label="Next product" type="button">›</button>
-      </div>
-      <p class="shelf-hint">🖱️ Drag, scroll or use ← → to browse the shelf · tap a bottle for its clinical data</p>
+  </div>
+  <div class="shelf-wrap reveal" id="shelfWrap">
+    <div class="shelf-stage" id="shelfStage">
+      <canvas id="shelfCanvas"></canvas>
+      <div class="shelf-fallback-note" id="shelfFallback" hidden>3D shelf unavailable in this browser — browse the full range below.</div>
     </div>
+    <div class="shelf-controls">
+      <button class="shelf-nav" id="shelfPrev" aria-label="Previous product" type="button">‹</button>
+      <div class="shelf-label">
+        <span class="shelf-series" id="shelfSeries">—</span>
+        <span class="shelf-name" id="shelfName">—</span>
+      </div>
+      <button class="shelf-nav" id="shelfNext" aria-label="Next product" type="button">›</button>
+    </div>
+    <p class="shelf-hint">🖱️ Drag, scroll or use ← → to browse the shelf · tap a bottle for its clinical data</p>
+  </div>
+  <div class="wrap">
     <div class="range-filters reveal" id="rangeFilters" role="tablist" aria-label="Filter by series"></div>
     <div id="rangeGroups"></div>
   </div>
@@ -1135,7 +1137,7 @@ document.querySelectorAll('.hero-prod').forEach(card=>{
   const stage=document.getElementById('gameStage'), ring=document.getElementById('gameRing');
   if(!stage||!ring) return;
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let angle=0, autoSpin=!reduceMotion, dragging=false, startX=0, startAngle=0, lastX=0, moved=0, resumeTimer=null, suppressNextClick=false;
+  let angle=0, autoSpin=!reduceMotion, dragging=false, captured=false, startX=0, startAngle=0, lastX=0, moved=0, resumeTimer=null, activePointerId=null;
 
   function apply(){ ring.style.setProperty('--ring', angle+'deg'); }
 
@@ -1147,9 +1149,9 @@ document.querySelectorAll('.hero-prod').forEach(card=>{
 
   function pointX(e){ return e.touches ? e.touches[0].clientX : e.clientX; }
   function onDown(e){
-    dragging=true; moved=0;
+    dragging=true; moved=0; captured=false;
     startX=pointX(e); lastX=startX; startAngle=angle;
-    ring.classList.add('dragging');
+    activePointerId=e.pointerId;
     clearTimeout(resumeTimer);
   }
   function onMove(e){
@@ -1157,37 +1159,35 @@ document.querySelectorAll('.hero-prod').forEach(card=>{
     const x=pointX(e), dx=x-startX;
     moved=Math.max(moved, Math.abs(x-lastX));
     lastX=x;
-    angle=startAngle+dx*0.35;
-    apply();
+    if(moved>6){
+      // Only capture the pointer once a real drag is confirmed. A plain
+      // tap never reaches this branch, so its native click on the <a>
+      // card fires completely untouched — the most reliable way to
+      // trigger navigation across browsers, including iOS Safari, which
+      // can silently block a manually-called window.open() from a
+      // pointerup handler that doesn't count as a trusted click gesture.
+      if(!captured){
+        captured=true;
+        ring.classList.add('dragging');
+        try{ ring.setPointerCapture(activePointerId); }catch(err){}
+      }
+      angle=startAngle+dx*0.35;
+      apply();
+    }
   }
-  function onUp(e){
+  function onUp(){
     if(!dragging) return;
     dragging=false;
     ring.classList.remove('dragging');
     if(!reduceMotion) resumeTimer=setTimeout(()=>{autoSpin=true;}, 2600);
-    if(moved<=6 && e){
-      const card=(e.target&&e.target.closest)?e.target.closest('.carousel-card'):null;
-      if(card && card.href){
-        suppressNextClick=true;
-        window.open(card.href, card.target||'_self', 'noopener');
-      }
-    }else if(moved>6){
-      suppressNextClick=true;
-    }
   }
-  ring.addEventListener('pointerdown', e=>{ onDown(e); try{ring.setPointerCapture(e.pointerId);}catch(err){} });
+  ring.addEventListener('pointerdown', onDown);
   ring.addEventListener('pointermove', onMove);
   ring.addEventListener('pointerup', onUp);
   ring.addEventListener('pointercancel', onUp);
-  // Pointer capture on the ring can swallow the native click on the <a>
-  // cards on touch devices, so a genuine tap is opened explicitly above.
-  // Suppress only the click that immediately follows a pointer-driven tap
-  // or drag (to avoid a double-open / accidental navigation) — a
-  // keyboard Enter/Space activation never sets this flag, so it still
-  // navigates normally via the anchor's own click.
-  ring.addEventListener('click', e=>{
-    if(suppressNextClick){ e.preventDefault(); suppressNextClick=false; }
-  }, true);
+  // Suppress the click only when it follows a genuine drag past the
+  // threshold — a plain tap's click is left completely alone.
+  ring.addEventListener('click', e=>{ if(moved>6){ e.preventDefault(); } }, true);
 })();
 
 /* ============================================================
@@ -1565,6 +1565,13 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   scene.add(ledge);
 
   let camX=0, targetX=0, dragging=false, moved=0, startPX=0, startCamX=0, snapTimer=null, rafId=null;
+  let autoRun=!reduceMotion, autoDir=1, autoResumeTimer=null;
+  const AUTO_SPEED=0.0032;
+  function pauseAuto(){
+    autoRun=false;
+    clearTimeout(autoResumeTimer);
+    if(!reduceMotion) autoResumeTimer=setTimeout(()=>{autoRun=true;}, 3200);
+  }
   const nameEl=document.getElementById('shelfName'), seriesEl=document.getElementById('shelfSeries');
   let lastNearest=-1;
 
@@ -1607,6 +1614,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     dragging=true; moved=0; startPX=pointX(e); startCamX=targetX;
     stage.classList.add('dragging');
     clearTimeout(snapTimer);
+    pauseAuto();
   }
   function onMove(e){
     if(!dragging) return;
@@ -1640,6 +1648,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   stage.addEventListener('wheel', e=>{
     if(Math.abs(e.deltaX)>Math.abs(e.deltaY) || e.shiftKey){
       e.preventDefault();
+      pauseAuto();
       const d=(e.deltaX||e.deltaY)*0.0026;
       targetX+=d; clampTarget(); updateLabel();
       clearTimeout(snapTimer); snapTimer=setTimeout(snapToNearest, 220);
@@ -1652,6 +1661,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     else if(e.key==='ArrowLeft'){ e.preventDefault(); step(-1); }
   });
   function step(dir){
+    pauseAuto();
     const idx=Math.max(0, Math.min(items.length-1, nearestIndex(targetX)+dir));
     targetX=items[idx].x; clampTarget(); updateLabel(true);
   }
@@ -1682,6 +1692,12 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     if(!visible){ rafId=null; return; }
     rafId=requestAnimationFrame(loop);
     const t=(now||performance.now());
+    if(autoRun && !dragging){
+      targetX+=autoDir*AUTO_SPEED;
+      if(targetX>=railEnd){ targetX=railEnd; autoDir=-1; }
+      else if(targetX<=0){ targetX=0; autoDir=1; }
+      updateLabel();
+    }
     camX+=(targetX-camX)*0.12;
     let camY=BASE_Y+0.55;
     if(!reduceMotion) camY+=Math.sin(t*0.0006)*0.035;
