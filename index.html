@@ -101,6 +101,12 @@ section{padding:74px 0;position:relative}
   box-shadow:var(--shadow-md);cursor:grab}
 .shelf-stage.dragging{cursor:grabbing}
 .shelf-stage canvas{width:100%;height:100%;display:block;touch-action:pan-y;-webkit-user-select:none;user-select:none}
+.shelf-fs{position:absolute;top:16px;right:16px;z-index:6;width:46px;height:46px;border-radius:12px;
+  border:1px solid var(--line);background:rgba(255,255,255,.88);backdrop-filter:blur(6px);
+  font-size:1.35rem;line-height:1;cursor:pointer;box-shadow:var(--shadow-sm);color:var(--brand-deep);
+  transition:transform .2s}
+.shelf-fs:hover{transform:scale(1.08)}
+.shelf-stage:fullscreen{max-height:none}
 .shelf-fallback-note{position:absolute;inset:0;display:none;place-items:center;color:var(--muted);
   font-size:.92rem;text-align:center;padding:20px;background:var(--surface-2)}
 .shelf-fallback-note:not([hidden]){display:grid}
@@ -384,8 +390,10 @@ section{padding:74px 0;position:relative}
   background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:24px;
   box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:9px;text-align:left;
   text-decoration:none;color:inherit;backface-visibility:hidden;-webkit-user-drag:none;
-  transform:rotateY(calc(var(--i) * 72deg)) translateZ(340px);transition:box-shadow .3s}
+  transform:rotateY(calc(var(--i) * 60deg)) translateZ(340px);transition:box-shadow .3s}
 .carousel-card:hover{box-shadow:0 28px 56px rgba(23,50,79,.32)}
+.carousel-card .cc-num{position:absolute;top:16px;right:20px;font-family:'Fraunces',serif;font-size:1.7rem;
+  font-weight:600;line-height:1;color:rgba(46,124,190,.25)}
 .carousel-card .gc-ic{font-size:1.9rem}
 .carousel-card h4{margin:0;font-size:1.12rem;color:var(--ink)}
 .carousel-card .chip{align-self:flex-start}
@@ -395,7 +403,7 @@ section{padding:74px 0;position:relative}
 @media(max-width:700px){
   .carousel-stage{height:430px}
   .carousel-card{width:190px;height:290px;margin:-145px 0 0 -95px;padding:20px;
-    transform:rotateY(calc(var(--i) * 72deg)) translateZ(230px)}
+    transform:rotateY(calc(var(--i) * 60deg)) translateZ(230px)}
 }
 
 /* RINNA CHAT WIDGET */
@@ -536,6 +544,7 @@ section{padding:74px 0;position:relative}
   <div class="shelf-wrap reveal" id="shelfWrap">
     <div class="shelf-stage" id="shelfStage">
       <canvas id="shelfCanvas"></canvas>
+      <button class="shelf-fs" id="shelfFS" aria-label="Toggle full screen" type="button">⛶</button>
       <div class="shelf-fallback-note" id="shelfFallback" hidden>3D shelf unavailable in this browser — browse the full range below.</div>
     </div>
     <div class="shelf-controls">
@@ -721,12 +730,13 @@ section{padding:74px 0;position:relative}
     <div class="sec-head center reveal">
       <span class="eyebrow">Interactive · Booth Engagement</span>
       <h2>Six games, one booth</h2>
-      <p>Five 3D arcade challenges built for the booth — spin the lab to find one, or warm up first with the Skin IQ quiz below. Score well and claim your reward at the booth.</p>
+      <p>Six challenges built for the booth — five 3D arcade games plus the Skin IQ quiz, all on the spinning lab wheel. Score well and claim your reward at the booth.</p>
     </div>
     <div class="carousel-wrap reveal">
       <div class="carousel-stage" id="gameStage">
         <div class="carousel-ring" id="gameRing">
           <a class="carousel-card" href="match-lab.html" target="_blank" rel="noopener" style="--i:0">
+            <span class="cc-num">01</span>
             <div class="gc-ic">🎯</div>
             <h4>Match Lab</h4>
             <span class="chip">Concern → Product</span>
@@ -734,6 +744,7 @@ section{padding:74px 0;position:relative}
             <span class="cc-play">▶ Play Match Lab</span>
           </a>
           <a class="carousel-card" href="pack-match.html" target="_blank" rel="noopener" style="--i:1">
+            <span class="cc-num">02</span>
             <div class="gc-ic">📦</div>
             <h4>Pack Match</h4>
             <span class="chip">Pick the right pack</span>
@@ -741,6 +752,7 @@ section{padding:74px 0;position:relative}
             <span class="cc-play">▶ Play Pack Match</span>
           </a>
           <a class="carousel-card" href="shelf-shot.html" target="_blank" rel="noopener" style="--i:2">
+            <span class="cc-num">03</span>
             <div class="gc-ic">🛒</div>
             <h4>Shelf Shot</h4>
             <span class="chip">Know the range</span>
@@ -748,6 +760,7 @@ section{padding:74px 0;position:relative}
             <span class="cc-play">▶ Play Shelf Shot</span>
           </a>
           <a class="carousel-card" href="deep-lab.html" target="_blank" rel="noopener" style="--i:3">
+            <span class="cc-num">04</span>
             <div class="gc-ic">🌊</div>
             <h4>Deep Lab</h4>
             <span class="chip">Tap-timed sort</span>
@@ -755,17 +768,26 @@ section{padding:74px 0;position:relative}
             <span class="cc-play">▶ Play Deep Lab</span>
           </a>
           <a class="carousel-card" href="lab-run.html" target="_blank" rel="noopener" style="--i:4">
+            <span class="cc-num">05</span>
             <div class="gc-ic">🏃</div>
             <h4>Lab Run</h4>
             <span class="chip">Endless runner</span>
             <p>Catch serum drops, dodge the germs, and grab barrier shields along the way in this fast-paced dash.</p>
             <span class="cc-play">▶ Play Lab Run</span>
           </a>
+          <a class="carousel-card" href="#skinIQ" id="iqCard" style="--i:5">
+            <span class="cc-num">06</span>
+            <div class="gc-ic">🧠</div>
+            <h4>Skin IQ Challenge</h4>
+            <span class="chip">5-question quiz</span>
+            <p>A dermatology-flavoured quiz — answer, learn the science behind each FACERINNA active, and score 4+ to win a sample at the booth.</p>
+            <span class="cc-play">▶ Play Skin IQ</span>
+          </a>
         </div>
       </div>
       <p class="carousel-hint">🖱️ Drag to spin the lab · tap a card to play</p>
     </div>
-    <div class="game-shell reveal">
+    <div class="game-shell reveal" id="skinIQ" hidden>
       <div class="game-inner">
         <div class="game-glow"></div>
         <div class="game-start" id="gameStart">
@@ -1142,7 +1164,7 @@ document.querySelectorAll('.hero-prod').forEach(card=>{
   function apply(){ ring.style.setProperty('--ring', angle+'deg'); }
 
   function tick(){
-    if(autoSpin && !dragging){ angle+=0.05; apply(); }
+    if(autoSpin && !dragging){ angle+=0.14; apply(); }
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
@@ -1498,6 +1520,12 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   const loader=new THREE.TextureLoader();
   items.forEach(it=>{
     const mat=new THREE.SpriteMaterial({map:loader.load(it.product.img, tex=>{
+      // keep original resolution: r128 downscales NPOT images to power-of-two when mipmapping
+      tex.generateMipmaps=false;
+      tex.minFilter=THREE.LinearFilter;
+      tex.magFilter=THREE.LinearFilter;
+      tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+      tex.needsUpdate=true;
       const iw=tex.image.width||1, ih=tex.image.height||1, ar=iw/ih;
       const h=1.5, w=h*ar;
       it.sprite.scale.set(w,h,1);
@@ -1566,7 +1594,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
 
   let camX=0, targetX=0, dragging=false, moved=0, startPX=0, startCamX=0, snapTimer=null, rafId=null;
   let autoRun=!reduceMotion, autoDir=1, autoResumeTimer=null;
-  const AUTO_SPEED=0.0032;
+  const AUTO_SPEED=0.008;
   function pauseAuto(){
     autoRun=false;
     clearTimeout(autoResumeTimer);
@@ -1594,7 +1622,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   function resize(){
     const w=stage.clientWidth, h=stage.clientHeight;
     if(!w||!h) return;
-    renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,3));
     renderer.setSize(w,h,false);
     camera.aspect=w/h; camera.updateProjectionMatrix();
   }
@@ -1667,6 +1695,26 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   }
   document.getElementById('shelfPrev').addEventListener('click', ()=>step(-1));
   document.getElementById('shelfNext').addEventListener('click', ()=>step(1));
+
+  const fsBtn=document.getElementById('shelfFS');
+  const canFS=!!(stage.requestFullscreen||stage.webkitRequestFullscreen);
+  if(!canFS){ fsBtn.hidden=true; }
+  fsBtn.addEventListener('pointerdown', e=>e.stopPropagation());
+  fsBtn.addEventListener('click', ()=>{
+    const fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+    if(fsEl){
+      (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+    }else{
+      (stage.requestFullscreen||stage.webkitRequestFullscreen).call(stage);
+    }
+  });
+  function onFSChange(){
+    const fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+    fsBtn.textContent=fsEl?'✕':'⛶';
+    resize();
+  }
+  document.addEventListener('fullscreenchange', onFSChange);
+  document.addEventListener('webkitfullscreenchange', onFSChange);
 
   function pick(e){
     const rect=stage.getBoundingClientRect();
@@ -1772,6 +1820,15 @@ function showResult(){
 el('startBtn').addEventListener('click',startGame);
 el('nextBtn').addEventListener('click',next);
 el('replayBtn').addEventListener('click',startGame);
+el('iqCard').addEventListener('click',function(e){
+  if(e.defaultPrevented) return;
+  e.preventDefault();
+  const shell=el('skinIQ');
+  shell.hidden=false;
+  shell.classList.add('in');
+  startGame();
+  shell.scrollIntoView({behavior:'smooth',block:'center'});
+});
 
 function launchConfetti(){
   const host=document.querySelector('#gameResult');const colors=['#4898D8','#0E9AA3','#C9A24B','#7C5AC2','#2E7CBE'];
