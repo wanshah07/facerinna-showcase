@@ -94,6 +94,26 @@ section{padding:74px 0;position:relative}
 
 /* RANGE / THUMBNAILS */
 #range{background:linear-gradient(180deg,var(--surface),#FFF)}
+/* 3D PRODUCT SHELF */
+.shelf-wrap{margin:0 0 34px}
+.shelf-stage{position:relative;height:380px;border-radius:26px;overflow:hidden;
+  background:linear-gradient(180deg,#EAF3FB 0%,#DCE7F1 62%,#CFDDEA 100%);
+  box-shadow:var(--shadow-md);cursor:grab}
+.shelf-stage.dragging{cursor:grabbing}
+.shelf-stage canvas{width:100%;height:100%;display:block;touch-action:pan-y;-webkit-user-select:none;user-select:none}
+.shelf-fallback-note{position:absolute;inset:0;display:none;place-items:center;color:var(--muted);
+  font-size:.92rem;text-align:center;padding:20px;background:var(--surface-2)}
+.shelf-fallback-note:not([hidden]){display:grid}
+.shelf-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:16px}
+.shelf-nav{width:44px;height:44px;flex:0 0 auto;border-radius:50%;border:1px solid var(--line);
+  background:var(--surface);font-size:1.4rem;line-height:1;cursor:pointer;box-shadow:var(--shadow-sm);
+  color:var(--brand-deep);transition:transform .2s}
+.shelf-nav:hover{transform:scale(1.08)}
+.shelf-label{text-align:center;min-width:220px}
+.shelf-series{display:block;font-size:.74rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-deep)}
+.shelf-name{display:block;font-size:1.05rem;font-weight:700;color:var(--ink);margin-top:2px}
+.shelf-hint{text-align:center;margin-top:10px;font-size:.8rem;color:var(--muted)}
+@media(max-width:700px){.shelf-stage{height:300px}.shelf-nav{width:38px;height:38px;font-size:1.2rem}}
 .range-filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:38px}
 .rf-chip{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1.5px solid var(--line);
   color:var(--ink-2);font-size:.83rem;font-weight:600;padding:8px 16px;border-radius:999px;cursor:pointer;
@@ -496,6 +516,21 @@ section{padding:74px 0;position:relative}
       <h2>A complete, layer-able routine</h2>
       <p><b>Click any product to open its clinical data sheet.</b></p>
     </div>
+    <div class="shelf-wrap reveal" id="shelfWrap">
+      <div class="shelf-stage" id="shelfStage">
+        <canvas id="shelfCanvas"></canvas>
+        <div class="shelf-fallback-note" id="shelfFallback" hidden>3D shelf unavailable in this browser — browse the full range below.</div>
+      </div>
+      <div class="shelf-controls">
+        <button class="shelf-nav" id="shelfPrev" aria-label="Previous product" type="button">‹</button>
+        <div class="shelf-label">
+          <span class="shelf-series" id="shelfSeries">—</span>
+          <span class="shelf-name" id="shelfName">—</span>
+        </div>
+        <button class="shelf-nav" id="shelfNext" aria-label="Next product" type="button">›</button>
+      </div>
+      <p class="shelf-hint">🖱️ Drag, scroll or use ← → to browse the shelf · tap a bottle for its clinical data</p>
+    </div>
     <div class="range-filters reveal" id="rangeFilters" role="tablist" aria-label="Filter by series"></div>
     <div id="rangeGroups"></div>
   </div>
@@ -872,6 +907,7 @@ section{padding:74px 0;position:relative}
   </div>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* ============================================================
    DATA — real FACERINNA catalogue (from the Brand Intro deck)
@@ -1388,6 +1424,244 @@ function openClin(name){
 function closeClin(){document.getElementById('cmodal').classList.remove('open');document.body.style.overflow='';}
 document.getElementById('cmBackdrop').addEventListener('click',closeClin);
 addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
+
+/* ============================================================
+   3D PRODUCT SHELF — original Three.js scene, own geometry/art
+   (real FACERINNA product photography on billboarded sprites).
+   Falls back to hiding itself if WebGL/Three.js is unavailable —
+   the filterable grid below remains the primary, always-working
+   way to browse the range.
+   ============================================================ */
+(function(){
+  const wrap=document.getElementById('shelfWrap'), stage=document.getElementById('shelfStage'),
+    canvas=document.getElementById('shelfCanvas');
+  if(!wrap||!stage||!canvas) return;
+  function fail(){ wrap.style.display='none'; }
+  if(typeof THREE==='undefined'){ fail(); return; }
+
+  let renderer, scene, camera;
+  try{
+    renderer=new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+    scene=new THREE.Scene();
+    camera=new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+  }catch(err){ fail(); return; }
+
+  const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const CAM_Z=6.4, BASE_Y=0.05, SPACING=1.55, SERIES_GAP=0.85;
+  const seriesOrder=SERIES.map(s=>s.key);
+  const items=[]; // {product, x, sprite, shadow, baseW, baseH}
+  let x=0, prevCat=null;
+  PRODUCTS.forEach(p=>{
+    if(prevCat!==null && p.cat!==prevCat) x+=SERIES_GAP;
+    items.push({product:p, x, sprite:null, shadow:null, baseW:1.1, baseH:1.5});
+    x+=SPACING;
+    prevCat=p.cat;
+  });
+  const railEnd=x-SPACING;
+
+  const loader=new THREE.TextureLoader();
+  items.forEach(it=>{
+    const mat=new THREE.SpriteMaterial({map:loader.load(it.product.img, tex=>{
+      const iw=tex.image.width||1, ih=tex.image.height||1, ar=iw/ih;
+      const h=1.5, w=h*ar;
+      it.sprite.scale.set(w,h,1);
+      it.baseW=w; it.baseH=h;
+      it.shadow.scale.set(w*0.72, w*0.72*0.32, 1);
+    }), transparent:true, depthTest:false});
+    const sprite=new THREE.Sprite(mat);
+    sprite.position.set(it.x, BASE_Y, 0);
+    sprite.scale.set(1.1,1.5,1);
+    scene.add(sprite);
+    it.sprite=sprite;
+
+    const shCanvas=document.createElement('canvas'); shCanvas.width=128; shCanvas.height=64;
+    const sctx=shCanvas.getContext('2d');
+    const grad=sctx.createRadialGradient(64,32,2,64,32,60);
+    grad.addColorStop(0,'rgba(20,40,60,.32)'); grad.addColorStop(1,'rgba(20,40,60,0)');
+    sctx.fillStyle=grad; sctx.fillRect(0,0,128,64);
+    const shTex=new THREE.CanvasTexture(shCanvas);
+    const shMat=new THREE.SpriteMaterial({map:shTex, transparent:true, depthTest:false});
+    const shadow=new THREE.Sprite(shMat);
+    shadow.position.set(it.x, BASE_Y-0.78, -0.01);
+    shadow.scale.set(0.8,0.32,1);
+    scene.add(shadow);
+    it.shadow=shadow;
+  });
+
+  // series labels, floating above the first item of each block
+  function makeLabelSprite(text, color){
+    const c=document.createElement('canvas'); c.width=512; c.height=96;
+    const ctx=c.getContext('2d');
+    ctx.font='700 44px Inter, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle=color;
+    ctx.fillText(text.toUpperCase(), 256, 52);
+    const tex=new THREE.CanvasTexture(c);
+    const mat=new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false});
+    const s=new THREE.Sprite(mat);
+    s.scale.set(2.1,0.4,1);
+    return s;
+  }
+  let seenCat=null;
+  items.forEach(it=>{
+    if(it.product.cat!==seenCat){
+      seenCat=it.product.cat;
+      const s=SERIES.find(s=>s.key===seenCat);
+      const label=makeLabelSprite(seenCat, s?s.accent:'#2E7CBE');
+      label.position.set(it.x, 1.35, 0);
+      scene.add(label);
+    }
+  });
+
+  // shelf ledge — simple procedural gradient plane, unlit
+  const ledgeCanvas=document.createElement('canvas'); ledgeCanvas.width=8; ledgeCanvas.height=64;
+  const lctx=ledgeCanvas.getContext('2d');
+  const lgrad=lctx.createLinearGradient(0,0,0,64);
+  lgrad.addColorStop(0,'#EDE3D3'); lgrad.addColorStop(0.5,'#D9C9AE'); lgrad.addColorStop(1,'#BFA982');
+  lctx.fillStyle=lgrad; lctx.fillRect(0,0,8,64);
+  const ledgeTex=new THREE.CanvasTexture(ledgeCanvas);
+  ledgeTex.wrapS=THREE.RepeatWrapping; ledgeTex.repeat.set((railEnd+6)/2,1);
+  const ledgeGeo=new THREE.PlaneGeometry(railEnd+6, 0.9);
+  const ledgeMat=new THREE.MeshBasicMaterial({map:ledgeTex});
+  const ledge=new THREE.Mesh(ledgeGeo, ledgeMat);
+  ledge.position.set(railEnd/2, BASE_Y-0.95, -0.4);
+  ledge.rotation.x=-Math.PI/2*0.62;
+  scene.add(ledge);
+
+  let camX=0, targetX=0, dragging=false, moved=0, startPX=0, startCamX=0, snapTimer=null, rafId=null;
+  const nameEl=document.getElementById('shelfName'), seriesEl=document.getElementById('shelfSeries');
+  let lastNearest=-1;
+
+  function nearestIndex(v){
+    let bi=0, bd=Infinity;
+    items.forEach((it,i)=>{ const d=Math.abs(it.x-v); if(d<bd){bd=d;bi=i;} });
+    return bi;
+  }
+  function updateLabel(force){
+    const idx=nearestIndex(targetX);
+    if(idx!==lastNearest||force){
+      lastNearest=idx;
+      const it=items[idx];
+      nameEl.textContent=it.product.name;
+      seriesEl.textContent=it.product.cat;
+    }
+  }
+  updateLabel(true);
+
+  function resize(){
+    const w=stage.clientWidth, h=stage.clientHeight;
+    if(!w||!h) return;
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+    renderer.setSize(w,h,false);
+    camera.aspect=w/h; camera.updateProjectionMatrix();
+  }
+  resize();
+  addEventListener('resize', resize);
+
+  function visibleWorldWidth(){
+    const vFov=camera.fov*Math.PI/180;
+    const vh=2*Math.tan(vFov/2)*CAM_Z;
+    return vh*camera.aspect;
+  }
+
+  function clampTarget(){ targetX=Math.max(-0.4, Math.min(railEnd+0.4, targetX)); }
+
+  function pointX(e){ return e.touches? e.touches[0].clientX : e.clientX; }
+  function onDown(e){
+    dragging=true; moved=0; startPX=pointX(e); startCamX=targetX;
+    stage.classList.add('dragging');
+    clearTimeout(snapTimer);
+  }
+  function onMove(e){
+    if(!dragging) return;
+    const x2=pointX(e), dx=x2-startPX;
+    moved=Math.max(moved, Math.abs(dx));
+    const worldPerPx=visibleWorldWidth()/stage.clientWidth;
+    targetX=startCamX-dx*worldPerPx;
+    clampTarget();
+    updateLabel();
+  }
+  function onUp(e){
+    if(!dragging) return;
+    dragging=false;
+    stage.classList.remove('dragging');
+    if(moved<6){
+      pick(e);
+    }else{
+      snapTimer=setTimeout(snapToNearest, 120);
+    }
+  }
+  function snapToNearest(){
+    const idx=nearestIndex(targetX);
+    targetX=items[idx].x;
+    clampTarget();
+    updateLabel(true);
+  }
+  stage.addEventListener('pointerdown', e=>{ onDown(e); try{stage.setPointerCapture(e.pointerId);}catch(err){} });
+  stage.addEventListener('pointermove', onMove);
+  stage.addEventListener('pointerup', onUp);
+  stage.addEventListener('pointercancel', onUp);
+  stage.addEventListener('wheel', e=>{
+    if(Math.abs(e.deltaX)>Math.abs(e.deltaY) || e.shiftKey){
+      e.preventDefault();
+      const d=(e.deltaX||e.deltaY)*0.0026;
+      targetX+=d; clampTarget(); updateLabel();
+      clearTimeout(snapTimer); snapTimer=setTimeout(snapToNearest, 220);
+    }
+  }, {passive:false});
+
+  stage.setAttribute('tabindex','0');
+  stage.addEventListener('keydown', e=>{
+    if(e.key==='ArrowRight'){ e.preventDefault(); step(1); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); step(-1); }
+  });
+  function step(dir){
+    const idx=Math.max(0, Math.min(items.length-1, nearestIndex(targetX)+dir));
+    targetX=items[idx].x; clampTarget(); updateLabel(true);
+  }
+  document.getElementById('shelfPrev').addEventListener('click', ()=>step(-1));
+  document.getElementById('shelfNext').addEventListener('click', ()=>step(1));
+
+  function pick(e){
+    const rect=stage.getBoundingClientRect();
+    const ndc=new THREE.Vector2(
+      ((pointX(e)-rect.left)/rect.width)*2-1,
+      -(((e.changedTouches?e.changedTouches[0].clientY:e.clientY)-rect.top)/rect.height)*2+1
+    );
+    const ray=new THREE.Raycaster();
+    ray.setFromCamera(ndc, camera);
+    const hits=ray.intersectObjects(items.map(it=>it.sprite));
+    if(hits.length){
+      const it=items.find(x=>x.sprite===hits[0].object);
+      if(it) openClin(it.product.name);
+    }
+  }
+
+  let visible=true;
+  const io=new IntersectionObserver(es=>{ visible=es[0].isIntersecting; if(visible&&!rafId) loop(); }, {threshold:.05});
+  io.observe(stage);
+
+  let t0=performance.now();
+  function loop(now){
+    if(!visible){ rafId=null; return; }
+    rafId=requestAnimationFrame(loop);
+    const t=(now||performance.now());
+    camX+=(targetX-camX)*0.12;
+    let camY=BASE_Y+0.55;
+    if(!reduceMotion) camY+=Math.sin(t*0.0006)*0.035;
+    camera.position.set(camX, camY, CAM_Z);
+    camera.lookAt(camX, BASE_Y, 0);
+    items.forEach(it=>{
+      const dist=Math.abs(it.x-camX);
+      const focus=Math.max(0, 1-dist/1.05);
+      const s=1+focus*0.2;
+      it.sprite.scale.set(it.baseW*s, it.baseH*s, 1);
+      it.sprite.position.y=BASE_Y+focus*0.09;
+    });
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(loop);
+})();
 
 /* ============================================================
    QUIZ GAME
