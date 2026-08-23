@@ -220,7 +220,9 @@ section{padding:74px 0;position:relative}
 #game{background:linear-gradient(180deg,#EDF3FB,#FFF)}
 .game-shell{background:linear-gradient(150deg,var(--navy),#1F4A75);border-radius:28px;padding:6px;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
 .game-inner{background:var(--surface);border-radius:24px;padding:36px;position:relative;overflow:hidden;min-height:430px}
-.game-glow{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(72,152,216,.18),transparent 70%);top:-90px;right:-60px;pointer-events:none}
+.game-glow{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(72,152,216,.18),transparent 70%);top:-90px;right:-60px;pointer-events:none;
+  animation:glowDrift 9s ease-in-out infinite}
+@keyframes glowDrift{0%,100%{transform:translate(0,0) scale(1);opacity:.9}50%{transform:translate(-26px,20px) scale(1.15);opacity:1}}
 .game-head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}
 .game-head .t{font-family:'Fraunces';font-weight:600;font-size:1.5rem}
 .game-meta{display:flex;gap:12px;align-items:center}
@@ -246,8 +248,21 @@ section{padding:74px 0;position:relative}
 .feedback.bad{background:#FDECEC;color:#B5433F;border:1px solid #F3C9C9}
 .game-actions{margin-top:22px;display:flex;justify-content:flex-end;gap:12px}
 .game-start{text-align:center;padding:24px 0}
-.game-start h3{font-size:1.8rem;margin:.4rem 0}
+.game-icon-wrap{position:relative;display:grid;place-items:center;width:88px;height:88px;margin:0 auto}
+.game-icon-ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--brand-soft);
+  animation:iconPulse 2.6s ease-out infinite}
+.game-icon-ring::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--brand-soft);
+  animation:iconPulse 2.6s ease-out infinite;animation-delay:1.3s}
+@keyframes iconPulse{0%{transform:scale(.7);opacity:.8}100%{transform:scale(1.7);opacity:0}}
+.game-icon{font-size:2.6rem;position:relative;z-index:1;display:inline-block;animation:iconFloat 3.6s ease-in-out infinite}
+@keyframes iconFloat{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-9px) rotate(4deg)}}
+.game-start h3{font-size:1.8rem;margin:.6rem 0 .4rem}
 .game-start p{color:var(--ink-2);max-width:31rem;margin:0 auto 22px}
+.game-start .btn-primary{position:relative;overflow:hidden}
+.game-start .btn-primary::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
+  background:linear-gradient(115deg,transparent,rgba(255,255,255,.6),transparent);
+  transform:skewX(-20deg);animation:btnShimmer 3.4s ease-in-out infinite}
+@keyframes btnShimmer{0%{left:-60%}55%,100%{left:130%}}
 .result{text-align:center;display:none}
 .result.show{display:block}
 .result .score-ring{width:150px;height:150px;margin:0 auto 12px;position:relative}
@@ -463,6 +478,7 @@ section{padding:74px 0;position:relative}
 @media(prefers-reduced-motion:reduce){
   .reveal{transition:none;opacity:1;transform:none}
   .hero-banner img{animation:none}
+  .game-glow,.game-icon-ring,.game-icon-ring::after,.game-icon,.game-start .btn-primary::after{animation:none}
 }
 </style>
 </head>
@@ -751,7 +767,10 @@ section{padding:74px 0;position:relative}
       <div class="game-inner">
         <div class="game-glow"></div>
         <div class="game-start" id="gameStart">
-          <div style="font-size:3rem">🧴</div>
+          <div class="game-icon-wrap">
+            <span class="game-icon-ring"></span>
+            <span class="game-icon">🧴</span>
+          </div>
           <h3>Ready to test your Skin IQ?</h3>
           <p>A 5-question, dermatology-flavoured quiz. Answer, learn the science behind each FACERINNA active, and win a sample at the booth.</p>
           <button class="btn btn-primary" id="startBtn">Start the Challenge →</button>
@@ -1116,7 +1135,7 @@ document.querySelectorAll('.hero-prod').forEach(card=>{
   const stage=document.getElementById('gameStage'), ring=document.getElementById('gameRing');
   if(!stage||!ring) return;
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let angle=0, autoSpin=!reduceMotion, dragging=false, startX=0, startAngle=0, lastX=0, moved=0, resumeTimer=null;
+  let angle=0, autoSpin=!reduceMotion, dragging=false, startX=0, startAngle=0, lastX=0, moved=0, resumeTimer=null, suppressNextClick=false;
 
   function apply(){ ring.style.setProperty('--ring', angle+'deg'); }
 
@@ -1141,17 +1160,34 @@ document.querySelectorAll('.hero-prod').forEach(card=>{
     angle=startAngle+dx*0.35;
     apply();
   }
-  function onUp(){
+  function onUp(e){
     if(!dragging) return;
     dragging=false;
     ring.classList.remove('dragging');
     if(!reduceMotion) resumeTimer=setTimeout(()=>{autoSpin=true;}, 2600);
+    if(moved<=6 && e){
+      const card=(e.target&&e.target.closest)?e.target.closest('.carousel-card'):null;
+      if(card && card.href){
+        suppressNextClick=true;
+        window.open(card.href, card.target||'_self', 'noopener');
+      }
+    }else if(moved>6){
+      suppressNextClick=true;
+    }
   }
   ring.addEventListener('pointerdown', e=>{ onDown(e); try{ring.setPointerCapture(e.pointerId);}catch(err){} });
   ring.addEventListener('pointermove', onMove);
   ring.addEventListener('pointerup', onUp);
   ring.addEventListener('pointercancel', onUp);
-  ring.addEventListener('click', e=>{ if(moved>6){ e.preventDefault(); } }, true);
+  // Pointer capture on the ring can swallow the native click on the <a>
+  // cards on touch devices, so a genuine tap is opened explicitly above.
+  // Suppress only the click that immediately follows a pointer-driven tap
+  // or drag (to avoid a double-open / accidental navigation) — a
+  // keyboard Enter/Space activation never sets this flag, so it still
+  // navigates normally via the anchor's own click.
+  ring.addEventListener('click', e=>{
+    if(suppressNextClick){ e.preventDefault(); suppressNextClick=false; }
+  }, true);
 })();
 
 /* ============================================================
