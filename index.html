@@ -96,7 +96,7 @@ body.slides .pres-count{display:block}
   font-variant-numeric:tabular-nums}
 
 /* in normal flow the per-series sections stack as one continuous list */
-.series-slide{padding:0}
+.series-slide{padding:0 0 34px}
 html.slides-on{height:100%;overflow:hidden;scroll-snap-type:none}
 body.slides{--slide-top:118px;scrollbar-width:none}   /* header + docked series chips */
 body.slides::-webkit-scrollbar{width:0;height:0}
@@ -367,6 +367,40 @@ section{padding:74px 0;position:relative}
 .shelf-stage[data-bg="space"] .sky-stars.s3{animation:skyDrift 150s linear infinite,skyTwinkle 6.5s ease-in-out infinite;--dx:-620px;--dy:200px}
 .shelf-stage[data-bg="space"] .sky-nebula{animation:skyBreathe 90s ease-in-out infinite}
 
+
+/* ── the planet ───────────────────────────────────────────────────────
+   Lit from the upper left, same direction as the rim light on the
+   products. Rotation is a seamless storm layer scrolling twice its own
+   width behind a fixed band pattern — a sphere's bands do not move as it
+   turns, its weather does. */
+.sky-planet{right:5%;top:6%;width:min(23vw,258px);aspect-ratio:1;border-radius:50%;
+  overflow:hidden;isolation:isolate;
+  box-shadow:0 0 70px 8px rgba(74,132,214,.16), 0 0 140px 30px rgba(52,86,168,.10)}
+.sky-planet i{position:absolute;inset:0;display:block;border-radius:50%}
+.planet-surface{background:
+    radial-gradient(125% 95% at 26% 19%, #9db9e2 0%, #6480b6 26%, #3d5389 52%, #24325f 76%, #121a3a 100%),
+    repeating-linear-gradient(3deg,
+      rgba(255,255,255,.10) 0 5px, rgba(0,0,0,.11) 5px 12px,
+      rgba(255,255,255,.05) 12px 19px, rgba(0,0,0,.14) 19px 28px)}
+.planet-clouds{background-image:
+    radial-gradient(15% 7% at 18% 34%, rgba(226,238,255,.34) 0%, rgba(226,238,255,0) 72%),
+    radial-gradient(11% 5% at 46% 26%, rgba(210,228,255,.26) 0%, rgba(210,228,255,0) 74%),
+    radial-gradient(19% 8% at 68% 57%, rgba(120,170,230,.24) 0%, rgba(120,170,230,0) 76%),
+    radial-gradient(9% 4% at 86% 40%, rgba(240,246,255,.30) 0%, rgba(240,246,255,0) 72%),
+    radial-gradient(13% 6% at 33% 68%, rgba(90,140,205,.26) 0%, rgba(90,140,205,0) 76%),
+    radial-gradient(8% 4% at 58% 79%, rgba(226,238,255,.20) 0%, rgba(226,238,255,0) 74%);
+  background-size:200% 100%;background-repeat:repeat-x;
+  animation:planetSpin 150s linear infinite;mix-blend-mode:screen;opacity:.9}
+/* terminator, plus the thin lit arc of atmosphere on the sunward edge */
+.planet-shade{background:
+    radial-gradient(circle at 27% 21%, rgba(0,0,0,0) 24%, rgba(3,5,14,.40) 50%,
+      rgba(2,3,9,.86) 77%, rgba(1,2,6,.98) 100%);
+  box-shadow:inset 11px 11px 26px -9px rgba(184,218,255,.68),
+             inset -6px -8px 40px 5px rgba(1,2,8,.80)}
+@keyframes planetSpin{from{background-position:0 0}to{background-position:-200% 0}}
+@media(prefers-reduced-motion:reduce){.planet-clouds{animation:none}}
+@media(max-width:700px){.sky-planet{width:44vw;right:-8%;top:7%}}
+
 /* backdrop switch */
 .shelf-bg{position:absolute;top:16px;left:16px;z-index:6;display:flex;gap:4px;padding:4px;
   border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.88);
@@ -403,7 +437,11 @@ section{padding:74px 0;position:relative}
    resolve against itself instead of the viewport. */
 .range-filters.filters-dock{position:fixed;top:64px;left:0;right:0;z-index:80;margin:0;
   padding:9px 16px;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(10px);
-  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);box-shadow:0 4px 14px rgba(16,21,13,.06)}
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);box-shadow:0 4px 14px rgba(16,21,13,.06);
+  justify-content:center;transition:padding .25s ease}
+/* Idle collapses the bar down to whichever series is on screen; hovering,
+   tapping or tabbing into it brings the full row back. */
+.filters-dock.collapsed .rf-chip:not([aria-pressed="true"]){display:none}
 .rf-chip{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1.5px solid var(--line);
   color:var(--ink-2);font-size:.83rem;font-weight:600;padding:8px 16px;border-radius:999px;cursor:pointer;
   transition:.18s;font-family:'Inter'}
@@ -423,19 +461,24 @@ section{padding:74px 0;position:relative}
 .series-head .scount{font-size:.76rem;color:var(--muted);font-weight:600;background:var(--surface-2);
   padding:3px 10px;border-radius:999px;align-self:center}
 .series-desc{color:var(--ink-2);font-size:.87rem;margin:8px 0 20px}
-.thumb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:20px}
-.thumb{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--accent,var(--line));
-  border-radius:var(--radius);padding:18px;
-  box-shadow:var(--shadow-sm);transition:transform .3s,box-shadow .3s,border-color .3s;cursor:pointer;position:relative;overflow:hidden}
-.thumb:hover{transform:translateY(-8px);box-shadow:var(--shadow-lg);border-color:var(--brand)}
-.thumb:hover{border-top-color:var(--accent,var(--brand))}
-.thumb .art{height:158px;display:grid;place-items:center;margin:2px 0 12px;border-radius:14px;
-  background:radial-gradient(circle at 50% 30%,#fff,var(--surface-2))}
-.thumb .art img{max-height:142px;width:auto;filter:drop-shadow(0 12px 16px rgba(23,50,79,.16));transition:transform .35s}
-.thumb:hover .art img{transform:translateY(-6px) scale(1.05)}
-.thumb h3{font-size:.98rem;margin:.1rem 0 .25rem;font-weight:600;line-height:1.25}
-.thumb .active{font-size:.8rem;color:var(--ink-2)}
-.thumb .tag-best{position:absolute;top:13px;right:13px;background:var(--brand);color:#fff;font-size:.6rem;font-weight:700;
+/* capped tracks so the widest series (5 products) still lands on one row,
+   and centred so a 2- or 3-product series does not sprawl */
+.thumb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,208px));
+  gap:26px 20px;align-items:end;justify-content:center}
+.thumb{background:none;border:0;border-radius:0;padding:6px 6px 2px;box-shadow:none;text-align:center;
+  transition:transform .35s var(--ease,ease);cursor:pointer;position:relative;overflow:visible}
+/* Products float on the page rather than sitting in cards: no frame, no
+   plate behind them, and the shadow follows the bottle's own silhouette
+   (drop-shadow reads the alpha) so it looks like it is standing there.
+   Title only — the actives line lives in the clinical sheet a tap away. */
+.thumb:hover{transform:translateY(-10px)}
+.thumb .art{height:240px;display:grid;place-items:center;margin:0 0 16px;border-radius:0;background:none}
+.thumb .art img{max-height:230px;max-width:100%;width:auto;transition:transform .4s var(--ease,ease);
+  filter:drop-shadow(0 22px 20px rgba(23,50,79,.20)) drop-shadow(0 4px 6px rgba(23,50,79,.10))}
+.thumb:hover .art img{transform:translateY(-8px) scale(1.06)}
+.thumb h3{font-size:1.02rem;margin:0;font-weight:600;line-height:1.3;color:var(--ink)}
+.thumb .active{display:none}
+.thumb .tag-best{position:absolute;top:0;right:0;background:var(--brand);color:#fff;font-size:.6rem;font-weight:700;
   letter-spacing:.06em;padding:4px 9px;border-radius:999px;box-shadow:0 4px 10px rgba(46,124,190,.4)}
 
 /* HERO PRODUCTS */
@@ -838,6 +881,7 @@ section{padding:74px 0;position:relative}
       <div class="shelf-sky" aria-hidden="true">
         <span class="sky-nebula"></span>
         <span class="sky-band"></span>
+        <span class="sky-planet"><i class="planet-surface"></i><i class="planet-clouds"></i><i class="planet-shade"></i></span>
         <span class="sky-stars s1"></span>
         <span class="sky-stars s2"></span>
         <span class="sky-stars s3"></span>
@@ -1667,6 +1711,8 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10));
       : cur.classList.contains('series-slide') ? cur.dataset.series
       : cur.id==='range' ? 'all' : null;
     chips.forEach(c=>c.setAttribute('aria-pressed', String(key!==null && c.dataset.filter===key)));
+    // collapsing to "the active chip" is meaningless when none is active
+    if(filterBar && key===null) filterBar.classList.remove('collapsed');
   }
   /* The chip bar lives inside #range, which in the deck sits under a scaled
      wrapper — so it is moved out to <body> to dock, and put back on exit. */
@@ -1679,11 +1725,24 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10));
       if(filterBar.parentNode!==document.body) document.body.appendChild(filterBar);
       filterBar.classList.add('filters-dock');
     }else{
-      filterBar.classList.remove('filters-dock');
+      filterBar.classList.remove('filters-dock','collapsed');
       if(filterHome && filterBar.parentNode!==filterHome.parent){
         filterHome.parent.insertBefore(filterBar, filterHome.next);
       }
     }
+  }
+  let barT=null;
+  function barSettle(){
+    clearTimeout(barT);
+    if(!filterBar || !filterBar.classList.contains('filters-dock')) return;
+    barT=setTimeout(()=>{
+      if(filterBar.querySelector('.rf-chip[aria-pressed="true"]')) filterBar.classList.add('collapsed');
+    }, 4000);
+  }
+  function barWake(){ if(filterBar){ filterBar.classList.remove('collapsed'); barSettle(); } }
+  if(filterBar){
+    ['pointerenter','pointerdown','focusin'].forEach(ev=>filterBar.addEventListener(ev,barWake));
+    filterBar.addEventListener('click',barSettle);
   }
   addEventListener('facerinna:goto', e=>{
     const el=e.detail&&e.detail.el;
@@ -1702,6 +1761,7 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10));
     bV.setAttribute('aria-pressed', String(mode==='v'));
     bH.setAttribute('aria-pressed', String(mode==='h'));
     dockFilters(!!mode);
+    if(mode) barSettle();
     requestAnimationFrame(()=>{
       if(mode) ensureWrap();
       fit();
@@ -2100,12 +2160,48 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
       it.sprite.scale.set(w,h,1);
       it.baseW=w; it.baseH=h;
       it.shadow.scale.set(w*0.72, w*0.72*0.32, 1);
+      /* The rim map is a blurred, downscaled copy of the product. Tinting the
+         sharp texture just drew a hard second silhouette offset behind the
+         first; blurring spreads the alpha past the edge so what escapes from
+         behind the product is a soft falloff instead of an outline. 256px is
+         plenty — it is only ever seen out of focus. */
+      if(it.rim){
+        try{
+          const gh=256, gw=Math.max(24, Math.round(gh*ar)), pad=Math.round(gh*0.10);
+          const gc=document.createElement('canvas');
+          gc.width=gw+pad*2; gc.height=gh+pad*2;
+          const g2=gc.getContext('2d');
+          g2.filter='blur('+Math.round(gh*0.045)+'px)';
+          g2.drawImage(tex.image, pad, pad, gw, gh);
+          const gtex=new THREE.CanvasTexture(gc);
+          gtex.generateMipmaps=false;
+          gtex.minFilter=THREE.LinearFilter; gtex.magFilter=THREE.LinearFilter;
+          it.rim.material.map=gtex;
+          it.rim.material.needsUpdate=true;
+          it.rimPad=1+ (pad*2)/gh;      // the blur padding widens the quad
+        }catch(err){}
+      }
     }), transparent:true, depthTest:false});
     const sprite=new THREE.Sprite(mat);
     sprite.position.set(it.x, BASE_Y, 0);
     sprite.scale.set(1.1,1.5,1);
     scene.add(sprite);
     it.sprite=sprite;
+
+    /* Rim light: the same silhouette drawn a little larger and offset toward
+       the light, additively behind the product, so a cool edge peeks out
+       along the top-left. A billboard has no normals to light, so the
+       silhouette itself is what gets lit. Space only — it is switched on by
+       the backdrop. */
+    const rimMat=new THREE.SpriteMaterial({map:mat.map, transparent:true, depthTest:false,
+      depthWrite:false, blending:THREE.AdditiveBlending, opacity:0});
+    rimMat.color.set(0x5f9bff);
+    const rim=new THREE.Sprite(rimMat);
+    rim.position.set(it.x, BASE_Y, -0.01);
+    rim.renderOrder=-1;
+    rim.visible=false;
+    scene.add(rim);
+    it.rim=rim;
 
     const shCanvas=document.createElement('canvas'); shCanvas.width=128; shCanvas.height=64;
     const sctx=shCanvas.getContext('2d');
@@ -2412,6 +2508,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   function setBackdrop(mode){
     const space = mode==='space';
     forestParts.forEach(m=>{ m.visible=!space; });
+    items.forEach(it=>{ if(it.rim){ it.rim.visible=space; it.rim.material.opacity=space?0.62:0; } });
     ledgeMat.color.set(space ? 0x59647f : 0xffffff);
     motes.material.opacity = space ? 0.9 : 0.75;
     stage.dataset.bg = mode;
@@ -2606,6 +2703,12 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
       const s=1+focus*0.2;
       it.sprite.scale.set(it.baseW*s, it.baseH*s, 1);
       it.sprite.position.y=BASE_Y+focus*0.09;
+      if(it.rim && it.rim.visible){
+        const g=it.rimPad||1.06;
+        it.rim.scale.set(it.baseW*s*g, it.baseH*s*g, 1);
+        // nudged toward the light, which is the planet's lit side
+        it.rim.position.set(it.x-it.baseW*0.012, it.sprite.position.y+it.baseH*0.012, -0.01);
+      }
     });
     renderer.render(scene, camera);
   }
