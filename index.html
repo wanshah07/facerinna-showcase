@@ -47,7 +47,11 @@ a{color:inherit}
 .nav{position:sticky;top:0;z-index:60;background:rgba(251,246,244,.82);backdrop-filter:blur(14px);
   border-bottom:1px solid var(--line);transition:box-shadow .3s}
 .nav.scrolled{box-shadow:var(--shadow-sm)}
-.nav-in{display:flex;align-items:center;justify-content:space-between;height:64px}
+.nav-in{display:flex;align-items:center;justify-content:space-between;gap:20px;height:64px}
+.brand{flex:0 0 auto;padding-right:20px;position:relative}
+/* a hairline sets the brand apart from the certification marks */
+.brand::after{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);
+  width:1px;height:26px;background:var(--line)}
 .brand{display:flex;align-items:center;text-decoration:none}
 .logo-img{height:32px;width:auto;display:block}
 .logo-footer{height:42px;filter:brightness(1.35) saturate(.9)}
@@ -144,7 +148,10 @@ body.slides-h .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1
   -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 3.5%,#000 96.5%,transparent 100%);
   mask-image:linear-gradient(90deg,transparent 0,#000 3.5%,#000 96.5%,transparent 100%),linear-gradient(180deg,#000 94%,transparent 100%);
   -webkit-mask-composite:source-in;mask-composite:intersect}
-.nav-cert-badges{display:flex;gap:16px;align-items:center;flex-shrink:0}
+.nav-cert-badges{display:flex;gap:18px;align-items:center;flex-shrink:0;padding-right:20px;
+  margin-right:2px;position:relative}
+.nav-cert-badges::after{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);
+  width:1px;height:26px;background:var(--line)}
 .nav-cert-badge{display:block;height:32px;width:auto}
 .hero-marquee{overflow:hidden;padding:22px 0;background:var(--navy);white-space:nowrap}
 .marquee-track{display:inline-flex;width:max-content;animation:marquee-rtl 18s linear infinite}
@@ -352,7 +359,7 @@ body.space-theme .tag-best{box-shadow:0 4px 10px rgba(0,0,0,.5)}
 /* The wordmark is brand blue and reads fine on dark, but the certification
    marks are dark artwork made for paper — they get their own light chip
    rather than being brightened into mush. */
-body.space-theme .nav-cert-badges{margin-left:12px}
+body.space-theme .brand::after,body.space-theme .nav-cert-badges::after{background:rgba(255,255,255,.18)}
 body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:6px;padding:2px 4px}
 
 /* backdrop switch */
@@ -393,7 +400,7 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
   justify-content:center;transition:padding .25s ease}
 /* Idle collapses the bar down to whichever series is on screen; hovering,
    tapping or tabbing into it brings the full row back. */
-.filters-dock.collapsed .rf-chip:not([aria-pressed="true"]){display:none}
+.range-filters.collapsed .rf-chip:not([aria-pressed="true"]){display:none}
 .rf-chip{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1.5px solid var(--line);
   color:var(--ink-2);font-size:.83rem;font-weight:600;padding:8px 16px;border-radius:999px;cursor:pointer;
   transition:.18s;font-family:'Inter'}
@@ -415,8 +422,11 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
 .series-desc{color:var(--ink-2);font-size:.87rem;margin:8px 0 20px}
 /* capped tracks so the widest series (5 products) still lands on one row,
    and centred so a 2- or 3-product series does not sprawl */
-.thumb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,208px));
-  gap:26px 20px;align-items:end;justify-content:center}
+/* the series slides get a wider stage than the rest of the page so the
+   products can be big and a five-product series still lands on one row */
+.series-slide .wrap{max-width:min(1400px,96vw)}
+.thumb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,248px));
+  gap:28px 22px;align-items:end;justify-content:center}
 .thumb{background:none;border:0;border-radius:0;padding:6px 6px 2px;box-shadow:none;text-align:center;
   transition:transform .35s var(--ease,ease);cursor:pointer;position:relative;overflow:visible}
 /* Products float on the page rather than sitting in cards: no frame, no
@@ -424,8 +434,8 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
    (drop-shadow reads the alpha) so it looks like it is standing there.
    Title only — the actives line lives in the clinical sheet a tap away. */
 .thumb:hover{transform:translateY(-10px)}
-.thumb .art{height:240px;display:grid;place-items:center;margin:0 0 16px;border-radius:0;background:none}
-.thumb .art img{max-height:230px;max-width:100%;width:auto;transition:transform .4s var(--ease,ease);
+.thumb .art{height:300px;display:grid;place-items:center;margin:0 0 16px;border-radius:0;background:none}
+.thumb .art img{max-height:292px;max-width:100%;width:auto;transition:transform .4s var(--ease,ease);
   filter:drop-shadow(0 22px 20px rgba(23,50,79,.20)) drop-shadow(0 4px 6px rgba(23,50,79,.10))}
 .thumb:hover .art img{transform:translateY(-8px) scale(1.06)}
 .thumb h3{font-size:1.02rem;margin:0;font-weight:600;line-height:1.3;color:var(--ink)}
@@ -742,7 +752,8 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
 
 /* RESPONSIVE */
 @media(max-width:900px){
-  .nav-cert-badges{gap:10px}
+  .nav-cert-badges{gap:12px;padding-right:14px}
+  .brand{padding-right:14px}
   .nav-cert-badge{height:24px}
   .hero-stage{height:auto;min-height:0;display:block;padding-bottom:16px}
   .hero-frame{height:auto;width:100%;display:block}
@@ -1730,8 +1741,9 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10));
   let barT=null;
   function barSettle(){
     clearTimeout(barT);
-    if(!filterBar || !filterBar.classList.contains('filters-dock')) return;
+    if(!filterBar) return;
     barT=setTimeout(()=>{
+      // only ever collapse to a chip that is actually showing something
       if(filterBar.querySelector('.rf-chip[aria-pressed="true"]')) filterBar.classList.add('collapsed');
     }, 4000);
   }
@@ -1739,6 +1751,7 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10));
   if(filterBar){
     ['pointerenter','pointerdown','focusin'].forEach(ev=>filterBar.addEventListener(ev,barWake));
     filterBar.addEventListener('click',barSettle);
+    barSettle();                       // collapses on the page as well as in the deck
   }
   addEventListener('facerinna:goto', e=>{
     const el=e.detail&&e.detail.el;
@@ -1782,7 +1795,11 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10));
     e.preventDefault();
     show(index()+(fwd?1:-1),true);
   });
-  const tick=()=>{ if(mode) countEl.textContent=(index()+1)+' / '+slides().length; syncChips(); };
+  let lastKey=null;
+  const tick=()=>{ if(mode) countEl.textContent=(index()+1)+' / '+slides().length; syncChips();
+    const k=filterBar&&filterBar.querySelector('.rf-chip[aria-pressed="true"]');
+    const kk=k?k.dataset.filter:null;
+    if(kk!==lastKey){ lastKey=kk; barSettle(); } };
   addEventListener('scroll',tick,{passive:true});
   document.body.addEventListener('scroll',tick,{passive:true});
   addEventListener('resize',()=>{ if(mode){ fit(); show(index(),false); } });
@@ -2331,39 +2348,118 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   }
 
   // conifer + canopy silhouettes for one tree-line band
-  function treeLine(color, count, minH, maxH, blurPx){
-    const W=1024, H=420;
-    return mkTex(W,H,(g)=>{
-      // draw the silhouettes sharp on an offscreen canvas, then blur ONCE on
-      // the way out — blurring per shape would mean hundreds of filtered fills
-      const off=document.createElement('canvas'); off.width=W; off.height=H;
-      const o=off.getContext('2d');
-      o.fillStyle=color;
-      function tree(cx,h,w,conifer){
-        if(conifer){
-          const tiers=5;
-          for(let t=0;t<tiers;t++){
-            const f=t/tiers, ty=H-h*(0.16+f*0.76), hw=(w*(1-f*0.66))/2, th=h*0.30;
-            o.beginPath(); o.moveTo(cx,ty-th); o.lineTo(cx+hw,ty); o.lineTo(cx-hw,ty);
-            o.closePath(); o.fill();
+  /* ── TREES ────────────────────────────────────────────────────────────
+     Real conifers are not triangles, so each one is grown: a tapered trunk,
+     whorls of branches drooping further out and further down, needle mass
+     stippled along every branch, and scrub where the trunks meet the ground.
+     That detail costs tens of thousands of canvas strokes per tree, so a
+     handful of trees are drawn ONCE into stamps and then blitted into the
+     band — composing a band from scratch took ~26s of main thread, versus
+     a few hundred milliseconds this way. The band is drawn in black and
+     recoloured in a single source-in pass, so one set of stamps serves
+     every depth. */
+  const SW=280, SH=560, STAMPS=[];
+  (function buildStamps(){
+    function stamp(draw){
+      const c=document.createElement('canvas'); c.width=SW; c.height=SH;
+      const o=c.getContext('2d');
+      o.fillStyle='#000'; o.strokeStyle='#000'; o.lineCap='round';
+      draw(o); return c;
+    }
+    function needles(o,x,y,r,n,dir){
+      for(let i=0;i<n;i++){
+        const a=dir+(frnd()-0.5)*1.5, d=r*(0.35+frnd()*0.65);
+        o.lineWidth=Math.max(0.7,r*0.11);
+        o.beginPath(); o.moveTo(x,y);
+        o.lineTo(x+Math.cos(a)*d, y+Math.sin(a)*d*0.75); o.stroke();
+      }
+    }
+    for(let v=0; v<5; v++) STAMPS.push(stamp(o=>{
+      const cx=SW/2, base=SH, h=SH*(0.90+frnd()*0.10), w=SW*(0.80+frnd()*0.20), top=base-h;
+      o.beginPath(); o.moveTo(cx-w*0.035,base); o.lineTo(cx,top); o.lineTo(cx+w*0.035,base);
+      o.closePath(); o.fill();
+      o.save(); o.globalAlpha=0.55;
+      for(let i=0;i<26;i++){                     // inner canopy mass
+        const f=i/26, y=top+h*(0.12+f*0.88), rr=(w*0.5)*Math.pow(f,0.82)*0.55;
+        o.beginPath(); o.ellipse(cx+(frnd()-0.5)*w*0.10, y, rr, rr*0.55, 0, 0, Math.PI*2); o.fill();
+      }
+      o.restore();
+      const whorls=12+Math.round(frnd()*4);
+      for(let i=0;i<whorls;i++){
+        const f=i/whorls, y=top+h*(0.10+f*0.92);
+        const reach=(w*0.5)*Math.pow(f,0.78)*(0.82+frnd()*0.36), droop=h*0.045*(0.4+f);
+        for(const s of [-1,1]){
+          const ex=cx+s*reach, ey=y+droop;
+          o.lineWidth=Math.max(0.8,reach*0.075);
+          o.beginPath(); o.moveTo(cx,y);
+          o.quadraticCurveTo(cx+s*reach*0.55,y+droop*0.35,ex,ey); o.stroke();
+          const tufts=Math.max(3,Math.round(reach*0.075));
+          for(let t=0;t<tufts;t++){
+            const q=(t+1)/(tufts+1);
+            const px=cx+s*reach*q, py=y+droop*q*q;
+            // filled clumps carry the mass; the strokes only ragged the edge
+            const rr=reach*(0.16+frnd()*0.13);
+            o.beginPath(); o.ellipse(px,py,rr,rr*0.66,s*0.25,0,Math.PI*2); o.fill();
+            needles(o,px,py,reach*0.32,5,s>0?0.5:2.6);
           }
-          o.fillRect(cx-w*0.035, H-h*0.20, w*0.07, h*0.20);
-        }else{
-          o.beginPath(); o.ellipse(cx, H-h*0.68, w*0.48, h*0.30, 0, 0, Math.PI*2); o.fill();
-          o.fillRect(cx-w*0.045, H-h*0.62, w*0.09, h*0.62);
+          const tr=reach*0.22;
+          o.beginPath(); o.ellipse(ex,ey,tr,tr*0.7,0,0,Math.PI*2); o.fill();
+          needles(o,ex,ey,reach*0.36,7,s>0?0.35:2.8);
         }
       }
+    }));
+    for(let v=0; v<3; v++) STAMPS.push(stamp(o=>{
+      const cx=SW/2, base=SH, h=SH*(0.78+frnd()*0.16), w=SW*0.94;
+      o.lineWidth=Math.max(1.4,w*0.07);
+      o.beginPath(); o.moveTo(cx,base); o.lineTo(cx+(frnd()-0.5)*w*0.10, base-h*0.45); o.stroke();
+      const forks=5+Math.round(frnd()*3);
+      for(let i=0;i<forks;i++){
+        const a=-Math.PI/2+(frnd()-0.5)*1.9, len=h*(0.22+frnd()*0.22);
+        const sx=cx, sy=base-h*0.45, ex=sx+Math.cos(a)*len, ey=sy+Math.sin(a)*len;
+        o.lineWidth=Math.max(1,w*0.035);
+        o.beginPath(); o.moveTo(sx,sy); o.lineTo(ex,ey); o.stroke();
+        for(let k=0;k<10;k++){
+          const rr=w*(0.10+frnd()*0.15);
+          o.beginPath();
+          o.ellipse(ex+(frnd()-0.5)*w*0.34, ey+(frnd()-0.5)*h*0.16, rr, rr*0.80, frnd()*3, 0, Math.PI*2);
+          o.fill();
+        }
+      }
+    }));
+  })();
+
+  function treeLine(color, count, minH, maxH, blurPx){
+    const W=2048, H=840;
+    return mkTex(W,H,(g)=>{
+      const off=document.createElement('canvas'); off.width=W; off.height=H;
+      const o=off.getContext('2d');
       for(let i=0;i<count;i++){
         const cx=((i+0.5)/count)*W + (frnd()-0.5)*(W/count)*0.9;
         const h=H*(minH+frnd()*(maxH-minH));
-        const w=h*(0.34+frnd()*0.18);
-        const conifer=frnd()<0.72;
-        // wrapped copies so the tile repeats seamlessly
-        tree(cx-W,h,w,conifer); tree(cx,h,w,conifer); tree(cx+W,h,w,conifer);
+        const w=h*(SW/SH)*(0.86+frnd()*0.30);
+        const st=STAMPS[(frnd()*STAMPS.length)|0], flip=frnd()<0.5?-1:1;
+        for(const dx of [-W,0,W]){          // wrapped copies keep the tile seamless
+          o.save();
+          o.translate(cx+dx, H); o.scale(flip,1);
+          o.drawImage(st, -w/2, -h, w, h);
+          o.restore();
+        }
       }
+      // scrub where the trunks meet the ground
+      for(let i=0;i<count*2;i++){
+        const cx=frnd()*W, s=H*(0.030+frnd()*0.055);
+        const pts=[]; for(let k=0;k<7;k++) pts.push([(frnd()-0.5)*s*1.6,(frnd()-0.5)*s*0.2,s*(0.30+frnd()*0.50)]);
+        for(const dx of [-W,0,W]) pts.forEach(q=>{
+          o.beginPath(); o.ellipse(cx+dx+q[0], H-q[2]*0.45+q[1], q[2], q[2]*0.62, 0, 0, Math.PI*2); o.fill();
+        });
+      }
+      // one pass recolours the whole silhouette for this depth
+      o.globalCompositeOperation='source-in';
+      o.fillStyle=color; o.fillRect(0,0,W,H);
+      o.globalCompositeOperation='source-over';
+
       g.clearRect(0,0,W,H);
-      // distance haze — an unsupported filter just leaves a crisp edge
-      if(blurPx) try{ g.filter='blur('+blurPx+'px)'; }catch(e){}
+      if(blurPx) try{ g.filter='blur('+(blurPx*1.9)+'px)'; }catch(e){}
       g.drawImage(off,0,0);
       try{ g.filter='none'; }catch(e){}
     });
@@ -2474,6 +2570,60 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     opacity:0.75, blending:THREE.AdditiveBlending, sizeAttenuation:true}));
   motes.renderOrder=6;
   scene.add(motes);
+
+
+  /* ── BUTTERFLY ────────────────────────────────────────────────────────
+     Two wings hinged on a body, flapping on an asymmetric beat (the
+     downstroke is quicker than the recovery, which is what stops it
+     reading as a metronome), wandering on three sine terms of different
+     periods so the path never obviously repeats. It banks into its turns.
+     Forest only — it is hidden with the rest of the forest in space. */
+  const bfWingTex=mkTex(256,256,(g,w,h)=>{
+    g.clearRect(0,0,w,h);
+    const cx=8, cy=h*0.52;                      // hinge at the left edge
+    function wing(path,fill){
+      g.beginPath(); path(); g.closePath(); g.fillStyle=fill; g.fill();
+      g.lineWidth=5; g.strokeStyle='rgba(46,28,12,.85)'; g.stroke();
+    }
+    // forewing
+    wing(()=>{ g.moveTo(cx,cy);
+      g.bezierCurveTo(w*0.30,h*0.06, w*0.86,h*0.04, w*0.95,h*0.30);
+      g.bezierCurveTo(w*0.96,h*0.44, w*0.58,h*0.50, cx,cy+6); }, '#E0912F');
+    // hindwing
+    wing(()=>{ g.moveTo(cx,cy);
+      g.bezierCurveTo(w*0.30,h*0.62, w*0.72,h*0.72, w*0.70,h*0.92);
+      g.bezierCurveTo(w*0.60,h*0.99, w*0.26,h*0.82, cx,cy+8); }, '#C9741F');
+    // veins and a few pale spots — enough detail to read at size
+    g.strokeStyle='rgba(46,28,12,.42)'; g.lineWidth=2.4;
+    for(let i=0;i<6;i++){
+      const a=-0.72+i*0.30;
+      g.beginPath(); g.moveTo(cx,cy);
+      g.lineTo(cx+Math.cos(a)*w*0.86, cy+Math.sin(a)*h*0.80); g.stroke();
+    }
+    g.fillStyle='rgba(255,244,214,.92)';
+    [[0.78,0.20,9],[0.86,0.30,7],[0.60,0.14,8],[0.56,0.83,7],[0.66,0.88,6]].forEach(s=>{
+      g.beginPath(); g.ellipse(w*s[0],h*s[1],s[2],s[2]*0.82,0,0,Math.PI*2); g.fill();
+    });
+  });
+  const bf=new THREE.Group();
+  {
+    const wingGeo=new THREE.PlaneGeometry(0.46,0.40);
+    wingGeo.translate(0.23,0,0);                 // hinge on the body, not the centre
+    const wingMat=new THREE.MeshBasicMaterial({map:bfWingTex, transparent:true,
+      side:THREE.DoubleSide, depthTest:false, depthWrite:false});
+    const wR=new THREE.Mesh(wingGeo,wingMat);
+    const wL=new THREE.Mesh(wingGeo,wingMat); wL.scale.x=-1;
+    const bodyMat=new THREE.MeshBasicMaterial({color:0x3A2612, transparent:true,
+      depthTest:false, depthWrite:false});
+    const body=new THREE.Mesh(new THREE.PlaneGeometry(0.045,0.30), bodyMat);
+    bf.add(wR,wL,body);
+    bf.userData={wR:wR,wL:wL};
+  }
+  bf.renderOrder=4;
+  bf.scale.setScalar(0.34);
+  scene.add(bf);
+  forestParts.push(bf);
+  let bfPrevX=0;
 
   /* The shelf panel is gone: the products stand on nothing, which is what
      lets them read as floating in both the mist and the void. */
@@ -2666,6 +2816,18 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     if(!reduceMotion){
       const ts=t*0.001;
       for(let i=0;i<swayMats.length;i++) swayMats[i].uniforms.uTime.value=ts;
+      // butterfly: wander, bank, flap
+      const bx=camX+Math.sin(ts*0.29)*1.9+Math.sin(ts*0.11+1.3)*0.7;
+      const by=0.95+Math.sin(ts*0.47)*0.42+Math.sin(ts*0.19)*0.16;
+      bf.position.set(bx, by, 1.25+Math.sin(ts*0.23)*0.45);
+      const bdx=bx-bfPrevX; bfPrevX=bx;
+      bf.rotation.z=Math.max(-0.55,Math.min(0.55,-bdx*7));
+      bf.rotation.y=Math.max(-0.5,Math.min(0.5,bdx*9));
+      bf.rotation.x=-0.48+Math.sin(ts*0.6)*0.12;
+      const beat=Math.sin(ts*9.2);
+      const phi=(0.30+0.95*(beat<0?-Math.pow(-beat,0.62):Math.pow(beat,0.62)));
+      bf.userData.wR.rotation.y=phi;
+      bf.userData.wL.rotation.y=-phi;
       fog1.material.map.offset.x=(ts*0.0065)%1;
       fog2.material.map.offset.x=(ts*0.0135)%1;
       rays.material.opacity=0.42+Math.sin(ts*0.35)*0.16;
