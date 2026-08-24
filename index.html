@@ -177,7 +177,9 @@ section{padding:74px 0;position:relative}
   background:linear-gradient(180deg,#CFE4F2 0%,#DCEBEF 42%,#E4EFE7 78%,#E9F2E6 100%);
   box-shadow:var(--shadow-md);cursor:grab}
 .shelf-stage.dragging{cursor:grabbing}
-.shelf-stage canvas{width:100%;height:100%;display:block;touch-action:pan-y;-webkit-user-select:none;user-select:none}
+/* positioned so it stacks above the CSS sky, which is a positioned layer */
+.shelf-stage canvas{position:relative;z-index:1;width:100%;height:100%;display:block;
+  touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .shelf-fs{position:absolute;top:16px;right:16px;z-index:6;width:46px;height:46px;border-radius:12px;
   border:1px solid var(--line);background:rgba(255,255,255,.88);backdrop-filter:blur(6px);
   font-size:1.35rem;line-height:1;cursor:pointer;box-shadow:var(--shadow-sm);color:var(--brand-deep);
@@ -196,6 +198,199 @@ section{padding:74px 0;position:relative}
 .shelf-series{display:block;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-deep)}
 .shelf-name{display:block;font-size:1.15rem;font-weight:700;color:var(--ink);margin-top:2px}
 .shelf-hint{text-align:center;margin-top:12px;font-size:.82rem;color:var(--muted)}
+
+/* ── SPACE BACKDROP ───────────────────────────────────────────────────
+   A second, selectable sky for the shelf, built entirely in CSS behind the
+   transparent WebGL canvas. Depth comes from four independent layers that
+   drift at different rates: nebula, a Milky Way band with its dust lane,
+   and three star fields. Palette anchored on a Space Tech / Aerospace
+   scheme — #0B0B10 void, #F8FAFC star white, #3B82F6 launch blue. */
+.shelf-sky{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+  opacity:0;transition:opacity .9s ease}
+.shelf-stage[data-bg="space"] .shelf-sky{opacity:1}
+.shelf-stage[data-bg="space"]{background:
+  radial-gradient(120% 90% at 22% 8%, #171a2e 0%, #0e1020 42%, #0B0B10 78%);}
+.shelf-sky > span{position:absolute;display:block}
+
+/* nebula clouds + the galactic band, on one slowly breathing layer */
+.sky-nebula{inset:-14%;
+  background:
+    radial-gradient(38% 26% at 20% 26%, rgba(88,60,168,.34) 0%, rgba(88,60,168,0) 70%),
+    radial-gradient(30% 22% at 74% 20%, rgba(24,110,168,.28) 0%, rgba(24,110,168,0) 72%),
+    radial-gradient(34% 30% at 60% 74%, rgba(150,44,120,.20) 0%, rgba(150,44,120,0) 74%),
+    radial-gradient(22% 18% at 38% 60%, rgba(40,150,150,.16) 0%, rgba(40,150,150,0) 76%);
+  filter:blur(6px)}
+.sky-band{inset:-30%;
+  background:
+    linear-gradient(72deg, rgba(255,255,255,0) 38%, rgba(206,220,255,.10) 46%,
+      rgba(226,232,255,.16) 50%, rgba(206,220,255,.10) 54%, rgba(255,255,255,0) 62%),
+    /* the dust lane that splits the band */
+    linear-gradient(72deg, rgba(0,0,0,0) 46%, rgba(9,10,18,.55) 50%, rgba(0,0,0,0) 54%);
+  filter:blur(3px)}
+
+.sky-stars{inset:-10%}
+.sky-stars.s1{background-image:
+    radial-gradient(0.79px 0.79px at 145.7px 213.3px,rgba(255,255,255,0.24) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.81px 0.81px at 9.2px 221.1px,rgba(207,226,255,0.25) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.71px 0.71px at 149.0px 144.8px,rgba(207,226,255,0.21) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.7px 0.7px at 164.3px 124.0px,rgba(255,255,255,0.2) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.77px 0.77px at 226.1px 270.3px,rgba(255,241,224,0.23) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(0.8px 0.8px at 263.9px 122.1px,rgba(255,255,255,0.25) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.9px 0.9px at 263.4px 67.3px,rgba(255,214,190,0.3) 0%,rgba(255,214,190,0) 100%),
+    radial-gradient(1.16px 1.16px at 41.9px 0.0px,rgba(207,226,255,0.43) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(1.06px 1.06px at 289.1px 257.7px,rgba(255,255,255,0.38) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.88px 0.88px at 200.9px 81.9px,rgba(207,226,255,0.29) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.82px 0.82px at 96.2px 271.0px,rgba(255,255,255,0.26) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.72px 0.72px at 162.4px 254.4px,rgba(255,214,190,0.21) 0%,rgba(255,214,190,0) 100%),
+    radial-gradient(1.02px 1.02px at 196.2px 193.1px,rgba(207,226,255,0.36) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.73px 0.73px at 239.2px 194.7px,rgba(255,255,255,0.21) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.7px 0.7px at 165.9px 2.3px,rgba(255,255,255,0.2) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.43px 1.43px at 266.4px 38.4px,rgba(255,255,255,0.57) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.34px 1.34px at 270.6px 277.4px,rgba(207,226,255,0.52) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.96px 0.96px at 105.8px 266.9px,rgba(255,255,255,0.33) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.99px 0.99px at 121.3px 275.3px,rgba(255,214,190,0.35) 0%,rgba(255,214,190,0) 100%),
+    radial-gradient(0.71px 0.71px at 15.6px 152.6px,rgba(255,255,255,0.21) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.71px 0.71px at 20.6px 0.9px,rgba(255,255,255,0.2) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.73px 0.73px at 182.9px 206.7px,rgba(207,226,255,0.21) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(1.07px 1.07px at 259.4px 265.6px,rgba(255,255,255,0.38) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.7px 0.7px at 4.6px 269.5px,rgba(255,255,255,0.2) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.03px 1.03px at 147.9px 106.0px,rgba(255,241,224,0.37) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(0.73px 0.73px at 28.7px 305.4px,rgba(255,214,190,0.22) 0%,rgba(255,214,190,0) 100%),
+    radial-gradient(0.86px 0.86px at 117.8px 243.0px,rgba(255,241,224,0.28) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(0.85px 0.85px at 15.8px 137.4px,rgba(255,255,255,0.28) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.99px 0.99px at 160.2px 292.0px,rgba(255,255,255,0.35) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.09px 1.09px at 90.7px 146.7px,rgba(255,255,255,0.4) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.84px 0.84px at 137.8px 192.3px,rgba(255,255,255,0.27) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.89px 0.89px at 202.0px 200.1px,rgba(255,214,190,0.3) 0%,rgba(255,214,190,0) 100%),
+    radial-gradient(1.19px 1.19px at 299.1px 237.0px,rgba(207,226,255,0.44) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.96px 0.96px at 221.0px 163.8px,rgba(255,241,224,0.33) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(0.94px 0.94px at 86.7px 88.0px,rgba(255,241,224,0.32) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(0.76px 0.76px at 118.8px 188.4px,rgba(255,255,255,0.23) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.92px 0.92px at 313.6px 170.7px,rgba(255,255,255,0.31) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.73px 0.73px at 6.4px 214.8px,rgba(255,255,255,0.22) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.71px 0.71px at 219.3px 214.6px,rgba(255,255,255,0.2) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.4px 1.4px at 124.2px 192.6px,rgba(255,255,255,0.55) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.74px 0.74px at 281.6px 7.9px,rgba(207,226,255,0.22) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(1.38px 1.38px at 183.6px 290.5px,rgba(255,255,255,0.54) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.71px 0.71px at 100.5px 10.6px,rgba(255,241,224,0.2) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(0.94px 0.94px at 265.8px 171.5px,rgba(207,226,255,0.32) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.86px 0.86px at 317.3px 314.8px,rgba(255,255,255,0.28) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.71px 0.71px at 39.0px 27.1px,rgba(207,226,255,0.2) 0%,rgba(207,226,255,0) 100%);
+    background-size:320px 320px}
+.sky-stars.s2{background-image:
+    radial-gradient(0.98px 0.98px at 40.6px 49.1px,rgba(255,255,255,0.39) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.93px 0.93px at 205.0px 43.4px,rgba(255,241,224,0.36) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(0.9px 0.9px at 226.3px 0.7px,rgba(255,214,190,0.35) 0%,rgba(255,214,190,0) 100%),
+    radial-gradient(1.03px 1.03px at 120.4px 58.2px,rgba(207,226,255,0.41) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.9px 0.9px at 101.1px 72.6px,rgba(255,255,255,0.35) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.9px 0.9px at 128.4px 418.0px,rgba(255,255,255,0.35) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.55px 1.55px at 47.5px 351.1px,rgba(207,226,255,0.64) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.91px 0.91px at 339.3px 51.3px,rgba(207,226,255,0.35) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(1.35px 1.35px at 6.1px 366.3px,rgba(255,255,255,0.55) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.98px 0.98px at 284.7px 22.9px,rgba(255,255,255,0.39) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.12px 1.12px at 38.5px 7.0px,rgba(207,226,255,0.45) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.93px 0.93px at 119.5px 343.3px,rgba(255,255,255,0.37) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.91px 0.91px at 370.1px 86.0px,rgba(255,255,255,0.36) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.92px 0.92px at 392.2px 110.4px,rgba(255,255,255,0.36) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(4.14px 4.14px at 175.6px 319.9px,rgba(207,226,255,0.058) 0%,rgba(207,226,255,0) 70%),
+    radial-gradient(0.92px 0.92px at 175.6px 319.9px,rgba(207,226,255,0.36) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(0.98px 0.98px at 33.0px 37.2px,rgba(255,255,255,0.39) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.09px 1.09px at 197.0px 249.9px,rgba(255,241,224,0.44) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(1.02px 1.02px at 40.4px 138.4px,rgba(255,255,255,0.4) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.61px 1.61px at 174.1px 272.0px,rgba(255,241,224,0.67) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(1.12px 1.12px at 107.0px 347.4px,rgba(255,255,255,0.45) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.43px 1.43px at 277.9px 118.1px,rgba(255,255,255,0.59) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(7.88px 7.88px at 1.2px 278.9px,rgba(255,214,190,0.118) 0%,rgba(255,214,190,0) 70%),
+    radial-gradient(1.75px 1.75px at 1.2px 278.9px,rgba(255,214,190,0.74) 0%,rgba(255,214,190,0) 100%),
+    radial-gradient(4.27px 4.27px at 46.8px 138.8px,rgba(255,241,224,0.059) 0%,rgba(255,241,224,0) 70%),
+    radial-gradient(0.95px 0.95px at 46.8px 138.8px,rgba(255,241,224,0.37) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(0.96px 0.96px at 226.6px 262.5px,rgba(255,255,255,0.38) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.93px 0.93px at 384.4px 23.8px,rgba(255,255,255,0.36) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(0.93px 0.93px at 43.3px 36.5px,rgba(207,226,255,0.36) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(1.35px 1.35px at 441.9px 124.7px,rgba(255,255,255,0.55) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.22px 1.22px at 63.0px 24.4px,rgba(255,255,255,0.5) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.57px 1.57px at 185.9px 254.1px,rgba(207,226,255,0.66) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(1.85px 1.85px at 374.7px 317.9px,rgba(255,214,190,0.78) 0%,rgba(255,214,190,0) 100%);
+    background-size:460px 460px}
+.sky-stars.s3{background-image:
+    radial-gradient(1.38px 1.38px at 551.9px 328.9px,rgba(207,226,255,0.57) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(6.12px 6.12px at 477.7px 374.9px,rgba(255,214,190,0.091) 0%,rgba(255,214,190,0) 70%),
+    radial-gradient(1.36px 1.36px at 477.7px 374.9px,rgba(255,214,190,0.57) 0%,rgba(255,214,190,0) 100%),
+    radial-gradient(1.3px 1.3px at 80.6px 612.0px,rgba(255,241,224,0.55) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(11.03px 11.03px at 407.3px 386.6px,rgba(255,255,255,0.136) 0%,rgba(255,255,255,0) 70%),
+    radial-gradient(2.45px 2.45px at 407.3px 386.6px,rgba(255,255,255,0.85) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(1.49px 1.49px at 189.2px 42.1px,rgba(255,255,255,0.6) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(8.19px 8.19px at 416.1px 240.6px,rgba(255,241,224,0.11) 0%,rgba(255,241,224,0) 70%),
+    radial-gradient(1.82px 1.82px at 416.1px 240.6px,rgba(255,241,224,0.69) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(8.59px 8.59px at 406.2px 427.3px,rgba(255,241,224,0.114) 0%,rgba(255,241,224,0) 70%),
+    radial-gradient(1.91px 1.91px at 406.2px 427.3px,rgba(255,241,224,0.71) 0%,rgba(255,241,224,0) 100%),
+    radial-gradient(9.54px 9.54px at 240.1px 48.3px,rgba(207,226,255,0.123) 0%,rgba(207,226,255,0) 70%),
+    radial-gradient(2.12px 2.12px at 240.1px 48.3px,rgba(207,226,255,0.77) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(1.33px 1.33px at 144.4px 476.0px,rgba(207,226,255,0.56) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(6.93px 6.93px at 145.5px 346.8px,rgba(255,255,255,0.098) 0%,rgba(255,255,255,0) 70%),
+    radial-gradient(1.54px 1.54px at 145.5px 346.8px,rgba(255,255,255,0.61) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(6.66px 6.66px at 21.7px 185.8px,rgba(255,255,255,0.096) 0%,rgba(255,255,255,0) 70%),
+    radial-gradient(1.48px 1.48px at 21.7px 185.8px,rgba(255,255,255,0.6) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(5.94px 5.94px at 286.8px 5.2px,rgba(255,214,190,0.09) 0%,rgba(255,214,190,0) 70%),
+    radial-gradient(1.32px 1.32px at 286.8px 5.2px,rgba(255,214,190,0.56) 0%,rgba(255,214,190,0) 100%),
+    radial-gradient(1.45px 1.45px at 62.8px 144.7px,rgba(207,226,255,0.59) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(1.3px 1.3px at 55.3px 377.2px,rgba(207,226,255,0.55) 0%,rgba(207,226,255,0) 100%),
+    radial-gradient(1.3px 1.3px at 403.1px 385.1px,rgba(255,255,255,0.55) 0%,rgba(255,255,255,0) 100%),
+    radial-gradient(10.44px 10.44px at 576.9px 58.5px,rgba(255,241,224,0.131) 0%,rgba(255,241,224,0) 70%),
+    radial-gradient(2.32px 2.32px at 576.9px 58.5px,rgba(255,241,224,0.82) 0%,rgba(255,241,224,0) 100%);
+    background-size:620px 620px}
+
+/* the near field twinkles; the far ones only drift */
+.sky-stars.s3{animation:skyTwinkle 6.5s ease-in-out infinite}
+.sky-vignette{inset:0;background:
+  radial-gradient(120% 84% at 50% 46%, rgba(0,0,0,0) 52%, rgba(4,5,10,.55) 100%)}
+
+/* one shooting star at a time, and rarely — two would read as decoration */
+.sky-shoot{top:-4%;left:-12%;width:180px;height:1.5px;border-radius:2px;opacity:0;
+  background:linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(226,240,255,.85) 62%, #fff 100%);
+  box-shadow:0 0 7px rgba(190,220,255,.75);
+  transform:rotate(19deg);
+  animation:skyShoot 11s linear infinite}
+.sky-shoot.d2{top:24%;left:-16%;width:130px;animation-duration:17s;animation-delay:6.5s;opacity:0}
+
+@keyframes skyDrift{to{background-position:var(--dx,-320px) var(--dy,90px)}}
+@keyframes skyTwinkle{0%,100%{opacity:.75}50%{opacity:1}}
+@keyframes skyBreathe{0%,100%{transform:scale(1) translate3d(0,0,0)}50%{transform:scale(1.06) translate3d(1.2%,-1%,0)}}
+@keyframes skyShoot{
+  0%{opacity:0;transform:translate3d(0,0,0) rotate(19deg)}
+  2%{opacity:1}
+  9%{opacity:0}
+  100%{opacity:0;transform:translate3d(135vw,46vw,0) rotate(19deg)}}
+
+.shelf-stage[data-bg="space"] .sky-stars.s1{animation:skyDrift 420s linear infinite;--dx:-320px;--dy:110px}
+.shelf-stage[data-bg="space"] .sky-stars.s2{animation:skyDrift 260s linear infinite;--dx:-460px;--dy:150px}
+.shelf-stage[data-bg="space"] .sky-stars.s3{animation:skyDrift 150s linear infinite,skyTwinkle 6.5s ease-in-out infinite;--dx:-620px;--dy:200px}
+.shelf-stage[data-bg="space"] .sky-nebula{animation:skyBreathe 90s ease-in-out infinite}
+
+/* backdrop switch */
+.shelf-bg{position:absolute;top:16px;left:16px;z-index:6;display:flex;gap:4px;padding:4px;
+  border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.88);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:var(--shadow-sm)}
+.shelf-bg button{min-width:64px;height:38px;padding:0 12px;border:1px solid transparent;border-radius:9px;
+  background:transparent;color:var(--ink-2);font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;
+  transition:background .18s,color .18s}
+.shelf-bg button:hover{background:var(--surface-2)}
+.shelf-bg button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.shelf-stage[data-bg="space"] .shelf-bg{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16)}
+.shelf-stage[data-bg="space"] .shelf-bg button{color:rgba(248,250,252,.72)}
+.shelf-stage[data-bg="space"] .shelf-bg button:hover{background:rgba(255,255,255,.10)}
+.shelf-stage[data-bg="space"] .shelf-bg button[aria-pressed="true"]{background:#3B82F6;border-color:#3B82F6;color:#fff}
+.shelf-stage[data-bg="space"] .shelf-fs{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16);color:#F8FAFC}
+/* the products are lit for a pale sky, so lift them off the void a touch */
+.shelf-stage[data-bg="space"] canvas{filter:brightness(1.04) contrast(1.03)}
+@media(max-width:700px){.shelf-bg{top:10px;left:10px}.shelf-bg button{min-width:54px;height:36px;font-size:.74rem}}
+@media(prefers-reduced-motion:reduce){
+  .sky-stars,.sky-nebula,.sky-shoot,
+  .shelf-stage[data-bg="space"] .sky-stars.s1,
+  .shelf-stage[data-bg="space"] .sky-stars.s2,
+  .shelf-stage[data-bg="space"] .sky-stars.s3,
+  .shelf-stage[data-bg="space"] .sky-nebula{animation:none !important}
+  .sky-shoot{display:none}}
 @media(max-width:700px){.shelf-stage{height:70vh;min-height:420px}.shelf-nav{width:40px;height:40px;font-size:1.25rem}}
 /* one line, scrolling sideways rather than wrapping to a second row */
 .range-filters{display:flex;gap:9px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
@@ -639,8 +834,22 @@ section{padding:74px 0;position:relative}
     </div>
   </div>
   <div class="shelf-wrap reveal" id="shelfWrap">
-    <div class="shelf-stage" id="shelfStage">
+    <div class="shelf-stage" id="shelfStage" data-bg="forest">
+      <div class="shelf-sky" aria-hidden="true">
+        <span class="sky-nebula"></span>
+        <span class="sky-band"></span>
+        <span class="sky-stars s1"></span>
+        <span class="sky-stars s2"></span>
+        <span class="sky-stars s3"></span>
+        <span class="sky-vignette"></span>
+        <span class="sky-shoot"></span>
+        <span class="sky-shoot d2"></span>
+      </div>
       <canvas id="shelfCanvas"></canvas>
+      <div class="shelf-bg" id="shelfBg" role="group" aria-label="Shelf backdrop">
+        <button type="button" data-bg="forest" aria-pressed="true">Forest</button>
+        <button type="button" data-bg="space" aria-pressed="false">Space</button>
+      </div>
       <button class="shelf-fs" id="shelfFS" aria-label="Toggle full screen" type="button">⛶</button>
       <div class="shelf-fallback-note" id="shelfFallback" hidden>3D shelf unavailable in this browser — browse the full range below.</div>
     </div>
@@ -2001,6 +2210,8 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     return m;
   }
 
+  // everything the forest sky is made of, so the space backdrop can hide it
+  const forestParts=[];
   // tileWorld = how many world units one texture tile spans, so every layer
   // keeps a believable tree size no matter how wide its plane has to be
   function bgPlane(tex, z, worldH, yBottom, order, opt){
@@ -2023,6 +2234,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     m.position.set(railEnd/2, yBottom+worldH/2, z);
     m.renderOrder=order;
     scene.add(m);
+    forestParts.push(m);
     return m;
   }
 
@@ -2127,6 +2339,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   sunGlow.position.set(0, 2.1, -24);
   sunGlow.renderOrder=-38;
   scene.add(sunGlow);
+  forestParts.push(sunGlow);
 
   // distant misted ridge
   bgPlane(treeLine('rgba(158,182,186,0.46)', 46, 0.30, 0.62, 3), -20, 8.0, -2.4, -34,
@@ -2190,6 +2403,33 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   ledge.rotation.x=-Math.PI/2*0.62;
   ledge.renderOrder=-8;
   scene.add(ledge);
+
+  /* ---- backdrop switch: forest sky (WebGL) or deep space (CSS) --------
+     The renderer is alpha:true, so hiding the forest layers simply reveals
+     whatever the stage is painted with behind the canvas. The ledge is
+     re-tinted rather than re-textured — its material multiplies the map. */
+  const bgCtl=document.getElementById('shelfBg');
+  function setBackdrop(mode){
+    const space = mode==='space';
+    forestParts.forEach(m=>{ m.visible=!space; });
+    ledgeMat.color.set(space ? 0x59647f : 0xffffff);
+    motes.material.opacity = space ? 0.9 : 0.75;
+    stage.dataset.bg = mode;
+    if(bgCtl) bgCtl.querySelectorAll('button').forEach(b=>
+      b.setAttribute('aria-pressed', String(b.dataset.bg===mode)));
+    try{ localStorage.setItem('facerinna:shelfBg', mode); }catch(e){}
+  }
+  if(bgCtl){
+    // the stage itself listens for pointerdown to drag the shelf
+    bgCtl.addEventListener('pointerdown', e=>e.stopPropagation());
+    bgCtl.addEventListener('click', e=>{
+      const b=e.target.closest('button[data-bg]');
+      if(b) setBackdrop(b.dataset.bg);
+    });
+  }
+  let savedBg='forest';
+  try{ savedBg=localStorage.getItem('facerinna:shelfBg')||'forest'; }catch(e){}
+  setBackdrop(savedBg==='space'?'space':'forest');
 
   let camX=0, targetX=0, dragging=false, moved=0, startPX=0, startCamX=0, snapTimer=null, rafId=null;
   let autoRun=!reduceMotion, autoDir=1, autoResumeTimer=null;
