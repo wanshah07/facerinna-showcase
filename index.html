@@ -65,6 +65,43 @@ a{color:inherit}
    whole showcase and nothing of the browser. The badges are forced back on
    because the narrow breakpoint hides them. */
 body.tv-mode .nav-cert-badges{display:flex}
+/* ── PRESENTATION MODE ────────────────────────────────────────────────
+   Every top-level section becomes exactly one screen and the deck advances
+   either vertically or horizontally. Sections taller than one screen keep
+   their own inner scroll, so nothing on a long section is unreachable —
+   The Range runs several screens — and the deck advances once that inner
+   scroll hits its end. */
+.pres-ctl{position:fixed;left:16px;bottom:16px;z-index:95;display:flex;align-items:center;gap:4px;
+  padding:5px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.93);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:var(--shadow-md)}
+.pres-ctl button{width:36px;height:36px;flex:0 0 auto;border:1px solid transparent;border-radius:10px;
+  background:transparent;color:var(--brand-deep);font-size:1rem;line-height:1;cursor:pointer;
+  display:grid;place-items:center;transition:background .18s,border-color .18s,transform .18s}
+.pres-ctl button:hover{background:var(--surface-2);transform:translateY(-1px)}
+.pres-ctl button[aria-pressed="true"]{background:var(--brand-soft);border-color:var(--brand);font-weight:700}
+.pres-ctl .pres-step,.pres-count{display:none}
+body.slides .pres-ctl .pres-step{display:grid}
+body.slides .pres-count{display:block}
+.pres-count{padding:0 8px;font-size:.78rem;font-weight:700;color:var(--muted);white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+
+html.slides-on{height:100%;overflow:hidden;scroll-snap-type:none}
+body.slides{--slide-top:64px;scrollbar-width:none}
+body.slides::-webkit-scrollbar{width:0;height:0}
+body.slides > .wrap{display:none}          /* the 1px inter-section dividers */
+body.slides .nav{position:fixed;top:0;left:0;right:0}
+body.slides > section,body.slides > footer{
+  height:100vh;padding-top:var(--slide-top);overflow-y:auto;overflow-x:hidden;scroll-snap-align:start}
+/* the shelf is 100vh in normal flow, which would overflow its own slide */
+body.slides .shelf-stage{height:calc(100vh - var(--slide-top) - 290px);min-height:220px;max-height:none}
+body.slides-v{height:100vh;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;scroll-behavior:smooth}
+body.slides-h{height:100vh;display:flex;flex-direction:row;flex-wrap:nowrap;
+  overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth}
+body.slides-h > section,body.slides-h > footer{flex:0 0 100vw;width:100vw}
+@media(max-width:700px){body.slides{--slide-top:56px}
+  /* a phone-width slide has no room for the chat pill on top of it */
+  body.slides .chat-hint{display:none !important}
+  body.slides .shelf-stage{height:calc(100vh - var(--slide-top) - 400px)}}
 .burger{display:none;background:none;border:0;cursor:pointer;padding:8px}
 .burger span{display:block;width:22px;height:2px;background:var(--ink);margin:4px 0;border-radius:2px;transition:.3s}
 
@@ -526,6 +563,14 @@ section{padding:74px 0;position:relative}
     <button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
   </div>
 </header>
+
+<div class="pres-ctl" id="presCtl" role="group" aria-label="Presentation mode">
+  <button class="pres-step" id="presPrev" type="button" aria-label="Previous slide" title="Previous slide (←)">‹</button>
+  <button id="presV" type="button" aria-pressed="false" aria-label="Slide vertically" title="Slide vertically">↕</button>
+  <button id="presH" type="button" aria-pressed="false" aria-label="Slide horizontally" title="Slide horizontally">↔</button>
+  <span class="pres-count" id="presCount">1 / 8</span>
+  <button class="pres-step" id="presNext" type="button" aria-label="Next slide" title="Next slide (→)">›</button>
+</div>
 <!-- HERO -->
 <section class="hero" id="top">
   <h1 class="sr-only">FACERINNA — Tested by dermatologist, approved with science</h1>
@@ -1261,6 +1306,69 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10));
   }
   ['fullscreenchange','webkitfullscreenchange','MSFullscreenChange'].forEach(ev=>document.addEventListener(ev,sync));
   btn.addEventListener('click',()=>TV.toggle());
+})();
+/* PRESENTATION MODE — one section per screen, advancing vertically or
+   horizontally. Switching direction changes which element does the
+   scrolling (window vs body), so the deck is re-seated on whatever slide
+   was showing rather than jumping back to the top. */
+(function(){
+  const ctl=document.getElementById('presCtl');
+  if(!ctl) return;
+  const bV=document.getElementById('presV'), bH=document.getElementById('presH'),
+        bPrev=document.getElementById('presPrev'), bNext=document.getElementById('presNext'),
+        countEl=document.getElementById('presCount');
+  let mode=null;
+  const slides=()=>Array.from(document.querySelectorAll('body > section, body > footer'));
+
+  function index(){
+    const s=slides();
+    if(!mode){
+      const y=scrollY+90; let i=0;
+      s.forEach((el,n)=>{ if(el.offsetTop<=y) i=n; });
+      return i;
+    }
+    const horiz=mode==='h', size=horiz?innerWidth:innerHeight;
+    return Math.round((horiz?document.body.scrollLeft:document.body.scrollTop)/size);
+  }
+  function show(i,smooth){
+    const s=slides();
+    i=Math.max(0,Math.min(s.length-1,i));
+    const b=smooth?'smooth':'auto';
+    if(!mode) scrollTo({top:Math.max(0,s[i].offsetTop-64), behavior:b});
+    else if(mode==='h') document.body.scrollTo({left:i*innerWidth, behavior:b});
+    else document.body.scrollTo({top:i*innerHeight, behavior:b});
+    countEl.textContent=(i+1)+' / '+s.length;
+  }
+  function set(next){
+    const at=index();
+    mode=(mode===next)?null:next;
+    document.documentElement.classList.toggle('slides-on', !!mode);
+    document.body.classList.toggle('slides', !!mode);
+    document.body.classList.toggle('slides-v', mode==='v');
+    document.body.classList.toggle('slides-h', mode==='h');
+    bV.setAttribute('aria-pressed', String(mode==='v'));
+    bH.setAttribute('aria-pressed', String(mode==='h'));
+    requestAnimationFrame(()=>{ show(at,false); dispatchEvent(new Event('facerinna:tvchange')); });
+  }
+  bV.addEventListener('click',()=>set('v'));
+  bH.addEventListener('click',()=>set('h'));
+  bPrev.addEventListener('click',()=>show(index()-1,true));
+  bNext.addEventListener('click',()=>show(index()+1,true));
+
+  addEventListener('keydown',e=>{
+    if(!mode) return;
+    // the shelf and the quiz own their own arrow keys
+    if(e.target&&e.target.closest&&e.target.closest('#shelfStage,input,textarea,select')) return;
+    const fwd=e.key==='ArrowRight'||e.key==='ArrowDown'||e.key==='PageDown';
+    const back=e.key==='ArrowLeft'||e.key==='ArrowUp'||e.key==='PageUp';
+    if(!fwd&&!back) return;
+    e.preventDefault();
+    show(index()+(fwd?1:-1),true);
+  });
+  const tick=()=>{ if(mode) countEl.textContent=(index()+1)+' / '+slides().length; };
+  addEventListener('scroll',tick,{passive:true});
+  document.body.addEventListener('scroll',tick,{passive:true});
+  addEventListener('resize',()=>{ if(mode) show(index(),false); });
 })();
 document.getElementById('burger').addEventListener('click',()=>document.getElementById('navLinks').classList.toggle('open'));
 document.querySelectorAll('.nav-links a').forEach(a=>a.addEventListener('click',()=>document.getElementById('navLinks').classList.remove('open')));
