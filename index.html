@@ -206,6 +206,38 @@ section{padding:74px 0;position:relative}
 .shelf-name{display:block;font-size:1.15rem;font-weight:700;color:var(--ink);margin-top:2px}
 .shelf-hint{text-align:center;margin-top:12px;font-size:.82rem;color:var(--muted)}
 
+/* ── COVERFLOW CAROUSEL ───────────────────────────────────────────────
+   Ported from the supplied React component into plain DOM: same maths,
+   same feel. Every card is transformed straight from a rAF loop rather
+   than through re-renders, and the ring loops by folding each card's
+   distance into the shorter way round — no cloned nodes. */
+.cf{--cf-card:clamp(190px,26vw,340px);
+  position:absolute;inset:0;z-index:3;display:grid;place-items:center;
+  perspective:calc(var(--cf-card) * 3);cursor:grab;outline:none;touch-action:pan-y}
+.cf:active{cursor:grabbing}
+.cf:focus-visible{box-shadow:inset 0 0 0 2px var(--brand)}
+.cf-track{position:relative;width:100%;height:var(--cf-card);transform-style:preserve-3d}
+.cf-card{position:absolute;left:50%;top:0;width:var(--cf-card);aspect-ratio:1;
+  border-radius:22px;overflow:hidden;will-change:transform,opacity;
+  background:linear-gradient(158deg,rgba(255,255,255,.97),rgba(232,242,251,.93));
+  border:1px solid rgba(255,255,255,.9);
+  box-shadow:0 26px 50px rgba(16,32,52,.34), 0 2px 0 rgba(255,255,255,.7) inset;
+  display:grid;place-items:center;padding:calc(var(--cf-card) * .09);cursor:pointer}
+/* sized off the card variable, not percentages: a percentage here
+   resolves against the track, not the card */
+.cf-card img{max-width:calc(var(--cf-card) * .80);max-height:calc(var(--cf-card) * .80);
+  width:auto;height:auto;object-fit:contain;
+  filter:drop-shadow(0 14px 16px rgba(23,50,79,.22));pointer-events:none;user-select:none}
+.cf-card .cf-tag{position:absolute;top:10px;left:12px;font-size:.58rem;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--accent,var(--brand));
+  padding:3px 8px;border-radius:999px}
+/* the glass reads differently against the void */
+.shelf-stage[data-bg="space"] .cf-card{
+  background:linear-gradient(160deg,rgba(30,38,62,.72),rgba(16,20,38,.68));
+  border-color:rgba(255,255,255,.16);box-shadow:0 26px 54px rgba(0,0,0,.55)}
+@media(max-width:700px){.cf{--cf-card:clamp(150px,52vw,240px)}}
+@media(prefers-reduced-motion:reduce){.cf-card{transition:none}}
+
 /* ── SPACE BACKDROP ───────────────────────────────────────────────────
    A second, selectable sky for the shelf, built entirely in CSS behind the
    transparent WebGL canvas. Depth comes from four independent layers that
@@ -854,6 +886,10 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
   <div class="shelf-wrap reveal" id="shelfWrap">
     <div class="shelf-stage" id="shelfStage" data-bg="forest">
       <canvas id="shelfCanvas"></canvas>
+      <div class="cf" id="cf" tabindex="0" role="region" aria-roledescription="carousel"
+           aria-label="Product range coverflow">
+        <div class="cf-track" id="cfTrack"></div>
+      </div>
       <div class="shelf-bg" id="shelfBg" role="group" aria-label="Shelf backdrop">
         <button type="button" data-bg="forest" aria-pressed="true">Forest</button>
         <button type="button" data-bg="space" aria-pressed="false">Space</button>
@@ -869,7 +905,7 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
       </div>
       <button class="shelf-nav" id="shelfNext" aria-label="Next product" type="button">›</button>
     </div>
-    <p class="shelf-hint">🖱️ Drag, scroll or use ← → to browse the shelf · tap a bottle for its clinical data</p>
+    <p class="shelf-hint">Drag, flick or use ← → to browse · tap a card for its clinical data</p>
   </div>
   <div class="wrap">
     <div class="range-filters reveal" id="rangeFilters" role="tablist" aria-label="Filter by series"></div>
@@ -1411,6 +1447,8 @@ rangeFilters.addEventListener('click', e=>{
     ? document.getElementById('range')
     : document.querySelector('.series-slide[data-series="'+(window.CSS&&CSS.escape?CSS.escape(key):key)+'"]');
   if(target) dispatchEvent(new CustomEvent('facerinna:goto',{detail:{el:target}}));
+  // and bring the coverflow to that series' first product
+  if(key!=='all') dispatchEvent(new CustomEvent('facerinna:cfseries',{detail:key}));
 });
 
 document.addEventListener('click', e=>{
@@ -2159,101 +2197,9 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   });
   const railEnd=x-SPACING;
 
-  const loader=new THREE.TextureLoader();
-  items.forEach(it=>{
-    const mat=new THREE.SpriteMaterial({map:loader.load(it.product.img, tex=>{
-      // keep original resolution: r128 downscales NPOT images to power-of-two when mipmapping
-      tex.generateMipmaps=false;
-      tex.minFilter=THREE.LinearFilter;
-      tex.magFilter=THREE.LinearFilter;
-      tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
-      tex.needsUpdate=true;
-      const iw=tex.image.width||1, ih=tex.image.height||1, ar=iw/ih;
-      const h=2.1, w=h*ar;
-      it.sprite.scale.set(w,h,1);
-      it.baseW=w; it.baseH=h;
-      it.shadow.scale.set(w*0.72, w*0.72*0.32, 1);
-      /* The rim map is a blurred, downscaled copy of the product. Tinting the
-         sharp texture just drew a hard second silhouette offset behind the
-         first; blurring spreads the alpha past the edge so what escapes from
-         behind the product is a soft falloff instead of an outline. 256px is
-         plenty — it is only ever seen out of focus. */
-      if(it.rim){
-        try{
-          const gh=256, gw=Math.max(24, Math.round(gh*ar)), pad=Math.round(gh*0.10);
-          const gc=document.createElement('canvas');
-          gc.width=gw+pad*2; gc.height=gh+pad*2;
-          const g2=gc.getContext('2d');
-          g2.filter='blur('+Math.round(gh*0.045)+'px)';
-          g2.drawImage(tex.image, pad, pad, gw, gh);
-          const gtex=new THREE.CanvasTexture(gc);
-          gtex.generateMipmaps=false;
-          gtex.minFilter=THREE.LinearFilter; gtex.magFilter=THREE.LinearFilter;
-          it.rim.material.map=gtex;
-          it.rim.material.needsUpdate=true;
-          it.rimPad=1+ (pad*2)/gh;      // the blur padding widens the quad
-        }catch(err){}
-      }
-    }), transparent:true, depthTest:false});
-    const sprite=new THREE.Sprite(mat);
-    sprite.position.set(it.x, BASE_Y, 0);
-    sprite.scale.set(1.5,2.1,1);
-    scene.add(sprite);
-    it.sprite=sprite;
-
-    /* Rim light: the same silhouette drawn a little larger and offset toward
-       the light, additively behind the product, so a cool edge peeks out
-       along the top-left. A billboard has no normals to light, so the
-       silhouette itself is what gets lit. Space only — it is switched on by
-       the backdrop. */
-    const rimMat=new THREE.SpriteMaterial({map:mat.map, transparent:true, depthTest:false,
-      depthWrite:false, blending:THREE.AdditiveBlending, opacity:0});
-    rimMat.color.set(0x5f9bff);
-    const rim=new THREE.Sprite(rimMat);
-    rim.position.set(it.x, BASE_Y, -0.01);
-    rim.renderOrder=-1;
-    rim.visible=false;
-    scene.add(rim);
-    it.rim=rim;
-
-    const shCanvas=document.createElement('canvas'); shCanvas.width=128; shCanvas.height=64;
-    const sctx=shCanvas.getContext('2d');
-    const grad=sctx.createRadialGradient(64,32,2,64,32,60);
-    grad.addColorStop(0,'rgba(20,40,60,.32)'); grad.addColorStop(1,'rgba(20,40,60,0)');
-    sctx.fillStyle=grad; sctx.fillRect(0,0,128,64);
-    const shTex=new THREE.CanvasTexture(shCanvas);
-    const shMat=new THREE.SpriteMaterial({map:shTex, transparent:true, depthTest:false});
-    const shadow=new THREE.Sprite(shMat);
-    shadow.position.set(it.x, BASE_Y-0.78, -0.01);
-    shadow.scale.set(0.8,0.32,1);
-    scene.add(shadow);
-    it.shadow=shadow;
-  });
-
-  // series labels, floating above the first item of each block
-  function makeLabelSprite(text, color){
-    const c=document.createElement('canvas'); c.width=512; c.height=96;
-    const ctx=c.getContext('2d');
-    ctx.font='700 44px Inter, sans-serif';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle=color;
-    ctx.fillText(text.toUpperCase(), 256, 52);
-    const tex=new THREE.CanvasTexture(c);
-    const mat=new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false});
-    const s=new THREE.Sprite(mat);
-    s.scale.set(2.1,0.4,1);
-    return s;
-  }
-  let seenCat=null;
-  items.forEach(it=>{
-    if(it.product.cat!==seenCat){
-      seenCat=it.product.cat;
-      const s=SERIES.find(s=>s.key===seenCat);
-      const label=makeLabelSprite(seenCat, s?s.accent:'#2E7CBE');
-      label.position.set(it.x, 1.35, 0);
-      scene.add(label);
-    }
-  });
+  /* The products themselves are no longer in this scene — they are the
+     coverflow carousel in the DOM above this canvas. What is left here is
+     purely the backdrop: sky, trees, mist, light, pollen and butterfly. */
 
   /* ---- ANIMATED FOREST BACKDROP -------------------------------------
      Original procedural art: every layer is drawn to a canvas at runtime,
@@ -2635,11 +2581,6 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   function setBackdrop(mode){
     const space = mode==='space';
     forestParts.forEach(m=>{ m.visible=!space; });
-    items.forEach(it=>{
-      if(it.rim){ it.rim.visible=space; it.rim.material.opacity=space?0.62:0; }
-      // nothing to cast onto in the void; the mist still reads as ground
-      if(it.shadow){ it.shadow.visible=!space; }
-    });
     // (the old CSS brightness filter on the canvas is gone: it re-filtered
     //  the whole surface every frame, and the products already read well)
     motes.material.opacity = space ? 0.9 : 0.75;
@@ -2663,32 +2604,8 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   try{ savedBg=localStorage.getItem('facerinna:shelfBg')||'forest'; }catch(e){}
   setBackdrop(savedBg==='space'?'space':'forest');
 
-  let camX=0, targetX=0, dragging=false, moved=0, startPX=0, startCamX=0, snapTimer=null, rafId=null;
-  let autoRun=!reduceMotion, autoDir=1, autoResumeTimer=null;
-  const AUTO_SPEED=0.62;   // world units per second
-  function pauseAuto(){
-    autoRun=false;
-    clearTimeout(autoResumeTimer);
-    if(!reduceMotion) autoResumeTimer=setTimeout(()=>{autoRun=true;}, 3200);
-  }
-  const nameEl=document.getElementById('shelfName'), seriesEl=document.getElementById('shelfSeries');
-  let lastNearest=-1;
+  let camX=railEnd*0.5, targetX=railEnd*0.5, rafId=null;   // parked mid-rail
 
-  function nearestIndex(v){
-    let bi=0, bd=Infinity;
-    items.forEach((it,i)=>{ const d=Math.abs(it.x-v); if(d<bd){bd=d;bi=i;} });
-    return bi;
-  }
-  function updateLabel(force){
-    const idx=nearestIndex(targetX);
-    if(idx!==lastNearest||force){
-      lastNearest=idx;
-      const it=items[idx];
-      nameEl.textContent=it.product.name;
-      seriesEl.textContent=it.product.cat;
-    }
-  }
-  updateLabel(true);
 
   function resize(){
     const w=stage.clientWidth, h=stage.clientHeight;
@@ -2706,87 +2623,14 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     return vh*camera.aspect;
   }
 
-  function clampTarget(){ targetX=Math.max(-0.4, Math.min(railEnd+0.4, targetX)); }
-
-  function pointX(e){ return e.touches? e.touches[0].clientX : e.clientX; }
-  function onDown(e){
-    dragging=true; moved=0; startPX=pointX(e); startCamX=targetX;
-    stage.classList.add('dragging');
-    clearTimeout(snapTimer);
-    pauseAuto();
-  }
-  function onMove(e){
-    if(!dragging) return;
-    const x2=pointX(e), dx=x2-startPX;
-    moved=Math.max(moved, Math.abs(dx));
-    const worldPerPx=visibleWorldWidth()/stage.clientWidth;
-    targetX=startCamX-dx*worldPerPx;
-    clampTarget();
-    updateLabel();
-  }
-  function onUp(e){
-    if(!dragging) return;
-    dragging=false;
-    stage.classList.remove('dragging');
-    if(moved<6){
-      pick(e);
-    }else{
-      snapTimer=setTimeout(snapToNearest, 120);
-    }
-  }
-  function snapToNearest(){
-    const idx=nearestIndex(targetX);
-    targetX=items[idx].x;
-    clampTarget();
-    updateLabel(true);
-  }
-  stage.addEventListener('pointerdown', e=>{ onDown(e); try{stage.setPointerCapture(e.pointerId);}catch(err){} });
-  stage.addEventListener('pointermove', onMove);
-  stage.addEventListener('pointerup', onUp);
-  stage.addEventListener('pointercancel', onUp);
-  stage.addEventListener('wheel', e=>{
-    if(Math.abs(e.deltaX)>Math.abs(e.deltaY) || e.shiftKey){
-      e.preventDefault();
-      pauseAuto();
-      const d=(e.deltaX||e.deltaY)*0.0026;
-      targetX+=d; clampTarget(); updateLabel();
-      clearTimeout(snapTimer); snapTimer=setTimeout(snapToNearest, 220);
-    }
-  }, {passive:false});
-
-  stage.setAttribute('tabindex','0');
-  stage.addEventListener('keydown', e=>{
-    if(e.key==='ArrowRight'){ e.preventDefault(); step(1); }
-    else if(e.key==='ArrowLeft'){ e.preventDefault(); step(-1); }
-  });
-  function step(dir){
-    pauseAuto();
-    const idx=Math.max(0, Math.min(items.length-1, nearestIndex(targetX)+dir));
-    targetX=items[idx].x; clampTarget(); updateLabel(true);
-  }
-  document.getElementById('shelfPrev').addEventListener('click', ()=>step(-1));
-  document.getElementById('shelfNext').addEventListener('click', ()=>step(1));
+  /* Camera holds a fixed viewpoint now: the backdrop no longer pans, because
+     the products it used to follow are in the DOM carousel above it. */
 
   const fsBtn=document.getElementById('shelfFS');
   if(!window.FACERINNA_TV||!window.FACERINNA_TV.supported){ fsBtn.hidden=true; }
   fsBtn.addEventListener('pointerdown', e=>e.stopPropagation());
   fsBtn.addEventListener('click', ()=>window.FACERINNA_TV.toggle());
   addEventListener('facerinna:tvchange', ()=>{ requestAnimationFrame(resize); });
-
-  function pick(e){
-    const rect=stage.getBoundingClientRect();
-    const ndc=new THREE.Vector2(
-      ((pointX(e)-rect.left)/rect.width)*2-1,
-      -(((e.changedTouches?e.changedTouches[0].clientY:e.clientY)-rect.top)/rect.height)*2+1
-    );
-    const ray=new THREE.Raycaster();
-    ray.setFromCamera(ndc, camera);
-    const hits=ray.intersectObjects(items.map(it=>it.sprite));
-    if(hits.length){
-      const it=items.find(x=>x.sprite===hits[0].object);
-      if(it) openClin(it.product.name);
-    }
-  }
 
   let visible=true;
   const io=new IntersectionObserver(es=>{ visible=es[0].isIntersecting; if(visible&&!rafId) loop(); }, {threshold:.05});
@@ -2801,12 +2645,6 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     // real-world speed on a 60Hz laptop and a 120Hz phone
     const dt=lastT ? Math.min((t-lastT)/1000, 0.1) : 1/60;
     lastT=t;
-    if(autoRun && !dragging){
-      targetX+=autoDir*AUTO_SPEED*dt;
-      if(targetX>=railEnd){ targetX=railEnd; autoDir=-1; }
-      else if(targetX<=0){ targetX=0; autoDir=1; }
-      updateLabel();
-    }
     camX+=(targetX-camX)*(1-Math.pow(1-0.12, dt*60));
 
     // the sun rides with the camera — at that distance it should not slide
@@ -2844,22 +2682,173 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     if(!reduceMotion) camY+=Math.sin(t*0.0006)*0.035;
     camera.position.set(camX, camY, CAM_Z);
     camera.lookAt(camX, BASE_Y, 0);
-    items.forEach(it=>{
-      const dist=Math.abs(it.x-camX);
-      const focus=Math.max(0, 1-dist/1.05);
-      const s=1+focus*0.2;
-      it.sprite.scale.set(it.baseW*s, it.baseH*s, 1);
-      it.sprite.position.y=BASE_Y+focus*0.09;
-      if(it.rim && it.rim.visible){
-        const g=it.rimPad||1.06;
-        it.rim.scale.set(it.baseW*s*g, it.baseH*s*g, 1);
-        // nudged toward the light, which is the planet's lit side
-        it.rim.position.set(it.x-it.baseW*0.012, it.sprite.position.y+it.baseH*0.012, -0.01);
-      }
-    });
     renderer.render(scene, camera);
   }
   requestAnimationFrame(loop);
+})();
+
+/* ============================================================
+   COVERFLOW CAROUSEL — vanilla port of the supplied React component.
+   The maths is unchanged: a fractional card index is the single source of
+   truth, cards are painted straight to the DOM from a rAF loop (sixty state
+   updates a second would re-render every card for numbers nothing needs to
+   see), and looping folds each card's offset into the shorter way round the
+   ring rather than cloning nodes.
+   ============================================================ */
+(function(){
+  const frame=document.getElementById('cf'), track=document.getElementById('cfTrack');
+  if(!frame||!track) return;
+  const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const ROTATE=44, DEPTH=0.6, FALLOFF=0.56, FADE=0.10, GAP=0.05, LOOP=true;
+  const slides=PRODUCTS;
+  const count=slides.length;
+
+  let pos=0;          // fractional index at the centre
+  let target=0;       // where the settle is headed — stepping off `pos` would
+                      // swallow a keypress that lands mid-flight
+  let width=0, raf=null, drag=null, selected=0;
+
+  const cards=slides.map((p,i)=>{
+    const s=SERIES.find(s=>s.key===p.cat);
+    const el=document.createElement('div');
+    el.className='cf-card';
+    el.setAttribute('role','group');
+    el.setAttribute('aria-roledescription','slide');
+    el.setAttribute('aria-label',(i+1)+' of '+count+' — '+p.name);
+    el.style.setProperty('--accent', s?s.accent:'var(--brand)');
+    el.innerHTML=(p.best?'<span class="cf-tag">Best-seller</span>':'')+
+      '<img src="'+p.img+'" alt="'+p.name.replace(/"/g,'&quot;')+'" draggable="false">';
+    track.appendChild(el);
+    return el;
+  });
+
+  const indexAt=v=>((Math.round(v)%count)+count)%count;
+  const clamp=v=>LOOP?v:Math.max(0,Math.min(count-1,v));
+
+  function paint(){
+    if(!width) return;
+    const pitch=width*(1+GAP);
+    for(let i=0;i<cards.length;i++){
+      let offset=i-pos;
+      if(LOOP){
+        offset=((offset%count)+count)%count;
+        if(offset>count/2) offset-=count;
+      }
+      const distance=Math.abs(offset);
+      // tilt and recession both ease off with distance: a linear ramp folds
+      // the second card shut, this keeps it readable
+      const ramp=Math.pow(distance,FALLOFF);
+      const tilt=Math.min(ROTATE*ramp,82)*Math.sign(offset);
+      cards[i].style.transform=
+        'translateX(calc(-50% + '+(offset*pitch)+'px)) '+
+        'translateZ('+(-DEPTH*width*ramp)+'px) rotateY('+(-tilt)+'deg)';
+      // a card is teleported across the ring at half a turn out, so it has to
+      // be gone by then or the jump shows
+      const edge=LOOP?Math.min(1,Math.max(0,count/2-distance)):1;
+      cards[i].style.opacity=String(Math.max(0,1-FADE*distance)*edge);
+      cards[i].style.zIndex=String(100-Math.round(distance));
+    }
+  }
+
+  const nameEl=document.getElementById('shelfName'),
+        seriesEl=document.getElementById('shelfSeries');
+  function setSelected(i){
+    if(i===selected) return;
+    selected=i;
+    const p=slides[i];
+    if(nameEl) nameEl.textContent=p.name;
+    if(seriesEl) seriesEl.textContent=p.cat;
+  }
+
+  function settle(to){
+    if(raf!==null) cancelAnimationFrame(raf);
+    target=to;
+    setSelected(indexAt(to));
+    if(reduceMotion){ pos=to; paint(); raf=null; return; }
+    (function step(){
+      const remaining=target-pos;
+      if(Math.abs(remaining)<0.0004){ pos=target; paint(); raf=null; return; }
+      pos+=remaining*0.16;                 // exponential ease-out, not a spring
+      paint();
+      raf=requestAnimationFrame(step);
+    })();
+  }
+  function nudge(by){ settle(clamp(Math.round(target)+by)); }
+  function goTo(i){
+    // take the shorter way round rather than unwinding the whole ring
+    settle(clamp(LOOP ? i+Math.round((target-i)/count)*count : i));
+  }
+
+  frame.addEventListener('pointerdown',e=>{
+    if(e.target.closest('#shelfBg,#shelfFS')) return;
+    if(raf!==null){ cancelAnimationFrame(raf); raf=null; }
+    frame.setPointerCapture(e.pointerId);
+    target=pos;
+    drag={id:e.pointerId,x:e.clientX,pos:pos,v:0,t:performance.now(),moved:0,
+          card:e.target.closest('.cf-card')};
+  });
+  frame.addEventListener('pointermove',e=>{
+    if(!drag||drag.id!==e.pointerId) return;
+    const pitch=width*(1+GAP);
+    if(!pitch) return;
+    const now=performance.now(), prev=pos;
+    drag.moved=Math.max(drag.moved,Math.abs(e.clientX-drag.x));
+    pos=clamp(drag.pos-(e.clientX-drag.x)/pitch);
+    drag.v=((pos-prev)/Math.max(now-drag.t,1))*1000;   // cards per second
+    drag.t=now;
+    setSelected(indexAt(pos));
+    paint();
+  });
+  function endDrag(e){
+    if(!drag||drag.id!==e.pointerId) return;
+    const moved=drag.moved, dv=drag.v, drag2card=drag.card;
+    drag=null;
+    if(moved<6){
+      // a tap, not a throw: open whichever card was under the finger when it
+      // went down — capture has since retargeted the event to the frame
+      const i=drag2card?cards.indexOf(drag2card):-1;
+      settle(clamp(Math.round(pos)));
+      if(i>=0){ if(i===indexAt(pos)) openClin(slides[i].name); else goTo(i); }
+      return;
+    }
+    // let a flick carry, but never more than two cards
+    settle(clamp(Math.round(pos+Math.max(-2,Math.min(2,dv*0.18)))));
+  }
+  frame.addEventListener('pointerup',endDrag);
+  frame.addEventListener('pointercancel',endDrag);
+  frame.addEventListener('keydown',e=>{
+    if(e.key==='ArrowLeft'){ e.preventDefault(); nudge(-1); }
+    else if(e.key==='ArrowRight'){ e.preventDefault(); nudge(1); }
+    else if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openClin(slides[selected].name); }
+  });
+  frame.addEventListener('wheel',e=>{
+    if(Math.abs(e.deltaX)>Math.abs(e.deltaY)||e.shiftKey){ e.preventDefault(); nudge(e.deltaX>0?1:-1); }
+  },{passive:false});
+
+  const prev=document.getElementById('shelfPrev'), next=document.getElementById('shelfNext');
+  if(prev) prev.addEventListener('click',()=>nudge(-1));
+  if(next) next.addEventListener('click',()=>nudge(1));
+
+  // card width drives pitch, depth and perspective, so it is the only thing
+  // worth measuring — and only when the box actually changes
+  function measure(){
+    if(!cards[0]) return;
+    width=cards[0].offsetWidth;
+    paint();
+  }
+  measure();
+  if(window.ResizeObserver) new ResizeObserver(measure).observe(frame);
+  else addEventListener('resize',measure);
+  addEventListener('facerinna:tvchange',()=>requestAnimationFrame(measure));
+  // jumping to a series from the chips lands on that series' first product
+  addEventListener('facerinna:cfseries',e=>{
+    const i=slides.findIndex(p=>p.cat===e.detail);
+    if(i>=0) goTo(i);
+  });
+  setSelected(0);
+  if(nameEl) nameEl.textContent=slides[0].name;
+  if(seriesEl) seriesEl.textContent=slides[0].cat;
 })();
 
 /* ============================================================
