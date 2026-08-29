@@ -48,6 +48,76 @@ a{color:inherit}
   border-bottom:1px solid var(--line);transition:box-shadow .3s}
 .nav.scrolled{box-shadow:var(--shadow-sm)}
 .nav-in{display:flex;align-items:center;justify-content:space-between;gap:20px;height:64px}
+
+/* ── COLLAPSING NAV ───────────────────────────────────────────────────
+   The animated-nav component's behaviour, applied to the header this page
+   already has rather than to a four-link demo bar: scrolling down past
+   150px folds it into a pill, scrolling back up 80px unfolds it, and
+   clicking the pill unfolds it too. Every header feature — brand, both
+   certification marks, all seven links, Play & Win, the TV button and the
+   burger — is still in the bar; they only fade out with the same staggered
+   in/out the component uses.
+
+   The header keeps its 64px slot in the flow no matter what state it is
+   in, so nothing below it ever moves: the pill is the *inner* row
+   shrinking, not the bar's box. That is also why this cannot cost a
+   full-page reflow — `contain` holds the work to the header itself, and
+   everything the children animate is opacity and transform, which the
+   compositor handles without touching layout at all. */
+/* The bar's own box is pinned. Without this it sizes to the inner row, so
+   the row's height and margin animating during a fold shrinks the header by
+   a few pixels, the page below shifts, the browser adjusts the scroll
+   position to compensate — and that adjustment arrives back at the scroll
+   handler as a real scroll, which folds or unfolds the bar again. A fixed
+   height breaks that loop at the source. */
+.nav{height:64px;box-sizing:border-box;contain:layout style;
+  transition:box-shadow .3s, background-color .42s ease, border-color .42s ease}
+body.nav-collapsed .nav{background:transparent;border-bottom-color:transparent;
+  box-shadow:none !important;-webkit-backdrop-filter:none;backdrop-filter:none;
+  pointer-events:none}
+.nav-in{position:relative;border-radius:0;
+  transition:max-width .52s cubic-bezier(.22,1.1,.36,1),
+             border-radius .42s ease, background-color .42s ease,
+             box-shadow .42s ease, margin .52s cubic-bezier(.22,1.1,.36,1),
+             transform .2s ease}
+/* The pill is deliberately opaque. Giving it its own backdrop-filter meant
+   tearing down the bar's blur layer and building a second one in the same
+   frame, which was the single 116ms hitch at the start of every fold; a flat
+   fill is indistinguishable at 52px and costs nothing. */
+body.nav-collapsed .nav-in{max-width:52px;min-width:0;padding:0;margin:6px auto;
+  height:52px;border-radius:999px;justify-content:center;overflow:hidden;
+  background:#FBF6F4;box-shadow:var(--shadow-md);cursor:pointer;pointer-events:auto}
+/* the layer is promoted only while a fold is actually running */
+body.nav-anim .nav-in{will-change:max-width,transform}
+body.nav-collapsed .nav-in:hover{transform:scale(1.08)}
+body.nav-collapsed .nav-in:active{transform:scale(.95)}
+
+/* the contents fade and slide, staggered — forwards on the way in,
+   in reverse on the way out, as the component does */
+.nav-in > *:not(.nav-pill-icon){
+  transition:opacity .26s ease, transform .26s ease, visibility 0s linear 0s;
+  transition-delay:calc(var(--ni,0) * .055s), calc(var(--ni,0) * .055s), 0s}
+.nav-in > *:nth-child(1){--ni:0}
+.nav-in > *:nth-child(2){--ni:1}
+.nav-in > *:nth-child(3){--ni:2}
+.nav-in > *:nth-child(4){--ni:3}
+.nav-in > *:nth-child(5){--ni:4}
+body.nav-collapsed .nav-in > *:not(.nav-pill-icon){
+  opacity:0;transform:translateX(-20px) scale(.95);visibility:hidden;
+  transition-delay:calc((4 - var(--ni,0)) * .04s), calc((4 - var(--ni,0)) * .04s), .26s}
+/* the menu glyph that stands in for the whole bar */
+.nav-pill-icon{position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%) scale(.8);opacity:0;pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease}
+.nav-pill-icon span{display:block;width:18px;height:2px;border-radius:2px;
+  background:var(--ink);margin:4px 0}
+body.nav-collapsed .nav-pill-icon{opacity:1;transform:translate(-50%,-50%) scale(1);
+  transition:opacity .3s ease .15s, transform .3s cubic-bezier(.22,1.2,.36,1) .15s}
+/* on the dark skies the pill has to read as a pill */
+body.space-theme.nav-collapsed .nav-in{background:#141A2E}
+body.space-theme .nav-pill-icon span{background:#F1F5FB}
+@media(prefers-reduced-motion:reduce){
+  .nav,.nav-in,.nav-in > *,.nav-pill-icon{transition-duration:0s !important}}
 .brand{flex:0 0 auto;padding-right:20px;position:relative}
 /* a hairline sets the brand apart from the certification marks */
 .brand::after{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);
@@ -157,6 +227,16 @@ body.slides-h .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1
   opacity:0;visibility:hidden;transition:opacity .9s ease,visibility 0s linear .9s;
   background-size:cover;background-position:center}
 .slide.active{opacity:1;visibility:visible;transition:opacity .9s ease,visibility 0s}
+/* fit:'cover' — the component's own treatment, for photographs: the picture
+   fills the slide and the caption rides a scrim so it stays readable */
+.slide-fill{position:absolute;inset:0;background-size:cover;background-position:center}
+.slide-scrim{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(6,20,34,.78) 0%,rgba(6,20,34,.46) 46%,rgba(6,20,34,.06) 82%)}
+.slide.cover .slide-text span{color:#fff}
+.slide.cover .slide-text .slide-sub{color:#9FDBFB}
+@media(max-width:900px){
+  .slide.cover .slide-scrim{background:linear-gradient(0deg,rgba(6,20,34,.86) 0%,rgba(6,20,34,.42) 42%,rgba(6,20,34,.05) 78%)}}
+
 /* product slides: art held in the right half so it never crowds the type */
 .slide-kv{position:absolute;top:0;right:0;bottom:0;width:56%;
   display:flex;align-items:center;justify-content:center;padding:4vh 3vw}
@@ -466,6 +546,10 @@ body.space-theme section,body.space-theme .hero,body.space-theme #range,
 body.space-theme #heroes,body.space-theme #evidence,body.space-theme #game,
 body.space-theme #clinic,body.space-theme #qrcore,body.space-theme .series-slide{background:transparent}
 body.space-theme .nav{background:rgba(11,14,26,.78);border-bottom-color:rgba(255,255,255,.10)}
+/* this rule is later in the sheet than the collapse rule and carries the
+   same weight, so the folded bar needs the dark-sky case spelled out or the
+   band stays painted across the top */
+body.space-theme.nav-collapsed .nav{background:transparent;border-bottom-color:transparent}
 body.space-theme .footer{background:rgba(7,9,18,.82)}
 body.space-theme .range-filters.filters-dock{background:rgba(11,14,26,.82);
   border-bottom-color:rgba(255,255,255,.10)}
@@ -974,6 +1058,8 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
     </nav>
     <button class="tv-btn" id="tvBtn" type="button" aria-label="Full screen TV mode" title="Full screen (TV mode)">⛶</button>
     <button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
+    <!-- shown only while the bar is collapsed to its pill -->
+    <span class="nav-pill-icon" aria-hidden="true"><span></span><span></span><span></span></span>
   </div>
 </header>
 
@@ -2138,6 +2224,31 @@ const HEROES = [
    presentation mode already owns them page-wide.
    ============================================================ */
 (function(){
+  /* ══ REPLACE THE SLIDE 02–05 PICTURES HERE ═══════════════════════════
+     Four slots, one per slide, in order. Fill in only what you want to
+     change and leave the rest as '' — an empty field keeps what is there
+     now (the hero product's own render, name and category line).
+
+       img   a file name sitting next to this page ("slide2.jpg"), or a
+             full https:// address. '' keeps the product render.
+       fit   'cover'   fills the whole slide, cropped — use for photos.
+             'contain' (the default) shows the picture whole on the brand
+                       gradient — use for packshots and artwork.
+             'cover' also switches the caption to white on a dark scrim so
+             it stays readable over a photograph.
+       line1 the big first line.  line2  the big second line.
+       sub   the small line underneath.
+
+     Slide 01 is the key visual in the markup above; to change that one,
+     replace hero-banner.jpg or edit its <img src>.
+     ═══════════════════════════════════════════════════════════════════ */
+  const SLIDE_OVERRIDES = [
+    {img:'', fit:'', line1:'', line2:'', sub:''},   // slide 02
+    {img:'', fit:'', line1:'', line2:'', sub:''},   // slide 03
+    {img:'', fit:'', line1:'', line2:'', sub:''},   // slide 04
+    {img:'', fit:'', line1:'', line2:'', sub:''}    // slide 05
+  ];
+
   const show=document.getElementById('heroShow');
   if(!show || typeof HEROES==='undefined') return;
   const counter=document.getElementById('heroCount');
@@ -2158,13 +2269,25 @@ const HEROES = [
     return [w.slice(0,best).join(' '), w.slice(best).join(' ')];
   }
 
-  HEROES.forEach(function(h){
-    const [l1,l2]=twoLines(h.name);
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  HEROES.forEach(function(h,i){
+    const o=SLIDE_OVERRIDES[i]||{};
+    const auto=twoLines(h.name);
+    const l1=o.line1||auto[0], l2=o.line2||auto[1], sub=o.sub||h.tag;
+    const img=o.img||h.img;
+    const cover=(o.fit==='cover');
     const el=document.createElement('div');
-    el.className='slide';
-    el.innerHTML='<div class="slide-kv"><img src="'+h.img+'" alt="'+h.name+'" loading="lazy"></div>'+
-      '<div class="slide-text"><span>'+l1+'</span><span>'+l2+'</span>'+
-      '<span class="slide-sub">'+h.tag+'</span></div>';
+    el.className='slide'+(cover?' cover':'');
+    // 'cover' is the component's own treatment: the picture fills the slide
+    // as a background and the caption sits on a scrim over it.
+    el.innerHTML=(cover
+        ? '<div class="slide-fill" style="background-image:url('+JSON.stringify(img)+')"></div>'+
+          '<span class="slide-scrim"></span>'
+        : '<div class="slide-kv"><img src="'+esc(img)+'" alt="'+esc(l1+' '+l2)+'" loading="lazy"></div>')+
+      '<div class="slide-text"><span>'+esc(l1)+'</span><span>'+esc(l2)+'</span>'+
+      '<span class="slide-sub">'+esc(sub)+'</span></div>';
     show.insertBefore(el, document.getElementById('heroPrev'));
   });
 
@@ -2522,7 +2645,84 @@ document.querySelectorAll('.hero-prod').forEach(card=>{
    SCROLL / NAV / COUNTERS
    ============================================================ */
 const nav=document.getElementById('nav');
-addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10));
+addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passive:true});
+
+/* ============================================================
+   COLLAPSING NAV
+   The animated-nav component's logic, verbatim: scrolling down past 150px
+   collapses the bar and remembers where that happened; scrolling back up
+   more than EXPAND_SCROLL_THRESHOLD from that point expands it again; and
+   a click while collapsed expands it.
+
+   It is applied to this page's own header rather than to the component's
+   four-link demo bar, so nothing is lost — every link, both certification
+   marks, Play & Win, the TV button and the burger are still there and come
+   back with the same staggered motion.
+
+   Cost: this listener reads window.scrollY and nothing else — no geometry,
+   so it can never force a layout — and it only touches the DOM on the two
+   frames where a threshold is actually crossed. Everything after that is
+   CSS, contained to the header.
+   ============================================================ */
+(function(){
+  const navIn=document.getElementById('navIn');
+  if(!navIn) return;
+  const EXPAND_SCROLL_THRESHOLD=80;
+  /* The component reacts to any change of direction, which assumes scrolling
+     is monotonic. This page snaps (scroll-snap-type: y proximity), so the
+     position jitters by a pixel or two as it settles, and a raw port flips
+     state on that jitter — including re-collapsing the bar the instant you
+     click the pill to open it. Movement under this many pixels is ignored
+     and not counted, so jitter accumulates to nothing. */
+  const DEADZONE=4;
+  let expanded=true, lastY=scrollY, collapsedAt=0, holdUntil=0;
+
+  const focusable=navIn.querySelectorAll('a,button');
+  let animTimer=null;
+  function setExpanded(on){
+    if(on===expanded) return;
+    expanded=on;
+    // promote the row's layer for the length of the fold and no longer
+    document.body.classList.add('nav-anim');
+    clearTimeout(animTimer);
+    animTimer=setTimeout(function(){ document.body.classList.remove('nav-anim'); }, 700);
+    document.body.classList.toggle('nav-collapsed', !on);
+    // keep the hidden links out of the tab order while they are not visible
+    for(let i=0;i<focusable.length;i++){
+      if(on) focusable[i].removeAttribute('tabindex');
+      else focusable[i].setAttribute('tabindex','-1');
+    }
+  }
+
+  addEventListener('scroll', function(){
+    const y=scrollY, prev=lastY;
+    if(Math.abs(y-prev)<DEADZONE) return;      // leaves lastY alone on purpose
+    lastY=y;
+    if(performance.now()<holdUntil) return;
+    // an open mobile menu is the one thing that must not be folded away
+    if(document.getElementById('navLinks').classList.contains('open')) return;
+    if(expanded && y>prev && y>150){ setExpanded(false); collapsedAt=y; }
+    else if(!expanded && y>prev){
+      /* The component records the collapse point once and never moves it, so
+         after a long scroll down the bar can only be recovered by clicking:
+         "collapsedAt − y > 80" stays false everywhere below it. Following the
+         deepest point instead makes the threshold mean what it reads like —
+         scroll up 80px from wherever you are and the bar comes back. */
+      if(y>collapsedAt) collapsedAt=y;
+    }
+    else if(!expanded && y<prev && (collapsedAt-y > EXPAND_SCROLL_THRESHOLD)){ setExpanded(true); }
+  }, {passive:true});
+
+  // clicking the pill brings the bar back; while expanded this is inert and
+  // the click falls through to whatever link was actually pressed
+  navIn.addEventListener('click', function(e){
+    if(expanded) return;
+    e.preventDefault(); e.stopPropagation();
+    setExpanded(true);
+    // a deliberate open must survive the snap settling underneath it
+    lastY=scrollY; holdUntil=performance.now()+700;
+  }, true);
+})();
 /* STARFIELD — painted once to a canvas, then tiled as a bitmap.
    Built as CSS radial-gradients this was hundreds of gradient paints per
    rasterisation, which is what made the space backdrop crawl; a bitmap tile
