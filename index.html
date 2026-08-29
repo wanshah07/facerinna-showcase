@@ -232,11 +232,50 @@ section{padding:74px 0;position:relative}
   letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--accent,var(--brand));
   padding:3px 8px;border-radius:999px}
 /* the glass reads differently against the void */
-.shelf-stage[data-bg="space"] .cf-card{
+.shelf-stage[data-dark] .cf-card{
   background:linear-gradient(160deg,rgba(30,38,62,.72),rgba(16,20,38,.68));
   border-color:rgba(255,255,255,.16);box-shadow:0 26px 54px rgba(0,0,0,.55)}
 @media(max-width:700px){.cf{--cf-card:clamp(150px,52vw,240px)}}
 @media(prefers-reduced-motion:reduce){.cf-card{transition:none}}
+
+/* ── AURORA BACKDROP (WebGL "Mesh drift" shader) ──────────────────────
+   The default sky. One full-viewport WebGL canvas running the 21st.dev
+   Shader Builder recipe: four colours (deep teal → launch blue → cyan →
+   near-white) advected through a domain-warped fBm field, with the pointer
+   twisting the field locally. Fixed behind the page like the space sky, so
+   it dresses the whole showcase, not just the shelf.
+
+   The CSS gradient underneath is the fallback: if WebGL is unavailable or
+   the shader fails to compile, the canvas is removed and the gradient is
+   what the booth shows — never a blank panel. */
+#shaderBg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;
+  opacity:0;transition:opacity .9s ease;
+  background:radial-gradient(120% 100% at 18% 12%, #12536f 0%, #06283a 48%, #031C26 100%)}
+body.aurora-theme #shaderBg{opacity:1}
+html.aurora-bg{background:#031C26}
+#shaderBg canvas{display:block;width:100%;height:100%}
+/* the shader's bright cyan lobes would eat light text on their own, so a
+   fixed scrim rides on top — dark enough to hold contrast, thin enough that
+   the mesh still reads as motion behind the content */
+/* the fallback sky: only shown when the shader has been withdrawn. Two soft
+   lobes of the same palette on one transform-animated layer — compositor
+   work only, so it stays smooth on the hardware that couldn't manage WebGL */
+#shaderBg .shader-fallback{display:none;position:absolute;inset:-25%;
+  background:
+    radial-gradient(38% 34% at 30% 34%, rgba(90,210,244,.30) 0%, rgba(90,210,244,0) 70%),
+    radial-gradient(34% 30% at 72% 66%, rgba(27,108,168,.34) 0%, rgba(27,108,168,0) 72%),
+    radial-gradient(26% 22% at 62% 22%, rgba(234,249,255,.14) 0%, rgba(234,249,255,0) 74%)}
+body.aurora-static #shaderBg .shader-fallback{display:block;
+  animation:auroraDrift 46s ease-in-out infinite;will-change:transform}
+@keyframes auroraDrift{
+  0%,100%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(3.5%,-2.5%,0) scale(1.08)}}
+@media(prefers-reduced-motion:reduce){
+  body.aurora-static #shaderBg .shader-fallback{animation:none}}
+#shaderBg .shader-scrim{position:absolute;inset:0;display:block;
+  background:
+    radial-gradient(120% 86% at 50% 44%, rgba(2,16,26,0) 40%, rgba(2,16,26,.55) 100%),
+    linear-gradient(180deg, rgba(3,20,32,.46) 0%, rgba(3,20,32,.30) 38%, rgba(3,20,32,.56) 100%)}
 
 /* ── SPACE BACKDROP ───────────────────────────────────────────────────
    A second, selectable sky for the shelf, built entirely in CSS behind the
@@ -250,10 +289,14 @@ section{padding:74px 0;position:relative}
 #spaceSky{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;
   opacity:0;transition:opacity .9s ease;
   background:radial-gradient(120% 90% at 22% 8%, #171a2e 0%, #0e1020 42%, #0B0B10 78%)}
-body.space-theme #spaceSky{opacity:1}
+/* one sky at a time: aurora wins over space, and whichever is not showing
+   stops animating — an invisible layer that still ticks is pure cost */
+body.space-theme:not(.aurora-theme) #spaceSky{opacity:1}
+body:not(.space-theme) #spaceSky *,
+body.aurora-theme #spaceSky *{animation:none !important}
 html.space-bg{background:#0B0B10}
 body.space-theme{background:transparent}
-.shelf-stage[data-bg="space"]{background:transparent}
+.shelf-stage[data-dark]{background:transparent}
 #spaceSky > span{position:absolute;display:block}
 
 /* nebula clouds + the galactic band, on one slowly breathing layer */
@@ -365,6 +408,9 @@ body.space-theme{
   --line:rgba(255,255,255,.16);
   --ink:#F1F5FB; --ink-2:#C6D4E8; --muted:#9BADC7;
   --brand-soft:rgba(59,130,246,.24);
+  /* the deep brand navy is an eyebrow colour for white paper; on a dark sky
+     it disappears, so the accent lifts to the light end of the same blue */
+  --brand-deep:#7FC4F2;
   --shadow-sm:0 1px 2px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.35);
   --shadow-md:0 12px 34px rgba(0,0,0,.50);
   --shadow-lg:0 26px 60px rgba(0,0,0,.58);
@@ -403,12 +449,13 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
   transition:background .18s,color .18s}
 .shelf-bg button:hover{background:var(--surface-2)}
 .shelf-bg button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
-.shelf-stage[data-bg="space"] .shelf-bg{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16)}
-.shelf-stage[data-bg="space"] .shelf-bg button{color:rgba(248,250,252,.72)}
-.shelf-stage[data-bg="space"] .shelf-bg button:hover{background:rgba(255,255,255,.10)}
-.shelf-stage[data-bg="space"] .shelf-bg button[aria-pressed="true"]{background:#3B82F6;border-color:#3B82F6;color:#fff}
-.shelf-stage[data-bg="space"] .shelf-fs{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16);color:#F8FAFC}
-@media(max-width:700px){.shelf-bg{top:10px;left:10px}.shelf-bg button{min-width:54px;height:36px;font-size:.74rem}}
+.shelf-stage[data-dark] .shelf-bg{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16)}
+.shelf-stage[data-dark] .shelf-bg button{color:rgba(248,250,252,.72)}
+.shelf-stage[data-dark] .shelf-bg button:hover{background:rgba(255,255,255,.10)}
+.shelf-stage[data-dark] .shelf-bg button[aria-pressed="true"]{background:#3B82F6;border-color:#3B82F6;color:#fff}
+.shelf-stage[data-dark] .shelf-fs{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16);color:#F8FAFC}
+@media(max-width:700px){.shelf-bg{top:10px;left:10px}
+  .shelf-bg button{min-width:0;padding:0 10px;height:36px;font-size:.72rem}}
 @media(prefers-reduced-motion:reduce){
   .sky-stars,.sky-nebula,.sky-shoot,
   body.space-theme .sky-stars.s1,
@@ -697,34 +744,64 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
 .flyer-box img{max-width:min(1400px,96vw);max-height:92vh;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.5);cursor:default}
 
 
-/* GAME CAROUSEL — 3D rotating ring */
-.carousel-wrap{margin-top:30px;text-align:center}
-.carousel-stage{position:relative;height:420px;max-width:960px;margin:0 auto;perspective:1500px}
-.carousel-stage::before{content:"";position:absolute;left:50%;bottom:14px;width:70%;height:60px;
-  transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(46,124,190,.24),transparent 72%);
-  filter:blur(3px);pointer-events:none}
-.carousel-ring{position:absolute;inset:0;transform-style:preserve-3d;cursor:grab;touch-action:pan-y;
-  -webkit-user-select:none;user-select:none;transform:rotateY(var(--ring,0deg))}
-.carousel-ring.dragging{cursor:grabbing}
-.carousel-card{position:absolute;top:50%;left:50%;width:230px;height:320px;margin:-160px 0 0 -115px;
-  background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:24px;
-  box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:9px;text-align:left;
-  text-decoration:none;color:inherit;backface-visibility:hidden;-webkit-user-drag:none;
-  transform:rotateY(calc(var(--i) * 60deg)) translateZ(340px);transition:box-shadow .3s}
-.carousel-card:hover{box-shadow:0 28px 56px rgba(23,50,79,.32)}
-.carousel-card .cc-num{position:absolute;top:16px;right:20px;font-family:'Fraunces',serif;font-size:1.7rem;
-  font-weight:600;line-height:1;color:rgba(46,124,190,.25)}
-.carousel-card .gc-ic{font-size:1.9rem}
-.carousel-card h4{margin:0;font-size:1.12rem;color:var(--ink)}
-.carousel-card .chip{align-self:flex-start}
-.carousel-card p{color:var(--ink-2);font-size:.84rem;line-height:1.5;margin:0;flex:1}
-.carousel-card .cc-play{font-weight:700;color:var(--brand-deep);font-size:.86rem}
-.carousel-hint{margin-top:32px;font-size:.82rem;color:var(--muted)}
-@media(max-width:700px){
-  .carousel-stage{height:430px}
-  .carousel-card{width:190px;height:290px;margin:-145px 0 0 -95px;padding:20px;
-    transform:rotateY(calc(var(--i) * 60deg)) translateZ(230px)}
-}
+/* GAME GALLERY — circular 3D gallery
+   Six poster cards on a ring, turned by page scroll, by dragging, and by a
+   slow idle orbit so an untouched booth screen still moves. Card geometry
+   (size, radius, perspective) is driven by three custom properties, which is
+   the only thing the breakpoints below have to change. */
+.cg-wrap{margin-top:30px;text-align:center}
+/* Radius is set for six cards, not the component's ten. A ring closes when
+   radius ≈ width / (2·tan(180°/n)); at n=6 that is ~260px for a 300px card,
+   so 340 keeps the cards just clear of each other. Holding the component's
+   600 here would spread six cards around a ten-card circle and leave a hole
+   in the middle of the wheel. */
+.cg{--cg-w:320px;--cg-h:430px;--cg-r:365px;max-width:min(1060px,94vw);
+  /* The front card sits radius-deep toward the viewer, so perspective
+     magnifies it by persp/(persp − radius) ≈ 1.43. The stage has to be tall
+     enough for the *drawn* card, not the laid-out one, or the nearest card
+     is clipped by the section below it. */
+  position:relative;width:100%;height:calc(var(--cg-h) * 1.24 + 64px);margin:0 auto;
+  display:flex;align-items:center;justify-content:center;
+  perspective:2000px;cursor:grab;touch-action:pan-y;
+  -webkit-user-select:none;user-select:none}
+.cg.dragging{cursor:grabbing}
+.cg-ring{position:relative;width:100%;height:100%;transform-style:preserve-3d;
+  transform:rotateY(var(--cg-rot,0deg));will-change:transform}
+/* each item is placed on the ring; the JS only writes its opacity */
+.cg-item{position:absolute;left:50%;top:50%;width:var(--cg-w);height:var(--cg-h);
+  margin-left:calc(var(--cg-w) / -2);margin-top:calc(var(--cg-h) / -2);
+  transform:rotateY(calc(var(--i) * var(--cg-step,60deg))) translateZ(var(--cg-r));
+  /* The component's cards are photographs, so its far side reads fine
+     reversed. These carry type: a card turned past 90° would show every
+     game name mirrored, so the back of the ring is hidden instead and the
+     opacity ramp alone carries the depth. */
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  transition:opacity .3s linear}
+.cg-card{position:relative;display:block;width:100%;height:100%;overflow:hidden;
+  border-radius:14px;border:1px solid var(--line);background:var(--surface);
+  box-shadow:0 25px 50px -12px rgba(16,32,52,.45);
+  text-decoration:none;color:inherit;-webkit-user-drag:none;
+  transition:box-shadow .3s,border-color .3s}
+.cg-card:hover{box-shadow:0 30px 60px -10px rgba(23,50,79,.55);border-color:var(--brand-soft)}
+.cg-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cg-num{position:absolute;top:14px;right:18px;font-family:'Fraunces',serif;
+  font-size:1.9rem;font-weight:600;line-height:1;color:rgba(255,255,255,.42)}
+/* the caption plate: dark enough for white type over any poster */
+.cg-cap{position:absolute;left:0;bottom:0;width:100%;padding:18px;text-align:left;color:#fff;
+  background:linear-gradient(to top, rgba(4,14,26,.92) 0%, rgba(4,14,26,.72) 42%, rgba(4,14,26,0) 100%)}
+.cg-cap h4{margin:0;font-size:1.22rem;font-weight:700;line-height:1.2;color:#fff}
+.cg-cap em{display:block;margin-top:3px;font-size:.86rem;font-style:italic;opacity:.82}
+.cg-cap p{margin:9px 0 0;font-size:.76rem;line-height:1.5;opacity:.74}
+.cg-cap .cc-play{display:inline-block;margin-top:11px;font-weight:700;font-size:.84rem;color:#8FD0F7}
+.cg-hint{margin-top:30px;font-size:.82rem;color:var(--muted)}
+@media(max-width:1100px){.cg{--cg-w:250px;--cg-h:335px;--cg-r:285px}}
+@media(max-width:820px){.cg{--cg-w:210px;--cg-h:285px;--cg-r:240px;perspective:1500px}
+  .cg-cap{padding:14px}.cg-cap h4{font-size:1.06rem}.cg-cap p{font-size:.72rem}}
+@media(max-width:520px){.cg{--cg-w:180px;--cg-h:245px;--cg-r:205px;perspective:1200px}
+  .cg-cap p{display:none}.cg-num{font-size:1.5rem}}
+/* on the dark skies the plate is already dark — only the frame needs to lift */
+body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
+  box-shadow:0 25px 50px -12px rgba(0,0,0,.6)}
 
 /* RINNA CHAT WIDGET */
 .chat-fab{position:fixed;right:22px;bottom:22px;z-index:90;width:64px;height:64px;border-radius:50%;
@@ -835,6 +912,8 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
   </div>
 </header>
 
+<div id="shaderBg" aria-hidden="true"><span class="shader-fallback"></span><span class="shader-scrim"></span></div>
+
 <div id="spaceSky" aria-hidden="true">
   <span class="sky-nebula"></span>
   <span class="sky-band"></span>
@@ -891,7 +970,8 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
         <div class="cf-track" id="cfTrack"></div>
       </div>
       <div class="shelf-bg" id="shelfBg" role="group" aria-label="Shelf backdrop">
-        <button type="button" data-bg="forest" aria-pressed="true">Forest</button>
+        <button type="button" data-bg="aurora" aria-pressed="true">Aurora</button>
+        <button type="button" data-bg="forest" aria-pressed="false">Forest</button>
         <button type="button" data-bg="space" aria-pressed="false">Space</button>
       </div>
       <button class="shelf-fs" id="shelfFS" aria-label="Toggle full screen" type="button">⛶</button>
@@ -1081,60 +1161,85 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
       <h2>Six games, one booth</h2>
       <p>Six challenges built for the booth — five 3D arcade games plus the Skin IQ quiz, all on the spinning lab wheel. Score well and claim your reward at the booth.</p>
     </div>
-    <div class="carousel-wrap reveal">
-      <div class="carousel-stage" id="gameStage">
-        <div class="carousel-ring" id="gameRing">
-          <a class="carousel-card" href="match-lab.html" target="_blank" rel="noopener" style="--i:0">
-            <span class="cc-num">01</span>
-            <div class="gc-ic">🎯</div>
-            <h4>Match Lab</h4>
-            <span class="chip">Concern → Product</span>
-            <p>A skin concern drops in — catch the FACERINNA SKUs that treat it and let the wrong ones fall, with the reasoning shown for every call.</p>
-            <span class="cc-play">▶ Play Match Lab</span>
-          </a>
-          <a class="carousel-card" href="pack-match.html" target="_blank" rel="noopener" style="--i:1">
-            <span class="cc-num">02</span>
-            <div class="gc-ic">📦</div>
-            <h4>Pack Match</h4>
-            <span class="chip">Pick the right pack</span>
-            <p>Pick the right product pack for each concern under pressure — every wrong pick comes with the reasoning why.</p>
-            <span class="cc-play">▶ Play Pack Match</span>
-          </a>
-          <a class="carousel-card" href="shelf-shot.html" target="_blank" rel="noopener" style="--i:2">
-            <span class="cc-num">03</span>
-            <div class="gc-ic">🛒</div>
-            <h4>Shelf Shot</h4>
-            <span class="chip">Know the range</span>
-            <p>Match each skin concern to its exact SKU and NPRA notification number, shelf-style — know the range cold.</p>
-            <span class="cc-play">▶ Play Shelf Shot</span>
-          </a>
-          <a class="carousel-card" href="deep-lab.html" target="_blank" rel="noopener" style="--i:3">
-            <span class="cc-num">04</span>
-            <div class="gc-ic">🌊</div>
-            <h4>Deep Lab</h4>
-            <span class="chip">Tap-timed sort</span>
-            <p>Burst, dash or slam each product into its correct concern series before it drops — a fast, physics-driven sort.</p>
-            <span class="cc-play">▶ Play Deep Lab</span>
-          </a>
-          <a class="carousel-card" href="lab-run.html" target="_blank" rel="noopener" style="--i:4">
-            <span class="cc-num">05</span>
-            <div class="gc-ic">🏃</div>
-            <h4>Lab Run</h4>
-            <span class="chip">Endless runner</span>
-            <p>Catch serum drops, dodge the germs, and grab barrier shields along the way in this fast-paced dash.</p>
-            <span class="cc-play">▶ Play Lab Run</span>
-          </a>
-          <a class="carousel-card" href="#skinIQ" id="iqCard" style="--i:5">
-            <span class="cc-num">06</span>
-            <div class="gc-ic">🧠</div>
-            <h4>Skin IQ Challenge</h4>
-            <span class="chip">5-question quiz</span>
-            <p>A dermatology-flavoured quiz — answer, learn the science behind each FACERINNA active, and score 4+ to win a sample at the booth.</p>
-            <span class="cc-play">▶ Play Skin IQ</span>
-          </a>
+    <div class="cg-wrap reveal">
+      <div class="cg" id="gameGallery" role="region" aria-roledescription="carousel"
+           aria-label="Circular 3D gallery of the six booth games">
+        <div class="cg-ring" id="gameRing">
+          <div class="cg-item" role="group" aria-label="Match Lab">
+            <a class="cg-card" href="match-lab.html" target="_blank" rel="noopener" data-art="0">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">01</span>
+              <div class="cg-cap">
+                <h4>Match Lab</h4>
+                <em>Concern → Product</em>
+                <p>A skin concern drops in — catch the FACERINNA SKUs that treat it and let the wrong ones fall, with the reasoning shown for every call.</p>
+                <span class="cc-play">▶ Play Match Lab</span>
+              </div>
+            </a>
+          </div>
+          <div class="cg-item" role="group" aria-label="Pack Match">
+            <a class="cg-card" href="pack-match.html" target="_blank" rel="noopener" data-art="1">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">02</span>
+              <div class="cg-cap">
+                <h4>Pack Match</h4>
+                <em>Pick the right pack</em>
+                <p>Pick the right product pack for each concern under pressure — every wrong pick comes with the reasoning why.</p>
+                <span class="cc-play">▶ Play Pack Match</span>
+              </div>
+            </a>
+          </div>
+          <div class="cg-item" role="group" aria-label="Shelf Shot">
+            <a class="cg-card" href="shelf-shot.html" target="_blank" rel="noopener" data-art="2">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">03</span>
+              <div class="cg-cap">
+                <h4>Shelf Shot</h4>
+                <em>Know the range</em>
+                <p>Match each skin concern to its exact SKU and NPRA notification number, shelf-style — know the range cold.</p>
+                <span class="cc-play">▶ Play Shelf Shot</span>
+              </div>
+            </a>
+          </div>
+          <div class="cg-item" role="group" aria-label="Deep Lab">
+            <a class="cg-card" href="deep-lab.html" target="_blank" rel="noopener" data-art="3">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">04</span>
+              <div class="cg-cap">
+                <h4>Deep Lab</h4>
+                <em>Tap-timed sort</em>
+                <p>Burst, dash or slam each product into its correct concern series before it drops — a fast, physics-driven sort.</p>
+                <span class="cc-play">▶ Play Deep Lab</span>
+              </div>
+            </a>
+          </div>
+          <div class="cg-item" role="group" aria-label="Lab Run">
+            <a class="cg-card" href="lab-run.html" target="_blank" rel="noopener" data-art="4">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">05</span>
+              <div class="cg-cap">
+                <h4>Lab Run</h4>
+                <em>Endless runner</em>
+                <p>Catch serum drops, dodge the germs, and grab barrier shields along the way in this fast-paced dash.</p>
+                <span class="cc-play">▶ Play Lab Run</span>
+              </div>
+            </a>
+          </div>
+          <div class="cg-item" role="group" aria-label="Skin IQ Challenge">
+            <a class="cg-card" href="#skinIQ" id="iqCard" data-art="5">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">06</span>
+              <div class="cg-cap">
+                <h4>Skin IQ Challenge</h4>
+                <em>5-question quiz</em>
+                <p>A dermatology-flavoured quiz — answer, learn the science behind each FACERINNA active, and score 4+ to win a sample at the booth.</p>
+                <span class="cc-play">▶ Play Skin IQ</span>
+              </div>
+            </a>
+          </div>
         </div>
       </div>
-      <p class="carousel-hint">🖱️ Drag to spin the lab · tap a card to play</p>
+      <p class="cg-hint">🖱️ Scroll to rotate the gallery · drag to spin · tap a card to play</p>
     </div>
     <div class="game-shell reveal" id="skinIQ" hidden>
       <div class="game-inner">
@@ -1298,6 +1403,587 @@ body.space-theme .nav-cert-badge{background:rgba(255,255,255,.92);border-radius:
     </div>
   </div>
 </footer>
+
+<script>
+/* ── AURORA BACKDROP ──────────────────────────────────────────────────
+   Vanilla port of the 21st.dev Shader Builder "Mesh drift" component
+   (kk.tsx). The GLSL and the uniform recipe are the component's, verbatim;
+   only React's lifecycle is rewritten — a plain init plus setActive(), so
+   the shader costs nothing at all while another backdrop is selected.
+
+   Three guards keep it honest on booth hardware: the render loop is gated
+   on visibility, on the canvas being in view, and on the backdrop being
+   the one on screen; the drawing buffer is capped by megapixel rather than
+   by device pixel ratio; and prefers-reduced-motion freezes time so the
+   field is painted once and left alone. */
+(function(){
+  const host=document.getElementById('shaderBg');
+  if(!host) return;
+
+  const VERT='attribute vec2 a_position;\nvoid main() {\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}';
+
+  const FRAG=`#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+uniform vec3 u_colors[8];
+// Seven packed vectors + eight colour vectors = 15 fragment uniform vectors,
+// one below WebGL1's guaranteed minimum. Macros preserve the public u_* API.
+uniform vec4 u_scene;      // resolution.xy, time, colour count
+uniform vec4 u_shape;      // scale, intensity, paramA, warp
+uniform vec4 u_surface;    // detail, contrast, brightness, saturation
+uniform vec4 u_finish;     // hue, vignette, blur, grain
+uniform vec4 u_transform;  // seed, rotation, drift, OKLab toggle
+uniform vec4 u_space;      // offset.xy, pointer.xy
+uniform vec4 u_cursor;
+
+#define u_resolution u_scene.xy
+#define u_time u_scene.z
+#define u_colorCount u_scene.w
+#define u_scale u_shape.x
+#define u_intensity u_shape.y
+#define u_paramA u_shape.z
+#define u_warp u_shape.w
+#define u_detail u_surface.x
+#define u_contrast u_surface.y
+#define u_brightness u_surface.z
+#define u_saturation u_surface.w
+#define u_hue u_finish.x
+#define u_vignette u_finish.y
+#define u_blur u_finish.z
+#define u_grain u_finish.w
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+#define u_seed u_transform.x
+#else
+// Keep hash inputs inside mediump's guaranteed ±2^14 range.
+#define u_seed mod(u_transform.x, 31.0)
+#endif
+#define u_rotate u_transform.y
+#define u_drift u_transform.z
+#define u_oklab u_transform.w
+#define u_offset u_space.xy
+#define u_mouse u_space.zw
+#define u_cursorPresence u_cursor.x
+#define u_cursorEffect u_cursor.y
+#define u_cursorStrength u_cursor.z
+#define u_cursorRadius u_cursor.w
+
+float hash21(vec2 p) {
+#ifndef GL_FRAGMENT_PRECISION_HIGH
+  p = mod(p, 31.0);
+#endif
+  p = fract(p * vec2(234.34, 435.345));
+  p += dot(p, p + 34.23);
+  return fract(p.x * p.y);
+}
+
+// Even, un-structured white noise for film grain (Dave Hoskins hash12). The
+// multiply hash above is fine for value noise but shows a faint axis-aligned
+// mesh at integer fragment coords, which reads as a net over flat areas.
+float grainHash(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+vec2 hash22(vec2 p) {
+#ifndef GL_FRAGMENT_PRECISION_HIGH
+  p = mod(p, 31.0);
+#endif
+  float n = sin(dot(p, vec2(41.0, 289.0)));
+  return fract(vec2(15731.743, 7892.321) * n);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(hash21(i), hash21(i + vec2(1.0, 0.0)), u.x),
+    mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), u.x),
+    u.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 5; i++) {
+    v += a * noise(p);
+    p = p * 2.03 + vec2(17.0, 9.2);
+    a *= 0.5;
+  }
+  return v;
+}
+
+// --- OKLab colour mixing (perceptual), gated by u_oklab -----------------------
+vec3 srgbToLinear(vec3 c) {
+  return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)),
+    step(0.04045, c));
+}
+vec3 linearToSrgb(vec3 c) {
+  // max() guards the sRGB branch: out-of-gamut OKLab interpolations can send a
+  // channel negative, and pow(negative, …) is NaN which mix()/step() would
+  // then propagate. The linear branch clips such channels to 0 downstream.
+  return mix(c * 12.92, 1.055 * pow(max(c, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055,
+    step(0.0031308, c));
+}
+vec3 linToOklab(vec3 c) {
+  float l = 0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b;
+  float m = 0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b;
+  float s = 0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b;
+  l = pow(max(l, 0.0), 1.0 / 3.0);
+  m = pow(max(m, 0.0), 1.0 / 3.0);
+  s = pow(max(s, 0.0), 1.0 / 3.0);
+  return vec3(
+    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s);
+}
+vec3 oklabToLin(vec3 c) {
+  float l = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
+  float m = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
+  float s = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
+  l = l * l * l; m = m * m * m; s = s * s * s;
+  return vec3(
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
+}
+vec3 mixColour(vec3 a, vec3 b, float t) {
+  if (u_oklab > 0.5) {
+    vec3 la = linToOklab(srgbToLinear(a));
+    vec3 lb = linToOklab(srgbToLinear(b));
+    return clamp(linearToSrgb(oklabToLin(mix(la, lb, t))), 0.0, 1.0);
+  }
+  return mix(a, b, t);
+}
+
+// Mix through the recipe colours; x is clamped to 0..1. WebGL1 forbids
+// dynamic uniform indexing in fragment shaders, hence the constant loop.
+vec3 palette(float x) {
+  float n = max(u_colorCount - 1.0, 1.0);
+  float f = clamp(x, 0.0, 1.0) * n;
+  vec3 col = u_colors[0];
+  for (int i = 0; i < 7; i++) {
+    if (float(i) < n)
+      col = mixColour(col, u_colors[i + 1],
+        smoothstep(0.0, 1.0, clamp(f - float(i), 0.0, 1.0)));
+  }
+  return col;
+}
+
+vec3 hueRotate(vec3 col, float a) {
+  const mat3 toYIQ = mat3(0.299, 0.596, 0.211,
+                          0.587, -0.274, -0.523,
+                          0.114, -0.322, 0.312);
+  const mat3 toRGB = mat3(1.0, 1.0, 1.0,
+                          0.956, -0.272, -1.106,
+                          0.621, -0.647, 1.703);
+  vec3 yiq = toYIQ * col;
+  float ca = cos(a), sa = sin(a);
+  yiq = vec3(yiq.x, yiq.y * ca - yiq.z * sa, yiq.y * sa + yiq.z * ca);
+  return toRGB * yiq;
+}
+
+vec3 shade(vec2 uv, vec2 p, float t) {
+  vec3 acc = u_colors[0] * 0.15;
+  float total = 0.15;
+  for (int i = 0; i < 8; i++) {
+    if (float(i) >= u_colorCount) break;
+    float fi = float(i);
+    vec2 c = vec2(
+      sin(t * (0.21 + fi * 0.071) + fi * 2.4 + u_seed),
+      cos(t * (0.17 + fi * 0.093) + fi * 1.7)) * (0.45 + u_intensity * 0.35);
+    float w = exp(-dot(p - c, p - c) * 6.0);
+    acc += u_colors[i] * w;
+    total += w;
+  }
+  return acc / total;
+}
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+  vec2 screenUv = uv;
+  vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution.xy)
+    / min(u_resolution.x, u_resolution.y);
+  float cursorMask = 0.0;
+
+  // Cursor modes 1–3 are local distortions. Push shifts the same screen-space
+  // coordinates before field transforms, so Zoom/Rotate don't change its feel.
+  if (u_cursorPresence > 0.001) {
+    // u_mouse is normalized to -1..1 in canvas space. Convert it to the same
+    // aspect-corrected screen space as p so effects stay under the cursor.
+    vec2 cursor = (0.5 * u_mouse * u_resolution.xy)
+      / min(u_resolution.x, u_resolution.y);
+    vec2 cursorDelta = p - cursor;
+    if (u_cursorEffect < 0.5) {
+      p += cursor * u_cursorPresence * u_cursorStrength * 0.55;
+    } else {
+      float cursorDistance = length(cursorDelta);
+      vec2 cursorDirection = cursorDelta / max(cursorDistance, 0.0001);
+      cursorMask = u_cursorPresence
+        * (1.0 - smoothstep(0.0, u_cursorRadius, cursorDistance));
+      if (u_cursorEffect < 1.5) {
+        p -= cursorDirection * cursorMask * u_cursorStrength * 0.24;
+      } else if (u_cursorEffect < 2.5) {
+        float cursorAngle = cursorMask * u_cursorStrength * 2.2;
+        float cc = cos(cursorAngle), cs = sin(cursorAngle);
+        p = cursor + mat2(cc, -cs, cs, cc) * cursorDelta;
+      } else if (u_cursorEffect < 3.5) {
+        float ripple = sin(
+          cursorDistance / max(u_cursorRadius, 0.001) * 18.0 - u_time * 5.0);
+        p -= cursorDirection * ripple * cursorMask * u_cursorStrength * 0.07;
+      }
+    }
+  }
+
+  // Keep presets that read uv (rather than p) in the same warped space.
+  uv = p * min(u_resolution.x, u_resolution.y) / u_resolution.xy + 0.5;
+  p *= u_scale;
+  // Field transform: rotate, pan, pointer push, slow drift.
+  if (abs(u_rotate) > 0.0001) {
+    float cr = cos(u_rotate), sr = sin(u_rotate);
+    p = mat2(cr, -sr, sr, cr) * p;
+  }
+  p += u_offset;
+  if (u_drift > 0.0001)
+    p += u_drift * vec2(sin(u_time * 0.31), cos(u_time * 0.23));
+  // Organic domain warp.
+  if (u_warp > 0.0) {
+    p += u_warp * (vec2(
+      fbm(p * u_detail + u_seed),
+      fbm(p * u_detail + vec2(5.2, 1.3))) - 0.5);
+  }
+  // Shade, with an optional soft 5-tap blur.
+  vec3 col;
+  if (u_blur > 0.0) {
+    float e = u_blur;
+    float pe = e * u_scale;
+    vec2 uvE = vec2(e) * min(u_resolution.x, u_resolution.y) / u_resolution.xy;
+    col  = shade(uv, p, u_time) * 0.36;
+    col += shade(uv + vec2(uvE.x, 0.0), p + vec2(pe, 0.0), u_time) * 0.16;
+    col += shade(uv - vec2(uvE.x, 0.0), p - vec2(pe, 0.0), u_time) * 0.16;
+    col += shade(uv + vec2(0.0, uvE.y), p + vec2(0.0, pe), u_time) * 0.16;
+    col += shade(uv - vec2(0.0, uvE.y), p - vec2(0.0, pe), u_time) * 0.16;
+  } else {
+    col = shade(uv, p, u_time);
+  }
+  // Post: contrast, saturation, hue, brightness, vignette, grain.
+  if (abs(u_contrast - 1.0) > 0.0001)
+    col = (col - 0.5) * u_contrast + 0.5;
+  if (abs(u_saturation - 1.0) > 0.0001) {
+    float luma = dot(col, vec3(0.299, 0.587, 0.114));
+    col = mix(vec3(luma), col, u_saturation);
+  }
+  if (abs(u_hue) > 0.0001)
+    col = hueRotate(col, u_hue);
+  if (abs(u_brightness) > 0.0001)
+    col += u_brightness;
+  if (u_vignette > 0.0001) {
+    float vd = length(screenUv - 0.5) * 1.41421356;
+    col *= 1.0 - u_vignette * smoothstep(0.35, 1.0, vd);
+  }
+  if (u_cursorPresence > 0.001 && u_cursorEffect > 3.5)
+    col += (vec3(0.18) + col * 0.12) * cursorMask * u_cursorStrength;
+  if (u_grain > 0.0001)
+    col += (grainHash(
+      gl_FragCoord.xy + vec2(u_seed * 17.0, u_seed * 31.0)) - 0.5) * u_grain;
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+}
+`;
+
+  const UNIFORMS={
+    colors:[[0.011764705882352941,0.10980392156862745,0.14901960784313725],[0.10588235294117647,0.4235294117647059,0.6588235294117647],[0.35294117647058826,0.8235294117647058,0.9568627450980393],[0.9176470588235294,0.9764705882352941,1],[0.9176470588235294,0.9764705882352941,1],[0.9176470588235294,0.9764705882352941,1],[0.9176470588235294,0.9764705882352941,1],[0.9176470588235294,0.9764705882352941,1]],
+    colorCount:4, scale:1.300, intensity:0.560, paramA:0.670, warp:0.192,
+    detail:2.016, contrast:1.167, brightness:0.000, saturation:1.000,
+    hue:0.0000, vignette:0.150, blur:0.0072, grain:0.098,
+    seed:5069.0, rotate:2.7227, offsetX:0.090, offsetY:0.150, drift:0.148,
+    cursorEnabled:true, cursorEffect:2.0, cursorStrength:0.730,
+    cursorRadius:0.365, oklab:0.0, timeScale:-1.373
+  };
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Frozen time still paints the field, just without the drift.
+  const timeScale = reduce ? 0 : UNIFORMS.timeScale;
+
+  const canvas=document.createElement('canvas');
+  canvas.setAttribute('aria-hidden','true');
+  host.insertBefore(canvas, host.firstChild);
+
+  let gl=null;
+  try{ gl=canvas.getContext('webgl',{antialias:false,alpha:false,
+        powerPreference:'high-performance',preserveDrawingBuffer:false}); }
+  catch(e){}
+  if(!gl){                       // no WebGL: the CSS gradient is the backdrop
+    canvas.remove();
+    window.__auroraBg={setActive:function(){}, ok:false};
+    return;
+  }
+
+  function compile(type,src){
+    const s=gl.createShader(type);
+    gl.shaderSource(s,src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){
+      console.warn('Aurora backdrop shader:',gl.getShaderInfoLog(s));
+      gl.deleteShader(s); return null;
+    }
+    return s;
+  }
+  const vs=compile(gl.VERTEX_SHADER,VERT), fs=compile(gl.FRAGMENT_SHADER,FRAG);
+  const program=(vs&&fs)?gl.createProgram():null;
+  if(program){
+    gl.attachShader(program,vs); gl.attachShader(program,fs);
+    gl.linkProgram(program);
+    gl.deleteShader(vs); gl.deleteShader(fs);
+    if(!gl.getProgramParameter(program,gl.LINK_STATUS)){
+      console.warn('Aurora backdrop link:',gl.getProgramInfoLog(program));
+      gl.deleteProgram(program);
+      canvas.remove();
+      window.__auroraBg={setActive:function(){}, ok:false};
+      return;
+    }
+  } else {
+    canvas.remove();
+    window.__auroraBg={setActive:function(){}, ok:false};
+    return;
+  }
+  gl.useProgram(program);
+
+  const buf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1, 3,-1, -1,3]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(program,'a_position');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+
+  const uni={
+    colors:gl.getUniformLocation(program,'u_colors'),
+    scene:gl.getUniformLocation(program,'u_scene'),
+    shape:gl.getUniformLocation(program,'u_shape'),
+    surface:gl.getUniformLocation(program,'u_surface'),
+    finish:gl.getUniformLocation(program,'u_finish'),
+    transform:gl.getUniformLocation(program,'u_transform'),
+    space:gl.getUniformLocation(program,'u_space'),
+    cursor:gl.getUniformLocation(program,'u_cursor')
+  };
+  const flat=[]; UNIFORMS.colors.forEach(c=>{ flat.push(c[0],c[1],c[2]); });
+  gl.uniform3fv(uni.colors,new Float32Array(flat));
+  gl.uniform4f(uni.shape,UNIFORMS.scale,UNIFORMS.intensity,UNIFORMS.paramA,UNIFORMS.warp);
+  gl.uniform4f(uni.surface,UNIFORMS.detail,UNIFORMS.contrast,UNIFORMS.brightness,UNIFORMS.saturation);
+  gl.uniform4f(uni.finish,UNIFORMS.hue,UNIFORMS.vignette,UNIFORMS.blur,UNIFORMS.grain);
+  gl.uniform4f(uni.transform,UNIFORMS.seed,UNIFORMS.rotate,UNIFORMS.drift,UNIFORMS.oklab);
+  gl.uniform4f(uni.cursor,0,UNIFORMS.cursorEffect,UNIFORMS.cursorStrength,UNIFORMS.cursorRadius);
+
+  let targetX=0,targetY=0,targetPresence=0;
+  let mouseX=0,mouseY=0,cursorPresence=0;
+  let pointerKnown=false,pointerClientX=0,pointerClientY=0;
+  let bounds=canvas.getBoundingClientRect();
+  let raf=0,lastNow=null;
+  let visible=document.visibilityState==='visible';
+  let inView=true, active=false;
+  const start=performance.now();
+  const timeAnimated=Math.abs(timeScale)>0.0001;
+
+  /* The drawing buffer is capped by area, not by devicePixelRatio: the cost
+     of this shader is per-fragment, so a 4K TV and a 3× phone both need a
+     ceiling. Phones get a tighter one — they have the least fill rate and
+     the smallest screen to hide the softening on.
+
+     The fixed ceiling alone is a guess about hardware we don't get to see,
+     and a booth machine that can't hit it would just stutter all day. So
+     the ceiling is also governed by measured frame time: if the rolling
+     average slips past ~24ms the buffer steps down and the field is drawn
+     at lower resolution and scaled up. The field is a smooth gradient, so
+     that costs a little softness and nothing else — far cheaper than a
+     visible stutter behind the products. */
+  let quality=1;              // multiplier on the pixel ceiling, 1 → 0.08
+  let frameEma=0, warmup=0, gaveUp=false;
+  const QUALITY_FLOOR=0.08, SLOW_MS=24, HOPELESS_MS=45;
+  function maxPixels(){
+    const base = matchMedia('(max-width:700px)').matches ? 1200000 : 2000000;
+    return base*quality;
+  }
+  function resizeCanvas(){
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    const rawWidth=Math.max(1,Math.round(bounds.width*dpr));
+    const rawHeight=Math.max(1,Math.round(bounds.height*dpr));
+    const pixelScale=Math.min(1,Math.sqrt(maxPixels()/Math.max(1,rawWidth*rawHeight)));
+    const width=Math.max(1,Math.round(rawWidth*pixelScale));
+    const height=Math.max(1,Math.round(rawHeight*pixelScale));
+    if(canvas.width!==width||canvas.height!==height){
+      canvas.width=width; canvas.height=height;
+      gl.viewport(0,0,width,height);
+    }
+  }
+  function requestRender(){
+    if(!gaveUp&&active&&visible&&inView&&raf===0) raf=requestAnimationFrame(render);
+  }
+  /* The safety net. #shaderBg carries the same palette as a CSS gradient, so
+     dropping the canvas leaves a still version of the same sky rather than a
+     hole — and the switch, the dark theme and the rest of the page carry on
+     exactly as they were. */
+  function giveUp(){
+    if(gaveUp) return;
+    gaveUp=true;
+    if(raf!==0){ cancelAnimationFrame(raf); raf=0; }
+    canvas.remove();
+    document.body.classList.add('aurora-static');
+    const lose=gl.getExtension('WEBGL_lose_context');
+    if(lose) lose.loseContext();
+  }
+  function updatePointerTarget(){
+    if(!pointerKnown) return;
+    if(bounds.width===0||bounds.height===0) return;
+    const inside = pointerClientX>=bounds.left && pointerClientX<=bounds.right &&
+                   pointerClientY>=bounds.top  && pointerClientY<=bounds.bottom;
+    if(!inside){ targetPresence=0; requestRender(); return; }
+    const nextX=((pointerClientX-bounds.left)/bounds.width)*2-1;
+    const nextY=-(((pointerClientY-bounds.top)/bounds.height)*2-1);
+    if(targetPresence===0&&cursorPresence<0.01){ mouseX=nextX; mouseY=nextY; }
+    targetX=nextX; targetY=nextY; targetPresence=1;
+    requestRender();
+  }
+  function onPointerMove(event){
+    if(!active) return;                   // don't even measure while hidden
+    pointerKnown=true;
+    pointerClientX=event.clientX; pointerClientY=event.clientY;
+    bounds=canvas.getBoundingClientRect();
+    updatePointerTarget();
+  }
+  function onPointerLeave(){ pointerKnown=false; targetPresence=0; requestRender(); }
+  function updateLayout(){
+    bounds=canvas.getBoundingClientRect();
+    resizeCanvas(); updatePointerTarget(); requestRender();
+  }
+  addEventListener('resize',updateLayout);
+  if(UNIFORMS.cursorEnabled){
+    addEventListener('pointermove',onPointerMove,{passive:true});
+    addEventListener('pointercancel',onPointerLeave);
+    addEventListener('blur',onPointerLeave);
+    document.documentElement.addEventListener('pointerleave',onPointerLeave);
+    // (the component also re-measured on every scroll; this canvas is
+    //  position:fixed, so its box never moves and that listener is dead cost)
+  }
+  if(typeof ResizeObserver!=='undefined') new ResizeObserver(updateLayout).observe(canvas);
+  if(typeof IntersectionObserver!=='undefined'){
+    new IntersectionObserver(function(entries){
+      const e=entries[0];
+      inView=e?e.isIntersecting:true;
+      if(inView) requestRender();
+      else if(raf!==0){ cancelAnimationFrame(raf); raf=0; lastNow=null; }
+    }).observe(canvas);
+  }
+  document.addEventListener('visibilitychange',function(){
+    visible=document.visibilityState==='visible';
+    if(visible) requestRender();
+    else if(raf!==0){ cancelAnimationFrame(raf); raf=0; lastNow=null; }
+  });
+
+  function render(now){
+    raf=0;
+    if(!active||!visible||!inView) return;
+    const dt=lastNow===null?0:Math.min((now-lastNow)/1000,0.1);
+    // Give the first frames away: shader link, first paint and the page's
+    // own start-up all land in them and say nothing about steady state.
+    if(lastNow!==null){
+      if(warmup<20){ warmup++; }
+      else {
+        frameEma = frameEma===0 ? (now-lastNow) : frameEma*0.9+(now-lastNow)*0.1;
+        if(frameEma>SLOW_MS && quality>QUALITY_FLOOR){
+          quality=Math.max(QUALITY_FLOOR, quality*0.55);
+          frameEma=0; warmup=0;          // re-measure at the new resolution
+        } else if(frameEma>HOPELESS_MS && quality<=QUALITY_FLOOR){
+          // Hardware that cannot draw this even at a quarter-scale buffer —
+          // an old booth PC, a software renderer. A stuttering backdrop is
+          // worse than none, so hand over to the CSS gradient for good.
+          giveUp(); return;
+        }
+      }
+    }
+    lastNow=now;
+    const follow=1-Math.exp(-12*dt);
+    mouseX+=(targetX-mouseX)*follow;
+    mouseY+=(targetY-mouseY)*follow;
+    cursorPresence+=(targetPresence-cursorPresence)*follow;
+    resizeCanvas();
+    gl.uniform4f(uni.scene,canvas.width,canvas.height,
+      ((now-start)/1000)*timeScale,UNIFORMS.colorCount);
+    gl.uniform4f(uni.space,UNIFORMS.offsetX,UNIFORMS.offsetY,mouseX,mouseY);
+    gl.uniform4f(uni.cursor,UNIFORMS.cursorEnabled?cursorPresence:0,
+      UNIFORMS.cursorEffect,UNIFORMS.cursorStrength,UNIFORMS.cursorRadius);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+    const pointerSettling =
+      Math.abs(targetX-mouseX)>0.001 ||
+      Math.abs(targetY-mouseY)>0.001 ||
+      Math.abs(targetPresence-cursorPresence)>0.001;
+    if(timeAnimated||pointerSettling) requestRender();
+    else lastNow=null;
+  }
+
+  window.__auroraBg={
+    ok:true,
+    stats:function(){ return {quality:quality, frameMs:+frameEma.toFixed(2),
+      w:canvas.width, h:canvas.height, active:active, gaveUp:gaveUp}; },
+    setActive:function(on){
+      on=!!on;
+      if(on===active) return;
+      active=on;
+      if(on){ updateLayout(); }
+      else if(raf!==0){ cancelAnimationFrame(raf); raf=0; lastNow=null; }
+    }
+  };
+})();
+
+/* ── BACKDROP SWITCH ──────────────────────────────────────────────────
+   Which sky is up is a page-level decision, so it lives here rather than
+   inside the Three.js shelf: the booth laptop that loses the CDN for a
+   moment still gets its backdrop, its dark theme and a working switch.
+   The shelf subscribes with onChange() for the parts that need a scene. */
+(function(){
+  const MODES={aurora:{dark:true}, forest:{dark:false}, space:{dark:true}};
+  const hooks=[];
+  let current=null;
+
+  function set(mode){
+    if(!MODES[mode]) mode='aurora';
+    current=mode;
+    const dark=MODES[mode].dark;
+    // everything that has to invert for a dark sky keys off these two
+    // classes, so a new mode only has to declare whether it is dark
+    document.body.classList.toggle('space-theme', dark);
+    document.body.classList.toggle('aurora-theme', mode==='aurora');
+    document.documentElement.classList.toggle('space-bg', mode==='space');
+    document.documentElement.classList.toggle('aurora-bg', mode==='aurora');
+    // the shader is the one backdrop that burns GPU when nobody can see it
+    if(window.__auroraBg) window.__auroraBg.setActive(mode==='aurora');
+    const ctl=document.getElementById('shelfBg');
+    if(ctl) ctl.querySelectorAll('button[data-bg]').forEach(b=>
+      b.setAttribute('aria-pressed', String(b.dataset.bg===mode)));
+    for(let i=0;i<hooks.length;i++){ try{ hooks[i](mode,dark); }catch(e){} }
+    try{ localStorage.setItem('facerinna:bg', mode); }catch(e){}
+  }
+
+  const ctl=document.getElementById('shelfBg');
+  if(ctl) ctl.addEventListener('click', function(e){
+    const b=e.target.closest('button[data-bg]');
+    if(b) set(b.dataset.bg);
+  });
+
+  window.__bgMode={
+    set:set,
+    get:function(){ return current; },
+    onChange:function(fn){ hooks.push(fn); if(current) fn(current, MODES[current].dark); }
+  };
+
+  // new storage key: a booth machine that picked Forest last week should
+  // still open on the new default sky
+  let saved='aurora';
+  try{ saved=localStorage.getItem('facerinna:bg')||'aurora'; }catch(e){}
+  set(saved);
+})();
+</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -1521,63 +2207,149 @@ document.querySelectorAll('.hero-prod').forEach(card=>{
 })();
 
 /* ============================================================
-   GAME CAROUSEL — 3D rotating ring, drag-to-spin, gentle auto-orbit
+   GAME GALLERY — circular 3D gallery
+   Vanilla port of the CircularGallery React component. Its geometry and
+   fade are kept exactly: cards sit at rotateY(i·step) translateZ(radius)
+   inside one preserve-3d ring, and each card's opacity falls off with its
+   angle from the front as max(0.3, 1 − angle/180).
+
+   Three deliberate departures, all for the booth:
+   · rotation reads this section's travel through the viewport rather than
+     whole-document scroll progress, so the wheel turns as the games come
+     into view and doesn't spin while the visitor is reading another page —
+     and it still behaves in presentation mode, where the document doesn't
+     scroll at all;
+   · drag-to-spin is kept from the ring it replaces, because a booth TV is
+     touched far more often than it is scrolled;
+   · the idle orbit runs at 0.10°/frame rather than the component's 0.02,
+     which at 1.2°/s reads as a still image on an unattended screen.
+   The posters are drawn once to a canvas each — no network images, which
+   this single-file build has no way to fetch.
    ============================================================ */
 (function(){
-  const stage=document.getElementById('gameStage'), ring=document.getElementById('gameRing');
+  const stage=document.getElementById('gameGallery'), ring=document.getElementById('gameRing');
   if(!stage||!ring) return;
+  const items=[].slice.call(ring.querySelectorAll('.cg-item'));
+  const count=items.length;
+  if(!count) return;
+  const step=360/count;
+  ring.style.setProperty('--cg-step', step+'deg');
+  items.forEach((el,i)=>el.style.setProperty('--i', i));
+
+  /* ---- posters ------------------------------------------------------
+     One gradient plate per game in a colour drawn from the brand range,
+     a faint lab grid, a soft lobe of light and the game's glyph. Drawn at
+     2× the CSS box and never redrawn. */
+  const ART=[
+    {a:'#0E4B7E', b:'#3FA6EE', ic:'🎯'},
+    {a:'#123C63', b:'#5AD2F4', ic:'📦'},
+    {a:'#0B3550', b:'#2E7CBE', ic:'🛒'},
+    {a:'#0C3F5C', b:'#49BEDC', ic:'🌊'},
+    {a:'#14406E', b:'#6FB6F0', ic:'🏃'},
+    {a:'#123256', b:'#8FD0F7', ic:'🧠'}
+  ];
+  ring.querySelectorAll('.cg-art').forEach(function(cv){
+    const spec=ART[+cv.parentNode.dataset.art]||ART[0];
+    const g=cv.getContext('2d'); if(!g) return;
+    const w=cv.width, h=cv.height;
+    const grad=g.createLinearGradient(0,0,w*0.7,h);
+    grad.addColorStop(0,spec.b); grad.addColorStop(.55,spec.a); grad.addColorStop(1,'#071B2E');
+    g.fillStyle=grad; g.fillRect(0,0,w,h);
+    const lobe=g.createRadialGradient(w*0.72,h*0.22,0,w*0.72,h*0.22,w*0.85);
+    lobe.addColorStop(0,'rgba(255,255,255,.30)'); lobe.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=lobe; g.fillRect(0,0,w,h);
+    g.strokeStyle='rgba(255,255,255,.10)'; g.lineWidth=1.5;
+    for(let x=0;x<=w;x+=48){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); }
+    for(let y=0;y<=h;y+=48){ g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke(); }
+    g.save();
+    g.globalAlpha=.92;
+    g.font='230px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    g.textAlign='center'; g.textBaseline='middle';
+    g.fillText(spec.ic, w*0.5, h*0.40);
+    g.restore();
+  });
+
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let angle=0, autoSpin=!reduceMotion, dragging=false, captured=false, startX=0, startAngle=0, lastX=0, moved=0, resumeTimer=null, activePointerId=null;
+  const AUTO=0.10;                       // degrees per frame while idle
+  let manual=0, rot=0, raf=0, onScreen=false;
+  let dragging=false, captured=false, startX=0, startManual=0, lastX=0, moved=0, pid=null;
 
-  function apply(){ ring.style.setProperty('--ring', angle+'deg'); }
-
-  function tick(){
-    if(autoSpin && !dragging){ angle+=0.14; apply(); }
-    requestAnimationFrame(tick);
+  /* One rect read per frame answers both questions: how far the gallery has
+     travelled through the viewport (0 as its top edge reaches the bottom of
+     the screen, 1 as its bottom edge leaves the top — one full turn per
+     pass), and whether it is worth drawing at all. Doing it from the rect
+     rather than an IntersectionObserver keeps the two answers in the same
+     frame and leaves nothing to go stale. */
+  function measure(){
+    const r=stage.getBoundingClientRect();
+    const vh=innerHeight||1;
+    const span=r.height+vh;
+    onScreen = r.bottom>-120 && r.top<vh+120;
+    return span<=0 ? 0 : Math.min(1, Math.max(0, (vh-r.top)/span));
   }
-  requestAnimationFrame(tick);
+
+  function paint(){
+    rot=manual+measure()*360;
+    ring.style.setProperty('--cg-rot', rot.toFixed(2)+'deg');
+    const total=((rot%360)+360)%360;
+    for(let i=0;i<count;i++){
+      const rel=(i*step+total+360)%360;
+      const norm=Math.abs(rel>180?360-rel:rel);
+      items[i].style.opacity=String(Math.max(0.3, 1-(norm/180)));
+    }
+  }
+  // Nothing ticks while the games are off screen — the rest of the page has
+  // its own animation budget to spend — but scroll, resize and touch all
+  // re-arm the loop, so it can never be left parked while on screen.
+  function frame(){
+    raf=0;
+    if(!dragging && !reduceMotion) manual+=AUTO;
+    paint();                       // paint() refreshes onScreen via measure()
+    if(onScreen) raf=requestAnimationFrame(frame);
+  }
+  function start(){ if(raf===0) raf=requestAnimationFrame(frame); }
+  paint();
+  start();
 
   function pointX(e){ return e.touches ? e.touches[0].clientX : e.clientX; }
-  function onDown(e){
+  stage.addEventListener('pointerdown', function(e){
     dragging=true; moved=0; captured=false;
-    startX=pointX(e); lastX=startX; startAngle=angle;
-    activePointerId=e.pointerId;
-    clearTimeout(resumeTimer);
-  }
-  function onMove(e){
+    startX=pointX(e); lastX=startX; startManual=manual; pid=e.pointerId;
+    start();
+  });
+  stage.addEventListener('pointermove', function(e){
     if(!dragging) return;
     const x=pointX(e), dx=x-startX;
     moved=Math.max(moved, Math.abs(x-lastX));
     lastX=x;
     if(moved>6){
-      // Only capture the pointer once a real drag is confirmed. A plain
-      // tap never reaches this branch, so its native click on the <a>
-      // card fires completely untouched — the most reliable way to
-      // trigger navigation across browsers, including iOS Safari, which
-      // can silently block a manually-called window.open() from a
-      // pointerup handler that doesn't count as a trusted click gesture.
+      // Only capture the pointer once a real drag is confirmed. A plain tap
+      // never reaches this branch, so its native click on the <a> card fires
+      // completely untouched — the most reliable way to trigger navigation
+      // across browsers, including iOS Safari, which can silently block a
+      // window.open() called from a pointerup handler it doesn't count as a
+      // trusted click gesture.
       if(!captured){
         captured=true;
-        ring.classList.add('dragging');
-        try{ ring.setPointerCapture(activePointerId); }catch(err){}
+        stage.classList.add('dragging');
+        try{ stage.setPointerCapture(pid); }catch(err){}
       }
-      angle=startAngle+dx*0.35;
-      apply();
+      manual=startManual+dx*0.35;
+      paint();
     }
-  }
+  });
   function onUp(){
     if(!dragging) return;
     dragging=false;
-    ring.classList.remove('dragging');
-    if(!reduceMotion) resumeTimer=setTimeout(()=>{autoSpin=true;}, 2600);
+    stage.classList.remove('dragging');
   }
-  ring.addEventListener('pointerdown', onDown);
-  ring.addEventListener('pointermove', onMove);
-  ring.addEventListener('pointerup', onUp);
-  ring.addEventListener('pointercancel', onUp);
+  stage.addEventListener('pointerup', onUp);
+  stage.addEventListener('pointercancel', onUp);
   // Suppress the click only when it follows a genuine drag past the
   // threshold — a plain tap's click is left completely alone.
-  ring.addEventListener('click', e=>{ if(moved>6){ e.preventDefault(); } }, true);
+  stage.addEventListener('click', function(e){ if(moved>6) e.preventDefault(); }, true);
+  addEventListener('scroll', start, {passive:true});
+  addEventListener('resize', start);
 })();
 
 /* ============================================================
@@ -2574,35 +3346,25 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   /* The shelf panel is gone: the products stand on nothing, which is what
      lets them read as floating in both the mist and the void. */
 
-  /* ---- backdrop switch: forest sky (WebGL) or deep space (CSS) --------
-     The renderer is alpha:true, so hiding the forest layers simply reveals
-     whatever the stage is painted with behind the canvas. */
+  /* ---- backdrop switch: aurora shader, forest sky (WebGL) or deep space
+     Aurora is the default. Two of the three are dark, and everything that
+     has to invert for a dark sky keys off .shelf-stage[data-dark] and
+     body.space-theme rather than off the mode name, so a mode only has to
+     declare whether it is dark. The stage renderer is alpha:true, so hiding
+     the forest layers simply reveals the page backdrop behind the canvas. */
   const bgCtl=document.getElementById('shelfBg');
-  function setBackdrop(mode){
-    const space = mode==='space';
-    forestParts.forEach(m=>{ m.visible=!space; });
+  // the stage itself listens for pointerdown to drag the carousel
+  if(bgCtl) bgCtl.addEventListener('pointerdown', e=>e.stopPropagation());
+  // the switch, the classes and the shader live in the page-level backdrop
+  // controller; only the scene-side consequences are ours
+  window.__bgMode.onChange(function(mode,dark){
+    forestParts.forEach(m=>{ m.visible = mode==='forest'; });
     // (the old CSS brightness filter on the canvas is gone: it re-filtered
     //  the whole surface every frame, and the products already read well)
-    motes.material.opacity = space ? 0.9 : 0.75;
+    motes.material.opacity = dark ? 0.9 : 0.75;
     stage.dataset.bg = mode;
-    // the whole page follows the shelf into orbit
-    document.body.classList.toggle('space-theme', space);
-    document.documentElement.classList.toggle('space-bg', space);
-    if(bgCtl) bgCtl.querySelectorAll('button').forEach(b=>
-      b.setAttribute('aria-pressed', String(b.dataset.bg===mode)));
-    try{ localStorage.setItem('facerinna:shelfBg', mode); }catch(e){}
-  }
-  if(bgCtl){
-    // the stage itself listens for pointerdown to drag the shelf
-    bgCtl.addEventListener('pointerdown', e=>e.stopPropagation());
-    bgCtl.addEventListener('click', e=>{
-      const b=e.target.closest('button[data-bg]');
-      if(b) setBackdrop(b.dataset.bg);
-    });
-  }
-  let savedBg='forest';
-  try{ savedBg=localStorage.getItem('facerinna:shelfBg')||'forest'; }catch(e){}
-  setBackdrop(savedBg==='space'?'space':'forest');
+    if(dark) stage.dataset.dark='1'; else delete stage.dataset.dark;
+  });
 
   let camX=railEnd*0.5, targetX=railEnd*0.5, rafId=null;   // parked mid-rail
 
