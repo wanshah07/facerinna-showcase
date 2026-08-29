@@ -143,6 +143,52 @@ body.slides-h .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1
   display:flex;align-items:center;justify-content:center;
   background:linear-gradient(180deg,#F7F8FC 0%,#EFF3F9 44%,#DCE7F1 80%,#CFDDEA 100%)}
 .hero-frame{position:relative;height:100%;max-width:100%;display:flex}
+
+/* HERO SLIDESHOW
+   The slideshow component's arrangement — stacked slides that cross-fade,
+   two lines of overlay type, an arrow either side and a zero-padded counter.
+   One departure: its slides are photographs set with background-size:cover,
+   and every image on this page is designed art — a key visual with its own
+   typography, and product renders cut out on transparent. Cropping either to
+   fill would destroy it, so slides are contained and centred on the brand
+   gradient instead. */
+.slideshow{position:relative;width:100%;height:100%;overflow:hidden}
+.slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  opacity:0;visibility:hidden;transition:opacity .9s ease,visibility 0s linear .9s;
+  background-size:cover;background-position:center}
+.slide.active{opacity:1;visibility:visible;transition:opacity .9s ease,visibility 0s}
+/* product slides: art held in the right half so it never crowds the type */
+.slide-kv{position:absolute;top:0;right:0;bottom:0;width:56%;
+  display:flex;align-items:center;justify-content:center;padding:4vh 3vw}
+.slide-kv img{max-height:100%;max-width:100%;width:auto;height:auto;object-fit:contain;
+  display:block;filter:drop-shadow(0 26px 44px rgba(16,40,66,.24))}
+.slide-text{position:absolute;left:clamp(20px,5vw,72px);top:50%;transform:translateY(-50%);
+  max-width:min(570px,44vw);display:flex;flex-direction:column;gap:2px;text-align:left;
+  pointer-events:none}
+/* sized so even the longest product name lands on the component's two lines */
+.slide-text span{font-family:'Fraunces',serif;font-weight:600;line-height:1.1;
+  font-size:clamp(1.1rem,2.05vw,1.78rem);letter-spacing:-.01em;color:var(--navy);
+  text-transform:uppercase}
+.slide-text .slide-sub{margin-top:14px;font-family:'Inter',sans-serif;font-weight:600;
+  font-size:clamp(.64rem,.95vw,.76rem);letter-spacing:.16em;line-height:1.6;
+  color:var(--brand-deep);text-transform:uppercase}
+/* controls */
+.slideshow .nav{position:absolute;top:50%;transform:translateY(-50%);z-index:4;
+  width:46px;height:46px;border-radius:50%;border:1px solid var(--line);
+  background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  color:var(--navy);font-size:1.15rem;line-height:1;cursor:pointer;
+  display:grid;place-items:center;box-shadow:var(--shadow-sm);
+  transition:background .2s,transform .2s}
+.slideshow .nav:hover{background:#fff;transform:translateY(-50%) scale(1.06)}
+.slideshow .nav.left{left:clamp(10px,2vw,24px)}
+.slideshow .nav.right{right:clamp(10px,2vw,24px)}
+.slideshow .counter{position:absolute;right:clamp(14px,3vw,32px);bottom:clamp(14px,3vh,28px);
+  z-index:4;font-family:'Inter',sans-serif;font-weight:600;font-size:.78rem;
+  letter-spacing:.18em;color:#5B7089;pointer-events:none}
+/* The stage keeps its own light gradient under every backdrop — it is the
+   brand's key-visual panel — so the deck's type stays navy in all themes and
+   must not follow the page into a dark palette. */
+@media(prefers-reduced-motion:reduce){.slide{transition:none}}
 .hero-stage{padding-bottom:clamp(10px,1.6vh,20px)}
 .hero-kv-img{height:100%;width:auto;max-width:100%;object-fit:contain;display:block;
   -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 3.5%,#000 96.5%,transparent 100%);
@@ -864,9 +910,28 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
   .nav-cert-badges{gap:12px;padding-right:14px}
   .brand{padding-right:14px}
   .nav-cert-badge{height:24px}
-  .hero-stage{height:auto;min-height:0;display:block;padding-bottom:16px}
-  .hero-frame{height:auto;width:100%;display:block}
-  .hero-kv-img{width:100%;height:auto;-webkit-mask-image:none;mask-image:none}
+  /* Stacked slides need a definite height, so the stage takes the key
+     visual's own 5:4 ratio — the banner still fills the width edge to edge,
+     exactly as before, and the product slides sit inside the same box. */
+  .hero-stage{height:auto;min-height:0;aspect-ratio:5/4;display:block;padding-bottom:0}
+  .hero-frame{height:100%;width:100%;display:block}
+  .hero-kv-img{width:100%;height:100%;object-fit:cover;-webkit-mask-image:none;mask-image:none}
+  /* stacked instead of side by side: art in the upper two-thirds, type below */
+  .slide-kv{position:absolute;inset:0 0 38% 0;width:auto;padding:5% 8%}
+  /* the right inset keeps the caption clear of the counter */
+  .slide-text{left:18px;right:84px;top:auto;bottom:14px;transform:none;max-width:none}
+  .slide-text span{font-size:clamp(1.05rem,4.6vw,1.5rem)}
+  .slide-text .slide-sub{margin-top:8px;font-size:.6rem;letter-spacing:.13em}
+  /* centred arrows would sit on the model's face on slide 01 and on the
+     bottle on the rest; the top corners are empty on every slide, and swipe
+     is the primary gesture here anyway */
+  .slideshow .nav{top:10px;transform:none;width:34px;height:34px;font-size:.92rem}
+  .slideshow .nav:hover{transform:none}
+  .slideshow .nav.left{left:10px}
+  .slideshow .nav.right{right:10px}
+  /* the counter lands on the artwork at this size, so it gets a plate */
+  .slideshow .counter{background:rgba(255,255,255,.78);border-radius:999px;
+    padding:3px 9px;font-size:.68rem;right:10px;bottom:10px}
       .ev-grid{grid-template-columns:1fr}
   #heroProducts{grid-template-columns:1fr}
   .footer-grid{grid-template-columns:1fr 1fr}
@@ -938,8 +1003,19 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
 <section class="hero" id="top">
   <h1 class="sr-only">FACERINNA — Tested by dermatologist, approved with science</h1>
   <div class="hero-stage">
-    <div class="hero-frame">
-      <img class="hero-kv-img" src="hero-banner.jpg" alt="FACERINNA Dermatologist Care — tested by dermatologist, approved with science, with the full product range">
+    <div class="slideshow" id="heroShow" role="region" aria-roledescription="carousel"
+         aria-label="FACERINNA key visuals">
+      <!-- Slide 01 is the existing key visual, untouched: same image, same
+           contain-and-mask treatment. Slides 02–05 are built at runtime from
+           the four hero products already on this page. -->
+      <div class="slide active">
+        <div class="hero-frame">
+          <img class="hero-kv-img" src="hero-banner.jpg" alt="FACERINNA Dermatologist Care — tested by dermatologist, approved with science, with the full product range">
+        </div>
+      </div>
+      <button class="nav left" id="heroPrev" type="button" aria-label="Previous slide">&#8592;</button>
+      <button class="nav right" id="heroNext" type="button" aria-label="Next slide">&#8594;</button>
+      <div class="counter" id="heroCount" aria-live="polite">01 / 01</div>
     </div>
   </div>
   <div class="hero-marquee reveal" aria-hidden="true">
@@ -2042,6 +2118,96 @@ const HEROES = [
    benefits:["Redness −18.1% @1h","Papule volume −47.1% @7d","TEWL −24.4% @7d","0% irritation · 56 subjects"],
    kmsg:"SymCalmin-powered calm within minutes — redness down 18% in just 1 hour — backed by zero irritation across 56 subjects from two independent labs."},
 ];
+
+/* ============================================================
+   HERO SLIDESHOW
+   Vanilla port of the slideshow component: stacked slides that cross-fade,
+   two lines of overlay type, an arrow either side, a zero-padded counter.
+
+   Nothing here invents content. Slide 01 is the key visual that was already
+   in the hero, left exactly as it was — same file, same contain-and-mask
+   treatment, and no overlay type, because its headline is printed inside the
+   artwork and a second copy on top would only fight it. Slides 02–05 are the
+   four hero products already on the page: their own renders, their own names
+   split across the component's two lines, and their own category line
+   underneath.
+
+   Added for the booth: the deck advances on its own every 7 seconds, because
+   nobody walks up to an unattended TV to press an arrow. Any interaction
+   stops it for a while. Swipe works. Arrow keys are deliberately NOT bound —
+   presentation mode already owns them page-wide.
+   ============================================================ */
+(function(){
+  const show=document.getElementById('heroShow');
+  if(!show || typeof HEROES==='undefined') return;
+  const counter=document.getElementById('heroCount');
+
+  // Split a product name across the component's two lines at the word
+  // boundary nearest the middle, so neither line is left with one orphan.
+  function twoLines(name){
+    const w=name.split(' ');
+    if(w.length<2) return [name,''];
+    let best=1, bestGap=Infinity;
+    const mid=name.length/2;
+    let run=0;
+    for(let i=0;i<w.length-1;i++){
+      run+=w[i].length+1;
+      const gap=Math.abs(run-mid);
+      if(gap<bestGap){ bestGap=gap; best=i+1; }
+    }
+    return [w.slice(0,best).join(' '), w.slice(best).join(' ')];
+  }
+
+  HEROES.forEach(function(h){
+    const [l1,l2]=twoLines(h.name);
+    const el=document.createElement('div');
+    el.className='slide';
+    el.innerHTML='<div class="slide-kv"><img src="'+h.img+'" alt="'+h.name+'" loading="lazy"></div>'+
+      '<div class="slide-text"><span>'+l1+'</span><span>'+l2+'</span>'+
+      '<span class="slide-sub">'+h.tag+'</span></div>';
+    show.insertBefore(el, document.getElementById('heroPrev'));
+  });
+
+  const slides=[].slice.call(show.querySelectorAll('.slide'));
+  const n=slides.length;
+  let current=0, timer=null, resume=null;
+  const pad=v=>(v<10?'0':'')+v;
+
+  function render(){
+    for(let i=0;i<n;i++) slides[i].classList.toggle('active', i===current);
+    if(counter) counter.textContent=pad(current+1)+' / '+pad(n);
+  }
+  const next=()=>{ current=(current+1)%n; render(); };
+  const prev=()=>{ current=(current-1+n)%n; render(); };
+  render();
+
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function play(){ if(!reduce && n>1 && timer===null) timer=setInterval(next, 7000); }
+  function pause(){ if(timer!==null){ clearInterval(timer); timer=null; } }
+  // A visitor who touched the deck gets to keep it where they left it, but an
+  // abandoned booth screen must not stay parked on one slide for the day.
+  function hold(){ pause(); clearTimeout(resume); resume=setTimeout(play, 20000); }
+
+  document.getElementById('heroNext').addEventListener('click', function(){ next(); hold(); });
+  document.getElementById('heroPrev').addEventListener('click', function(){ prev(); hold(); });
+  show.addEventListener('mouseenter', pause);
+  show.addEventListener('mouseleave', play);
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible') play(); else pause();
+  });
+
+  let sx=null, sy=null;
+  show.addEventListener('pointerdown', function(e){ sx=e.clientX; sy=e.clientY; });
+  show.addEventListener('pointerup', function(e){
+    if(sx===null) return;
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    sx=null;
+    if(Math.abs(dx)>44 && Math.abs(dx)>Math.abs(dy)){ (dx<0?next:prev)(); hold(); }
+  });
+  show.addEventListener('pointercancel', function(){ sx=null; });
+
+  play();
+})();
 
 const QUESTIONS = [
   {q:"FACERINNA's Bright Dark Spot Serum pairs 10% niacinamide with which active, known for reducing melanin transfer to fade dark spots?",
