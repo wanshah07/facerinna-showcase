@@ -352,6 +352,13 @@ body.slides-h .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1
 .brandstrip-track .bs-mark:hover{opacity:1}
 @keyframes brandDrift{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
 .brandstrip:hover .brandstrip-track{animation-play-state:paused}
+/* The strip is deliberately transparent, so on the light backdrop it lands
+   on the violet outer edge of the radial. These are dark marks drawn for
+   paper: they get their own pale chip rather than being washed out, the same
+   treatment the header's partner mark already gets on a dark sky. */
+body.radial-theme .brandstrip-track .bs-mark{background:rgba(255,255,255,.88);
+  border-radius:8px;padding:6px 12px;box-sizing:content-box}
+body.radial-theme .brandstrip-label{color:var(--ink-2)}
 /* the marks are printed for white paper; on a dark sky they get one back */
 body.space-theme .brandstrip-track .bs-mark{background:rgba(255,255,255,.94);
   border-radius:8px;padding:4px 8px}
@@ -394,22 +401,17 @@ section{padding:74px 0;position:relative}
 #range{background:linear-gradient(180deg,var(--surface),#FFF)}
 /* 3D PRODUCT SHELF — full-screen, full-bleed section */
 .shelf-wrap{margin:8px 0 34px;width:100%}
+/* the stage was a painted panel because it held a rendered scene; now it is
+   just the frame the carousel turns in, so the page's backdrop shows through */
 .shelf-stage{position:relative;width:100%;height:100vh;min-height:520px;max-height:900px;overflow:hidden;
-  background:linear-gradient(180deg,#CFE4F2 0%,#DCEBEF 42%,#E4EFE7 78%,#E9F2E6 100%);
-  box-shadow:var(--shadow-md);cursor:grab}
+  background:transparent;cursor:grab}
 .shelf-stage.dragging{cursor:grabbing}
-/* positioned so it stacks above the CSS sky, which is a positioned layer */
-.shelf-stage canvas{position:relative;z-index:1;width:100%;height:100%;display:block;
-  touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .shelf-fs{position:absolute;top:16px;right:16px;z-index:6;width:46px;height:46px;border-radius:12px;
   border:1px solid var(--line);background:rgba(255,255,255,.88);backdrop-filter:blur(6px);
   font-size:1.35rem;line-height:1;cursor:pointer;box-shadow:var(--shadow-sm);color:var(--brand-deep);
   transition:transform .2s}
 .shelf-fs:hover{transform:scale(1.08)}
 .shelf-stage:fullscreen{max-height:none}
-.shelf-fallback-note{position:absolute;inset:0;display:none;place-items:center;color:var(--muted);
-  font-size:.92rem;text-align:center;padding:20px;background:var(--surface-2)}
-.shelf-fallback-note:not([hidden]){display:grid}
 .shelf-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:20px}
 .shelf-nav{width:48px;height:48px;flex:0 0 auto;border-radius:50%;border:1px solid var(--line);
   background:var(--surface);font-size:1.5rem;line-height:1;cursor:pointer;box-shadow:var(--shadow-sm);
@@ -445,6 +447,11 @@ section{padding:74px 0;position:relative}
 .cf-card .cf-tag{position:absolute;top:10px;left:12px;font-size:.58rem;font-weight:700;
   letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--accent,var(--brand));
   padding:3px 8px;border-radius:999px}
+/* On the radial ground the card's own translucency lets the violet through
+   and a white packshot loses its edge against it, so here the glass is
+   solid. */
+body.radial-theme .cf-card{
+  background:linear-gradient(158deg,#fff,#EDF3FB);border-color:rgba(23,50,79,.10)}
 /* the glass reads differently against the void */
 .shelf-stage[data-dark] .cf-card{
   background:linear-gradient(160deg,rgba(30,38,62,.72),rgba(16,20,38,.68));
@@ -491,124 +498,24 @@ body.aurora-static #shaderBg .shader-fallback{display:block;
     radial-gradient(120% 86% at 50% 44%, rgba(2,16,26,0) 40%, rgba(2,16,26,.55) 100%),
     linear-gradient(180deg, rgba(3,20,32,.46) 0%, rgba(3,20,32,.30) 38%, rgba(3,20,32,.56) 100%)}
 
-/* ── SPACE BACKDROP ───────────────────────────────────────────────────
-   A second, selectable sky for the shelf, built entirely in CSS behind the
-   transparent WebGL canvas. Depth comes from four independent layers that
-   drift at different rates: nebula, a Milky Way band with its dust lane,
-   and three star fields. Palette anchored on a Space Tech / Aerospace
-   scheme — #0B0B10 void, #F8FAFC star white, #3B82F6 launch blue. */
-/* Fixed to the viewport and behind the page, so selecting Space puts the
-   whole showcase in orbit rather than just the shelf. z-index:-1 needs the
-   body itself to be transparent, so the base colour sits on <html>. */
-#spaceSky{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;
-  opacity:0;transition:opacity .9s ease;
-  background:radial-gradient(120% 90% at 22% 8%, #171a2e 0%, #0e1020 42%, #0B0B10 78%)}
-/* one sky at a time: aurora wins over space, and whichever is not showing
-   stops animating — an invisible layer that still ticks is pure cost */
-body.space-theme:not(.aurora-theme) #spaceSky{opacity:1}
-body:not(.space-theme) #spaceSky *,
-body.aurora-theme #spaceSky *{animation:none !important}
-html.space-bg{background:#0B0B10}
-body.space-theme{background:transparent}
-.shelf-stage[data-dark]{background:transparent}
-#spaceSky > span{position:absolute;display:block}
-
-/* nebula clouds + the galactic band, on one slowly breathing layer */
-.sky-nebula{inset:-14%;
-  background:
-    radial-gradient(38% 26% at 20% 26%, rgba(88,60,168,.34) 0%, rgba(88,60,168,0) 70%),
-    radial-gradient(30% 22% at 74% 20%, rgba(24,110,168,.28) 0%, rgba(24,110,168,0) 72%),
-    radial-gradient(34% 30% at 60% 74%, rgba(150,44,120,.20) 0%, rgba(150,44,120,0) 74%),
-    radial-gradient(22% 18% at 38% 60%, rgba(40,150,150,.16) 0%, rgba(40,150,150,0) 76%);
-  will-change:transform}
-.sky-band{inset:-30%;
-  background:
-    linear-gradient(72deg, rgba(255,255,255,0) 38%, rgba(206,220,255,.10) 46%,
-      rgba(226,232,255,.16) 50%, rgba(206,220,255,.10) 54%, rgba(255,255,255,0) 62%),
-    /* the dust lane that splits the band */
-    linear-gradient(72deg, rgba(0,0,0,0) 46%, rgba(9,10,18,.55) 50%, rgba(0,0,0,0) 54%)}
-
-.sky-stars{inset:-10%}
-/* the star tiles themselves are painted to a bitmap at runtime — see the
-   starfield builder in the script; hundreds of tiled CSS radial-gradients
-   are re-rasterised far too slowly to animate over */
-.sky-stars.s3{inset:-640px -640px -640px -640px}
-
-/* the near field twinkles; the far ones only drift */
-.sky-stars.s3{animation:skyTwinkle 6.5s ease-in-out infinite}
-.sky-vignette{inset:0;background:
-  radial-gradient(120% 84% at 50% 46%, rgba(0,0,0,0) 52%, rgba(4,5,10,.55) 100%)}
-
-/* one shooting star at a time, and rarely — two would read as decoration */
-.sky-shoot{will-change:transform;top:-4%;left:-12%;width:180px;height:1.5px;border-radius:2px;opacity:0;
-  background:linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(226,240,255,.85) 62%, #fff 100%);
-  box-shadow:0 0 7px rgba(190,220,255,.75);
-  transform:rotate(19deg);
-  animation:skyShoot 11s linear infinite}
-.sky-shoot.d2{top:24%;left:-16%;width:130px;animation-duration:17s;animation-delay:6.5s;opacity:0}
-
-@keyframes skyTwinkle{0%,100%{opacity:.75}50%{opacity:1}}
-@keyframes skyBreathe{0%,100%{transform:scale(1) translate3d(0,0,0)}50%{transform:scale(1.06) translate3d(1.2%,-1%,0)}}
-@keyframes skyShoot{
-  0%{opacity:0;transform:translate3d(0,0,0) rotate(19deg)}
-  2%{opacity:1}
-  9%{opacity:0}
-  100%{opacity:0;transform:translate3d(135vw,46vw,0) rotate(19deg)}}
-
-/* The two dense fields are painted once and never repainted; only their
-   opacity breathes, which the compositor handles without touching pixels.
-   The sparse near field is the one that actually travels, and it does so on
-   a transform — also compositor-only — looping by exactly one tile so the
-   pattern lands back on itself with no seam. */
-body.space-theme .sky-stars.s1{animation:skyTwinkle 15s ease-in-out infinite}
-body.space-theme .sky-stars.s2{animation:skyTwinkle 11s ease-in-out infinite reverse}
-body.space-theme .sky-stars.s3{animation:starTravel 190s linear infinite,skyTwinkle 6.5s ease-in-out infinite;
-  will-change:transform}
-body.space-theme .sky-nebula{animation:skyBreathe 90s ease-in-out infinite}
-@keyframes starTravel{from{transform:translate3d(0,0,0)}to{transform:translate3d(-620px,620px,0)}}
-
-
-/* ── the planet ───────────────────────────────────────────────────────
-   Lit from the upper left, same direction as the rim light on the
-   products. Rotation is a seamless storm layer scrolling twice its own
-   width behind a fixed band pattern — a sphere's bands do not move as it
-   turns, its weather does. */
-.sky-planet{right:5%;top:6%;width:min(23vw,258px);aspect-ratio:1;border-radius:50%;
-  overflow:hidden;isolation:isolate;
-  box-shadow:0 0 70px 8px rgba(74,132,214,.16), 0 0 140px 30px rgba(52,86,168,.10)}
-.sky-planet i{position:absolute;inset:0;display:block;border-radius:50%}
-.planet-surface{background:
-    radial-gradient(125% 95% at 26% 19%, #9db9e2 0%, #6480b6 26%, #3d5389 52%, #24325f 76%, #121a3a 100%),
-    repeating-linear-gradient(3deg,
-      rgba(255,255,255,.10) 0 5px, rgba(0,0,0,.11) 5px 12px,
-      rgba(255,255,255,.05) 12px 19px, rgba(0,0,0,.14) 19px 28px)}
-/* Twice the disc wide and translated by exactly half itself, so the weather
-   loops seamlessly on a compositor-only transform. Animating
-   background-position here repainted the planet every frame. */
-.planet-clouds{inset:0 auto 0 0;width:200%;border-radius:0;will-change:transform;
-  background-repeat:repeat-x;background-image:
-    radial-gradient(15% 7% at 18% 34%, rgba(226,238,255,.34) 0%, rgba(226,238,255,0) 72%),
-    radial-gradient(11% 5% at 46% 26%, rgba(210,228,255,.26) 0%, rgba(210,228,255,0) 74%),
-    radial-gradient(19% 8% at 68% 57%, rgba(120,170,230,.24) 0%, rgba(120,170,230,0) 76%),
-    radial-gradient(9% 4% at 86% 40%, rgba(240,246,255,.30) 0%, rgba(240,246,255,0) 72%),
-    radial-gradient(13% 6% at 33% 68%, rgba(90,140,205,.26) 0%, rgba(90,140,205,0) 76%),
-    radial-gradient(8% 4% at 58% 79%, rgba(226,238,255,.20) 0%, rgba(226,238,255,0) 74%);
-  background-size:50% 100%;
-  animation:planetSpin 150s linear infinite;opacity:.55}
-/* terminator, plus the thin lit arc of atmosphere on the sunward edge */
-.planet-shade{background:
-    radial-gradient(circle at 27% 21%, rgba(0,0,0,0) 24%, rgba(3,5,14,.40) 50%,
-      rgba(2,3,9,.86) 77%, rgba(1,2,6,.98) 100%);
-  box-shadow:inset 11px 11px 26px -9px rgba(184,218,255,.68),
-             inset -6px -8px 40px 5px rgba(1,2,8,.80)}
-@keyframes planetSpin{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
-@media(prefers-reduced-motion:reduce){.planet-clouds{animation:none}}
-@media(max-width:700px){.sky-planet{width:44vw;right:-8%;top:7%}
-  /* the travelling field needs a layer one tile bigger than the screen in
-     every direction — cheap on a desktop, a 3.5Mpx surface on a phone, so
-     phones get the same starfield holding still */
-  .sky-stars.s3{inset:-10%}
-  body.space-theme .sky-stars.s3{animation:skyTwinkle 6.5s ease-in-out infinite}}
+/* ── RADIAL BACKDROP ──────────────────────────────────────────────────
+   The supplied light background, ported from its Tailwind arbitrary value
+   to plain CSS. It is a fixed layer behind the page rather than a wash on
+   one section, so every screen of the showcase stands on the same ground:
+   white overhead, falling to violet at the edges. */
+#radialBg{position:fixed;inset:0;z-index:-1;pointer-events:none;
+  opacity:0;transition:opacity .9s ease;background:#fff;
+  background-image:radial-gradient(125% 125% at 50% 10%, #fff 40%, #63e 100%)}
+body.radial-theme #radialBg{opacity:1}
+html.radial-bg{background:#fff}
+/* the layer sits at z-index:-1, so the body's own fill has to step aside
+   for it — the same thing the dark theme does with --bg */
+body.radial-theme{background:transparent}
+/* the painted section gradients would hide it, exactly as they hide the sky */
+body.radial-theme section,body.radial-theme .hero,body.radial-theme #range,
+body.radial-theme #heroes,body.radial-theme #evidence,body.radial-theme #game,
+body.radial-theme #clinic,body.radial-theme #qrcore,
+body.radial-theme .series-slide{background:transparent}
 
 
 /* ── SPACE THEME ──────────────────────────────────────────────────────
@@ -673,13 +580,6 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .shelf-stage[data-dark] .shelf-fs{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16);color:#F8FAFC}
 @media(max-width:700px){.shelf-bg{top:10px;left:10px}
   .shelf-bg button{min-width:0;padding:0 10px;height:36px;font-size:.72rem}}
-@media(prefers-reduced-motion:reduce){
-  .sky-stars,.sky-nebula,.sky-shoot,
-  body.space-theme .sky-stars.s1,
-  body.space-theme .sky-stars.s2,
-  body.space-theme .sky-stars.s3,
-  body.space-theme .sky-nebula{animation:none !important}
-  .sky-shoot{display:none}}
 @media(max-width:700px){.shelf-stage{height:70vh;min-height:420px}.shelf-nav{width:40px;height:40px;font-size:1.25rem}}
 /* one line, scrolling sideways rather than wrapping to a second row */
 .range-filters{display:flex;gap:9px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
@@ -1392,18 +1292,7 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
 </header>
 
 <div id="shaderBg" aria-hidden="true"><span class="shader-fallback"></span><span class="shader-scrim"></span></div>
-
-<div id="spaceSky" aria-hidden="true">
-  <span class="sky-nebula"></span>
-  <span class="sky-band"></span>
-  <span class="sky-planet"><i class="planet-surface"></i><i class="planet-clouds"></i><i class="planet-shade"></i></span>
-  <span class="sky-stars s1"></span>
-  <span class="sky-stars s2"></span>
-  <span class="sky-stars s3"></span>
-  <span class="sky-vignette"></span>
-  <span class="sky-shoot"></span>
-  <span class="sky-shoot d2"></span>
-</div>
+<div id="radialBg" aria-hidden="true"></div>
 
 <div class="pres-ctl" id="presCtl" role="group" aria-label="Presentation mode">
   <button class="pres-grip" id="presGrip" type="button" aria-label="Move controls" title="Drag to move · tap to expand">⠿</button>
@@ -1466,19 +1355,16 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
     </div>
   </div>
   <div class="shelf-wrap reveal" id="shelfWrap">
-    <div class="shelf-stage" id="shelfStage" data-bg="forest">
-      <canvas id="shelfCanvas"></canvas>
+    <div class="shelf-stage" id="shelfStage" data-bg="radial">
       <div class="cf" id="cf" tabindex="0" role="region" aria-roledescription="carousel"
            aria-label="Product range coverflow">
         <div class="cf-track" id="cfTrack"></div>
       </div>
-      <div class="shelf-bg" id="shelfBg" role="group" aria-label="Shelf backdrop">
-        <button type="button" data-bg="aurora" aria-pressed="true">Aurora</button>
-        <button type="button" data-bg="forest" aria-pressed="false">Forest</button>
-        <button type="button" data-bg="space" aria-pressed="false">Space</button>
+      <div class="shelf-bg" id="shelfBg" role="group" aria-label="Page backdrop">
+        <button type="button" data-bg="radial" aria-pressed="true">Light</button>
+        <button type="button" data-bg="aurora" aria-pressed="false">Aurora</button>
       </div>
       <button class="shelf-fs" id="shelfFS" aria-label="Toggle full screen" type="button">⛶</button>
-      <div class="shelf-fallback-note" id="shelfFallback" hidden>3D shelf unavailable in this browser — browse the full range below.</div>
     </div>
     <div class="shelf-controls">
       <button class="shelf-nav" id="shelfPrev" aria-label="Previous product" type="button">‹</button>
@@ -2473,20 +2359,21 @@ void main() {
    moment still gets its backdrop, its dark theme and a working switch.
    The shelf subscribes with onChange() for the parts that need a scene. */
 (function(){
-  const MODES={aurora:{dark:true}, forest:{dark:false}, space:{dark:true}};
+  const MODES={radial:{dark:false}, aurora:{dark:true}};
   const hooks=[];
   let current=null;
 
   function set(mode){
-    if(!MODES[mode]) mode='aurora';
+    if(!MODES[mode]) mode='radial';
     current=mode;
     const dark=MODES[mode].dark;
     // everything that has to invert for a dark sky keys off these two
     // classes, so a new mode only has to declare whether it is dark
     document.body.classList.toggle('space-theme', dark);
     document.body.classList.toggle('aurora-theme', mode==='aurora');
-    document.documentElement.classList.toggle('space-bg', mode==='space');
+    document.body.classList.toggle('radial-theme', mode==='radial');
     document.documentElement.classList.toggle('aurora-bg', mode==='aurora');
+    document.documentElement.classList.toggle('radial-bg', mode==='radial');
     // the shader is the one backdrop that burns GPU when nobody can see it
     if(window.__auroraBg) window.__auroraBg.setActive(mode==='aurora');
     const ctl=document.getElementById('shelfBg');
@@ -2508,15 +2395,14 @@ void main() {
     onChange:function(fn){ hooks.push(fn); if(current) fn(current, MODES[current].dark); }
   };
 
-  // new storage key: a booth machine that picked Forest last week should
-  // still open on the new default sky
-  let saved='aurora';
-  try{ saved=localStorage.getItem('facerinna:bg')||'aurora'; }catch(e){}
+  // a booth machine that picked Forest or Space last week no longer has
+  // either to open on, and set() drops it back to the light ground
+  let saved='radial';
+  try{ saved=localStorage.getItem('facerinna:bg')||'radial'; }catch(e){}
   set(saved);
 })();
 </script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* Document pictures are ordinary files next to this page. A build that has
    to be self-contained — the Claude artifact, whose sandbox blocks every
@@ -3764,49 +3650,6 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
     lastY=scrollY; holdUntil=performance.now()+700;
   }, true);
 })();
-/* STARFIELD — painted once to a canvas, then tiled as a bitmap.
-   Built as CSS radial-gradients this was hundreds of gradient paints per
-   rasterisation, which is what made the space backdrop crawl; a bitmap tile
-   costs the compositor nothing to repeat. Distribution is deliberate: star
-   magnitude is skewed hard toward faint (m^2.4) so the sky is mostly
-   pinpricks with a few bright ones, and colour runs blue-white through
-   white to warm, as real stellar colour does. */
-(function(){
-  const sky=document.getElementById('spaceSky');
-  if(!sky) return;
-  let seed=20260824;
-  const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
-  const TINTS=[[207,226,255,.30],[255,255,255,.45],[255,241,224,.18],[255,214,190,.07]];
-  function tint(){ let r=rnd(),a=0; for(const t of TINTS){ a+=t[3]; if(r<=a) return t; } return TINTS[1]; }
-  function tile(size,count,smin,smax,amin,amax,glow){
-    const c=document.createElement('canvas'); c.width=c.height=size;
-    const g=c.getContext('2d');
-    for(let i=0;i<count;i++){
-      const x=rnd()*size, y=rnd()*size, m=Math.pow(rnd(),2.4);
-      const s=smin+(smax-smin)*m, a=amin+(amax-amin)*m, t=tint();
-      const rgb=t[0]+','+t[1]+','+t[2];
-      if(rnd()<glow){
-        const gr=s*4.5, rg=g.createRadialGradient(x,y,0,x,y,gr);
-        rg.addColorStop(0,'rgba('+rgb+','+(a*0.16)+')');
-        rg.addColorStop(1,'rgba('+rgb+',0)');
-        g.fillStyle=rg; g.fillRect(x-gr,y-gr,gr*2,gr*2);
-      }
-      const rg2=g.createRadialGradient(x,y,0,x,y,s);
-      rg2.addColorStop(0,'rgba('+rgb+','+a+')');
-      rg2.addColorStop(1,'rgba('+rgb+',0)');
-      g.fillStyle=rg2; g.fillRect(x-s,y-s,s*2,s*2);
-    }
-    return {url:c.toDataURL('image/png'), size:size};
-  }
-  [['s1',tile(320,46,0.7,1.5,0.20,0.60,0)],
-   ['s2',tile(460,30,0.9,2.0,0.35,0.85,0.10)],
-   ['s3',tile(620,16,1.3,3.0,0.55,1.00,0.55)]].forEach(([cls,t])=>{
-    const el=sky.querySelector('.sky-stars.'+cls);
-    if(!el) return;
-    el.style.backgroundImage='url('+t.url+')';
-    el.style.backgroundSize=t.size+'px '+t.size+'px';
-  });
-})();
 /* TV / KIOSK MODE — full-screens the whole showcase so a booth screen shows
    no browser chrome. The page itself is untouched: header, nav and chat all
    stay exactly as they are. The header button doubles as the way back out. */
@@ -4347,518 +4190,29 @@ function closeClin(){document.getElementById('cmodal').classList.remove('open');
 document.getElementById('cmBackdrop').addEventListener('click',closeClin);
 addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
 
-/* ============================================================
-   3D PRODUCT SHELF — original Three.js scene, own geometry/art
-   (real FACERINNA product photography on billboarded sprites).
-   Falls back to hiding itself if WebGL/Three.js is unavailable —
-   the filterable grid below remains the primary, always-working
-   way to browse the range.
-   ============================================================ */
+/* ── SHELF STAGE ──────────────────────────────────────────────────────
+   This used to drive a procedural Three.js forest behind the carousel.
+   With Forest gone the page's own backdrop is the only ground there is, so
+   the stage is a plain frame: it keeps the controls wired and tells the CSS
+   whether the backdrop behind it is dark. Losing the canvas also means the
+   coverflow no longer depends on three.js loading at all — it is DOM, and
+   it used to vanish with the whole wrapper whenever the CDN blipped. */
 (function(){
-  const wrap=document.getElementById('shelfWrap'), stage=document.getElementById('shelfStage'),
-    canvas=document.getElementById('shelfCanvas');
-  if(!wrap||!stage||!canvas) return;
-  function fail(){ wrap.style.display='none'; }
-  if(typeof THREE==='undefined'){ fail(); return; }
-
-  let renderer, scene, camera;
-  try{
-    renderer=new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
-    scene=new THREE.Scene();
-    camera=new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-  }catch(err){ fail(); return; }
-
-  const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const CAM_Z=6.4, BASE_Y=0.05, SPACING=2.05, SERIES_GAP=1.10;
-  const seriesOrder=SERIES.map(s=>s.key);
-  const items=[]; // {product, x, sprite, shadow, baseW, baseH}
-  let x=0, prevCat=null;
-  PRODUCTS.forEach(p=>{
-    if(prevCat!==null && p.cat!==prevCat) x+=SERIES_GAP;
-    items.push({product:p, x, sprite:null, shadow:null, baseW:1.5, baseH:2.1});
-    x+=SPACING;
-    prevCat=p.cat;
-  });
-  const railEnd=x-SPACING;
-
-  /* The products themselves are no longer in this scene — they are the
-     coverflow carousel in the DOM above this canvas. What is left here is
-     purely the backdrop: sky, trees, mist, light, pollen and butterfly. */
-
-  /* ---- ANIMATED FOREST BACKDROP -------------------------------------
-     Original procedural art: every layer is drawn to a canvas at runtime,
-     so there are no external assets. Depth-sorted planes give real
-     parallax as the camera pans, with drifting mist, light shafts and
-     floating pollen on top. */
-  let fseed=20260823;
-  const frnd=()=>{ fseed=(fseed*1103515245+12345)&0x7fffffff; return fseed/0x7fffffff; };
-
-  function mkTex(w,h,draw){
-    const c=document.createElement('canvas'); c.width=w; c.height=h;
-    draw(c.getContext('2d'), w, h);
-    const t=new THREE.CanvasTexture(c);
-    t.wrapS=THREE.RepeatWrapping; t.wrapT=THREE.ClampToEdgeWrapping;
-    t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; t.magFilter=THREE.LinearFilter;
-    return t;
-  }
-  /* Canopy sway + morning sun for a tree band. The sample point is nudged
-     sideways by an amount that grows with height up the band, so the trunks
-     stay planted while the crowns drift; two sine waves at different rates
-     keep it from reading as a metronome. The same pass warms the crowns
-     toward the low sun, more strongly the further back the band sits. */
-  const swayMats=[];
-  function treeMat(tex, opacity, sway, phase, warmAmt){
-    const m=new THREE.ShaderMaterial({
-      uniforms:{
-        uMap:{value:tex},
-        uRepeat:{value:new THREE.Vector2(1,1)},
-        uOpacity:{value:opacity},
-        uTime:{value:0},
-        uSway:{value:reduceMotion?0:sway},
-        uPhase:{value:phase},
-        uWarm:{value:new THREE.Color(1.0,0.86,0.62)},
-        uWarmAmt:{value:warmAmt}
-      },
-      vertexShader:[
-        'varying vec2 vUv;',
-        'void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }'
-      ].join('\n'),
-      fragmentShader:[
-        'precision mediump float;',
-        'uniform sampler2D uMap;',
-        'uniform vec2 uRepeat;',
-        'uniform float uOpacity,uTime,uSway,uPhase,uWarmAmt;',
-        'uniform vec3 uWarm;',
-        'varying vec2 vUv;',
-        'void main(){',
-        '  vec2 st=vUv*uRepeat;',
-        '  float h=clamp(vUv.y,0.0,1.0);',
-        '  float bend=h*h;',
-        '  float w=sin(uTime*0.55+st.x*2.4+uPhase)*0.58',
-        '        + sin(uTime*0.31+st.x*1.1+uPhase*1.7)*0.42;',
-        '  st.x+=w*uSway*bend;',
-        '  vec4 t=texture2D(uMap,st);',
-        '  if(t.a<0.004) discard;',
-        '  vec3 col=mix(t.rgb,uWarm,smoothstep(0.15,1.0,h)*uWarmAmt);',
-        '  gl_FragColor=vec4(col,t.a*uOpacity);',
-        '}'
-      ].join('\n'),
-      transparent:true, depthTest:false, depthWrite:false
-    });
-    swayMats.push(m);
-    return m;
-  }
-
-  // everything the forest sky is made of, so the space backdrop can hide it
-  const forestParts=[];
-  // tileWorld = how many world units one texture tile spans, so every layer
-  // keeps a believable tree size no matter how wide its plane has to be
-  function bgPlane(tex, z, worldH, yBottom, order, opt){
-    opt=opt||{};
-    const dist=CAM_Z-z;
-    const w=railEnd+3.4*dist+12;
-    const rep=opt.tileWorld ? w/opt.tileWorld : 1;
-    let mat;
-    if(opt.sway!==undefined){
-      // the shader does its own tiling, so leave the texture matrix alone
-      mat=treeMat(tex, opt.opacity===undefined?1:opt.opacity, opt.sway, opt.phase||0, opt.warm||0);
-      mat.uniforms.uRepeat.value.set(rep,1);
-    }else{
-      if(opt.tileWorld) tex.repeat.set(rep,1);
-      mat=new THREE.MeshBasicMaterial({map:tex, transparent:true, depthTest:false,
-        depthWrite:false, opacity:opt.opacity===undefined?1:opt.opacity});
-      if(opt.blend) mat.blending=opt.blend;
-    }
-    const m=new THREE.Mesh(new THREE.PlaneGeometry(w, worldH), mat);
-    m.position.set(railEnd/2, yBottom+worldH/2, z);
-    m.renderOrder=order;
-    scene.add(m);
-    forestParts.push(m);
-    return m;
-  }
-
-  // conifer + canopy silhouettes for one tree-line band
-  /* ── TREES ────────────────────────────────────────────────────────────
-     Real conifers are not triangles, so each one is grown: a tapered trunk,
-     whorls of branches drooping further out and further down, needle mass
-     stippled along every branch, and scrub where the trunks meet the ground.
-     That detail costs tens of thousands of canvas strokes per tree, so a
-     handful of trees are drawn ONCE into stamps and then blitted into the
-     band — composing a band from scratch took ~26s of main thread, versus
-     a few hundred milliseconds this way. The band is drawn in black and
-     recoloured in a single source-in pass, so one set of stamps serves
-     every depth. */
-  const SW=280, SH=560, STAMPS=[];
-  (function buildStamps(){
-    function stamp(draw){
-      const c=document.createElement('canvas'); c.width=SW; c.height=SH;
-      const o=c.getContext('2d');
-      o.fillStyle='#000'; o.strokeStyle='#000'; o.lineCap='round';
-      draw(o); return c;
-    }
-    function needles(o,x,y,r,n,dir){
-      for(let i=0;i<n;i++){
-        const a=dir+(frnd()-0.5)*1.5, d=r*(0.35+frnd()*0.65);
-        o.lineWidth=Math.max(0.7,r*0.11);
-        o.beginPath(); o.moveTo(x,y);
-        o.lineTo(x+Math.cos(a)*d, y+Math.sin(a)*d*0.75); o.stroke();
-      }
-    }
-    for(let v=0; v<5; v++) STAMPS.push(stamp(o=>{
-      const cx=SW/2, base=SH, h=SH*(0.90+frnd()*0.10), w=SW*(0.80+frnd()*0.20), top=base-h;
-      o.beginPath(); o.moveTo(cx-w*0.035,base); o.lineTo(cx,top); o.lineTo(cx+w*0.035,base);
-      o.closePath(); o.fill();
-      o.save(); o.globalAlpha=0.55;
-      for(let i=0;i<26;i++){                     // inner canopy mass
-        const f=i/26, y=top+h*(0.12+f*0.88), rr=(w*0.5)*Math.pow(f,0.82)*0.55;
-        o.beginPath(); o.ellipse(cx+(frnd()-0.5)*w*0.10, y, rr, rr*0.55, 0, 0, Math.PI*2); o.fill();
-      }
-      o.restore();
-      const whorls=12+Math.round(frnd()*4);
-      for(let i=0;i<whorls;i++){
-        const f=i/whorls, y=top+h*(0.10+f*0.92);
-        const reach=(w*0.5)*Math.pow(f,0.78)*(0.82+frnd()*0.36), droop=h*0.045*(0.4+f);
-        for(const s of [-1,1]){
-          const ex=cx+s*reach, ey=y+droop;
-          o.lineWidth=Math.max(0.8,reach*0.075);
-          o.beginPath(); o.moveTo(cx,y);
-          o.quadraticCurveTo(cx+s*reach*0.55,y+droop*0.35,ex,ey); o.stroke();
-          const tufts=Math.max(3,Math.round(reach*0.075));
-          for(let t=0;t<tufts;t++){
-            const q=(t+1)/(tufts+1);
-            const px=cx+s*reach*q, py=y+droop*q*q;
-            // filled clumps carry the mass; the strokes only ragged the edge
-            const rr=reach*(0.16+frnd()*0.13);
-            o.beginPath(); o.ellipse(px,py,rr,rr*0.66,s*0.25,0,Math.PI*2); o.fill();
-            needles(o,px,py,reach*0.32,5,s>0?0.5:2.6);
-          }
-          const tr=reach*0.22;
-          o.beginPath(); o.ellipse(ex,ey,tr,tr*0.7,0,0,Math.PI*2); o.fill();
-          needles(o,ex,ey,reach*0.36,7,s>0?0.35:2.8);
-        }
-      }
-    }));
-    for(let v=0; v<3; v++) STAMPS.push(stamp(o=>{
-      const cx=SW/2, base=SH, h=SH*(0.78+frnd()*0.16), w=SW*0.94;
-      o.lineWidth=Math.max(1.4,w*0.07);
-      o.beginPath(); o.moveTo(cx,base); o.lineTo(cx+(frnd()-0.5)*w*0.10, base-h*0.45); o.stroke();
-      const forks=5+Math.round(frnd()*3);
-      for(let i=0;i<forks;i++){
-        const a=-Math.PI/2+(frnd()-0.5)*1.9, len=h*(0.22+frnd()*0.22);
-        const sx=cx, sy=base-h*0.45, ex=sx+Math.cos(a)*len, ey=sy+Math.sin(a)*len;
-        o.lineWidth=Math.max(1,w*0.035);
-        o.beginPath(); o.moveTo(sx,sy); o.lineTo(ex,ey); o.stroke();
-        for(let k=0;k<10;k++){
-          const rr=w*(0.10+frnd()*0.15);
-          o.beginPath();
-          o.ellipse(ex+(frnd()-0.5)*w*0.34, ey+(frnd()-0.5)*h*0.16, rr, rr*0.80, frnd()*3, 0, Math.PI*2);
-          o.fill();
-        }
-      }
-    }));
-  })();
-
-  function treeLine(color, count, minH, maxH, blurPx){
-    const W=2048, H=840;
-    return mkTex(W,H,(g)=>{
-      const off=document.createElement('canvas'); off.width=W; off.height=H;
-      const o=off.getContext('2d');
-      for(let i=0;i<count;i++){
-        const cx=((i+0.5)/count)*W + (frnd()-0.5)*(W/count)*0.9;
-        const h=H*(minH+frnd()*(maxH-minH));
-        const w=h*(SW/SH)*(0.86+frnd()*0.30);
-        const st=STAMPS[(frnd()*STAMPS.length)|0], flip=frnd()<0.5?-1:1;
-        for(const dx of [-W,0,W]){          // wrapped copies keep the tile seamless
-          o.save();
-          o.translate(cx+dx, H); o.scale(flip,1);
-          o.drawImage(st, -w/2, -h, w, h);
-          o.restore();
-        }
-      }
-      // scrub where the trunks meet the ground
-      for(let i=0;i<count*2;i++){
-        const cx=frnd()*W, s=H*(0.030+frnd()*0.055);
-        const pts=[]; for(let k=0;k<7;k++) pts.push([(frnd()-0.5)*s*1.6,(frnd()-0.5)*s*0.2,s*(0.30+frnd()*0.50)]);
-        for(const dx of [-W,0,W]) pts.forEach(q=>{
-          o.beginPath(); o.ellipse(cx+dx+q[0], H-q[2]*0.45+q[1], q[2], q[2]*0.62, 0, 0, Math.PI*2); o.fill();
-        });
-      }
-      // one pass recolours the whole silhouette for this depth
-      o.globalCompositeOperation='source-in';
-      o.fillStyle=color; o.fillRect(0,0,W,H);
-      o.globalCompositeOperation='source-over';
-
-      g.clearRect(0,0,W,H);
-      if(blurPx) try{ g.filter='blur('+(blurPx*1.9)+'px)'; }catch(e){}
-      g.drawImage(off,0,0);
-      try{ g.filter='none'; }catch(e){}
-    });
-  }
-  function softBand(stops){
-    return mkTex(4,256,(g,w,h)=>{
-      const grd=g.createLinearGradient(0,0,0,h);
-      stops.forEach(s=>grd.addColorStop(s[0],s[1]));
-      g.fillStyle=grd; g.fillRect(0,0,w,h);
-    });
-  }
-  function fogTex(){
-    const W=1024,H=256;
-    return mkTex(W,H,(g)=>{
-      g.clearRect(0,0,W,H);
-      for(let i=0;i<24;i++){
-        const cx=frnd()*W, cy=H*(0.30+frnd()*0.5), r=70+frnd()*150;
-        [cx-W,cx,cx+W].forEach(px=>{
-          const grd=g.createRadialGradient(px,cy,0,px,cy,r);
-          grd.addColorStop(0,'rgba(255,255,255,0.30)');
-          grd.addColorStop(1,'rgba(255,255,255,0)');
-          g.fillStyle=grd; g.fillRect(px-r,cy-r,r*2,r*2);
-        });
-      }
-    });
-  }
-  function raysTex(){
-    const W=1024,H=512;
-    return mkTex(W,H,(g)=>{
-      g.clearRect(0,0,W,H);
-      for(let i=0;i<7;i++){
-        const x0=(i/7)*W+frnd()*90, w=60+frnd()*110;
-        const grd=g.createLinearGradient(x0,0,x0+w*1.4,H);
-        grd.addColorStop(0,'rgba(255,252,236,0.34)');
-        grd.addColorStop(0.55,'rgba(255,250,230,0.11)');
-        grd.addColorStop(1,'rgba(255,250,230,0)');
-        g.fillStyle=grd;
-        g.beginPath(); g.moveTo(x0,0); g.lineTo(x0+w,0);
-        g.lineTo(x0+w*1.9,H); g.lineTo(x0+w*0.9,H); g.closePath(); g.fill();
-      }
-    });
-  }
-
-  // dawn sky — cool overhead, warming down into the sun at the treeline
-  bgPlane(softBand([[0,'#A8C6DE'],[0.34,'#C6D8E1'],[0.66,'#E6E4D6'],[0.86,'#F5E3C6'],[1,'#FAEBD4']]),
-    -26, 42, -20, -40);
-
-  /* The sun sits far enough back to read as sky, and is re-centred on the
-     camera every frame — at that distance it should not slide past as the
-     shelf pans, any more than the real one does. */
-  const sunGlow=new THREE.Mesh(
-    new THREE.PlaneGeometry(15,15),
-    new THREE.MeshBasicMaterial({
-      map:mkTex(256,256,(g,w,h)=>{
-        const grd=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);
-        grd.addColorStop(0,'rgba(255,246,220,0.95)');
-        grd.addColorStop(0.16,'rgba(255,234,190,0.52)');
-        grd.addColorStop(0.44,'rgba(255,216,162,0.19)');
-        grd.addColorStop(1,'rgba(255,208,152,0)');
-        g.fillStyle=grd; g.fillRect(0,0,w,h);
-      }),
-      transparent:true, depthTest:false, depthWrite:false, blending:THREE.AdditiveBlending
-    })
-  );
-  sunGlow.position.set(0, 2.1, -24);
-  sunGlow.renderOrder=-38;
-  scene.add(sunGlow);
-  forestParts.push(sunGlow);
-
-  // distant misted ridge
-  bgPlane(treeLine('rgba(158,182,186,0.46)', 46, 0.30, 0.62, 3), -20, 8.0, -2.4, -34,
-    {tileWorld:44, sway:0.0016, phase:0.0, warm:0.36});
-  // far tree line
-  bgPlane(treeLine('rgba(114,152,156,0.56)', 32, 0.42, 0.86, 2), -15, 7.0, -2.1, -30,
-    {tileWorld:36, sway:0.0022, phase:1.3, warm:0.26});
-  // mid tree line
-  bgPlane(treeLine('rgba(76,118,124,0.68)', 22, 0.52, 0.95, 1), -10, 6.2, -1.95, -26,
-    {tileWorld:31, sway:0.0030, phase:2.6, warm:0.17});
-  // near framing trees
-  bgPlane(treeLine('rgba(42,80,88,0.74)', 15, 0.60, 1.0, 0), -6.2, 5.4, -1.85, -22,
-    {tileWorld:27, sway:0.0040, phase:4.1, warm:0.09});
-
-  const rays=bgPlane(raysTex(), -8.5, 12, -2.2, -24, {opacity:0.38, blend:THREE.AdditiveBlending, tileWorld:34});
-  const fog1=bgPlane(fogTex(), -12, 5.4, -2.4, -28, {opacity:0.50, tileWorld:42});
-  const fog2=bgPlane(fogTex(), -5.2, 4.4, -2.2, -20, {opacity:0.36, tileWorld:30});
-  // gentle haze that grounds the shelf and lifts the products off the forest
-  bgPlane(softBand([[0,'rgba(242,238,228,0)'],[0.6,'rgba(242,238,228,0.30)'],[1,'rgba(238,234,226,0.72)']]),
-    -3.2, 5, -3.4, -14);
-
-  // floating pollen / light motes
-  const moteTex=mkTex(64,64,(g,w,h)=>{
-    const grd=g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);
-    grd.addColorStop(0,'rgba(255,255,255,0.95)');
-    grd.addColorStop(0.4,'rgba(255,251,230,0.45)');
-    grd.addColorStop(1,'rgba(255,251,230,0)');
-    g.fillStyle=grd; g.fillRect(0,0,w,h);
-  });
-  const MOTES=110, mgeo=new THREE.BufferGeometry(), mpos=new Float32Array(MOTES*3), mphase=[];
-  for(let i=0;i<MOTES;i++){
-    mpos[i*3]=frnd()*(railEnd+16)-8;
-    mpos[i*3+1]=-1.2+frnd()*4.6;
-    mpos[i*3+2]=-4.5+frnd()*6.5;
-    mphase.push({sp:0.12+frnd()*0.28, ph:frnd()*Math.PI*2, amp:0.18+frnd()*0.32, y0:mpos[i*3+1]});
-  }
-  mgeo.setAttribute('position', new THREE.BufferAttribute(mpos,3));
-  const motes=new THREE.Points(mgeo, new THREE.PointsMaterial({
-    map:moteTex, size:0.14, transparent:true, depthTest:false, depthWrite:false,
-    opacity:0.75, blending:THREE.AdditiveBlending, sizeAttenuation:true}));
-  motes.renderOrder=6;
-  scene.add(motes);
-
-
-  /* ── BUTTERFLY ────────────────────────────────────────────────────────
-     Two wings hinged on a body, flapping on an asymmetric beat (the
-     downstroke is quicker than the recovery, which is what stops it
-     reading as a metronome), wandering on three sine terms of different
-     periods so the path never obviously repeats. It banks into its turns.
-     Forest only — it is hidden with the rest of the forest in space. */
-  const bfWingTex=mkTex(256,256,(g,w,h)=>{
-    g.clearRect(0,0,w,h);
-    const cx=8, cy=h*0.52;                      // hinge at the left edge
-    function wing(path,fill){
-      g.beginPath(); path(); g.closePath(); g.fillStyle=fill; g.fill();
-      g.lineWidth=5; g.strokeStyle='rgba(46,28,12,.85)'; g.stroke();
-    }
-    // forewing
-    wing(()=>{ g.moveTo(cx,cy);
-      g.bezierCurveTo(w*0.30,h*0.06, w*0.86,h*0.04, w*0.95,h*0.30);
-      g.bezierCurveTo(w*0.96,h*0.44, w*0.58,h*0.50, cx,cy+6); }, '#E0912F');
-    // hindwing
-    wing(()=>{ g.moveTo(cx,cy);
-      g.bezierCurveTo(w*0.30,h*0.62, w*0.72,h*0.72, w*0.70,h*0.92);
-      g.bezierCurveTo(w*0.60,h*0.99, w*0.26,h*0.82, cx,cy+8); }, '#C9741F');
-    // veins and a few pale spots — enough detail to read at size
-    g.strokeStyle='rgba(46,28,12,.42)'; g.lineWidth=2.4;
-    for(let i=0;i<6;i++){
-      const a=-0.72+i*0.30;
-      g.beginPath(); g.moveTo(cx,cy);
-      g.lineTo(cx+Math.cos(a)*w*0.86, cy+Math.sin(a)*h*0.80); g.stroke();
-    }
-    g.fillStyle='rgba(255,244,214,.92)';
-    [[0.78,0.20,9],[0.86,0.30,7],[0.60,0.14,8],[0.56,0.83,7],[0.66,0.88,6]].forEach(s=>{
-      g.beginPath(); g.ellipse(w*s[0],h*s[1],s[2],s[2]*0.82,0,0,Math.PI*2); g.fill();
-    });
-  });
-  const bf=new THREE.Group();
-  {
-    const wingGeo=new THREE.PlaneGeometry(0.46,0.40);
-    wingGeo.translate(0.23,0,0);                 // hinge on the body, not the centre
-    const wingMat=new THREE.MeshBasicMaterial({map:bfWingTex, transparent:true,
-      side:THREE.DoubleSide, depthTest:false, depthWrite:false});
-    const wR=new THREE.Mesh(wingGeo,wingMat);
-    const wL=new THREE.Mesh(wingGeo,wingMat); wL.scale.x=-1;
-    const bodyMat=new THREE.MeshBasicMaterial({color:0x3A2612, transparent:true,
-      depthTest:false, depthWrite:false});
-    const body=new THREE.Mesh(new THREE.PlaneGeometry(0.045,0.30), bodyMat);
-    bf.add(wR,wL,body);
-    bf.userData={wR:wR,wL:wL};
-  }
-  bf.renderOrder=4;
-  bf.scale.setScalar(0.34);
-  scene.add(bf);
-  forestParts.push(bf);
-  let bfPrevX=0;
-
-  /* The shelf panel is gone: the products stand on nothing, which is what
-     lets them read as floating in both the mist and the void. */
-
-  /* ---- backdrop switch: aurora shader, forest sky (WebGL) or deep space
-     Aurora is the default. Two of the three are dark, and everything that
-     has to invert for a dark sky keys off .shelf-stage[data-dark] and
-     body.space-theme rather than off the mode name, so a mode only has to
-     declare whether it is dark. The stage renderer is alpha:true, so hiding
-     the forest layers simply reveals the page backdrop behind the canvas. */
-  const bgCtl=document.getElementById('shelfBg');
+  const stage=document.getElementById('shelfStage');
+  if(!stage) return;
   // the stage itself listens for pointerdown to drag the carousel
+  const bgCtl=document.getElementById('shelfBg');
   if(bgCtl) bgCtl.addEventListener('pointerdown', e=>e.stopPropagation());
-  // the switch, the classes and the shader live in the page-level backdrop
-  // controller; only the scene-side consequences are ours
   window.__bgMode.onChange(function(mode,dark){
-    forestParts.forEach(m=>{ m.visible = mode==='forest'; });
-    // (the old CSS brightness filter on the canvas is gone: it re-filtered
-    //  the whole surface every frame, and the products already read well)
-    motes.material.opacity = dark ? 0.9 : 0.75;
-    stage.dataset.bg = mode;
+    stage.dataset.bg=mode;
     if(dark) stage.dataset.dark='1'; else delete stage.dataset.dark;
   });
-
-  let camX=railEnd*0.5, targetX=railEnd*0.5, rafId=null;   // parked mid-rail
-
-
-  function resize(){
-    const w=stage.clientWidth, h=stage.clientHeight;
-    if(!w||!h) return;
-    renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
-    renderer.setSize(w,h,false);
-    camera.aspect=w/h; camera.updateProjectionMatrix();
-  }
-  resize();
-  addEventListener('resize', resize);
-
-  function visibleWorldWidth(){
-    const vFov=camera.fov*Math.PI/180;
-    const vh=2*Math.tan(vFov/2)*CAM_Z;
-    return vh*camera.aspect;
-  }
-
-  /* Camera holds a fixed viewpoint now: the backdrop no longer pans, because
-     the products it used to follow are in the DOM carousel above it. */
-
   const fsBtn=document.getElementById('shelfFS');
-  if(!window.FACERINNA_TV||!window.FACERINNA_TV.supported){ fsBtn.hidden=true; }
-  fsBtn.addEventListener('pointerdown', e=>e.stopPropagation());
-  fsBtn.addEventListener('click', ()=>window.FACERINNA_TV.toggle());
-  addEventListener('facerinna:tvchange', ()=>{ requestAnimationFrame(resize); });
-
-  let visible=true;
-  const io=new IntersectionObserver(es=>{ visible=es[0].isIntersecting; if(visible&&!rafId) loop(); }, {threshold:.05});
-  io.observe(stage);
-
-  let t0=performance.now(), lastT=0;
-  function loop(now){
-    if(!visible){ rafId=null; return; }
-    rafId=requestAnimationFrame(loop);
-    const t=(now||performance.now());
-    // seconds since the previous frame, so the shelf travels at the same
-    // real-world speed on a 60Hz laptop and a 120Hz phone
-    const dt=lastT ? Math.min((t-lastT)/1000, 0.1) : 1/60;
-    lastT=t;
-    camX+=(targetX-camX)*(1-Math.pow(1-0.12, dt*60));
-
-    // the sun rides with the camera — at that distance it should not slide
-    // past as the shelf pans, and it stays clear of the centred product
-    sunGlow.position.x=camX-4.6;
-
-    if(!reduceMotion){
-      const ts=t*0.001;
-      for(let i=0;i<swayMats.length;i++) swayMats[i].uniforms.uTime.value=ts;
-      // butterfly: wander, bank, flap
-      const bx=camX+Math.sin(ts*0.29)*1.9+Math.sin(ts*0.11+1.3)*0.7;
-      const by=0.95+Math.sin(ts*0.47)*0.42+Math.sin(ts*0.19)*0.16;
-      bf.position.set(bx, by, 1.25+Math.sin(ts*0.23)*0.45);
-      const bdx=bx-bfPrevX; bfPrevX=bx;
-      bf.rotation.z=Math.max(-0.55,Math.min(0.55,-bdx*7));
-      bf.rotation.y=Math.max(-0.5,Math.min(0.5,bdx*9));
-      bf.rotation.x=-0.48+Math.sin(ts*0.6)*0.12;
-      const beat=Math.sin(ts*9.2);
-      const phi=(0.30+0.95*(beat<0?-Math.pow(-beat,0.62):Math.pow(beat,0.62)));
-      bf.userData.wR.rotation.y=phi;
-      bf.userData.wL.rotation.y=-phi;
-      fog1.material.map.offset.x=(ts*0.0065)%1;
-      fog2.material.map.offset.x=(ts*0.0135)%1;
-      rays.material.opacity=0.42+Math.sin(ts*0.35)*0.16;
-      const mp=motes.geometry.attributes.position;
-      for(let i=0;i<MOTES;i++){
-        const m=mphase[i];
-        mp.array[i*3+1]=m.y0+Math.sin(ts*m.sp+m.ph)*m.amp;
-        mp.array[i*3]+=0.10*dt;
-        if(mp.array[i*3]>railEnd+8) mp.array[i*3]=-8;
-      }
-      mp.needsUpdate=true;
-    }
-    let camY=BASE_Y+0.55;
-    if(!reduceMotion) camY+=Math.sin(t*0.0006)*0.035;
-    camera.position.set(camX, camY, CAM_Z);
-    camera.lookAt(camX, BASE_Y, 0);
-    renderer.render(scene, camera);
+  if(fsBtn){
+    if(!window.FACERINNA_TV||!window.FACERINNA_TV.supported) fsBtn.hidden=true;
+    fsBtn.addEventListener('pointerdown', e=>e.stopPropagation());
+    fsBtn.addEventListener('click', ()=>window.FACERINNA_TV.toggle());
   }
-  requestAnimationFrame(loop);
 })();
 
 /* ============================================================
