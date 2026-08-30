@@ -352,13 +352,6 @@ body.slides-h .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1
 .brandstrip-track .bs-mark:hover{opacity:1}
 @keyframes brandDrift{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
 .brandstrip:hover .brandstrip-track{animation-play-state:paused}
-/* The strip is deliberately transparent, so on the light backdrop it lands
-   on the violet outer edge of the radial. These are dark marks drawn for
-   paper: they get their own pale chip rather than being washed out, the same
-   treatment the header's partner mark already gets on a dark sky. */
-body.radial-theme .brandstrip-track .bs-mark{background:rgba(255,255,255,.88);
-  border-radius:8px;padding:6px 12px;box-sizing:content-box}
-body.radial-theme .brandstrip-label{color:var(--ink-2)}
 /* the marks are printed for white paper; on a dark sky they get one back */
 body.space-theme .brandstrip-track .bs-mark{background:rgba(255,255,255,.94);
   border-radius:8px;padding:4px 8px}
@@ -498,14 +491,25 @@ body.aurora-static #shaderBg .shader-fallback{display:block;
     radial-gradient(120% 86% at 50% 44%, rgba(2,16,26,0) 40%, rgba(2,16,26,.55) 100%),
     linear-gradient(180deg, rgba(3,20,32,.46) 0%, rgba(3,20,32,.30) 38%, rgba(3,20,32,.56) 100%)}
 
-/* ── RADIAL BACKDROP ──────────────────────────────────────────────────
-   The supplied light background, ported from its Tailwind arbitrary value
-   to plain CSS. It is a fixed layer behind the page rather than a wash on
-   one section, so every screen of the showcase stands on the same ground:
-   white overhead, falling to violet at the edges. */
+/* ── LIGHT BACKDROP ───────────────────────────────────────────────────
+   The supplied background, ported from its Tailwind arbitrary values to
+   plain CSS: white paper ruled in a 6rem x 4rem grid, with one soft glow
+   thrown in from the top right. It is a fixed layer behind the page rather
+   than a wash on one section, so every screen of the showcase stands on the
+   same ground.
+
+   The glow's #d5c5ff is a violet tint; FACERINNA's blue at the same
+   lightness and saturation is #C2E0FF, so the ground reads as the brand's
+   rather than as a stock snippet's. */
 #radialBg{position:fixed;inset:0;z-index:-1;pointer-events:none;
   opacity:0;transition:opacity .9s ease;background:#fff;
-  background-image:radial-gradient(125% 125% at 50% 10%, #fff 40%, #63e 100%)}
+  background-image:
+    linear-gradient(to right, #f0f0f0 1px, transparent 1px),
+    linear-gradient(to bottom, #f0f0f0 1px, transparent 1px);
+  background-size:6rem 4rem}
+/* the component's inner div, which the grid has to show through */
+#radialBg::after{content:"";position:absolute;inset:0;
+  background:radial-gradient(circle 800px at 100% 200px, #C2E0FF, transparent)}
 body.radial-theme #radialBg{opacity:1}
 html.radial-bg{background:#fff}
 /* the layer sits at z-index:-1, so the body's own fill has to step aside
