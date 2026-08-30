@@ -500,13 +500,24 @@ body.aurora-static #shaderBg .shader-fallback{display:block;
 
    The glow's #d5c5ff is a violet tint; FACERINNA's blue at the same
    lightness and saturation is #C2E0FF, so the ground reads as the brand's
-   rather than as a stock snippet's. */
+   rather than as a stock snippet's.
+
+   The rule is lighter than the snippet's #f0f0f0, and thinner where the
+   screen has the pixels to spare. Half a pixel is a true one-device-pixel
+   hairline on a retina display, but on a 1x screen it antialiases away to
+   nothing, so that only applies above 1.5dppx — the booth's own screen keeps
+   a full pixel, which is as thin as it can draw, and takes the lighter tone
+   on its own. */
 #radialBg{position:fixed;inset:0;z-index:-1;pointer-events:none;
   opacity:0;transition:opacity .9s ease;background:#fff;
   background-image:
-    linear-gradient(to right, #f0f0f0 1px, transparent 1px),
-    linear-gradient(to bottom, #f0f0f0 1px, transparent 1px);
+    linear-gradient(to right, #f4f6f9 1px, transparent 1px),
+    linear-gradient(to bottom, #f4f6f9 1px, transparent 1px);
   background-size:6rem 4rem}
+@media (min-resolution:1.5dppx){
+  #radialBg{background-image:
+    linear-gradient(to right, #eaeef4 .5px, transparent .5px),
+    linear-gradient(to bottom, #eaeef4 .5px, transparent .5px)}}
 /* the component's inner div, which the grid has to show through */
 #radialBg::after{content:"";position:absolute;inset:0;
   background:radial-gradient(circle 800px at 100% 200px, #C2E0FF, transparent)}
