@@ -1631,7 +1631,9 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
     </div>
 
     <div class="flyer-strip reveal">
-      <img class="flyer-thumb" id="flyerThumb" src="docs/bro-sheet-out.webp" alt="Clinic Partnership brochure, folded — tap to open">
+      <!-- src is set from data-src so the self-contained build can swap in an
+           inlined copy without the browser first chasing a path it cannot reach -->
+      <img class="flyer-thumb" id="flyerThumb" data-src="docs/bro-sheet-out.webp" alt="Clinic Partnership brochure, folded — tap to open">
       <div>
         <span class="eyebrow">Programme Brochure</span>
         <h4 style="margin:.3rem 0 .4rem;font-size:1.15rem;font-family:'Inter';font-weight:700">The 360° Skin Hub gatefold</h4>
@@ -2506,6 +2508,13 @@ void main() {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+/* Document pictures are ordinary files next to this page. A build that has
+   to be self-contained — the Claude artifact, whose sandbox blocks every
+   cross-origin request — drops a map of the same paths to data URIs in
+   window.__DOCASSETS, and everything resolves through here. With no map,
+   the path is used as it stands. */
+const docAsset = u => (window.__DOCASSETS && window.__DOCASSETS[u]) || u;
+
 /* ============================================================
    DATA — real FACERINNA catalogue (from the Brand Intro deck)
    ============================================================ */
@@ -2633,7 +2642,7 @@ const HEROES = [
     const o=SLIDE_OVERRIDES[i]||{};
     const auto=twoLines(h.name);
     const l1=o.line1||auto[0], l2=o.line2||auto[1], sub=o.sub||h.tag;
-    const img=o.img||h.img;
+    const img=docAsset(o.img||h.img);
     const cover=(o.fit==='cover');
     const el=document.createElement('div');
     el.className='slide'+(cover?' cover':'');
@@ -3182,7 +3191,7 @@ const GALLERY_DOCS = [
   let doc=null, sheets=[], turned=0, busy=false, lastFocus=null, mode='book';
   let pages=[], at=0;                       // the pager's own state
 
-  const pageUrl=(d,n)=>d.pagePath+n+'.webp';
+  const pageUrl=(d,n)=>docAsset(d.pagePath+n+'.webp');
 
   function warm(n){
     if(!doc || n<1 || n>doc.pages) return;
@@ -5234,12 +5243,13 @@ function launchConfetti(){
     name:'Clinic Partnership Brochure',
     read:'brochure',
     url:'clinic-partnership-brochure.pdf',
-    sheets:[BASE+'bro-sheet-out.webp', BASE+'bro-sheet-in.webp'],
+    sheets:[BASE+'bro-sheet-out.webp', BASE+'bro-sheet-in.webp'].map(docAsset),
     panels:[BASE+'bro-out-1.webp', BASE+'bro-out-2.webp', BASE+'bro-out-3.webp',
-            BASE+'bro-in-1.webp',  BASE+'bro-in-2.webp',  BASE+'bro-in-3.webp']
+            BASE+'bro-in-1.webp',  BASE+'bro-in-2.webp',  BASE+'bro-in-3.webp'].map(docAsset)
   };
   var thumb=document.getElementById('flyerThumb');
   var view=document.getElementById('flyerView');
+  if(thumb && thumb.dataset.src) thumb.src=docAsset(thumb.dataset.src);
   function open(){ if(window.__openBook) window.__openBook(BROCHURE); }
   if(thumb) thumb.addEventListener('click', open);
   if(view) view.addEventListener('click', open);
