@@ -518,9 +518,14 @@ body.aurora-static #shaderBg .shader-fallback{display:block;
   #radialBg{background-image:
     linear-gradient(to right, #eaeef4 .5px, transparent .5px),
     linear-gradient(to bottom, #eaeef4 .5px, transparent .5px)}}
-/* the component's inner div, which the grid has to show through */
+/* the component's inner div, which the grid has to show through. Bigger and
+   stronger than the snippet's 800px: at 800px it only tinted the right-hand
+   margin and read as an artefact rather than as light. The explicit middle
+   stop is what makes it carry — a straight two-stop fade spends most of its
+   radius almost transparent. */
 #radialBg::after{content:"";position:absolute;inset:0;
-  background:radial-gradient(circle 800px at 100% 200px, #C2E0FF, transparent)}
+  background:radial-gradient(circle 1400px at 100% 180px,
+    #ABD5F8 0%, rgba(171,213,248,.55) 48%, rgba(171,213,248,0) 100%)}
 body.radial-theme #radialBg{opacity:1}
 html.radial-bg{background:#fff}
 /* the layer sits at z-index:-1, so the body's own fill has to step aside
