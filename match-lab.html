@@ -56,6 +56,10 @@
     background:linear-gradient(180deg,rgba(8,22,34,0) 22%,rgba(8,22,34,.90) 58%);
     overflow-y:auto}
   .screen.hidden{display:none}
+  /* shown only when the CDN did not deliver three.js — same treatment the
+     other three games in the set already use */
+  .warn{background:rgba(255,120,110,.16);border-radius:14px;padding:14px 16px;
+    color:#FFD9D4;font-size:13px;font-weight:700;max-width:420px;line-height:1.5}
   .brand{font-size:11px;letter-spacing:.42em;text-transform:uppercase;font-weight:800;
     color:var(--blue);margin:0 0 8px}
   h1{font-size:11vw;font-weight:800;letter-spacing:-.03em;line-height:.88;margin:0 0 10px;
@@ -268,6 +272,10 @@
 </div>
 
 <div class="hint" id="hint" style="display:none">Drag anywhere to move</div>
+<div class="screen hidden" id="fail">
+  <p class="brand">Could not start</p>
+  <div class="warn">The 3D library did not load. Check the connection and reload.</div>
+</div>
 
 
 <div id="fxControls">
@@ -389,6 +397,15 @@ var FXUI = (function(){
 
 (function(){
 "use strict";
+
+/* Without three.js there is no game to start, and the start button would sit
+   there doing nothing on every press. Say so instead — a booth laptop that
+   loses the CDN for a moment gets an explanation, not a dead screen. */
+if (typeof THREE === 'undefined'){
+  document.getElementById('start').classList.add('hidden');
+  document.getElementById('fail').classList.remove('hidden');
+  return;
+}
 
 /* ============================================================
    CLAIM BANK

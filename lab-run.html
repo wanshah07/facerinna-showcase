@@ -39,6 +39,10 @@
     justify-content:flex-end;padding:0 24px calc(48px + env(safe-area-inset-bottom));
     background:linear-gradient(180deg,rgba(7,20,30,0) 32%,rgba(7,20,30,.93) 66%);}
   .screen.hidden{display:none;}
+  /* shown only when the CDN did not deliver three.js — same treatment the
+     other three games in the set already use */
+  .warn{background:rgba(255,120,110,.16);border-radius:14px;padding:14px 16px;
+    color:#FFD9D4;font-size:13px;font-weight:700;max-width:420px;line-height:1.5}
   .title{font-size:15vw;font-weight:800;letter-spacing:-.03em;line-height:.86;
     color:#fff;text-shadow:0 5px 0 var(--blue),0 10px 22px rgba(11,92,140,.3);margin:0 0 6px;text-align:center;}
   @media(min-width:520px){.title{font-size:74px;}}
@@ -218,6 +222,11 @@
   <button class="btn" id="againBtn">Run again</button>
 </div>
 
+<div class="screen hidden" id="fail">
+  <p class="sub" style="margin-bottom:14px">Could not start</p>
+  <div class="warn">The 3D library did not load. Check the connection and reload.</div>
+</div>
+
 <div class="pad hidden" id="pad">
   <button class="key" id="kL" aria-label="Move left">◀</button>
   <button class="key" id="kJ" aria-label="Jump">▲</button>
@@ -345,6 +354,15 @@ var FXUI = (function(){
 
 (function(){
 "use strict";
+
+/* Without three.js there is no game to start, and the start button would sit
+   there doing nothing on every press. Say so instead — a booth laptop that
+   loses the CDN for a moment gets an explanation, not a dead screen. */
+if (typeof THREE === 'undefined'){
+  document.getElementById('start').classList.add('hidden');
+  document.getElementById('fail').classList.remove('hidden');
+  return;
+}
 
 // ---------- palette ----------
 var C = {
