@@ -46,8 +46,7 @@
   .rules{display:flex;gap:18px;margin:0 0 26px;flex-wrap:wrap;justify-content:center;}
   .rule{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;opacity:.8;}
   .dot{width:16px;height:16px;border-radius:50%;box-shadow:0 2px 6px rgba(11,92,140,.25);}
-    .btn.ghost{background:transparent;color:#9FD8FF;box-shadow:none;font-size:13px;padding:12px;opacity:.7}
-.btn{pointer-events:auto;border:0;cursor:pointer;font:inherit;font-weight:800;letter-spacing:.06em;
+  .btn{pointer-events:auto;border:0;cursor:pointer;font:inherit;font-weight:800;letter-spacing:.06em;
     background:var(--blue);color:#fff;padding:17px 44px;border-radius:99px;font-size:17px;
     box-shadow:0 6px 0 #1B87C6,0 14px 26px rgba(11,92,140,.3);transition:transform .12s,box-shadow .12s;}
   .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #1B87C6,0 8px 16px rgba(11,92,140,.3);}
@@ -210,7 +209,6 @@
     <div class="rule"><span class="dot" style="background:#F0503C"></span>Germ — avoid</div>
   </div>
   <button class="btn" id="playBtn">Start running</button>
-  <a class="btn ghost" href="index.html" style="text-decoration:none">← Back to showcase</a>
 </div>
 
 <div class="screen hidden" id="over">
@@ -218,7 +216,6 @@
   <p class="final" id="finalScore">0</p>
   <p class="sub" id="finalLine" style="margin:10px 0 24px">0 drops collected</p>
   <button class="btn" id="againBtn">Run again</button>
-  <a class="btn ghost" href="index.html" style="text-decoration:none">← Back to showcase</a>
 </div>
 
 <div class="pad hidden" id="pad">
@@ -361,13 +358,13 @@ var LANES = [-2.0, 0, 2.0];
 var app = document.getElementById('app');
 var renderer = new THREE.WebGLRenderer({antialias:true, alpha:false});
 var SMALL = Math.min(window.innerWidth, window.innerHeight) < 820;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, SMALL ? 1.5 : 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, SMALL ? 1.25 : 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.95;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;  // soft PCF samples 4x per fragment
 app.appendChild(renderer.domElement);
 
 var scene = new THREE.Scene();
@@ -385,7 +382,7 @@ scene.add(new THREE.AmbientLight(0x33465C, 0.30));
 var key = new THREE.DirectionalLight(0xFFE3B8, 2.3);
 key.position.set(5, 14, 8);
 key.castShadow = true;
-key.shadow.mapSize.width = key.shadow.mapSize.height = SMALL ? 768 : 1024;
+key.shadow.mapSize.width = key.shadow.mapSize.height = SMALL ? 512 : 1024;
 key.shadow.camera.near = 1; key.shadow.camera.far = 44;
 key.shadow.camera.left = -10; key.shadow.camera.right = 10;
 key.shadow.camera.top = 14; key.shadow.camera.bottom = -6;
@@ -633,17 +630,64 @@ var roof = new THREE.Mesh(new THREE.BoxGeometry(15, 0.4, 240),
   new THREE.MeshStandardMaterial({color:0x141C25, roughness:1}));
 roof.position.set(0, 9, -100);
 world.add(roof);
+roof.matrixAutoUpdate = false; roof.updateMatrix();
+
+
+/* ── Instancing helper ──────────────────────────────────────
+   The set dressing was hundreds of individual meshes, and every
+   mesh is a draw call. Repeated furniture is now drawn with one
+   InstancedMesh per shape: same picture, a fraction of the calls. */
+function instanced(geo, mat, transforms, cast, receive){
+  var im = new THREE.InstancedMesh(geo, mat, transforms.length);
+  var m4 = new THREE.Matrix4(), q = new THREE.Quaternion(),
+      p = new THREE.Vector3(), s = new THREE.Vector3(), e = new THREE.Euler();
+  for (var i=0;i<transforms.length;i++){
+    var t = transforms[i];
+    p.set(t[0], t[1], t[2]);
+    e.set(t[3]||0, t[4]||0, t[5]||0);
+    q.setFromEuler(e);
+    s.set(t[6]===undefined?1:t[6], t[7]===undefined?1:t[7], t[8]===undefined?1:t[8]);
+    m4.compose(p, q, s);
+    im.setMatrixAt(i, m4);
+  }
+  im.instanceMatrix.needsUpdate = true;
+  im.castShadow = !!cast;
+  im.receiveShadow = !!receive;
+  world.add(im);
+  return im;
+}
+
+/* ── Point-sprite field ─────────────────────────────────────
+   Dust was 60 meshes with 60 materials. One Points object now. */
+function dustField(n, spread, colour){
+  var pos = new Float32Array(n*3), spd = new Float32Array(n);
+  for (var i=0;i<n;i++){
+    pos[i*3]   = (Math.random()-0.5)*spread[0] + spread[3];
+    pos[i*3+1] =  Math.random()*spread[1];
+    pos[i*3+2] = (Math.random()-0.5)*spread[2] + spread[4];
+    spd[i] = 0.10 + Math.random()*0.30;
+  }
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  var pts = new THREE.Points(g, new THREE.PointsMaterial({
+    color: colour, size: 0.10, transparent:true, opacity:0.34,
+    depthWrite:false, sizeAttenuation:true
+  }));
+  pts.userData = {spd:spd, n:n, top:spread[1]};
+  world.add(pts);
+  return pts;
+}
 
 // scrolling floor rungs
-var rungs = [];
 var RUNG_GAP = 4, RUNG_N = 44;
-for (var i=0;i<RUNG_N;i++){
-  var rg = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.06, 0.30),
-    new THREE.MeshStandardMaterial({color:0x3C5568, emissive:0x2A4C63,
-      emissiveIntensity:0.6, roughness:0.6}));
-  rg.position.set(0, 0.02, -i*RUNG_GAP);
-  world.add(rg); rungs.push(rg);
-}
+var rungMat = new THREE.MeshStandardMaterial({color:0x3C5568, emissive:0x2A4C63,
+  emissiveIntensity:0.6, roughness:0.6});
+var rungMesh = (function(){
+  var t = [];
+  for (var i=0;i<RUNG_N;i++) t.push([0, 0.02, -i*RUNG_GAP]);
+  return instanced(new THREE.BoxGeometry(7.4, 0.06, 0.30), rungMat, t, false, false);
+})();
+var rungScroll = 0;
 
 // Facerinna wall signage, recycled down the corridor as you run
 // NOTE: typographic stand-in, not the real brand asset.
@@ -712,16 +756,17 @@ for (var b=0;b<18;b++){
 }
 
 // ---------- pickups & obstacles ----------
+var DROP_BALL_GEO = new THREE.SphereGeometry(0.26, 12, 10);
+var DROP_TIP_GEO  = new THREE.ConeGeometry(0.24, 0.40, 12);
+var DROP_GLOW_GEO = new THREE.SphereGeometry(0.42, 10, 8);
+var DROP_GLOW_MAT = mat(C.cyan, 1, {transparent:true, opacity:0.16, depthWrite:false});
 function buildDrop(){
   var g = new THREE.Group();
-  var ball = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 14), M.cyan);
-  g.add(ball);
-  var tip = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.40, 16), M.cyan);
+  g.add(new THREE.Mesh(DROP_BALL_GEO, M.cyan));
+  var tip = new THREE.Mesh(DROP_TIP_GEO, M.cyan);
   tip.position.y = 0.29;
   g.add(tip);
-  var glow = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 12),
-    mat(C.cyan, 1, {transparent:true, opacity:0.16, depthWrite:false}));
-  g.add(glow);
+  g.add(new THREE.Mesh(DROP_GLOW_GEO, DROP_GLOW_MAT));
   g.position.y = 1.0;
   return g;
 }
@@ -737,20 +782,23 @@ function buildShield(){
   g.position.y = 1.05;
   return g;
 }
+var SPIKE_GEO = new THREE.ConeGeometry(0.12, 0.34, 6);
+var GERM_EYE_GEO = new THREE.SphereGeometry(0.09, 8, 8);
+var GERM_CORE_GEO = new THREE.SphereGeometry(0.52, 14, 12);
 function buildGerm(){
   var g = new THREE.Group();
-  var core = new THREE.Mesh(new THREE.SphereGeometry(0.52, 18, 16), M.germ);
+  var core = new THREE.Mesh(GERM_CORE_GEO, M.germ);
   g.add(core);
-  for (var i=0;i<9;i++){
-    var sp = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.34, 8), M.germDark);
-    var a = (i/9)*Math.PI*2, t = (i%3)*0.7 - 0.7;
+  for (var i=0;i<6;i++){
+    var sp = new THREE.Mesh(SPIKE_GEO, M.germDark);
+    var a = (i/6)*Math.PI*2, t = (i%3)*0.7 - 0.7;
     var dir = new THREE.Vector3(Math.cos(a)*Math.cos(t), Math.sin(t), Math.sin(a)*Math.cos(t));
     sp.position.copy(dir.clone().multiplyScalar(0.58));
     sp.lookAt(dir.clone().multiplyScalar(2.2));
     sp.rotateX(Math.PI/2);
     g.add(sp);
   }
-  var eyeGeo = new THREE.SphereGeometry(0.09, 10, 10);
+  var eyeGeo = GERM_EYE_GEO;
   var e1 = new THREE.Mesh(eyeGeo, M.ink); e1.position.set(-0.17, 0.12, 0.47); g.add(e1);
   var e2 = new THREE.Mesh(eyeGeo, M.ink); e2.position.set(0.17, 0.12, 0.47); g.add(e2);
   var frown = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.03, 8, 16, Math.PI), M.ink);
@@ -761,9 +809,15 @@ function buildGerm(){
 }
 
 var POOL = {drop:[], shield:[], germ:[]};
+function freezeChildren(g){
+  g.traverse(function(o){
+    if (o !== g){ o.matrixAutoUpdate = false; o.updateMatrix(); }
+  });
+}
 function spawnPool(kind, n, builder){
   for (var i=0;i<n;i++){
     var m = builder();
+    freezeChildren(m);
     m.visible = false;
     m.userData.active = false;
     world.add(m);
@@ -996,7 +1050,46 @@ function hit(){
 // ---------- loop ----------
 var clock = new THREE.Clock();
 
+/* ── Adaptive resolution governor ───────────────────────────
+   Static settings cannot suit both a trade-show laptop and a mid-range
+   phone. This watches the real frame time and steps the render scale
+   down when we miss budget, then edges it back up once there is room.
+   Shadows are dropped entirely at the bottom step. */
+var PERF = (function(){
+  // The cap must be the ratio the renderer ACTUALLY started at. Assuming a
+  // flat 1.5 meant that on a 1x display the governor would raise the scale
+  // to 1.5 and render 2.25x the pixels for no visible gain -- a slowdown
+  // introduced by the very thing meant to prevent one.
+  var cap = Math.min(window.devicePixelRatio || 1,
+                     (typeof SMALL !== 'undefined' && SMALL) ? 1.25 : 1.5);
+  return {cap: cap, scale: cap, min: Math.min(0.75, cap),
+          acc: 0, frames: 0, cooldown: 0, shadowsOff: false};
+})();
+function perfTick(dtMs){
+  PERF.acc += dtMs; PERF.frames++;
+  if (PERF.cooldown > 0){ PERF.cooldown--; }
+  if (PERF.frames < 30) return;
+  var avg = PERF.acc / PERF.frames;
+  PERF.acc = 0; PERF.frames = 0;
+  if (PERF.cooldown > 0) return;
+
+  if (avg > 22 && PERF.scale > PERF.min){           // under ~45fps
+    PERF.scale = Math.max(PERF.min, PERF.scale - 0.25);
+    renderer.setPixelRatio(PERF.scale);
+    PERF.cooldown = 60;
+  } else if (avg > 30 && !PERF.shadowsOff){          // still under ~33fps
+    renderer.shadowMap.enabled = false;
+    PERF.shadowsOff = true;
+    PERF.cooldown = 90;
+  } else if (avg < 13 && PERF.scale < PERF.cap){
+    PERF.scale = Math.min(PERF.cap, PERF.scale + 0.25);
+    renderer.setPixelRatio(PERF.scale);
+    PERF.cooldown = 120;
+  }
+}
+
 function tick(){
+  var _t0 = performance.now();
   requestAnimationFrame(tick);
   var dt = Math.min(clock.getDelta(), 0.05);
   S.t += dt;
@@ -1044,10 +1137,9 @@ function tick(){
 
   // scroll props
   var i, m;
-  for (i=0;i<rungs.length;i++){
-    rungs[i].position.z += speed*dt;
-    if (rungs[i].position.z > 12) rungs[i].position.z -= RUNG_GAP*RUNG_N;
-  }
+  rungScroll += speed*dt;
+  if (rungScroll > RUNG_GAP) rungScroll -= RUNG_GAP;
+  rungMesh.position.z = rungScroll;
   for (i=0;i<beakers.length;i++){
     beakers[i].position.z += speed*dt*0.7;
     if (beakers[i].position.z > 16) beakers[i].position.z -= 250;
@@ -1165,6 +1257,7 @@ function tick(){
   camera.lookAt(S.x*0.32, 0.9 + S.y*0.3, -14);
 
   renderer.render(scene, camera);
+  perfTick(performance.now() - _t0);
 }
 tick();
 

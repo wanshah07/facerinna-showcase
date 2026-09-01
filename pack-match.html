@@ -43,8 +43,7 @@
     color:#fff;text-shadow:0 0 40px rgba(90,200,255,.7),0 6px 0 #2CA9F0}
   @media(min-width:520px){h1{font-size:62px}}
   .lede{font-size:15px;line-height:1.6;max-width:430px;color:rgba(255,255,255,.8);font-weight:600;margin:0 0 20px}
-    .btn.ghost{background:transparent;color:#9FD8FF;box-shadow:none;font-size:13px;padding:12px;opacity:.7}
-.btn{pointer-events:auto;border:0;cursor:pointer;font:inherit;font-weight:800;letter-spacing:.05em;
+  .btn{pointer-events:auto;border:0;cursor:pointer;font:inherit;font-weight:800;letter-spacing:.05em;
     background:linear-gradient(180deg,#4CBBFA,#2490D8);color:#fff;padding:15px 38px;border-radius:99px;
     font-size:15.5px;box-shadow:0 6px 0 #14608F,0 16px 34px rgba(20,96,143,.5);min-height:48px}
   .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #14608F}
@@ -299,7 +298,6 @@
     <div class="kr"><span class="kd" style="background:#FFD84D"></span>Consecutive right picks build a score multiplier</div>
   </div>
   <button class="btn" id="startBtn">Open the stand</button>
-  <a class="btn ghost" href="index.html" style="text-decoration:none">← Back to showcase</a>
   <p class="fine">Internal range-knowledge trainer. Pack shots are the real product photography from the Brand Intro (EN) deck, cut out of their studio backgrounds. Concern-to-product routing only; none of this is cleared ad copy.</p>
 </div>
 
@@ -754,12 +752,15 @@ var ROUNDS = [
 var PACK_CACHE = {};
 function loadPackTexture(key){
   if (PACK_CACHE[key]) return PACK_CACHE[key];
-  var tex = new THREE.TextureLoader().load(PRODUCTS[key].photo);
+  var tex = new THREE.TextureLoader().load(PRODUCTS[key].photo, function(t){
+    // Applied on load, when the image actually exists.
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    t.generateMipmaps = true;
+    try { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); } catch(e){}
+    t.needsUpdate = true;
+  });
   tex.encoding = THREE.sRGBEncoding;
-  tex.minFilter = THREE.LinearMipmapLinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  tex.generateMipmaps = true;
-  try { tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); } catch(e){}
   PACK_CACHE[key] = tex;
   return tex;
 }
@@ -772,13 +773,13 @@ function loadPackTexture(key){
 var app = document.getElementById('app');
 var renderer = new THREE.WebGLRenderer({antialias:true});
 var SMALL = Math.min(window.innerWidth, window.innerHeight) < 820;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, SMALL ? 1.5 : 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, SMALL ? 1.25 : 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;  // soft PCF samples 4x per fragment
 app.appendChild(renderer.domElement);
 
 var scene = new THREE.Scene();
@@ -819,7 +820,7 @@ scene.add(new THREE.AmbientLight(0x33465C, 0.34));
 var key = new THREE.DirectionalLight(0xFFF0D8, 2.3);
 key.position.set(6, 14, 12);
 key.castShadow = true;
-key.shadow.mapSize.width = key.shadow.mapSize.height = SMALL ? 1024 : 2048;
+key.shadow.mapSize.width = key.shadow.mapSize.height = SMALL ? 512 : 1024;
 key.shadow.camera.near = 1; key.shadow.camera.far = 50;
 key.shadow.camera.left = -16; key.shadow.camera.right = 16;
 key.shadow.camera.top = 16; key.shadow.camera.bottom = -8;
@@ -1054,6 +1055,20 @@ function clearPacks(){
   packs = [];
 }
 
+/* Twenty pack shots at 1100px is roughly 60MB of GPU texture memory once
+   every round has been visited, and nothing was ever released. That is fine
+   on a laptop and a real risk on a phone. Only six packs are on screen at a
+   time, so anything not in the current round is handed back. The packs for
+   this round are built before this runs, so their textures are still held. */
+function evictUnusedPackTextures(keep){
+  for (var k in PACK_CACHE){
+    if (keep.indexOf(k) === -1){
+      PACK_CACHE[k].dispose();
+      delete PACK_CACHE[k];
+    }
+  }
+}
+
 function loadRound(n){
   clearPacks();
   G.round = n; G.score = 0; G.hearts = 3; G.picked = 0; G.wrong = 0;
@@ -1065,6 +1080,7 @@ function loadRound(n){
     packs.push(pk);
   }
   layoutPacks();
+  evictUnusedPackTextures(R.shelf);
   el.cName.textContent = R.name;
   el.cHint.textContent = R.hint;
   el.score.textContent = '0';
@@ -1211,7 +1227,47 @@ FXUI.init({
    LOOP
    ============================================================ */
 var clock = new THREE.Clock();
+/* ── Adaptive resolution governor ───────────────────────────
+   Static settings cannot suit both a trade-show laptop and a mid-range
+   phone. This watches the real frame time and steps the render scale
+   down when we miss budget, then edges it back up once there is room.
+   Shadows are dropped entirely at the bottom step. */
+var _tmpV3 = new THREE.Vector3();
+var PERF = (function(){
+  // The cap must be the ratio the renderer ACTUALLY started at. Assuming a
+  // flat 1.5 meant that on a 1x display the governor would raise the scale
+  // to 1.5 and render 2.25x the pixels for no visible gain -- a slowdown
+  // introduced by the very thing meant to prevent one.
+  var cap = Math.min(window.devicePixelRatio || 1,
+                     (typeof SMALL !== 'undefined' && SMALL) ? 1.25 : 1.5);
+  return {cap: cap, scale: cap, min: Math.min(0.75, cap),
+          acc: 0, frames: 0, cooldown: 0, shadowsOff: false};
+})();
+function perfTick(dtMs){
+  PERF.acc += dtMs; PERF.frames++;
+  if (PERF.cooldown > 0){ PERF.cooldown--; }
+  if (PERF.frames < 30) return;
+  var avg = PERF.acc / PERF.frames;
+  PERF.acc = 0; PERF.frames = 0;
+  if (PERF.cooldown > 0) return;
+
+  if (avg > 22 && PERF.scale > PERF.min){           // under ~45fps
+    PERF.scale = Math.max(PERF.min, PERF.scale - 0.25);
+    renderer.setPixelRatio(PERF.scale);
+    PERF.cooldown = 60;
+  } else if (avg > 30 && !PERF.shadowsOff){          // still under ~33fps
+    renderer.shadowMap.enabled = false;
+    PERF.shadowsOff = true;
+    PERF.cooldown = 90;
+  } else if (avg < 13 && PERF.scale < PERF.cap){
+    PERF.scale = Math.min(PERF.cap, PERF.scale + 0.25);
+    renderer.setPixelRatio(PERF.scale);
+    PERF.cooldown = 120;
+  }
+}
+
 function animate(){
+  var _t0 = performance.now();
   requestAnimationFrame(animate);
   var dt = Math.min(clock.getDelta(), 0.05);
   G.t += dt;
@@ -1242,10 +1298,11 @@ function animate(){
       if (!u.right) u.art.material.opacity = Math.max(0.35, u.art.material.opacity - dt*0.8);
     }
     // packs always face the camera squarely so the artwork stays readable
-    u.art.lookAt(camera.position.x, u.art.getWorldPosition(new THREE.Vector3()).y, camera.position.z);
+    u.art.lookAt(camera.position.x, u.art.getWorldPosition(_tmpV3).y, camera.position.z);
   }
 
   renderer.render(scene, camera);
+  perfTick(performance.now() - _t0);
 }
 animate();
 

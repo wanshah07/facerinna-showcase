@@ -252,7 +252,6 @@
     <div class="leg"><span class="swatch" style="background:#EF4B3C"></span>Let it fall — wrong SKU for this concern, costs a heart</div>
   </div>
   <button class="btn" id="playBtn">Start matching</button>
-  <a class="btn ghost" href="index.html" style="text-decoration:none">← Back to showcase</a>
   <p class="fine">Internal detailing trainer. Concern-to-product routing only — it is not a diagnosis aid and none of the wording here is cleared ad copy. Verdicts appear after you catch, never before.</p>
 </div>
 
@@ -266,7 +265,6 @@
   </div>
   <div class="report" id="report"></div>
   <button class="btn" id="againBtn">Run it again</button>
-  <a class="btn ghost" href="index.html" style="text-decoration:none">← Back to showcase</a>
 </div>
 
 <div class="hint" id="hint" style="display:none">Drag anywhere to move</div>
@@ -549,13 +547,13 @@ var UNIVERSAL = [
 var app = document.getElementById('app');
 var renderer = new THREE.WebGLRenderer({antialias:true});
 var SMALL = Math.min(window.innerWidth, window.innerHeight) < 820;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, SMALL ? 1.5 : 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, SMALL ? 1.25 : 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.94;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;  // soft PCF samples 4x per fragment
 app.appendChild(renderer.domElement);
 
 var scene = new THREE.Scene();
@@ -619,7 +617,7 @@ scene.add(new THREE.AmbientLight(0x33465C, 0.28));
 var key = new THREE.DirectionalLight(0xFFE3B8, 2.4);
 key.position.set(5, 11, 8);
 key.castShadow = true;
-key.shadow.mapSize.width = key.shadow.mapSize.height = SMALL ? 768 : 1024;
+key.shadow.mapSize.width = key.shadow.mapSize.height = SMALL ? 512 : 1024;
 key.shadow.camera.near = 1; key.shadow.camera.far = 34;
 key.shadow.camera.left = -9; key.shadow.camera.right = 9;
 key.shadow.camera.top = 12; key.shadow.camera.bottom = -4;
@@ -642,12 +640,10 @@ scene.add(practical);
    ============================================================ */
 function vinyl(color, opts){
   var o = opts||{};
-  return new THREE.MeshPhysicalMaterial({
+  return new THREE.MeshStandardMaterial({
     color:color,
     roughness:(o.rough===undefined?0.34:o.rough),
     metalness:0,
-    clearcoat:(o.cc===undefined?0.85:o.cc),
-    clearcoatRoughness:(o.ccr===undefined?0.22:o.ccr),
     envMapIntensity:(o.env===undefined?0.85:o.env),
     side:(o.side||THREE.FrontSide),
     transparent:!!o.transparent,
@@ -1067,7 +1063,9 @@ for (var a=0;a<16;a++){
 /* ============================================================
    BUBBLES
    ============================================================ */
+var LABEL_CACHE = {};
 function labelTexture(text){
+  if (LABEL_CACHE[text]) return LABEL_CACHE[text];
   var W = 512, H = 200, cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   var g = cv.getContext('2d');
@@ -1104,24 +1102,27 @@ function labelTexture(text){
   var t = new THREE.CanvasTexture(cv);
   t.encoding = THREE.sRGBEncoding;
   t.minFilter = THREE.LinearFilter;
+  LABEL_CACHE[text] = t;
   return t;
 }
 
 var VCOL = {ok:0x6FDCC6, partial:0xF5A524, no:0xEF4B3C};
 var bubbles = [];
 
+var SHELL_GEO = new THREE.SphereGeometry(1.28, 26, 20);
+var AURA_GEO  = new THREE.SphereGeometry(1.55, 16, 12);
+var SHEEN_GEO = new THREE.SphereGeometry(0.30, 12, 10);
+var AURA_MAT  = new THREE.MeshBasicMaterial({color:0x8FD8FF, transparent:true,
+  opacity:0.14, depthWrite:false, blending:THREE.AdditiveBlending});
+var SHEEN_MAT = new THREE.MeshBasicMaterial({color:0xFFFFFF, transparent:true, opacity:0.55});
 function makeBubble(claim){
   var grp = new THREE.Group();
-  var shell = new THREE.Mesh(new THREE.SphereGeometry(1.28, 34, 28),
+  var shell = new THREE.Mesh(SHELL_GEO,
     vinyl(0xBFE9FF, {rough:0.02, opacity:0.42, transparent:true, depthWrite:false, env:2.4}));
-  // a soft additive glow ring so each bubble separates from the dark room
-  var aura = new THREE.Mesh(new THREE.SphereGeometry(1.55, 20, 16),
-    new THREE.MeshBasicMaterial({color:0x8FD8FF, transparent:true, opacity:0.14,
-      depthWrite:false, blending:THREE.AdditiveBlending}));
+  var aura = new THREE.Mesh(AURA_GEO, AURA_MAT);
   grp.add(aura);
   grp.add(shell);
-  var sheen = new THREE.Mesh(new THREE.SphereGeometry(0.30, 16, 14),
-    new THREE.MeshBasicMaterial({color:0xFFFFFF, transparent:true, opacity:0.55}));
+  var sheen = new THREE.Mesh(SHEEN_GEO, SHEEN_MAT);
   sheen.position.set(-0.55, 0.62, 0.75);
   grp.add(sheen);
 
@@ -1143,10 +1144,11 @@ function popBubble(b, color){
 
 function killBubble(b){
   scene.remove(b);
-  b.userData.tex.dispose();
+  // The label texture and shell geometry are shared across bubbles now --
+  // disposing either here would blank or break every other bubble on screen.
+  // Only the per-bubble materials are ours to release.
   b.userData.label.material.dispose();
   b.userData.shell.material.dispose();
-  b.userData.shell.geometry.dispose();
   var i = bubbles.indexOf(b);
   if (i >= 0) bubbles.splice(i, 1);
 }
@@ -1418,7 +1420,46 @@ document.addEventListener('keydown', function(e){
 var clock = new THREE.Clock();
 var CATCH_Y = 2.5;
 
+/* ── Adaptive resolution governor ───────────────────────────
+   Static settings cannot suit both a trade-show laptop and a mid-range
+   phone. This watches the real frame time and steps the render scale
+   down when we miss budget, then edges it back up once there is room.
+   Shadows are dropped entirely at the bottom step. */
+var PERF = (function(){
+  // The cap must be the ratio the renderer ACTUALLY started at. Assuming a
+  // flat 1.5 meant that on a 1x display the governor would raise the scale
+  // to 1.5 and render 2.25x the pixels for no visible gain -- a slowdown
+  // introduced by the very thing meant to prevent one.
+  var cap = Math.min(window.devicePixelRatio || 1,
+                     (typeof SMALL !== 'undefined' && SMALL) ? 1.25 : 1.5);
+  return {cap: cap, scale: cap, min: Math.min(0.75, cap),
+          acc: 0, frames: 0, cooldown: 0, shadowsOff: false};
+})();
+function perfTick(dtMs){
+  PERF.acc += dtMs; PERF.frames++;
+  if (PERF.cooldown > 0){ PERF.cooldown--; }
+  if (PERF.frames < 30) return;
+  var avg = PERF.acc / PERF.frames;
+  PERF.acc = 0; PERF.frames = 0;
+  if (PERF.cooldown > 0) return;
+
+  if (avg > 22 && PERF.scale > PERF.min){           // under ~45fps
+    PERF.scale = Math.max(PERF.min, PERF.scale - 0.25);
+    renderer.setPixelRatio(PERF.scale);
+    PERF.cooldown = 60;
+  } else if (avg > 30 && !PERF.shadowsOff){          // still under ~33fps
+    renderer.shadowMap.enabled = false;
+    PERF.shadowsOff = true;
+    PERF.cooldown = 90;
+  } else if (avg < 13 && PERF.scale < PERF.cap){
+    PERF.scale = Math.min(PERF.cap, PERF.scale + 0.25);
+    renderer.setPixelRatio(PERF.scale);
+    PERF.cooldown = 120;
+  }
+}
+
 function tick(){
+  var _t0 = performance.now();
   requestAnimationFrame(tick);
   var dt = Math.min(clock.getDelta(), 0.05);
   var i, b;
@@ -1533,6 +1574,7 @@ function tick(){
   camera.lookAt(S.x*0.10, LOOK_Y, 0);
 
   renderer.render(scene, camera);
+  perfTick(performance.now() - _t0);
 }
 tick();
 

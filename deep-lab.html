@@ -65,8 +65,7 @@
   @media(min-width:520px){h1{font-size:66px}}
   .lede{font-size:15px;line-height:1.6;max-width:430px;color:rgba(255,255,255,.78);
     font-weight:600;margin:0 0 20px}
-    .btn.ghost{background:transparent;color:#9FD8FF;box-shadow:none;font-size:13px;padding:12px;opacity:.7}
-.btn{pointer-events:auto;border:0;cursor:pointer;font:inherit;font-weight:800;letter-spacing:.05em;
+  .btn{pointer-events:auto;border:0;cursor:pointer;font:inherit;font-weight:800;letter-spacing:.05em;
     background:linear-gradient(180deg,#4CBBFA,#2490D8);color:#fff;padding:15px 38px;border-radius:99px;
     font-size:15.5px;box-shadow:0 6px 0 #14608F,0 16px 34px rgba(20,96,143,.5)}
   .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #14608F}
@@ -312,7 +311,6 @@
     <div class="kr"><span class="kd" style="background:#A77BFF">RE</span>Retinol — tap to slam straight down</div>
   </div>
   <button class="btn" id="startBtn">Enter the bay</button>
-  <a class="btn ghost" href="index.html" style="text-decoration:none">← Back to showcase</a>
   <p class="fine">Internal / trade-show toy. The visual metaphor — an active knocking down a skin concern — reads as a treatment idea, so this is not consumer ad material without a regulatory pass first.</p>
 </div>
 
@@ -769,13 +767,13 @@ var renderer = new THREE.WebGLRenderer({antialias:true});
 // Full DPR on a scene with shadows and clearcoat costs 4x the fill rate
 // on a phone. Cap tighter on small screens.
 var SMALL = Math.min(window.innerWidth, window.innerHeight) < 820;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, SMALL ? 1.5 : 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, SMALL ? 1.25 : 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.92;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;  // soft PCF samples 4x per fragment
 app.appendChild(renderer.domElement);
 
 var scene = new THREE.Scene();
@@ -850,7 +848,7 @@ scene.add(new THREE.AmbientLight(0x33465C, 0.30));
 var sun = new THREE.DirectionalLight(0xFFE3B8, 2.5);
 sun.position.set(9, 22, 6);
 sun.castShadow = true;
-sun.shadow.mapSize.width = sun.shadow.mapSize.height = SMALL ? 1024 : 2048;
+sun.shadow.mapSize.width = sun.shadow.mapSize.height = SMALL ? 512 : 1024;
 sun.shadow.camera.near = 1; sun.shadow.camera.far = 70;
 sun.shadow.camera.left = -22; sun.shadow.camera.right = 22;
 sun.shadow.camera.top = 24; sun.shadow.camera.bottom = -12;
@@ -864,9 +862,8 @@ rim.position.set(-12, 9, -34);
 scene.add(rim);
 
 // practical strip light over the bay
-var stripLight = new THREE.PointLight(0xFFF0D6, 2.2, 46, 2);
-stripLight.position.set(0, 11, -14);
-scene.add(stripLight);
+// (removed) a ceiling fill point light -- the emissive tube meshes already
+// read as lit fixtures, and every light here costs fragment time scene-wide.
 
 var accentLight = new THREE.PointLight(0xFFA62B, 2.6, 42, 2);
 accentLight.position.set(0, 7, -24);
@@ -1077,9 +1074,7 @@ scene.add(ceiling);
   scene.add(panel);
 
   // wash light so the sign reads from the launch end
-  var wash = new THREE.PointLight(0x9FD8FF, 1.6, 26, 2);
-  wash.position.set(0, 11.4, -41);
-  scene.add(wash);
+  // (removed) sign wash light; the sign is MeshBasic so it needs none
 
   // small decal on the launcher base plate
   var decal = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.76),
@@ -1107,96 +1102,103 @@ scene.add(ceiling);
     var t = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.10, 0.42), tube);
     t.position.set(0, 15.42, z);
     scene.add(t);
-    // Only two pooled lights, not one per fixture. Every extra point light
-    // costs a shader uniform slot, and mobile GL runs out fast.
-    if (i === 0 || i === 3){
-      var pool = new THREE.PointLight(0xFFEFD2, 1.1, 30, 2);
-      pool.position.set(0, 12.5, z);
-      scene.add(pool);
-    }
   }
 })();
+
+
+/* ── Instancing helper ──────────────────────────────────────
+   The set dressing was hundreds of individual meshes, and every
+   mesh is a draw call. Repeated furniture is now drawn with one
+   InstancedMesh per shape: same picture, a fraction of the calls. */
+function instanced(geo, mat, transforms, cast, receive){
+  var im = new THREE.InstancedMesh(geo, mat, transforms.length);
+  var m4 = new THREE.Matrix4(), q = new THREE.Quaternion(),
+      p = new THREE.Vector3(), s = new THREE.Vector3(), e = new THREE.Euler();
+  for (var i=0;i<transforms.length;i++){
+    var t = transforms[i];
+    p.set(t[0], t[1], t[2]);
+    e.set(t[3]||0, t[4]||0, t[5]||0);
+    q.setFromEuler(e);
+    s.set(t[6]===undefined?1:t[6], t[7]===undefined?1:t[7], t[8]===undefined?1:t[8]);
+    m4.compose(p, q, s);
+    im.setMatrixAt(i, m4);
+  }
+  im.instanceMatrix.needsUpdate = true;
+  im.castShadow = !!cast;
+  im.receiveShadow = !!receive;
+  // Set dressing is placed once and never moves, so skip the per-frame
+  // matrix recompute. Callers that DO move a batch (the lane guides) turn
+  // this back on themselves.
+  im.matrixAutoUpdate = false; im.updateMatrix();
+  scene.add(im);
+  return im;
+}
+
+/* ── Point-sprite field ─────────────────────────────────────
+   Dust was 60 meshes with 60 materials. One Points object now. */
+function dustField(n, spread, colour){
+  var pos = new Float32Array(n*3), spd = new Float32Array(n);
+  for (var i=0;i<n;i++){
+    pos[i*3]   = (Math.random()-0.5)*spread[0] + spread[3];
+    pos[i*3+1] =  Math.random()*spread[1];
+    pos[i*3+2] = (Math.random()-0.5)*spread[2] + spread[4];
+    spd[i] = 0.10 + Math.random()*0.30;
+  }
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  var pts = new THREE.Points(g, new THREE.PointsMaterial({
+    color: colour, size: 0.10, transparent:true, opacity:0.34,
+    depthWrite:false, sizeAttenuation:true
+  }));
+  pts.userData = {spd:spd, n:n, top:spread[1]};
+  scene.add(pts);
+  return pts;
+}
 
 /* ---------- floor lane guides (recessed, warm) ---------- */
-var laneGroup = new THREE.Group();
-scene.add(laneGroup);
-(function(){
-  var geo = new THREE.BoxGeometry(0.18, 0.04, 3.2);
-  for (var s=-1;s<=1;s+=2){
-    for (var i=0;i<16;i++){
-      var m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-        color:0x2CA9F0, emissive:0x2CA9F0, emissiveIntensity:1.2, roughness:0.3
-      }));
-      m.position.set(s*6.2, 0.03, -i*4.4 + 4);
-      laneGroup.add(m);
-    }
-  }
+var laneMat = new THREE.MeshStandardMaterial({
+  color:0x2CA9F0, emissive:0x2CA9F0, emissiveIntensity:1.1, roughness:0.3
+});
+var laneGroup = (function(){
+  var t = [];
+  for (var sgn=-1; sgn<=1; sgn+=2)
+    for (var i=0;i<16;i++) t.push([sgn*6.2, 0.03, -i*4.4 + 4]);
+  return instanced(new THREE.BoxGeometry(0.18, 0.04, 3.2), laneMat, t, false, false);
 })();
 
-/* ---------- lab casework down both sides ---------- */
+/* ---------- lab casework down both sides (instanced) ---------- */
 (function(){
   var carcass = new THREE.MeshStandardMaterial({color:0x28323E, roughness:0.72, metalness:0.12});
   var worktop = new THREE.MeshStandardMaterial({color:0x1A222B, roughness:0.32, metalness:0.25, envMapIntensity:1.0});
   var handle  = new THREE.MeshStandardMaterial({color:0xB9C4CE, roughness:0.3, metalness:0.9});
-  var jarGlass = new THREE.MeshPhysicalMaterial({
-    color:0xCFE8F5, roughness:0.06, metalness:0, transparent:true, opacity:0.5,
-    clearcoat:1, envMapIntensity:2.0
+  var jarGlass= new THREE.MeshStandardMaterial({color:0xCFE8F5, roughness:0.12, metalness:0.1,
+                  transparent:true, opacity:0.5, envMapIntensity:1.6});
+  var lidMat  = new THREE.MeshStandardMaterial({color:0x2CA9F0, roughness:0.35, metalness:0.3});
+  var cols = [0x4FE0C0, 0xFFA62B, 0xFF7BA6, 0xA77BFF, 0x2CA9F0];
+  var botMat = cols.map(function(c){
+    return new THREE.MeshStandardMaterial({color:c, roughness:0.28, metalness:0.05, envMapIntensity:1.1});
   });
-  var creamCols = [0x4FE0C0, 0xFFA62B, 0xFF7BA6, 0xA77BFF, 0x2CA9F0];
-
-  for (var s=-1;s<=1;s+=2){
+  var units=[], tops=[], handles=[], shelves=[], jars=[], lids=[], bots=[[],[],[],[],[]];
+  for (var sgn=-1; sgn<=1; sgn+=2){
     for (var i=0;i<8;i++){
-      var z = -i*5.6 - 1;
-      // base unit
-      var unit = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.6, 5.0), carcass);
-      unit.position.set(s*11.2, 1.3, z);
-      unit.castShadow = true; unit.receiveShadow = true;
-      scene.add(unit);
-      // worktop
-      var top = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.18, 5.2), worktop);
-      top.position.set(s*11.2, 2.69, z);
-      top.castShadow = true; top.receiveShadow = true;
-      scene.add(top);
-      // drawer handles
-      for (var d=0;d<2;d++){
-        var hd = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.5), handle);
-        hd.position.set(s*9.92, 0.8 + d*1.0, z);
-        scene.add(hd);
-      }
-      // a product jar on top, every other unit
-      if (i % 2 === 0){
-        var jar = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.62, 20), jarGlass);
-        jar.position.set(s*11.2, 3.09, z);
-        jar.castShadow = true;
-        scene.add(jar);
-        var cream = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.30, 0.34, 18),
-          new THREE.MeshStandardMaterial({color:creamCols[i%creamCols.length], roughness:0.6}));
-        cream.position.set(s*11.2, 2.96, z);
-        scene.add(cream);
-        var lid = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.37, 0.14, 20),
-          new THREE.MeshStandardMaterial({color:0x2CA9F0, roughness:0.35, metalness:0.3}));
-        lid.position.set(s*11.2, 3.45, z);
-        lid.castShadow = true;
-        scene.add(lid);
-      }
-      // wall shelf above
-      var shelf = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.14, 4.6), worktop);
-      shelf.position.set(s*11.6, 6.2, z);
-      shelf.castShadow = true; shelf.receiveShadow = true;
-      scene.add(shelf);
-      for (var b=0;b<3;b++){
-        var bh = 0.7 + Math.random()*0.7;
-        var bot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, bh, 14),
-          new THREE.MeshPhysicalMaterial({
-            color:creamCols[(i+b)%creamCols.length], roughness:0.25, metalness:0.05,
-            clearcoat:0.8, envMapIntensity:1.2
-          }));
-        bot.position.set(s*11.6, 6.27 + bh/2, z - 1.5 + b*1.5);
-        bot.castShadow = true;
-        scene.add(bot);
-      }
+      var z = -i*5.6 - 1, x = sgn*11.2;
+      units.push([x, 1.3, z]);
+      tops.push([x, 2.69, z]);
+      handles.push([x - sgn*1.28, 0.8, z]);
+      handles.push([x - sgn*1.28, 1.8, z]);
+      shelves.push([sgn*11.6, 6.2, z]);
+      if (i % 2 === 0){ jars.push([x, 3.09, z]); lids.push([x, 3.45, z]); }
+      for (var b2=0;b2<3;b2++) bots[(i+b2)%5].push([sgn*11.6, 6.7, z - 1.5 + b2*1.5]);
     }
   }
+  instanced(new THREE.BoxGeometry(2.6, 2.6, 5.0), carcass, units, true, true);
+  instanced(new THREE.BoxGeometry(2.9, 0.18, 5.2), worktop, tops, true, true);
+  instanced(new THREE.BoxGeometry(0.08, 0.08, 1.5), handle, handles, false, false);
+  instanced(new THREE.BoxGeometry(2.4, 0.14, 4.6), worktop, shelves, true, true);
+  instanced(new THREE.CylinderGeometry(0.34,0.34,0.62,16), jarGlass, jars, false, false);
+  instanced(new THREE.CylinderGeometry(0.37,0.37,0.14,16), lidMat, lids, false, false);
+  var bg = new THREE.CylinderGeometry(0.2,0.22,1.0,12);
+  for (var k=0;k<5;k++) if (bots[k].length) instanced(bg, botMat[k], bots[k], false, false);
 })();
 
 /* ---------- static colliders for the casework ---------- */
@@ -1273,21 +1275,8 @@ scene.add(laneGroup);
   scene.add(deckLight, deckLight.target);
 })();
 
-/* ---------- airborne dust, lit by the strip lights ---------- */
-var deco = [];
-(function(){
-  var geo = new THREE.SphereGeometry(1, 10, 8);
-  for (var i=0;i<60;i++){
-    var m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-      color:0xFFE9C4, transparent:true, opacity:0.10 + Math.random()*0.22, depthWrite:false
-    }));
-    m.scale.setScalar(0.020 + Math.random()*0.055);
-    m.position.set((Math.random()-0.5)*26, Math.random()*13, -Math.random()*44 + 4);
-    m.userData.sp = 0.10 + Math.random()*0.30;
-    m.userData.ph = Math.random()*6.28;
-    scene.add(m); deco.push(m);
-  }
-})();
+/* ---------- airborne dust (a single Points object) ---------- */
+var deco = dustField(70, [26, 13, 44, 0, -18], 0xFFE9C4);
 
 /* ============================================================
    5. MASCOT (foreground, seen from behind)
@@ -1305,9 +1294,10 @@ function badgeTexture(){
 }
 function vinyl(c, o){
   o = o || {};
-  return new THREE.MeshPhysicalMaterial({
-    color:c, roughness:(o.rough===undefined?0.34:o.rough), metalness:o.metal||0,
-    clearcoat:(o.cc===undefined?0.85:o.cc), clearcoatRoughness:(o.ccr===undefined?0.2:o.ccr),
+  // MeshStandard, not MeshPhysical: clearcoat roughly doubles the fragment
+  // cost and the mascot's sheen survives fine on roughness + env map alone.
+  return new THREE.MeshStandardMaterial({
+    color:c, roughness:(o.rough===undefined?0.30:o.rough), metalness:o.metal||0,
     envMapIntensity:(o.env===undefined?1.0:o.env), side:o.side||THREE.FrontSide,
     transparent:!!o.transparent, opacity:(o.opacity===undefined?1:o.opacity)
   });
@@ -1438,12 +1428,7 @@ mascot.rotation.y = Math.PI - 0.30;
 scene.add(mascot);
 
 // foreground practical so the mascot and launcher read against the dark bay
-var frontLight = new THREE.SpotLight(0xFFF2DC, 3.0, 22, 0.85, 0.5, 2);
-frontLight.position.set(-3.5, 9, 9);
-frontLight.target.position.set(-1.2, 1.6, 4.4);
-frontLight.castShadow = false;   // the sun already casts here; a 2nd map is wasted cost
-scene.add(frontLight);
-scene.add(frontLight.target);
+// (removed) foreground spot.
 
 /* ============================================================
    6. LAUNCHER
@@ -1496,8 +1481,8 @@ function makeDropMesh(type, withLamp){
   var t = AMMO[type];
   var g = new THREE.Group();
   var core = new THREE.Mesh(new THREE.SphereGeometry(t.r, 28, 22),
-    new THREE.MeshPhysicalMaterial({
-      color:t.c, roughness:0.08, metalness:0.05, clearcoat:1, clearcoatRoughness:0.04,
+    new THREE.MeshStandardMaterial({
+      color:t.c, roughness:0.10, metalness:0.05,
       emissive:t.c, emissiveIntensity:0.85, envMapIntensity:1.8
     }));
   core.castShadow = true;
@@ -1542,8 +1527,7 @@ scene.add(trail);
    7. GAME OBJECTS
    ============================================================ */
 var blocks = [], targets = [], shards = [], particles = [];
-var particlePool = new THREE.Group();
-scene.add(particlePool);
+var particlePoints = null;
 
 function faceTexture(kind){
   var cv = document.createElement('canvas'); cv.width = cv.height = 128;
@@ -1569,9 +1553,8 @@ function addBlock(def){
   var m = MATS[def[0]];
   var w = def[4], h = def[5], d = def[6];
   var mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshPhysicalMaterial({
+    new THREE.MeshStandardMaterial({
       color:m.c, roughness:m.rough, metalness:m.metal,
-      clearcoat:m.clear, clearcoatRoughness:0.15,
       transparent:m.trans, opacity:m.trans?0.62:1,
       envMapIntensity:m.trans?2.0:1.0,
       emissive:m.c, emissiveIntensity:0.05
@@ -1610,17 +1593,18 @@ function addBlock(def){
 function addTarget(p, i){
   var g = new THREE.Group();
   var core = new THREE.Mesh(new THREE.SphereGeometry(0.62, 28, 22),
-    new THREE.MeshPhysicalMaterial({
-      color:0xFFDE5C, roughness:0.14, metalness:0.0, clearcoat:1,
+    new THREE.MeshStandardMaterial({
+      color:0xFFDE5C, roughness:0.14, metalness:0.0,
       emissive:0xFFA808, emissiveIntensity:1.9, envMapIntensity:1.4
     }));
 
   core.castShadow = true;
   g.add(core);
   // spikes so it reads as a concern marker, not a bubble
+  var SPIKE_GEO = new THREE.ConeGeometry(0.11, 0.30, 6);
   var spikeMat = new THREE.MeshStandardMaterial({color:0xE9871B, roughness:0.4, emissive:0xE9871B, emissiveIntensity:0.2});
   for (var s=0;s<10;s++){
-    var sp = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.30, 8), spikeMat);
+    var sp = new THREE.Mesh(SPIKE_GEO, spikeMat);
     var a = (s/10)*Math.PI*2, tt = (s%3)*0.75 - 0.75;
     var dir = new THREE.Vector3(Math.cos(a)*Math.cos(tt), Math.sin(tt), Math.sin(a)*Math.cos(tt));
     sp.position.copy(dir.clone().multiplyScalar(0.70));
@@ -1661,44 +1645,46 @@ function addTarget(p, i){
 }
 
 /* ---------- particles ---------- */
-var pGeo = new THREE.SphereGeometry(1, 8, 6);
-
-/* Particle pool. spark() used to allocate a fresh Mesh AND a fresh
-   MeshBasicMaterial for every spark — an explosion spawns 66 of them, so
-   each blast meant 66 allocations, 66 shader lookups and 66 disposals.
-   That is the frame hitch you feel on impact. Pre-built once, recycled. */
-var PARTICLE_CAP = 220, pFree = [];
+/* ── Particles: one Points object, not 220 meshes ───────────
+   The pool fixed the allocation churn, but 66 visible sparks still
+   meant 66 draw calls at the exact moment of an impact. They are now
+   a single buffer. Fading is done by scaling the vertex colour toward
+   black, which under additive blending reads as fading out. */
+var PARTICLE_CAP = 260;
+var pPos = new Float32Array(PARTICLE_CAP*3);
+var pCol = new Float32Array(PARTICLE_CAP*3);
+var pFree = [], particleSlots = [];
 (function(){
-  for (var i=0;i<PARTICLE_CAP;i++){
-    var m = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({
-      transparent:true, opacity:1, depthWrite:false, blending:THREE.AdditiveBlending
-    }));
-    m.visible = false;
-    particlePool.add(m);
-    pFree.push(m);
-  }
+  for (var i=PARTICLE_CAP-1;i>=0;i--){ pFree.push(i); pPos[i*3+1] = -9999; }
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+  g.setAttribute('color',    new THREE.BufferAttribute(pCol, 3));
+  particlePoints = new THREE.Points(g, new THREE.PointsMaterial({
+    size:0.34, vertexColors:true, transparent:true, opacity:1,
+    depthWrite:false, blending:THREE.AdditiveBlending, sizeAttenuation:true
+  }));
+  scene.add(particlePoints);
 })();
 
 function releaseParticle(p){
-  p.mesh.visible = false;
-  pFree.push(p.mesh);
+  pPos[p.i*3+1] = -9999;
+  pCol[p.i*3] = pCol[p.i*3+1] = pCol[p.i*3+2] = 0;
+  pFree.push(p.i);
 }
 
 function spark(pos, color, n, spread, size){
-  for (var i=0;i<n;i++){
-    var m = pFree.pop();
-    if (!m) return;                      // pool drained; skip the surplus
-    m.material.color.setHex(color);
-    m.material.opacity = 1;
-    m.visible = true;
-    m.scale.setScalar((size||0.14)*(0.5+Math.random()));
-    m.position.copy(pos);
-    var a = Math.random()*Math.PI*2, e = Math.random()*Math.PI - Math.PI/2;
+  var col = new THREE.Color(color);
+  for (var k=0;k<n;k++){
+    if (!pFree.length) return;
+    var i = pFree.pop();
+    pPos[i*3] = pos.x; pPos[i*3+1] = pos.y; pPos[i*3+2] = pos.z;
+    pCol[i*3] = col.r; pCol[i*3+1] = col.g; pCol[i*3+2] = col.b;
+    var a2 = Math.random()*Math.PI*2, e = Math.random()*Math.PI - Math.PI/2;
     var sp = (2 + Math.random()*7)*(spread||1);
-    particles.push({mesh:m, life:1,
-      vx:Math.cos(a)*Math.cos(e)*sp,
+    particles.push({i:i, life:1, r:col.r, g:col.g, b:col.b,
+      vx:Math.cos(a2)*Math.cos(e)*sp,
       vy:Math.abs(Math.sin(e))*sp*0.9 + 2,
-      vz:Math.sin(a)*Math.cos(e)*sp});
+      vz:Math.sin(a2)*Math.cos(e)*sp});
   }
 }
 
@@ -2276,7 +2262,46 @@ function updateCamera(dt){
 var clock = new THREE.Clock();
 var acc = 0;
 
+/* ── Adaptive resolution governor ───────────────────────────
+   Static settings cannot suit both a trade-show laptop and a mid-range
+   phone. This watches the real frame time and steps the render scale
+   down when we miss budget, then edges it back up once there is room.
+   Shadows are dropped entirely at the bottom step. */
+var PERF = (function(){
+  // The cap must be the ratio the renderer ACTUALLY started at. Assuming a
+  // flat 1.5 meant that on a 1x display the governor would raise the scale
+  // to 1.5 and render 2.25x the pixels for no visible gain -- a slowdown
+  // introduced by the very thing meant to prevent one.
+  var cap = Math.min(window.devicePixelRatio || 1,
+                     (typeof SMALL !== 'undefined' && SMALL) ? 1.25 : 1.5);
+  return {cap: cap, scale: cap, min: Math.min(0.75, cap),
+          acc: 0, frames: 0, cooldown: 0, shadowsOff: false};
+})();
+function perfTick(dtMs){
+  PERF.acc += dtMs; PERF.frames++;
+  if (PERF.cooldown > 0){ PERF.cooldown--; }
+  if (PERF.frames < 30) return;
+  var avg = PERF.acc / PERF.frames;
+  PERF.acc = 0; PERF.frames = 0;
+  if (PERF.cooldown > 0) return;
+
+  if (avg > 22 && PERF.scale > PERF.min){           // under ~45fps
+    PERF.scale = Math.max(PERF.min, PERF.scale - 0.25);
+    renderer.setPixelRatio(PERF.scale);
+    PERF.cooldown = 60;
+  } else if (avg > 30 && !PERF.shadowsOff){          // still under ~33fps
+    renderer.shadowMap.enabled = false;
+    PERF.shadowsOff = true;
+    PERF.cooldown = 90;
+  } else if (avg < 13 && PERF.scale < PERF.cap){
+    PERF.scale = Math.min(PERF.cap, PERF.scale + 0.25);
+    renderer.setPixelRatio(PERF.scale);
+    PERF.cooldown = 120;
+  }
+}
+
 function animate(){
+  var _t0 = performance.now();
   requestAnimationFrame(animate);
   var dt = Math.min(clock.getDelta(), 0.05);
   G.t += dt;
@@ -2355,16 +2380,20 @@ function animate(){
 
   // ---- particles ----
   for (var pi=particles.length-1; pi>=0; pi--){
-    var pt = particles[pi];
+    var pt = particles[pi], i3 = pt.i*3;
     pt.vy -= 26*dt;
-    pt.mesh.position.x += pt.vx*dt;
-    pt.mesh.position.y += pt.vy*dt;
-    pt.mesh.position.z += pt.vz*dt;
-    if (pt.mesh.position.y < 0.05){ pt.mesh.position.y = 0.05; pt.vy *= -0.35; pt.vx *= 0.7; pt.vz *= 0.7; }
+    pPos[i3]   += pt.vx*dt;
+    pPos[i3+1] += pt.vy*dt;
+    pPos[i3+2] += pt.vz*dt;
+    if (pPos[i3+1] < 0.05){ pPos[i3+1] = 0.05; pt.vy *= -0.35; pt.vx *= 0.7; pt.vz *= 0.7; }
     pt.life -= dt*1.25;
-    pt.mesh.material.opacity = Math.max(0, pt.life);
-    pt.mesh.scale.multiplyScalar(1 - dt*0.6);
+    var L = Math.max(0, pt.life);
+    pCol[i3] = pt.r*L; pCol[i3+1] = pt.g*L; pCol[i3+2] = pt.b*L;
     if (pt.life <= 0){ releaseParticle(pt); particles.splice(pi,1); }
+  }
+  if (particlePoints){
+    particlePoints.geometry.attributes.position.needsUpdate = true;
+    particlePoints.geometry.attributes.color.needsUpdate = true;
   }
 
   // ---- launcher visuals ----
@@ -2392,20 +2421,22 @@ function animate(){
   MP.head.rotation.x = -G.aimY*0.18;
 
   // ---- deco ----
-  for (var d=0;d<deco.length;d++){
-    var m = deco[d];
-    m.position.y += m.userData.sp*dt;
-    m.position.x += Math.sin(G.t*0.6 + m.userData.ph)*0.004;
-    if (m.position.y > 14) m.position.y = -1;
-  }
-  laneGroup.children.forEach(function(m, ix){
-    m.material.emissiveIntensity = 0.55 + Math.sin(G.t*2.4 - ix*0.35)*0.4;
-  });
+  (function(){
+    var pa = deco.geometry.attributes.position, sp = deco.userData.spd;
+    for (var d=0; d<deco.userData.n; d++){
+      var yi = d*3+1;
+      pa.array[yi] += sp[d]*dt;
+      if (pa.array[yi] > deco.userData.top) pa.array[yi] = -1;
+    }
+    pa.needsUpdate = true;
+  })();
+  laneMat.emissiveIntensity = 0.7 + Math.sin(G.t*2.4)*0.4;
   accentLight.intensity = 1.2 + Math.sin(G.t*2.6)*0.4;
 
   updateCamera(dt);
   sky.position.copy(camera.position);
   renderer.render(scene, camera);
+  perfTick(performance.now() - _t0);
 }
 FXUI.init({
   hasSound:  true,
