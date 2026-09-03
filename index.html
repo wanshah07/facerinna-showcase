@@ -877,7 +877,15 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .flyer-head h4{margin:.3rem 0 0;font-size:1.15rem;font-family:'Inter';font-weight:700}
 /* the buttons are positioned against this, not against the image: the image
    scales a touch on hover and the buttons must not travel with it */
+/* Capped so the section still lands on one screen from the header link. The
+   sheet is 1755x1242, so holding it to 60vh tall means 60 x 1.413 = 84.8vh
+   wide — capping the WIDTH keeps the ratio exact and the sheet hugging its
+   own edges, where a max-height on the image would have letterboxed it
+   inside a box that stayed full width. Whichever limit bites first wins, so
+   a wide short window is bounded by the height and a narrow tall one by the
+   column. */
 .flyer-sheet{position:relative;border-radius:14px;overflow:hidden;
+  width:100%;max-width:84.8vh;margin-inline:auto;
   border:1px solid var(--line);box-shadow:var(--shadow-sm);background:#fff}
 /* the folded sheet shown whole — height:auto on its own 1.413 ratio, so all
    three panels are on screen rather than a crop of the first one */
