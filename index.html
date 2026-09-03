@@ -373,6 +373,9 @@ body.slides-h .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1
 .btn{display:inline-flex;align-items:center;gap:9px;padding:13px 26px;border-radius:999px;font-weight:600;font-size:.95rem;
   text-decoration:none;cursor:pointer;border:0;transition:transform .2s,box-shadow .2s,background .2s;font-family:'Inter'}
 .btn-primary{background:linear-gradient(120deg,var(--brand),var(--brand-deep));color:#fff;box-shadow:0 12px 28px rgba(46,124,190,.34)}
+.nav-vault{padding:8px 14px;border-radius:999px;font-size:.86rem;text-decoration:none;
+  border:1px solid var(--line);color:var(--brand-deep) !important;font-weight:600;transition:.2s}
+.nav-vault:hover{border-color:var(--brand);background:var(--brand-soft)}
 .btn-primary:hover{transform:translateY(-3px);box-shadow:0 18px 38px rgba(46,124,190,.46)}
 .btn-ghost{background:var(--surface);color:var(--navy);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
 .btn-ghost:hover{transform:translateY(-3px);border-color:var(--brand);color:var(--brand-deep)}
@@ -699,6 +702,16 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 #evidence{background:linear-gradient(180deg,#F2F8FD,#EDF3FB)}
 .clin-note{display:inline-flex;align-items:center;gap:8px;background:#FFF7E6;border:1px solid #F0D9A0;color:#8A6417;
   font-size:.78rem;font-weight:500;padding:7px 14px;border-radius:999px;margin-bottom:22px}
+.bench-cta{display:flex;flex-wrap:wrap;gap:18px 26px;align-items:center;justify-content:space-between;
+  margin:22px 0 6px;padding:22px 26px;border-radius:18px;background:var(--surface);
+  border:1px solid var(--line);box-shadow:var(--shadow-sm);
+  text-decoration:none;color:inherit;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s}
+.bench-cta:hover{transform:translateY(-3px);border-color:var(--brand);box-shadow:0 16px 34px rgba(46,124,190,.18)}
+.bench-copy{flex:1 1 340px;min-width:0}
+.bench-h3{display:block;margin:0 0 6px;font-size:1.12rem;font-weight:700;color:var(--navy)}
+.bench-p{display:block;margin:0;font-size:.94rem;line-height:1.6;max-width:62ch;color:var(--ink-2)}
+/* the affordance, not a nested link — the whole card is the anchor */
+.bench-cta .btn{flex:0 0 auto;pointer-events:none}
 .ev-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:26px;align-items:center}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-sm)}
 .card h3{font-size:1.15rem;margin:0 0 4px}
@@ -1330,6 +1343,7 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
       <a href="#gallery" class="nav-lk">Gallery</a>
       <a href="#clinic" class="nav-lk">Clinic Activation</a>
       <a href="#qrcore" class="nav-lk">QR Code</a>
+      <a href="https://wanshah07.github.io/facerinna-test-reports-claims/" target="_blank" rel="noopener" class="nav-vault">📁 Vault</a>
       <a href="#game" class="nav-cta">Play &amp; Win</a>
     </nav>
     <button class="tv-btn" id="tvBtn" type="button" aria-label="Full screen TV mode" title="Full screen (TV mode)">⛶</button>
@@ -1460,6 +1474,14 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
     </div>
 
     <div class="clin-note reveal">📋 All figures below are from FACERINNA's clinical dossiers (report numbers cited in each product's data sheet).</div>
+
+    <a class="bench-cta reveal" id="vault" href="https://wanshah07.github.io/facerinna-test-reports-claims/" target="_blank" rel="noopener">
+      <span class="bench-copy">
+        <span class="bench-h3">Test Reports &amp; Claims vault</span>
+        <span class="bench-p">The report number, lab and date behind each claim. Synced from the matrix.</span>
+      </span>
+      <span class="btn btn-primary">📁 Open the vault →</span>
+    </a>
 
     <div class="ev-grid">
       <div class="card reveal">
