@@ -873,25 +873,33 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
    They used to run one under another, which left the offer a screen below the
    brochure it belongs to. */
 .flyer-strip{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);
-  align-items:center;gap:30px;text-align:left;background:var(--surface);
+  align-items:stretch;gap:30px;text-align:left;background:var(--surface);
   border:1px solid var(--line);border-radius:22px;padding:28px;
   box-shadow:var(--shadow-md);margin-bottom:26px}
 /* the folded sheet shown whole — height:auto on its own 1.413 ratio, so all
    three panels are on screen rather than a crop of the first one */
-.flyer-thumb{width:100%;height:auto;display:block;
+/* align-self:start matters: the row stretches so the two columns end level,
+   and an <img> with height:auto that is allowed to stretch gets squashed to
+   the row instead of keeping its ratio */
+.flyer-thumb{width:100%;height:auto;display:block;align-self:start;
   border-radius:14px;border:1px solid var(--line);cursor:zoom-in;
   background:#fff;box-shadow:var(--shadow-sm);
   transition:transform .25s,box-shadow .25s}
 .flyer-thumb:hover{transform:scale(1.015);box-shadow:var(--shadow-md)}
 .flyer-side{display:flex;flex-direction:column;align-items:flex-start}
 .flyer-actions{display:flex;gap:10px;flex-wrap:wrap}
-.flyer-side .offer{width:100%;margin-top:22px}
+/* the giveaway takes up whatever height the brochure leaves, so the card
+   finishes flush with the bottom of the sheet rather than floating short of
+   it, and its contents sit centred in the taller box */
+.flyer-side .offer{width:100%;margin-top:22px;flex:1 1 auto;
+  display:flex;flex-direction:column;justify-content:center}
 /* one column on a phone, and centred again — a 1.2fr column of brochure next
    to a 1fr column of buttons is unreadable at that width */
 @media(max-width:900px){
   .flyer-strip{grid-template-columns:1fr;text-align:center;gap:20px}
   .flyer-side{align-items:center}
   .flyer-actions{justify-content:center}
+  .flyer-side .offer{flex:0 0 auto}
 }
 
 
