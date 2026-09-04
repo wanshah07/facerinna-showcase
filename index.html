@@ -3899,29 +3899,52 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
       const cs=getComputedStyle(sec);
       const avail=sec.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
       if(avail<=0) return;
-      /* Solve for the scale by iterating, measuring the SECTION's own
-         overflow rather than the wrapper's height. The wrapper can measure as
-         fitting while the section still spills — a child's margin collapses
-         out of the wrapper's box and is only ever charged to the section — and
-         chasing that afterwards with the compensating margin made the two
-         fight each other and oscillate. One quantity, measured where it
-         actually shows, corrected until it is gone.
-         The compensating margin is kept in step every pass: a transform
-         shrinks what you see but not the layout box, so without it the slide
-         stays programmatically scrollable and focusing a control inside it
-         jolts the slide. */
-      const FLOOR=0.30;
-      let k=1;
-      w.style.setProperty('--k',1);
-      for(let pass=0;pass<6;pass++){
-        const spill=sec.scrollHeight-sec.clientHeight;
-        if(spill<=1) break;
-        k=Math.max(FLOOR, k*avail/(avail+spill));
+      /* Scale is solved against the SECTION's own overflow, not the wrapper's
+         height. The wrapper can measure as fitting while the section still
+         spills — a child's margin collapses out of the wrapper's box and is
+         only ever charged to the section — and chasing that afterwards with
+         the compensating margin made the two fight each other and oscillate.
+         One quantity, measured where it actually shows.
+
+         A transform changes what is DRAWN, not the layout box, so every trial
+         also writes the margin that reserves the difference. Without it the
+         section's overflow is not a truthful measure of what is on screen:
+         negative for a shrunk slide (which would otherwise stay
+         programmatically scrollable), positive for a grown one (which would
+         otherwise spill off the bottom while reporting that it fits). */
+      const set = k => {
         w.style.setProperty('--k',k);
-        w.style.marginBottom=(-(w.offsetHeight*(1-k))).toFixed(1)+'px';
-        if(k<=FLOOR) break;
+        w.style.marginBottom=(w.offsetHeight*(k-1)).toFixed(1)+'px';
+        return sec.scrollHeight-sec.clientHeight;
+      };
+      const FLOOR=0.30, CEIL=1.35;
+      let k=1;
+      if(set(1) > 1){
+        // taller than its screen: shrink until it is not
+        for(let pass=0;pass<6;pass++){
+          const spill=sec.scrollHeight-sec.clientHeight;
+          if(spill<=1) break;
+          k=Math.max(FLOOR, k*avail/(avail+spill));
+          if(set(k)<=1 || k<=FLOOR) break;
+        }
+      }else{
+        /* Room to spare: grow into it so a short slide is not a band of
+           content over half a blank screen. Widening happens by NARROWING the
+           wrapper (width is 100%/k) and scaling it back up, so the content
+           reflows at every trial and the largest k that still fits cannot be
+           computed in one step — it is searched for. The ceiling is a
+           judgement, not a measurement: past it the wrapper is narrow enough
+           that a multi-column grid starts re-wrapping into a different layout
+           rather than the same layout drawn larger. */
+        let lo=1, hi=CEIL;
+        if(set(CEIL)<=1) lo=CEIL;
+        else for(let pass=0;pass<7;pass++){
+          const mid=(lo+hi)/2;
+          if(set(mid)<=1) lo=mid; else hi=mid;
+        }
+        k=lo; set(k);
       }
-      if(k>=1){ w.style.removeProperty('--k'); w.style.marginBottom=''; }
+      if(k===1){ w.style.removeProperty('--k'); w.style.marginBottom=''; }
     });
     // let the observer settle on the sizes fit() just wrote before re-arming
     requestAnimationFrame(()=>{ fitting=false; });
