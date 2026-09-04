@@ -385,10 +385,35 @@ section{padding:74px 0;position:relative}
 /* Clinic Activation carries a full-width brochure, so its head is the one
    that has to give: a step down in scale and half the trailing margin, plus
    a tighter section, is what lets the whole section land on one screen. */
-#clinic{padding:44px 0}
+#clinic{padding:44px 0;--flyer-oh:590px}
 #clinic .sec-head{margin-bottom:20px}
 #clinic .sec-head h2{font-size:clamp(1.5rem,2.4vw,1.95rem);margin:.35rem 0 .3rem}
 #clinic .sec-head p{font-size:.94rem}
+/* On a laptop screen the brochure was being squeezed to a thumbnail because
+   the furniture around it took its full size first and left the sheet the
+   remainder. The furniture compacts instead — smaller padding, tighter head,
+   a leaner giveaway card — and every pixel saved goes straight back into the
+   sheet via --flyer-oh. Nothing is hidden; it is the same section, drawn
+   smaller around a larger brochure.
+   This is deliberately not gated on viewport height. Keying it to a height
+   breakpoint made a 900px-tall window draw a SMALLER brochure than an
+   820px one, because the two sides of the breakpoint were measuring against
+   different overheads. One overhead for every desktop size, and the sheet
+   grows monotonically with the window. */
+@media(min-width:901px){
+  /* measured overhead is 456px; the extra ~20px is slack for a font that
+     wraps the heading to one more line than it does here */
+  #clinic{padding:24px 0;--flyer-oh:476px}
+  #clinic .sec-head{margin-bottom:12px}
+  #clinic .sec-head h2{font-size:clamp(1.35rem,2.1vw,1.6rem);margin:.25rem 0 .2rem}
+  #clinic .sec-head p{font-size:.86rem}
+  #clinic .flyer-strip{padding:12px;margin-bottom:12px}
+  #clinic .flyer-head{margin-bottom:6px}
+  #clinic .flyer-head h4{font-size:1rem;margin:.15rem 0 0}
+  #clinic .flyer-note{margin-top:8px;font-size:.8rem}
+  #clinic .flyer-strip .offer{margin-top:10px;padding:10px}
+  #clinic .flyer-strip .offer .btn{padding:8px 18px;font-size:.8rem;margin-top:6px}
+}
 .sec-head.center{margin-left:auto;margin-right:auto;text-align:center}
 .sec-head h2{font-size:clamp(1.9rem,3.6vw,2.85rem);margin:.5rem 0 .4rem;text-wrap:balance}
 .sec-head p{color:var(--ink-2);font-size:1.04rem}
@@ -889,12 +914,14 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
    sheet hugging its own edges, where a max-height on the image would have
    letterboxed it inside a box that stayed full width.
    Everything around the brochure — section padding, head, strip head,
-   description and giveaway — measures 579px, so the sheet gets whatever the
-   viewport has left over that, and never more than 60vh. It grows on a tall
-   screen and gives way on a short one, instead of a fixed cap that fits one
-   window and overflows the next. */
+   description and giveaway — is what the sheet has to share the screen with,
+   so the sheet gets whatever the viewport has left over that (--flyer-oh),
+   and never more than 60vh. It grows on a tall screen and gives way on a
+   short one, instead of a fixed cap that fits one window and overflows the
+   next. The overhead is a variable because a short screen compacts the
+   furniture and hands the difference straight back to the brochure. */
 .flyer-sheet{position:relative;border-radius:14px;overflow:hidden;
-  width:100%;max-width:min(84.8vh, calc((100vh - 590px) * 1.413));margin-inline:auto;
+  width:100%;max-width:min(84.8vh, calc((100vh - var(--flyer-oh)) * 1.413));margin-inline:auto;
   border:1px solid var(--line);box-shadow:var(--shadow-sm);background:#fff}
 /* the folded sheet shown whole — height:auto on its own 1.413 ratio, so all
    three panels are on screen rather than a crop of the first one */
@@ -903,12 +930,19 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .flyer-sheet:hover .flyer-thumb{transform:scale(1.015)}
 /* the foot of the brochure is white artwork, and a ghost button on white is
    no button at all — the actions ride a soft wash that fades up into it */
-.flyer-sheet::after{content:"";position:absolute;left:0;right:0;bottom:0;height:150px;
+/* a share of the sheet rather than a fixed band — at 150px flat the wash
+   covered half a laptop-sized brochure */
+.flyer-sheet::after{content:"";position:absolute;left:0;right:0;bottom:0;height:min(150px,38%);
   background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.55) 55%,rgba(255,255,255,.90));
   pointer-events:none}
-.flyer-actions{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);
-  z-index:2;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
-  width:max-content;max-width:calc(100% - 32px)}
+.flyer-actions{position:absolute;left:50%;bottom:clamp(10px,2.2vh,20px);transform:translateX(-50%);
+  z-index:2;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+  width:max-content;max-width:calc(100% - 24px)}
+/* the sheet shrinks with the window, so the buttons riding on it have to as
+   well: at their full size the pair wrapped onto two rows on a laptop and
+   blocked the artwork they are sitting on */
+.flyer-actions .btn{padding:clamp(6px,1vh,10px) clamp(12px,2vh,22px);
+  font-size:clamp(.72rem,1.35vh,.86rem)}
 .flyer-note{margin:12px auto 0;max-width:52rem;font-size:.86rem;color:var(--ink-2)}
 .flyer-strip .offer{max-width:640px;margin:14px auto 0;padding:16px}
 /* smaller than the page's headline buttons, and sized to its label rather
