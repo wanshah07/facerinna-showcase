@@ -245,8 +245,6 @@ body.slides-h > section,body.slides-h > footer{flex:0 0 100vw;width:100vw}
    background down both sides. */
 @media(max-width:700px){body.slides{--slide-top:112px}
   .range-filters.filters-dock{top:56px;padding:8px 12px}
-  /* a phone-width slide has no room for the chat pill on top of it */
-  body.slides .chat-hint{display:none !important}
   body.slides .shelf-stage{height:calc(100vh - var(--slide-top) - 400px)}
   /* a phone column would stack one product per row and make a series slide
      three screens deep; two compact columns keep it on one screen */
@@ -1284,6 +1282,10 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
 .chat-fab:hover{transform:scale(1.08)}
 .chat-fab svg{width:46px;height:46px}
 .chat-fab .dot{position:absolute;top:4px;right:4px;width:13px;height:13px;border-radius:50%;background:#2ECC8F;border:2.5px solid #fff}
+/* In the deck the pill floats over the slide and covered a product's name at
+   1366x768 — a fixed overlay is invisible to the fit, which measures the
+   section. The robot itself stays, so the chat is still one tap away. */
+body.slides .chat-hint{display:none !important}
 .chat-hint{position:fixed;right:94px;bottom:38px;z-index:90;background:var(--surface);border:1px solid var(--line);
   border-radius:999px;padding:8px 15px;font-size:.8rem;font-weight:600;color:var(--ink);box-shadow:var(--shadow-md);
   animation:hintpulse 5s ease-in-out infinite}
