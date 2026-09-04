@@ -219,7 +219,10 @@ body.slides{--slide-top:118px;scrollbar-width:none}   /* header + docked series 
 body.slides.chips-off{--slide-top:76px}
 body.slides::-webkit-scrollbar{width:0;height:0}
 body.slides > .wrap{display:none}          /* the 1px inter-section dividers */
-body.slides .nav{position:fixed;top:0;left:0;right:0}
+/* the HEADER, not anything with class "nav" — the hero slideshow's arrows are
+   .nav too, and this rule was pinning them both to the top-left corner of the
+   deck instead of leaving them either side of the key visual */
+body.slides > header.nav{position:fixed;top:0;left:0;right:0}
 /* Every slide is one whole screen in BOTH directions. It used to be only the
    horizontal deck that scaled an oversized slide down; vertically the section
    kept its full height and scrolled inside its own screen, so slide one's
