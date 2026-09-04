@@ -373,9 +373,6 @@ body.slides-h .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1
 .btn{display:inline-flex;align-items:center;gap:9px;padding:13px 26px;border-radius:999px;font-weight:600;font-size:.95rem;
   text-decoration:none;cursor:pointer;border:0;transition:transform .2s,box-shadow .2s,background .2s;font-family:'Inter'}
 .btn-primary{background:linear-gradient(120deg,var(--brand),var(--brand-deep));color:#fff;box-shadow:0 12px 28px rgba(46,124,190,.34)}
-.nav-vault{padding:8px 14px;border-radius:999px;font-size:.86rem;text-decoration:none;
-  border:1px solid var(--line);color:var(--brand-deep) !important;font-weight:600;transition:.2s}
-.nav-vault:hover{border-color:var(--brand);background:var(--brand-soft)}
 .btn-primary:hover{transform:translateY(-3px);box-shadow:0 18px 38px rgba(46,124,190,.46)}
 .btn-ghost{background:var(--surface);color:var(--navy);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
 .btn-ghost:hover{transform:translateY(-3px);border-color:var(--brand);color:var(--brand-deep)}
@@ -385,6 +382,13 @@ body.slides-h .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1
 /* SECTION SHELL */
 section{padding:74px 0;position:relative}
 .sec-head{max-width:46rem;margin-bottom:40px}
+/* Clinic Activation carries a full-width brochure, so its head is the one
+   that has to give: a step down in scale and half the trailing margin, plus
+   a tighter section, is what lets the whole section land on one screen. */
+#clinic{padding:44px 0}
+#clinic .sec-head{margin-bottom:20px}
+#clinic .sec-head h2{font-size:clamp(1.5rem,2.4vw,1.95rem);margin:.35rem 0 .3rem}
+#clinic .sec-head p{font-size:.94rem}
 .sec-head.center{margin-left:auto;margin-right:auto;text-align:center}
 .sec-head h2{font-size:clamp(1.9rem,3.6vw,2.85rem);margin:.5rem 0 .4rem;text-wrap:balance}
 .sec-head p{color:var(--ink-2);font-size:1.04rem}
@@ -702,16 +706,6 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 #evidence{background:linear-gradient(180deg,#F2F8FD,#EDF3FB)}
 .clin-note{display:inline-flex;align-items:center;gap:8px;background:#FFF7E6;border:1px solid #F0D9A0;color:#8A6417;
   font-size:.78rem;font-weight:500;padding:7px 14px;border-radius:999px;margin-bottom:22px}
-.bench-cta{display:flex;flex-wrap:wrap;gap:18px 26px;align-items:center;justify-content:space-between;
-  margin:22px 0 6px;padding:22px 26px;border-radius:18px;background:var(--surface);
-  border:1px solid var(--line);box-shadow:var(--shadow-sm);
-  text-decoration:none;color:inherit;cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s}
-.bench-cta:hover{transform:translateY(-3px);border-color:var(--brand);box-shadow:0 16px 34px rgba(46,124,190,.18)}
-.bench-copy{flex:1 1 340px;min-width:0}
-.bench-h3{display:block;margin:0 0 6px;font-size:1.12rem;font-weight:700;color:var(--navy)}
-.bench-p{display:block;margin:0;font-size:.94rem;line-height:1.6;max-width:62ch;color:var(--ink-2)}
-/* the affordance, not a nested link — the whole card is the anchor */
-.bench-cta .btn{flex:0 0 auto;pointer-events:none}
 .ev-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:26px;align-items:center}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-sm)}
 .card h3{font-size:1.15rem;margin:0 0 4px}
@@ -885,20 +879,22 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
    description under it, and the two actions floating on the brochure itself
    rather than sitting in a row of their own. */
 .flyer-strip{background:var(--surface);border:1px solid var(--line);border-radius:22px;
-  padding:22px;box-shadow:var(--shadow-md);margin-bottom:26px;text-align:center}
-.flyer-head{margin-bottom:18px}
+  padding:16px;box-shadow:var(--shadow-md);margin-bottom:26px;text-align:center}
+.flyer-head{margin-bottom:10px}
 .flyer-head h4{margin:.3rem 0 0;font-size:1.15rem;font-family:'Inter';font-weight:700}
 /* the buttons are positioned against this, not against the image: the image
    scales a touch on hover and the buttons must not travel with it */
-/* Capped so the section still lands on one screen from the header link. The
-   sheet is 1755x1242, so holding it to 60vh tall means 60 x 1.413 = 84.8vh
-   wide — capping the WIDTH keeps the ratio exact and the sheet hugging its
-   own edges, where a max-height on the image would have letterboxed it
-   inside a box that stayed full width. Whichever limit bites first wins, so
-   a wide short window is bounded by the height and a narrow tall one by the
-   column. */
+/* Sized so the whole section lands on one screen. The sheet is 1755x1242, so
+   width = height x 1.413; capping the WIDTH keeps the ratio exact and the
+   sheet hugging its own edges, where a max-height on the image would have
+   letterboxed it inside a box that stayed full width.
+   Everything around the brochure — section padding, head, strip head,
+   description and giveaway — measures 579px, so the sheet gets whatever the
+   viewport has left over that, and never more than 60vh. It grows on a tall
+   screen and gives way on a short one, instead of a fixed cap that fits one
+   window and overflows the next. */
 .flyer-sheet{position:relative;border-radius:14px;overflow:hidden;
-  width:100%;max-width:84.8vh;margin-inline:auto;
+  width:100%;max-width:min(84.8vh, calc((100vh - 590px) * 1.413));margin-inline:auto;
   border:1px solid var(--line);box-shadow:var(--shadow-sm);background:#fff}
 /* the folded sheet shown whole — height:auto on its own 1.413 ratio, so all
    three panels are on screen rather than a crop of the first one */
@@ -913,13 +909,14 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .flyer-actions{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);
   z-index:2;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
   width:max-content;max-width:calc(100% - 32px)}
-.flyer-note{margin:18px auto 0;max-width:52rem;font-size:.88rem;color:var(--ink-2)}
-.flyer-strip .offer{max-width:640px;margin:22px auto 0}
+.flyer-note{margin:12px auto 0;max-width:52rem;font-size:.86rem;color:var(--ink-2)}
+.flyer-strip .offer{max-width:640px;margin:14px auto 0;padding:16px}
 /* smaller than the page's headline buttons, and sized to its label rather
    than to the card it sits in */
-.flyer-strip .offer .btn{padding:11px 24px;font-size:.88rem;margin-top:14px}
+.flyer-strip .offer .btn{padding:10px 22px;font-size:.86rem;margin-top:10px}
 @media(max-width:900px){
   .flyer-strip{padding:18px}
+  .flyer-sheet{max-width:100%}
   /* at this width the wash would have to cover half the sheet to hold the
      buttons, so they come off the artwork and sit under it instead */
   .flyer-actions{position:static;transform:none;width:auto;max-width:none;margin-top:14px}
@@ -1343,7 +1340,6 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
       <a href="#gallery" class="nav-lk">Gallery</a>
       <a href="#clinic" class="nav-lk">Clinic Activation</a>
       <a href="#qrcore" class="nav-lk">QR Code</a>
-      <a href="https://wanshah07.github.io/facerinna-test-reports-claims/" target="_blank" rel="noopener" class="nav-vault">📁 Vault</a>
       <a href="#game" class="nav-cta">Play &amp; Win</a>
     </nav>
     <button class="tv-btn" id="tvBtn" type="button" aria-label="Full screen TV mode" title="Full screen (TV mode)">⛶</button>
@@ -1474,14 +1470,6 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
     </div>
 
     <div class="clin-note reveal">📋 All figures below are from FACERINNA's clinical dossiers (report numbers cited in each product's data sheet).</div>
-
-    <a class="bench-cta reveal" id="vault" href="https://wanshah07.github.io/facerinna-test-reports-claims/" target="_blank" rel="noopener">
-      <span class="bench-copy">
-        <span class="bench-h3">Test Reports &amp; Claims vault</span>
-        <span class="bench-p">The report number, lab and date behind each claim. Synced from the matrix.</span>
-      </span>
-      <span class="btn btn-primary">📁 Open the vault →</span>
-    </a>
 
     <div class="ev-grid">
       <div class="card reveal">
