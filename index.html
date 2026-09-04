@@ -217,21 +217,24 @@ body.slides{--slide-top:118px;scrollbar-width:none}   /* header + docked series 
 body.slides::-webkit-scrollbar{width:0;height:0}
 body.slides > .wrap{display:none}          /* the 1px inter-section dividers */
 body.slides .nav{position:fixed;top:0;left:0;right:0}
+/* Every slide is one whole screen in BOTH directions. It used to be only the
+   horizontal deck that scaled an oversized slide down; vertically the section
+   kept its full height and scrolled inside its own screen, so slide one's
+   welcome marquee sat below the fold and read as belonging to slide two. */
 body.slides > section,body.slides > footer{
-  height:100vh;padding-top:var(--slide-top);overflow-y:auto;overflow-x:hidden;scroll-snap-align:start}
+  height:100vh;padding-top:var(--slide-top);padding-bottom:14px;
+  overflow:hidden;scroll-snap-align:start;
+  display:flex;flex-direction:column;justify-content:center}
+body.slides .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1));transform-origin:0 0}
 /* the shelf is 100vh in normal flow, which would overflow its own slide */
 body.slides .shelf-stage{height:calc(100vh - var(--slide-top) - 290px);min-height:220px;max-height:none}
 body.slides-v{height:100vh;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;scroll-behavior:smooth}
 body.slides-h{height:100vh;display:flex;flex-direction:row;flex-wrap:nowrap;
   overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth}
 body.slides-h > section,body.slides-h > footer{flex:0 0 100vw;width:100vw}
-/* Horizontal deck: nothing scrolls down. Any slide taller than the screen is
-   scaled to fit instead. The wrapper is widened by 1/k first so that after
-   scaling it still spans the full slide — otherwise a scaled slide would
-   leave bands of background down both sides. */
-body.slides-h > section,body.slides-h > footer{overflow:hidden;padding-bottom:14px;
-  display:flex;flex-direction:column;justify-content:center}
-body.slides-h .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1));transform-origin:0 0}
+/* The wrapper is widened by 1/k before it is scaled so that afterwards it
+   still spans the full slide — otherwise a scaled slide would leave bands of
+   background down both sides. */
 @media(max-width:700px){body.slides{--slide-top:112px}
   .range-filters.filters-dock{top:56px;padding:8px 12px}
   /* a phone-width slide has no room for the chat pill on top of it */
@@ -403,7 +406,7 @@ section{padding:74px 0;position:relative}
 @media(min-width:901px){
   /* measured overhead is 456px; the extra ~20px is slack for a font that
      wraps the heading to one more line than it does here */
-  #clinic{padding:24px 0;--flyer-oh:476px}
+  #clinic{padding:24px 0;--flyer-oh:330px}
   #clinic .sec-head{margin-bottom:12px}
   #clinic .sec-head h2{font-size:clamp(1.35rem,2.1vw,1.6rem);margin:.25rem 0 .2rem}
   #clinic .sec-head p{font-size:.86rem}
@@ -921,7 +924,7 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
    next. The overhead is a variable because a short screen compacts the
    furniture and hands the difference straight back to the brochure. */
 .flyer-sheet{position:relative;border-radius:14px;overflow:hidden;
-  width:100%;max-width:min(84.8vh, calc((100vh - var(--flyer-oh)) * 1.413));margin-inline:auto;
+  width:100%;max-width:min(96vh, calc((100vh - var(--flyer-oh)) * 1.413));margin-inline:auto;
   border:1px solid var(--line);box-shadow:var(--shadow-sm);background:#fff}
 /* the folded sheet shown whole — height:auto on its own 1.413 ratio, so all
    three panels are on screen rather than a crop of the first one */
@@ -931,29 +934,42 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 /* the foot of the brochure is white artwork, and a ghost button on white is
    no button at all — the actions ride a soft wash that fades up into it */
 /* a share of the sheet rather than a fixed band — at 150px flat the wash
-   covered half a laptop-sized brochure */
-.flyer-sheet::after{content:"";position:absolute;left:0;right:0;bottom:0;height:min(150px,38%);
-  background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.55) 55%,rgba(255,255,255,.90));
+   covered half a laptop-sized brochure. It has to clear the whole overlay
+   now, so it is the taller of a floor and a proportion. */
+.flyer-sheet::after{content:"";position:absolute;left:0;right:0;bottom:0;height:max(34%,140px);
+  background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.34) 50%,rgba(255,255,255,.66));
   pointer-events:none}
-.flyer-actions{position:absolute;left:50%;bottom:clamp(10px,2.2vh,20px);transform:translateX(-50%);
-  z-index:2;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
-  width:max-content;max-width:calc(100% - 24px)}
+/* Actions and giveaway as one block riding the foot of the sheet. Off the
+   flow, the pair of them stop charging the section ~150px of height, which
+   is height the brochure itself takes instead. */
+.flyer-overlay{position:absolute;left:50%;bottom:clamp(10px,2vh,20px);transform:translateX(-50%);
+  z-index:2;width:max-content;max-width:calc(100% - 24px);
+  display:flex;flex-direction:column;align-items:center;gap:clamp(8px,1.4vh,14px)}
+.flyer-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 /* the sheet shrinks with the window, so the buttons riding on it have to as
    well: at their full size the pair wrapped onto two rows on a laptop and
    blocked the artwork they are sitting on */
 .flyer-actions .btn{padding:clamp(6px,1vh,10px) clamp(12px,2vh,22px);
   font-size:clamp(.72rem,1.35vh,.86rem)}
 .flyer-note{margin:12px auto 0;max-width:52rem;font-size:.86rem;color:var(--ink-2)}
-.flyer-strip .offer{max-width:640px;margin:14px auto 0;padding:16px}
-/* smaller than the page's headline buttons, and sized to its label rather
-   than to the card it sits in */
-.flyer-strip .offer .btn{padding:10px 22px;font-size:.86rem;margin-top:10px}
+/* over artwork rather than over the strip's own surface, so it carries its
+   own near-opaque ground and a lift instead of the flat tint it had in flow */
+.flyer-overlay .offer{margin:0;width:100%;max-width:520px;
+  padding:clamp(8px,1.5vh,14px) clamp(14px,2.4vh,22px);
+  background:rgba(244,250,255,.95);backdrop-filter:blur(3px);
+  border-color:rgba(43,122,193,.55);box-shadow:0 10px 26px rgba(16,40,66,.16)}
+.flyer-overlay .offer-eyebrow{font-size:clamp(.6rem,1.05vh,.72rem)}
+.flyer-overlay .offer-worth{font-size:clamp(.86rem,1.7vh,1.05rem)}
+.flyer-overlay .offer-worth b{font-size:clamp(1.05rem,2.3vh,1.5rem)}
+.flyer-overlay .offer .btn{padding:clamp(6px,1vh,10px) clamp(14px,2vh,22px);
+  font-size:clamp(.72rem,1.35vh,.86rem);margin-top:clamp(5px,.9vh,10px)}
 @media(max-width:900px){
   .flyer-strip{padding:18px}
   .flyer-sheet{max-width:100%}
-  /* at this width the wash would have to cover half the sheet to hold the
-     buttons, so they come off the artwork and sit under it instead */
-  .flyer-actions{position:static;transform:none;width:auto;max-width:none;margin-top:14px}
+  /* at this width the wash would have to cover most of the sheet to hold the
+     overlay, so it comes off the artwork and sits under it instead */
+  .flyer-overlay{position:static;transform:none;width:auto;max-width:none;margin-top:14px}
+  .flyer-overlay .offer{max-width:none;background:var(--brand-soft);backdrop-filter:none;box-shadow:none}
   .flyer-sheet::after{display:none}
 }
 
@@ -1149,6 +1165,14 @@ body.space-theme .fan-card{border-color:rgba(255,255,255,.18);
   transition:transform .28s ease}
 .bookmodal-in.zoomed .book,.bookmodal-in.zoomed .pager{cursor:grab;transition:none}
 .bookmodal-in.zoomed .book:active,.bookmodal-in.zoomed .pager:active{cursor:grabbing}
+/* A page is an <img>, and an <img> is draggable by default: pressing one and
+   moving handed the gesture to the browser's own drag-and-drop, which fires
+   pointercancel and killed the pan after its first step. The pages are
+   something you drag the READER by, never a file you drag out of it. */
+.book img,.pager img{-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+/* and while zoomed the same gesture must not be spent scrolling the page
+   out from under a touch */
+.bookmodal-in.zoomed .book-viewport{touch-action:none}
 /* the frame the zoomed reader is dragged inside, so it never escapes the
    modal and push the page's own scrollbars around */
 .book-viewport{position:relative;overflow:hidden;display:grid;place-items:center;
@@ -1626,18 +1650,23 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
       <div class="flyer-sheet">
         <!-- src is set from data-src so the self-contained build can swap in an
              inlined copy without the browser first chasing a path it cannot reach -->
-        <img class="flyer-thumb" id="flyerThumb" data-src="docs/bro-sheet-out.webp" alt="Clinic Partnership brochure, folded — tap to open">
-        <div class="flyer-actions">
-          <button class="btn btn-primary" id="flyerView">📖 Open the brochure</button>
-          <a class="btn btn-ghost" href="clinic-partnership-brochure.pdf" target="_blank" rel="noopener" download>⬇ Download brochure</a>
+        <img class="flyer-thumb" id="flyerThumb" data-src="docs/bro-sheet-out.webp" alt="Clinic Partnership brochure, folded — tap to open" draggable="false">
+        <!-- the actions and the giveaway ride ON the sheet rather than under it:
+             it is the one thing on this slide worth the space, and everything
+             taken out of the flow above it is height the brochure gets back -->
+        <div class="flyer-overlay">
+          <div class="flyer-actions">
+            <button class="btn btn-primary" id="flyerView">📖 Open the brochure</button>
+            <a class="btn btn-ghost" href="clinic-partnership-brochure.pdf" target="_blank" rel="noopener" download>⬇ Download brochure</a>
+          </div>
+          <div class="offer">
+            <div class="offer-eyebrow">The B5 Series · Free Sample Giveaway</div>
+            <div class="offer-worth">TOTAL WORTH <b>RM1,047</b><span>*</span> / clinic</div>
+            <a class="btn btn-primary" href="#qrcore">Register your clinic</a>
+          </div>
         </div>
       </div>
       <p class="flyer-note">The full partnership brochure — turn it over like the printed piece, or read it panel by panel. Six panels, front and back.</p>
-      <div class="offer">
-        <div class="offer-eyebrow">The B5 Series · Free Sample Giveaway</div>
-        <div class="offer-worth">TOTAL WORTH <b>RM1,047</b><span>*</span> / clinic</div>
-        <a class="btn btn-primary" href="#qrcore">Register your clinic</a>
-      </div>
     </div>
 
   </div>
@@ -3428,8 +3457,12 @@ const GALLERY_DOCS = [
      over from the page-turn gestures — at 3x a drag means "show me the rest
      of this page", not "turn it". */
   let pan=null;
+  // belt to the CSS braces: Firefox honours neither -webkit-user-drag nor the
+  // draggable attribute on every build, and one dragstart is all it takes
+  viewport.addEventListener('dragstart', function(e){ e.preventDefault(); });
   viewport.addEventListener('pointerdown', function(e){
     if(zi===0) return;
+    e.preventDefault();          // the other way a native drag gets started
     pan={x:e.clientX, y:e.clientY, ox:ox, oy:oy};
     try{ viewport.setPointerCapture(e.pointerId); }catch(err){}
   }, true);
@@ -3805,7 +3838,8 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
   /* Scale-to-fit, two passes: widening the wrapper reflows the content
      shorter, so the first ratio is pessimistic and the second recovers it. */
   function fit(){
-    const on = mode==='h';
+    // both decks scale now, not just the horizontal one
+    const on = !!mode;
     slides().forEach(sec=>{
       const w=sec.firstElementChild;
       if(!w||!w.classList.contains('slide-fit')) return;
@@ -3814,33 +3848,29 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
       const cs=getComputedStyle(sec);
       const avail=sec.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
       if(avail<=0) return;
-      /* Solve for the scale by iterating: widening the wrapper by 1/k reflows
-         the content to a new height, so a single ratio does not land. Each
-         pass corrects against what is actually rendered. */
+      /* Solve for the scale by iterating, measuring the SECTION's own
+         overflow rather than the wrapper's height. The wrapper can measure as
+         fitting while the section still spills — a child's margin collapses
+         out of the wrapper's box and is only ever charged to the section — and
+         chasing that afterwards with the compensating margin made the two
+         fight each other and oscillate. One quantity, measured where it
+         actually shows, corrected until it is gone.
+         The compensating margin is kept in step every pass: a transform
+         shrinks what you see but not the layout box, so without it the slide
+         stays programmatically scrollable and focusing a control inside it
+         jolts the slide. */
       const FLOOR=0.30;
       let k=1;
       w.style.setProperty('--k',1);
-      for(let pass=0;pass<5;pass++){
-        const rendered=w.scrollHeight*k;
-        if(rendered<=avail+1) break;
-        const next=Math.max(FLOOR, k*avail/rendered);
-        const settled=Math.abs(next-k)<0.005;
-        k=next;
+      for(let pass=0;pass<6;pass++){
+        const spill=sec.scrollHeight-sec.clientHeight;
+        if(spill<=1) break;
+        k=Math.max(FLOOR, k*avail/(avail+spill));
         w.style.setProperty('--k',k);
-        if(settled||k<=FLOOR) break;
+        w.style.marginBottom=(-(w.offsetHeight*(1-k))).toFixed(1)+'px';
+        if(k<=FLOOR) break;
       }
-      if(k>=1){ w.style.removeProperty('--k'); return; }
-      /* A transform shrinks what you see but not the layout box, so the slide
-         would still be programmatically scrollable — enough for focusing a
-         control inside it to jolt the slide. Pull the leftover layout height
-         back with a negative margin so the box matches what is drawn. */
-      const lay=w.offsetHeight;
-      let mb=-(lay*(1-k));
-      w.style.marginBottom=mb.toFixed(1)+'px';
-      // a child's bottom margin can collapse out of the wrapper, so offsetHeight
-      // alone under-reports; take off whatever overflow is actually left
-      const extra=sec.scrollHeight-sec.clientHeight;
-      if(extra>0) w.style.marginBottom=(mb-extra).toFixed(1)+'px';
+      if(k>=1){ w.style.removeProperty('--k'); w.style.marginBottom=''; }
     });
   }
 
