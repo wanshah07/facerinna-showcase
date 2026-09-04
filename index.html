@@ -252,6 +252,14 @@ body.slides > section,body.slides > footer{
   /* every slide starts under the header, so the eye lands in the same place on
      each one — centring floated short slides down the screen */
   display:flex;flex-direction:column;justify-content:flex-start}
+/* The chat button and the slide-grid button are fixed to the bottom corners,
+   so they sit OVER the slide and no spill or bounds check can see them. Once
+   the series slides grew to fill the screen their outermost product names ran
+   straight under both. A safe area in the bottom corners costs nothing: the
+   scale solver takes the narrower box and lands on the same scale, so the
+   packs measure the same to the pixel either way. #top is left full-bleed —
+   its hero art is meant to reach the edges. */
+body.slides > section:not(#top),body.slides > footer{padding-left:92px;padding-right:92px}
 body.slides .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1));transform-origin:0 0}
 /* the shelf is 100vh in normal flow, which would overflow its own slide */
 body.slides .shelf-stage{height:calc(100vh - var(--slide-top) - 290px);min-height:220px;max-height:none}
