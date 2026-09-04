@@ -57,15 +57,10 @@
   .btn:focus-visible{outline:3px solid var(--deep);outline-offset:4px;}
   .final{font-size:64px;font-weight:800;color:var(--deep);line-height:1;margin:0;}
 
-  .pad{position:fixed;left:0;right:0;bottom:0;padding:0 14px calc(16px + env(safe-area-inset-bottom));
-    display:flex;gap:12px;justify-content:center;pointer-events:none;}
-  .pad.hidden{display:none;}
-  .key{pointer-events:auto;flex:1;max-width:130px;height:66px;border:0;border-radius:22px;
-    background:rgba(255,255,255,.16);color:#DCF3FF;font-size:24px;font-weight:800;
-    box-shadow:0 4px 0 rgba(11,92,140,.18);backdrop-filter:blur(6px);}
-  .key:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(11,92,140,.18);}
-  .hint{position:fixed;left:0;right:0;bottom:calc(96px + env(safe-area-inset-bottom));text-align:center;
-    font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.45;}
+  .hint{position:fixed;left:0;right:0;bottom:calc(26px + env(safe-area-inset-bottom));text-align:center;
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.45;
+    transition:opacity .18s ease,color .18s ease;}
+  .hint.turbo{opacity:.95;color:#7FD4FF;}
   @media(prefers-reduced-motion:reduce){.btn{transition:none;}}
 
   /* --- Facerinna wordmark (typographic stand-in for the real lock-up) --- */
@@ -95,6 +90,12 @@
 .val,.big,.stars,.n,.n2,.st,.stat .n,#hScore,#score,#drops{
   font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
 }
+
+/* The shared pause/mute cluster (#fxControls) is fixed to the top-right
+   corner and is not part of the HUD's flow, so the HUD's own right-hand chip
+   was sitting underneath it — Score was covered by 80px, Drops by 24px.
+   Reserve the cluster's width (2 x 44px + 8px gap) plus its 12px offset. */
+.hud{padding-right:120px}
 
 /* ── control cluster: pause + mute ───────────────────────── */
 #fxControls{
@@ -227,12 +228,9 @@
   <div class="warn">The 3D library did not load. Check the connection and reload.</div>
 </div>
 
-<div class="pad hidden" id="pad">
-  <button class="key" id="kL" aria-label="Move left">◀</button>
-  <button class="key" id="kJ" aria-label="Jump">▲</button>
-  <button class="key" id="kR" aria-label="Move right">▶</button>
-</div>
-<div class="hint" id="hint" style="display:none">Swipe or use the pad · Arrow keys work too</div>
+<!-- the lane pad is gone: the canvas itself is the controller now —
+     slide to steer, tap to jump, hold to run -->
+<div class="hint" id="hint" style="display:none">Slide to steer · tap to jump · hold to run · arrow keys and Shift work too</div>
 
 
 <div id="fxControls">
@@ -879,7 +877,7 @@ var S = {
   lane:1, targetX:0, x:0,
   y:0, vy:0, grounded:true,
   speed:14, dist:0, score:0, drops:0, bonus:0,
-  shield:0, spawnZ:-40, t:0, shake:0
+  shield:0, spawnZ:-40, t:0, shake:0, turbo:false
 };
 var GRAVITY = -30, JUMP_V = 10.2;
 var best = 0;
@@ -889,7 +887,7 @@ var el = {
   best:document.getElementById('best'), pop:document.getElementById('pop'),
   start:document.getElementById('start'), over:document.getElementById('over'),
   finalScore:document.getElementById('finalScore'), finalLine:document.getElementById('finalLine'),
-  pad:document.getElementById('pad'), hint:document.getElementById('hint'),
+  hint:document.getElementById('hint'),
   shieldBar:document.getElementById('shieldBar')
 };
 el.best.textContent = best;
@@ -931,24 +929,81 @@ document.addEventListener('keydown', function(e){
   }
 });
 
-document.getElementById('kL').addEventListener('click', function(){ move(-1); });
-document.getElementById('kR').addEventListener('click', function(){ move(1); });
-document.getElementById('kJ').addEventListener('click', jump);
+/* ---------- one gesture, three meanings -----------------------------
+   Slide to steer, tap to jump, hold to run. Pointer events rather than
+   touch, so a mouse on the booth screen behaves exactly like a finger.
 
-var tStart = null;
-renderer.domElement.addEventListener('touchstart', function(e){
-  var t = e.changedTouches[0];
-  tStart = {x:t.clientX, y:t.clientY};
-}, {passive:true});
-renderer.domElement.addEventListener('touchend', function(e){
-  if (!tStart) return;
-  var t = e.changedTouches[0];
-  var dx = t.clientX - tStart.x, dy = t.clientY - tStart.y;
-  if (Math.abs(dx) > 32 && Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1);
-  else if (dy < -32) jump();
-  else if (Math.abs(dx) < 20 && Math.abs(dy) < 20) jump();
-  tStart = null;
-}, {passive:true});
+   Steering re-baselines every time it crosses a lane: the runner keeps
+   following the finger across all three lanes in one continuous slide
+   instead of one lane per swipe.
+
+   The three readings cannot all be settled on release — turbo has to
+   engage while the finger is still down — so the press resolves on a
+   timer, and any real movement cancels it back to steering. */
+var LANE_STEP = 46;     // px of travel that means "one lane over"
+var HOLD_MS   = 260;    // press longer than this, with no travel, is a hold
+var TAP_SLOP  = 14;     // px of wander still counted as a tap
+
+var gest = null, holdTimer = null;
+
+function endTurbo(){
+  if (S.turbo){ S.turbo = false; el.hint && el.hint.classList.remove('turbo'); }
+}
+function beginTurbo(){
+  if (!S.running || S.turbo) return;
+  S.turbo = true;
+  el.hint && el.hint.classList.add('turbo');
+}
+
+var cv = renderer.domElement;
+cv.style.touchAction = 'none';   // we interpret the gesture, not the browser
+
+cv.addEventListener('pointerdown', function(e){
+  if (!S.running) return;
+  gest = {x:e.clientX, y:e.clientY, ox:e.clientX, oy:e.clientY, moved:false, held:false};
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(function(){
+    if (gest && !gest.moved){ gest.held = true; beginTurbo(); }
+  }, HOLD_MS);
+});
+
+cv.addEventListener('pointermove', function(e){
+  if (!gest) return;
+  var dx = e.clientX - gest.x, dy = e.clientY - gest.y;
+  if (!gest.moved && Math.hypot(e.clientX-gest.ox, e.clientY-gest.oy) > TAP_SLOP){
+    gest.moved = true;
+    clearTimeout(holdTimer);      // it is a slide, not a hold
+  }
+  // steer, and rebase so a long slide keeps stepping lane by lane
+  while (Math.abs(dx) >= LANE_STEP){
+    var dir = dx > 0 ? 1 : -1;
+    move(dir);
+    gest.x += dir * LANE_STEP;
+    dx = e.clientX - gest.x;
+  }
+  // a decisive flick upward still jumps
+  if (!gest.held && dy < -56 && Math.abs(dy) > Math.abs(e.clientX-gest.ox)){
+    jump();
+    gest.y = e.clientY;
+  }
+});
+
+function releaseGesture(e){
+  if (!gest) return;
+  clearTimeout(holdTimer);
+  var wander = Math.hypot(e.clientX-gest.ox, e.clientY-gest.oy);
+  if (!gest.held && !gest.moved && wander <= TAP_SLOP) jump();
+  endTurbo();
+  gest = null;
+}
+cv.addEventListener('pointerup', releaseGesture);
+cv.addEventListener('pointercancel', releaseGesture);
+cv.addEventListener('pointerleave', function(e){ if(gest) releaseGesture(e); });
+
+/* holding Shift is the keyboard's turbo, so the desk and the booth agree */
+document.addEventListener('keydown', function(e){ if(e.key==='Shift') beginTurbo(); });
+document.addEventListener('keyup',   function(e){ if(e.key==='Shift') endTurbo(); });
 
 FXUI.init({
   hasSound:  false,          // this game has no audio, so no mute control
@@ -957,7 +1012,6 @@ FXUI.init({
     S.running = false; S.over = false;
     clearField();
     el.over.classList.add('hidden');
-    el.pad.classList.add('hidden');
     el.hint.style.display = 'none';
     el.start.classList.remove('hidden');
   }
@@ -1031,7 +1085,6 @@ function startGame(){
   el.drops.textContent = '0';
   el.start.classList.add('hidden');
   el.over.classList.add('hidden');
-  el.pad.classList.remove('hidden');
   el.hint.style.display = 'block';
   setTimeout(function(){ el.hint.style.display = 'none'; }, 3200);
   FXUI.setPlaying(true);
@@ -1048,7 +1101,6 @@ function endGame(){
   el.finalScore.textContent = S.score;
   el.finalLine.textContent = S.drops + ' serum drops · ' + Math.floor(S.dist) + 'm';
   el.over.classList.remove('hidden');
-  el.pad.classList.add('hidden');
   el.hint.style.display = 'none';
 }
 
@@ -1114,7 +1166,9 @@ function tick(){
 
   if (FXUI.isPaused()){ renderer.render(scene, camera); return; }
 
-  var speed = S.running ? S.speed : 5;
+  /* turbo is a multiplier on the moment's speed, not a change to the ramp,
+     so holding does not permanently outpace the difficulty curve */
+  var speed = S.running ? S.speed * (S.turbo ? 1.55 : 1) : 5;
 
   if (S.running){
     S.speed = Math.min(30, S.speed + dt*0.42);
@@ -1272,6 +1326,13 @@ function tick(){
   }
   camera.position.x += (S.x*0.32 + shakeX - camera.position.x) * Math.min(1, dt*5);
   camera.position.y += (6.2 + S.y*0.30 + shakeY - camera.position.y) * Math.min(1, dt*5);
+  /* turbo needs to be felt, not just measured: the lens widens a little while
+     it is held, which reads as speed without moving the runner off its mark */
+  var wantFov = S.turbo ? 60 : 52;
+  if (Math.abs(camera.fov - wantFov) > 0.05){
+    camera.fov += (wantFov - camera.fov) * Math.min(1, dt*6);
+    camera.updateProjectionMatrix();
+  }
   camera.lookAt(S.x*0.32, 0.9 + S.y*0.3, -14);
 
   renderer.render(scene, camera);

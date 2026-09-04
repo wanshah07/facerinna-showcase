@@ -132,6 +132,12 @@
   font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
 }
 
+/* The shared pause/mute cluster (#fxControls) is fixed to the top-right
+   corner and is not part of the HUD's flow, so the HUD's own right-hand chip
+   was sitting underneath it — Score was covered by 80px, Drops by 24px.
+   Reserve the cluster's width (2 x 44px + 8px gap) plus its 12px offset. */
+.hud{padding-right:120px}
+
 /* ── control cluster: pause + mute ───────────────────────── */
 #fxControls{
   position:fixed;z-index:50;display:none;gap:8px;
