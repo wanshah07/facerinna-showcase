@@ -923,26 +923,41 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
    short one, instead of a fixed cap that fits one window and overflows the
    next. The overhead is a variable because a short screen compacts the
    furniture and hands the difference straight back to the brochure. */
-.flyer-sheet{position:relative;border-radius:14px;overflow:hidden;
-  width:100%;max-width:min(96vh, calc((100vh - var(--flyer-oh)) * 1.413));margin-inline:auto;
+/* The sheet is now just the positioning context: the artwork's own box —
+   rounded, clipped, bordered — is .flyer-frame inside it, so the overlay is
+   free to hang past the artwork's bottom edge instead of being clipped by it.
+   The reserved padding is that overhang. */
+.flyer-sheet{--ov-drop:clamp(38px,6.5vh,66px);
+  position:relative;margin-inline:auto;padding-bottom:var(--ov-drop);
+  /* the overhang is part of the sheet's height, so the width the artwork may
+     take is solved against what is left after it */
+  width:100%;max-width:min(96vh, calc((100vh - var(--flyer-oh) - var(--ov-drop)) * 1.413))}
+.flyer-frame{position:relative;border-radius:14px;overflow:hidden;
   border:1px solid var(--line);box-shadow:var(--shadow-sm);background:#fff}
 /* the folded sheet shown whole — height:auto on its own 1.413 ratio, so all
    three panels are on screen rather than a crop of the first one */
 .flyer-thumb{width:100%;height:auto;display:block;cursor:zoom-in;
   transition:transform .25s}
-.flyer-sheet:hover .flyer-thumb{transform:scale(1.015)}
+.flyer-frame:hover .flyer-thumb{transform:scale(1.015)}
 /* the foot of the brochure is white artwork, and a ghost button on white is
    no button at all — the actions ride a soft wash that fades up into it */
 /* a share of the sheet rather than a fixed band — at 150px flat the wash
    covered half a laptop-sized brochure. It has to clear the whole overlay
    now, so it is the taller of a floor and a proportion. */
-.flyer-sheet::after{content:"";position:absolute;left:0;right:0;bottom:0;height:max(34%,140px);
-  background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.34) 50%,rgba(255,255,255,.66));
+/* only the two buttons still sit on the artwork, so the wash is sized to them
+   rather than to the whole overlay — any taller and it veils the product shot
+   for no one's benefit */
+.flyer-frame::after{content:"";position:absolute;left:0;right:0;bottom:0;height:max(26%,105px);
+  background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.26) 50%,rgba(255,255,255,.56));
   pointer-events:none}
 /* Actions and giveaway as one block riding the foot of the sheet. Off the
    flow, the pair of them stop charging the section ~150px of height, which
    is height the brochure itself takes instead. */
-.flyer-overlay{position:absolute;left:50%;bottom:clamp(10px,2vh,20px);transform:translateX(-50%);
+/* bottom:0 is the foot of the RESERVED padding, so the card hangs below the
+   artwork by --ov-drop and only its top edge is over the print. Sitting wholly
+   inside the sheet it covered the B5 product photograph and the last benefit
+   row outright; straddling the edge it covers neither. */
+.flyer-overlay{position:absolute;left:50%;bottom:0;transform:translateX(-50%);
   z-index:2;width:max-content;max-width:calc(100% - 24px);
   display:flex;flex-direction:column;align-items:center;gap:clamp(8px,1.4vh,14px)}
 .flyer-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
@@ -968,9 +983,10 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
   .flyer-sheet{max-width:100%}
   /* at this width the wash would have to cover most of the sheet to hold the
      overlay, so it comes off the artwork and sits under it instead */
+  .flyer-sheet{padding-bottom:0}
   .flyer-overlay{position:static;transform:none;width:auto;max-width:none;margin-top:14px}
   .flyer-overlay .offer{max-width:none;background:var(--brand-soft);backdrop-filter:none;box-shadow:none}
-  .flyer-sheet::after{display:none}
+  .flyer-frame::after{display:none}
 }
 
 
@@ -1650,7 +1666,9 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
       <div class="flyer-sheet">
         <!-- src is set from data-src so the self-contained build can swap in an
              inlined copy without the browser first chasing a path it cannot reach -->
-        <img class="flyer-thumb" id="flyerThumb" data-src="docs/bro-sheet-out.webp" alt="Clinic Partnership brochure, folded — tap to open" draggable="false">
+        <div class="flyer-frame">
+          <img class="flyer-thumb" id="flyerThumb" data-src="docs/bro-sheet-out.webp" alt="Clinic Partnership brochure, folded — tap to open" draggable="false">
+        </div>
         <!-- the actions and the giveaway ride ON the sheet rather than under it:
              it is the one thing on this slide worth the space, and everything
              taken out of the flow above it is height the brochure gets back -->
@@ -3826,6 +3844,38 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
 
   /* Each slide's contents get a wrapper purely so the horizontal deck has a
      single element to scale. It is layout-neutral while --k is 1. */
+  /* A slide can grow after fit() has already run — a lazy image arrives, the
+     fan gallery finishes building — and the deck was relying on two timed
+     retries to catch that. They were not late enough: the gallery still sat
+     56px past its screen at 1366x768. Watching the wrappers is what actually
+     covers it, whenever the content settles. */
+  let fitting=false, roT=null;
+  const ro = (typeof ResizeObserver==='function') ? new ResizeObserver(()=>{
+    if(fitting||!mode) return;
+    clearTimeout(roT);
+    roT=setTimeout(()=>{
+      // fit() resizes the wrappers itself, so only a slide that is actually
+      // past its screen is worth reacting to — otherwise this feeds itself
+      if(slides().some(sec=>sec.scrollHeight-sec.clientHeight>2)) fit();
+    },120);
+  }) : null;
+  /* A ResizeObserver only reports an element's own box, and the fan gallery
+     overflows through absolutely positioned cards — its wrapper never changes
+     size, so nothing fires and the slide sat 56px past its screen. For that
+     shape of content the only honest signal is the overflow itself, checked a
+     few times while the slide settles and then left alone. */
+  let settleT=null;
+  function settleFits(){
+    clearTimeout(settleT);
+    let n=0;
+    const step=()=>{
+      if(!mode) return;
+      if(slides().some(sec=>sec.scrollHeight-sec.clientHeight>2)) fit();
+      if(++n<8) settleT=setTimeout(step,300);
+    };
+    settleT=setTimeout(step,300);
+  }
+
   function ensureWrap(){
     slides().forEach(sec=>{
       if(sec.firstElementChild&&sec.firstElementChild.classList.contains('slide-fit')) return;
@@ -3833,6 +3883,7 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
       w.className='slide-fit';
       while(sec.firstChild) w.appendChild(sec.firstChild);
       sec.appendChild(w);
+      if(ro) ro.observe(w);
     });
   }
   /* Scale-to-fit, two passes: widening the wrapper reflows the content
@@ -3840,6 +3891,7 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
   function fit(){
     // both decks scale now, not just the horizontal one
     const on = !!mode;
+    fitting=true;
     slides().forEach(sec=>{
       const w=sec.firstElementChild;
       if(!w||!w.classList.contains('slide-fit')) return;
@@ -3872,6 +3924,8 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
       }
       if(k>=1){ w.style.removeProperty('--k'); w.style.marginBottom=''; }
     });
+    // let the observer settle on the sizes fit() just wrote before re-arming
+    requestAnimationFrame(()=>{ fitting=false; });
   }
 
   function index(){
@@ -3968,6 +4022,7 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
       dispatchEvent(new Event('facerinna:tvchange'));
       // the shelf canvas and lazy images settle a beat later, so measure again
       setTimeout(fit,180); setTimeout(fit,600);
+      if(mode) settleFits();
     });
   }
   bV.addEventListener('click',()=>set('v'));
@@ -3987,6 +4042,11 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
   });
   let lastKey=null;
   const tick=()=>{ if(mode) countEl.textContent=(index()+1)+' / '+slides().length; syncChips();
+    /* The fan gallery lays itself out from the page's scroll position, so it
+       only reaches its real height once the deck ARRIVES on it — after the
+       settle window that follows entering the deck has already closed. Any
+       arrival, by button or by snap, re-opens that window. */
+    if(mode) settleFits();
     const k=filterBar&&filterBar.querySelector('.rf-chip[aria-pressed="true"]');
     const kk=k?k.dataset.filter:null;
     if(kk!==lastKey){ lastKey=kk; barSettle(); } };
@@ -3996,7 +4056,7 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
   // filtering the range changes how many slides there are
   addEventListener('facerinna:deckchange',()=>{
     if(!mode) return;
-    ensureWrap(); fit(); show(index(),false);
+    ensureWrap(); fit(); show(index(),false); settleFits();
   });
   addEventListener('facerinna:tvchange',()=>{ if(mode) requestAnimationFrame(fit); });
   syncChips();
