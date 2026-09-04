@@ -415,7 +415,11 @@ section{padding:74px 0;position:relative}
   /* measured overhead is 456px; the extra ~20px is slack for a font that
      wraps the heading to one more line than it does here */
   .sec-tight{padding:24px 0}
-  #clinic{--flyer-oh:330px}
+  /* Measured overhead runs 434px at a 640-tall window to 459px at 1200 —
+     it tracks the viewport because the card and buttons are sized in vh —
+     so the constant carries a vh term rather than being flat, plus ~20px of
+     slack for a font that wraps a line further than it does here. */
+  #clinic{--flyer-oh:calc(429px + 4.5vh)}
   #clinic .sec-head{margin-bottom:12px}
   #clinic .sec-head h2{font-size:clamp(1.35rem,2.1vw,1.6rem);margin:.25rem 0 .2rem}
   #clinic .sec-head p{font-size:.86rem}
@@ -932,66 +936,46 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
    short one, instead of a fixed cap that fits one window and overflows the
    next. The overhead is a variable because a short screen compacts the
    furniture and hands the difference straight back to the brochure. */
-/* The sheet is now just the positioning context: the artwork's own box —
-   rounded, clipped, bordered — is .flyer-frame inside it, so the overlay is
-   free to hang past the artwork's bottom edge instead of being clipped by it.
-   The reserved padding is that overhang. */
-.flyer-sheet{--ov-drop:clamp(38px,6.5vh,66px);
-  position:relative;margin-inline:auto;padding-bottom:var(--ov-drop);
-  /* the overhang is part of the sheet's height, so the width the artwork may
-     take is solved against what is left after it */
-  width:100%;max-width:min(96vh, calc((100vh - var(--flyer-oh) - var(--ov-drop)) * 1.413))}
-.flyer-frame{position:relative;border-radius:14px;overflow:hidden;
-  border:1px solid var(--line);box-shadow:var(--shadow-sm);background:#fff}
+/* Nothing sits on the artwork at all now. The frame IS the sheet — rounded,
+   clipped, bordered — and the giveaway card and the two actions are ordinary
+   flow below it, so the print is untouched end to end. The positioning
+   wrapper that used to hold an overlay went with the overlay. */
+.flyer-frame{position:relative;margin-inline:auto;border-radius:14px;overflow:hidden;
+  border:1px solid var(--line);box-shadow:var(--shadow-sm);background:#fff;
+  width:100%;max-width:min(96vh, calc((100vh - var(--flyer-oh)) * 1.413))}
 /* the folded sheet shown whole — height:auto on its own 1.413 ratio, so all
    three panels are on screen rather than a crop of the first one */
 .flyer-thumb{width:100%;height:auto;display:block;cursor:zoom-in;
   transition:transform .25s}
 .flyer-frame:hover .flyer-thumb{transform:scale(1.015)}
-/* the foot of the brochure is white artwork, and a ghost button on white is
-   no button at all — the actions ride a soft wash that fades up into it */
-/* a share of the sheet rather than a fixed band — at 150px flat the wash
-   covered half a laptop-sized brochure. It has to clear the whole overlay
-   now, so it is the taller of a floor and a proportion. */
-/* The wash existed to keep a ghost button legible over white artwork. Nothing
-   rides the artwork any more — the card straddles its bottom edge and the
-   buttons sit below it — so the print is left alone. */
-/* Actions and giveaway as one block riding the foot of the sheet. Off the
-   flow, the pair of them stop charging the section ~150px of height, which
-   is height the brochure itself takes instead. */
-/* bottom:0 is the foot of the RESERVED padding, so the card hangs below the
-   artwork by --ov-drop and only its top edge is over the print. Sitting wholly
-   inside the sheet it covered the B5 product photograph and the last benefit
-   row outright; straddling the edge it covers neither. */
-.flyer-overlay{position:absolute;left:50%;bottom:0;transform:translateX(-50%);
-  z-index:2;width:max-content;max-width:calc(100% - 24px);
-  display:flex;flex-direction:column;align-items:center;gap:clamp(8px,1.4vh,14px)}
+/* the giveaway and the two actions under the brochure. Side by side wherever
+   there is width for it: stacked, the pair charge the section ~55px more
+   height, and at this section's 1.413 ratio that is ~78px off the brochure. */
+.flyer-below{display:flex;flex-direction:column;align-items:center;
+  gap:clamp(8px,1.4vh,14px);margin-top:clamp(10px,1.7vh,16px)}
+@media(min-width:901px){
+  .flyer-below{flex-direction:row;justify-content:center;align-items:center;
+    gap:clamp(12px,2vw,24px);flex-wrap:wrap}
+}
 .flyer-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-/* the sheet shrinks with the window, so the buttons riding on it have to as
-   well: at their full size the pair wrapped onto two rows on a laptop and
-   blocked the artwork they are sitting on */
+/* sized off the viewport's height like everything else in this section, so a
+   short screen spends its pixels on the brochure rather than on the buttons */
 .flyer-actions .btn{padding:clamp(6px,1vh,10px) clamp(12px,2vh,22px);
   font-size:clamp(.72rem,1.35vh,.86rem)}
 .flyer-note{margin:12px auto 0;max-width:52rem;font-size:.86rem;color:var(--ink-2)}
-/* over artwork rather than over the strip's own surface, so it carries its
-   own near-opaque ground and a lift instead of the flat tint it had in flow */
-.flyer-overlay .offer{margin:0;width:100%;max-width:520px;
-  padding:clamp(8px,1.5vh,14px) clamp(14px,2.4vh,22px);
-  background:rgba(244,250,255,.95);backdrop-filter:blur(3px);
-  border-color:rgba(43,122,193,.55);box-shadow:0 10px 26px rgba(16,40,66,.16)}
-.flyer-overlay .offer-eyebrow{font-size:clamp(.6rem,1.05vh,.72rem)}
-.flyer-overlay .offer-worth{font-size:clamp(.86rem,1.7vh,1.05rem)}
-.flyer-overlay .offer-worth b{font-size:clamp(1.05rem,2.3vh,1.5rem)}
-.flyer-overlay .offer .btn{padding:clamp(6px,1vh,10px) clamp(14px,2vh,22px);
+/* back on the strip's own surface, so it goes back to the flat brand tint it
+   had before it was ever put over the print */
+.flyer-below .offer{margin:0;width:100%;max-width:520px;
+  padding:clamp(8px,1.5vh,14px) clamp(14px,2.4vh,22px)}
+.flyer-below .offer-eyebrow{font-size:clamp(.6rem,1.05vh,.72rem)}
+.flyer-below .offer-worth{font-size:clamp(.86rem,1.7vh,1.05rem)}
+.flyer-below .offer-worth b{font-size:clamp(1.05rem,2.3vh,1.5rem)}
+.flyer-below .offer .btn{padding:clamp(6px,1vh,10px) clamp(14px,2vh,22px);
   font-size:clamp(.72rem,1.35vh,.86rem);margin-top:clamp(5px,.9vh,10px)}
 @media(max-width:900px){
   .flyer-strip{padding:18px}
-  .flyer-sheet{max-width:100%}
-  /* at this width the wash would have to cover most of the sheet to hold the
-     overlay, so it comes off the artwork and sits under it instead */
-  .flyer-sheet{padding-bottom:0}
-  .flyer-overlay{position:static;transform:none;width:auto;max-width:none;margin-top:14px}
-  .flyer-overlay .offer{max-width:none;background:var(--brand-soft);backdrop-filter:none;box-shadow:none}
+  .flyer-frame{max-width:100%}
+  .flyer-below .offer{max-width:none}
   .flyer-frame::after{display:none}
 }
 
@@ -1669,25 +1653,20 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
         <span class="eyebrow">Programme Brochure</span>
         <h4>The 360° Skin Hub gatefold</h4>
       </div>
-      <div class="flyer-sheet">
-        <!-- src is set from data-src so the self-contained build can swap in an
-             inlined copy without the browser first chasing a path it cannot reach -->
-        <div class="flyer-frame">
-          <img class="flyer-thumb" id="flyerThumb" data-src="docs/bro-sheet-out.webp" alt="Clinic Partnership brochure, folded — tap to open" draggable="false">
+      <!-- src is set from data-src so the self-contained build can swap in an
+           inlined copy without the browser first chasing a path it cannot reach -->
+      <div class="flyer-frame">
+        <img class="flyer-thumb" id="flyerThumb" data-src="docs/bro-sheet-out.webp" alt="Clinic Partnership brochure, folded — tap to open" draggable="false">
+      </div>
+      <div class="flyer-below">
+        <div class="offer">
+          <div class="offer-eyebrow">The B5 Series · Free Sample Giveaway</div>
+          <div class="offer-worth">TOTAL WORTH <b>RM1,047</b><span>*</span> / clinic</div>
+          <a class="btn btn-primary" href="#qrcore">Register your clinic</a>
         </div>
-        <!-- the actions and the giveaway ride ON the sheet rather than under it:
-             it is the one thing on this slide worth the space, and everything
-             taken out of the flow above it is height the brochure gets back -->
-        <div class="flyer-overlay">
-          <div class="offer">
-            <div class="offer-eyebrow">The B5 Series · Free Sample Giveaway</div>
-            <div class="offer-worth">TOTAL WORTH <b>RM1,047</b><span>*</span> / clinic</div>
-            <a class="btn btn-primary" href="#qrcore">Register your clinic</a>
-          </div>
-          <div class="flyer-actions">
-            <button class="btn btn-primary" id="flyerView">📖 Open the brochure</button>
-            <a class="btn btn-ghost" href="clinic-partnership-brochure.pdf" target="_blank" rel="noopener" download>⬇ Download brochure</a>
-          </div>
+        <div class="flyer-actions">
+          <button class="btn btn-primary" id="flyerView">📖 Open the brochure</button>
+          <a class="btn btn-ghost" href="clinic-partnership-brochure.pdf" target="_blank" rel="noopener" download>⬇ Download brochure</a>
         </div>
       </div>
       <p class="flyer-note">The full partnership brochure — turn it over like the printed piece, or read it panel by panel. Six panels, front and back.</p>
