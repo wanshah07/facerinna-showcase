@@ -48,6 +48,13 @@ h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif;letter-spacing:-.01em;line-
 img{max-width:100%;display:block}
 a{color:inherit}
 .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+/* In the deck a slide that scales down gets a wrapper WIDER than the viewport
+   — that is what scaling by k does — but a max-width in fixed px ignored it,
+   so the content rendered at --maxw * k and left the rest of the screen
+   empty. At 1366 Clinical Study sat at 0.63 and used barely half the width.
+   Dividing the cap by k pins the rendered width to the design width whatever
+   the scale. Only on the way down: a slide scaling up already fills. */
+body.slides .slide-fit .wrap{max-width:calc(var(--maxw) / min(1, var(--k,1)))}
 .eyebrow{font-family:'Inter';font-weight:600;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brand-deep)}
 .reveal{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1)}
 .reveal.in{opacity:1;transform:none}
@@ -701,10 +708,7 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
    and centred so a 2- or 3-product series does not sprawl */
 /* the series slides get a wider stage than the rest of the page so the
    products can be big and a five-product series still lands on one row */
-/* 96% of the scaled wrapper, not 96vw: in the deck the wrapper is wider than
-   the viewport whenever a slide is scaled down, and a vw cap left that extra
-   width unused. */
-.series-slide .wrap{max-width:min(1400px,96%)}
+.series-slide{--maxw:1400px}
 /* Chrome sizes an auto-fit repeat from the track's MAX, so five 248px tracks
    demand 1328px of grid; at 1366 there was only 1263 and the fifth product
    was orphaned onto a row of its own, which made the slide tall enough to
