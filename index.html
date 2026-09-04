@@ -692,7 +692,12 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .series-slide .wrap{max-width:min(1400px,96vw)}
 .thumb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,248px));
   gap:28px 22px;align-items:end;justify-content:center}
-.thumb{background:none;border:0;border-radius:0;padding:6px 6px 2px;box-shadow:none;text-align:center;
+/* The top padding is the badge's band. It is placed at the card's top-right
+   corner, and a wide pack reaches that corner — in a narrow column the two
+   ended up on top of each other. The band keeps the artwork clear of it, and
+   the badge is pulled back out over the gutter so it clears the pack's
+   shoulder rather than sitting on it. */
+.thumb{background:none;border:0;border-radius:0;padding:20px 6px 2px;box-shadow:none;text-align:center;
   transition:transform .35s var(--ease,ease);cursor:pointer;position:relative;overflow:visible}
 /* Products float on the page rather than sitting in cards: no frame, no
    plate behind them, and the shadow follows the bottle's own silhouette
@@ -705,7 +710,7 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .thumb:hover .art img{transform:translateY(-8px) scale(1.06)}
 .thumb h3{font-size:1.02rem;margin:0;font-weight:600;line-height:1.3;color:var(--ink)}
 .thumb .active{display:none}
-.thumb .tag-best{position:absolute;top:0;right:0;background:var(--brand);color:#fff;font-size:.6rem;font-weight:700;
+.thumb .tag-best{position:absolute;top:0;right:-2px;background:var(--brand);color:#fff;font-size:.6rem;font-weight:700;
   letter-spacing:.06em;padding:4px 9px;border-radius:999px;box-shadow:0 4px 10px rgba(46,124,190,.4)}
 
 /* HERO PRODUCTS */
