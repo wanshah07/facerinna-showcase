@@ -1330,8 +1330,14 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
 /* RINNA CHAT WIDGET */
 .chat-fab{position:fixed;right:22px;bottom:22px;z-index:90;width:64px;height:64px;border-radius:50%;
   background:linear-gradient(135deg,#3FA6EE,var(--brand-deep));border:0;cursor:pointer;box-shadow:0 12px 28px rgba(46,124,190,.45);
-  display:grid;place-items:center;transition:transform .25s}
+  display:grid;place-items:center;transition:transform .25s,bottom .3s ease}
 .chat-fab:hover{transform:scale(1.08)}
+/* Every other slide keeps a 92px safe area in the bottom corners, so the
+   button sits over nothing. The welcome slide is full-bleed by design — its
+   hero art is meant to reach the edges — and the corner lands on the scrolling
+   welcome marquee, with the partner-mark strip just above it. On that slide
+   alone the button lifts clear of both bands. */
+body.slides.bleed-slide .chat-fab{bottom:220px}
 .chat-fab svg{width:46px;height:46px}
 .chat-fab .dot{position:absolute;top:4px;right:4px;width:13px;height:13px;border-radius:50%;background:#2ECC8F;border:2.5px solid #fff}
 /* In the deck the pill floats over the slide and covered a product's name at
@@ -4099,6 +4105,8 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
     const chips=document.querySelectorAll('.rf-chip');
     if(!chips.length) return;
     const cur=slides()[i===undefined?index():i];
+    /* the chat button is fixed, so it has to be told which slide is under it */
+    document.body.classList.toggle('bleed-slide', !!mode && !!cur && cur.id==='top');
     const key=!cur ? null
       : cur.classList.contains('series-slide') ? cur.dataset.series
       : cur.id==='range' ? 'all' : null;
