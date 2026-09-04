@@ -206,6 +206,9 @@ body.space-theme .nav-trust-logo{background:rgba(255,255,255,.94);border-radius:
 .pres-ctl button[aria-pressed="true"]{background:var(--brand-soft);border-color:var(--brand);font-weight:700}
 .pres-ctl .pres-step,.pres-count{display:none}
 body.slides .pres-ctl .pres-step{display:grid}
+/* slide one ends in the welcome marquee, a full-width band the control was
+   sitting on top of; in the deck it rides above whatever the slide ends with */
+body.slides .pres-ctl{bottom:84px}
 body.slides .pres-count{display:block}
 .pres-count{padding:0 8px;font-size:.78rem;font-weight:700;color:var(--muted);white-space:nowrap;
   font-variant-numeric:tabular-nums}
@@ -690,8 +693,12 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 /* the series slides get a wider stage than the rest of the page so the
    products can be big and a five-product series still lands on one row */
 .series-slide .wrap{max-width:min(1400px,96vw)}
+/* align-items:start lines the ART boxes up, so the packs sit at one height
+   across the row. Ending the cards instead lined up the title baselines and
+   let the packs float at different heights whenever one name wrapped to two
+   lines and its neighbour did not. */
 .thumb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,248px));
-  gap:28px 22px;align-items:end;justify-content:center}
+  gap:28px 22px;align-items:start;justify-content:center}
 /* The top padding is the badge's band. It is placed at the card's top-right
    corner, and a wide pack reaches that corner — in a narrow column the two
    ended up on top of each other. The band keeps the artwork clear of it, and
@@ -3924,7 +3931,7 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
         w.style.marginBottom=(w.offsetHeight*(k-1)).toFixed(1)+'px';
         return sec.scrollHeight-sec.clientHeight;
       };
-      const FLOOR=0.30, CEIL=1.35;
+      const FLOOR=0.30, CEIL=1.70;
       let k=1;
       if(set(1) > 1){
         // taller than its screen: shrink until it is not
@@ -3943,11 +3950,22 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
            judgement, not a measurement: past it the wrapper is narrow enough
            that a multi-column grid starts re-wrapping into a different layout
            rather than the same layout drawn larger. */
+        /* Fitting is not only about height. Widening by 1/k narrows the
+           wrapper, and past some point a grid stops being the same layout
+           drawn larger and re-wraps into fewer columns — which the section's
+           overflow cannot see, because a re-wrapped grid still fits. So the
+           column count at k=1 is recorded and treated as part of "fits". */
+        const grids=[...w.querySelectorAll('*')]
+          .filter(e=>getComputedStyle(e).display==='grid')
+          .map(e=>({el:e, cols:getComputedStyle(e).gridTemplateColumns.split(' ').length}));
+        const intact=()=>grids.every(g=>
+          getComputedStyle(g.el).gridTemplateColumns.split(' ').length===g.cols);
+        const ok=t=>set(t)<=1 && intact();
         let lo=1, hi=CEIL;
-        if(set(CEIL)<=1) lo=CEIL;
+        if(ok(CEIL)) lo=CEIL;
         else for(let pass=0;pass<7;pass++){
           const mid=(lo+hi)/2;
-          if(set(mid)<=1) lo=mid; else hi=mid;
+          if(ok(mid)) lo=mid; else hi=mid;
         }
         k=lo; set(k);
       }
