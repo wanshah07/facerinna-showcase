@@ -701,7 +701,17 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
    and centred so a 2- or 3-product series does not sprawl */
 /* the series slides get a wider stage than the rest of the page so the
    products can be big and a five-product series still lands on one row */
-.series-slide .wrap{max-width:min(1400px,96vw)}
+/* 96% of the scaled wrapper, not 96vw: in the deck the wrapper is wider than
+   the viewport whenever a slide is scaled down, and a vw cap left that extra
+   width unused. */
+.series-slide .wrap{max-width:min(1400px,96%)}
+/* Chrome sizes an auto-fit repeat from the track's MAX, so five 248px tracks
+   demand 1328px of grid; at 1366 there was only 1263 and the fifth product
+   was orphaned onto a row of its own, which made the slide tall enough to
+   force the whole section down to 0.77. A series knows how many products it
+   has, so the column count is stated rather than inferred, and the tracks
+   share whatever width there is. */
+.series-slide .thumb-grid{grid-template-columns:repeat(var(--cols,4),minmax(0,248px))}
 /* align-items:start lines the ART boxes up, so the packs sit at one height
    across the row. Ending the cards instead lined up the title baselines and
    let the packs float at different heights whenever one name wrapped to two
@@ -2825,7 +2835,7 @@ function thumbHTML(p, accent){
           <span class="scount">${items.length} ${items.length===1?'product':'products'}</span>
         </div>
         <p class="series-desc">${s.desc}</p>
-        <div class="thumb-grid">${items.map(p=>thumbHTML(p,s.accent)).join('')}</div>
+        <div class="thumb-grid" style="--cols:${items.length}">${items.map(p=>thumbHTML(p,s.accent)).join('')}</div>
       </div></div>`;
     frag.appendChild(sec);
   });
