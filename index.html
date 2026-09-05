@@ -3947,6 +3947,24 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
      straight into the next one. Going full screen turns the deck on; leaving
      turns it off again, but only if full screen is what turned it on. */
   let autoDeck=false;
+  /* Leaving is normally the browser's job: Escape drops full screen, that
+     fires fullscreenchange, and sync() takes the deck down with it. But if
+     full screen was refused — a kiosk profile, an embedded webview, a policy —
+     the button still turns the deck on and Escape then goes nowhere. This is
+     the second way out for exactly that case. A dialog on top owns Escape
+     first, and when we ARE in full screen the browser is already handling it. */
+  /* Capture phase on purpose. The readers close themselves on Escape from
+     ordinary listeners, and those are registered earlier in the file, so by
+     the time a bubbling handler here ran the dialog would already be shut and
+     the same keystroke would drop the deck as well. Capture sees the dialog
+     while it is still open and stands down. */
+  addEventListener('keydown', function(e){
+    if(e.key!=='Escape') return;
+    if(fsEl()) return;
+    if(document.querySelector('.bookmodal.open, #cmodal.open')) return;
+    const d=window.__deck;
+    if(d && d.mode()){ autoDeck=false; d.off(); }
+  }, true);
   function syncDeck(on){
     const d=window.__deck; if(!d) return;
     if(on){ if(!d.mode()){ autoDeck=true; d.on('v'); } }
@@ -5005,6 +5023,20 @@ function launchConfetti(){
   if(thumb) thumb.addEventListener('click', open);
   if(view) view.addEventListener('click', open);
 })();
+
+/* The game cards are target="_blank". On the page that is right — the
+   showcase stays where it was. In full screen it is not: the new tab opens
+   BEHIND the full-screen window, so the tap looks like it did nothing, which
+   at a booth is indistinguishable from a dead link. In the deck the game
+   takes the same tab instead, and the browser's back button returns to the
+   showcase exactly where it was left. */
+document.addEventListener('click', function(e){
+  if(e.defaultPrevented || e.button) return;
+  const a = e.target.closest && e.target.closest('.cg-card[href]');
+  if(!a || !document.body.classList.contains('slides')) return;
+  e.preventDefault();
+  location.href = a.getAttribute('href');
+});
 </script>
 </body>
 </html>
