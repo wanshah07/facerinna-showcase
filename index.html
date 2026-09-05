@@ -1011,6 +1011,32 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
     gap:clamp(12px,2vw,24px);flex-wrap:wrap}
 }
 .flyer-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+/* In the deck the brochure was competing with its own furniture for height:
+   the strip head, the giveaway card, the two buttons and the note all stacked
+   under it, and the sheet only gets what is left over (--flyer-oh). Beside it
+   instead of under it — the slide has width to spare, the sheet does not have
+   height to spare — and the overhead collapses to the section head alone. */
+@media(min-width:901px){
+  body.slides #clinic .flyer-strip{
+    display:grid;align-items:start;
+    grid-template-columns:minmax(0,1fr) minmax(210px,250px);
+    grid-template-rows:auto auto 1fr;
+    grid-template-areas:"frame head" "frame below" "frame note";
+    column-gap:clamp(16px,2vw,28px)}
+  body.slides #clinic .flyer-head{grid-area:head;margin:0 0 10px}
+  body.slides #clinic .flyer-frame{grid-area:frame}
+  body.slides #clinic .flyer-below{grid-area:below;flex-direction:column;
+    align-items:stretch;margin-top:0}
+  body.slides #clinic .flyer-below .offer{max-width:none}
+  body.slides #clinic .flyer-note{grid-area:note;margin:12px 0 0;max-width:none}
+  /* the strapline is in the brochure itself; on the slide it was costing the
+     sheet ~50px of height to repeat it */
+  body.slides #clinic .sec-head{margin-bottom:10px}
+  body.slides #clinic .sec-head p{display:none}
+  /* the furniture no longer sits under the sheet, so the sheet stops paying
+     for it: what is left above it is the section head and the strip padding */
+  body.slides #clinic{--flyer-oh:260px}
+}
 /* sized off the viewport's height like everything else in this section, so a
    short screen spends its pixels on the brochure rather than on the buttons */
 .flyer-actions .btn{padding:clamp(6px,1vh,10px) clamp(12px,2vh,22px);
@@ -1998,7 +2024,6 @@ body.slides .chat-hint{display:none !important}
       <div>
         <h4>Booth</h4>
         <a href="#game">Play &amp; win a sample</a>
-        <a href="#evidence">Request full study data</a>
         <a href="https://wanshah07.github.io/facerinna-test-reports-claims/"
            target="_blank" rel="noopener">Report data authentication ↗</a>
         <a href="#top">Back to top ↑</a>
