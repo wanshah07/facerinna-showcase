@@ -1361,7 +1361,24 @@ body.space-theme .fan-card{border-color:rgba(255,255,255,.18);
    played on. Same origin, same localStorage — so the booth screen can read all
    five and put them together without a server. */
 .rank-cta{margin-top:18px;text-align:center}
-.rank-panel{max-width:620px}
+/* It shows itself now, so it stops short of blacking the booth screen out:
+   the wheel and the cards stay readable behind a light wash, and the card
+   itself is glass rather than paper. */
+#rankModal .backdrop{background:rgba(13,32,52,.28);
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.rank-panel{max-width:620px;
+  background:rgba(255,255,255,.90);
+  backdrop-filter:blur(16px) saturate(1.25);-webkit-backdrop-filter:blur(16px) saturate(1.25);
+  border:1px solid rgba(255,255,255,.7)}
+.rank-panel .cclose{background:rgba(255,255,255,.75)}
+/* The twenty seconds, drawn, when the board opened itself. It rides the top of
+   the panel rather than the bottom: the panel scrolls on a short screen, and an
+   absolutely placed bar would scroll away with the content. */
+.rank-bar{position:sticky;top:0;display:block;height:3px;border-radius:3px;margin:-6px 0 8px;
+  background:linear-gradient(90deg,var(--brand),var(--brand-deep));
+  transform-origin:left center;transform:scaleX(1);opacity:0;z-index:6}
+.rank-bar.arm{opacity:1;transition:none}
+.rank-bar.run{opacity:1;transform:scaleX(0);transition:transform 20s linear}
 .rank-head .cat{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal-deep)}
 .rank-head h3{font-size:1.32rem;margin:.15rem 0 .35rem}
 .rank-head p{margin:0 0 18px;font-size:.86rem;line-height:1.55;color:var(--ink-2);max-width:46ch}
@@ -1981,6 +1998,7 @@ body.slides .chat-hint{display:none !important}
 <div class="cmodal" id="rankModal" role="dialog" aria-modal="true" aria-label="Booth ranking across the five games">
   <div class="backdrop" data-rank-close></div>
   <div class="cpanel rank-panel">
+    <i class="rank-bar" id="rankBar" aria-hidden="true"></i>
     <button class="cclose" type="button" data-rank-close aria-label="Close the ranking">&#10005;</button>
     <div class="rank-head">
       <span class="cat">Booth leaderboard</span>
@@ -4832,10 +4850,37 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     body.innerHTML=html;
   }
 
-  function open(){ fill(); modal.classList.add('open'); document.body.style.overflow='hidden'; }
-  function close(){ modal.classList.remove('open'); document.body.style.overflow=''; }
+  const bar=document.getElementById('rankBar');
+  let hideT=null, auto=false, lastAuto=0;
 
-  btn.addEventListener('click', open);
+  /* Opened by hand it waits to be dismissed. Opened by itself it takes twenty
+     seconds and goes, and it does not take the scroll with it — a board that
+     appears while somebody is scrolling must not trap them. */
+  function open(self){
+    fill();
+    auto=!!self;
+    modal.classList.add('open');
+    document.body.style.overflow = auto ? '' : 'hidden';
+    clearTimeout(hideT);
+    bar.classList.remove('run','arm');
+    if(auto){
+      bar.classList.add('arm');              // full width, no transition
+      void bar.offsetWidth;                  // commit it, then let it run down
+      bar.classList.remove('arm');
+      bar.classList.add('run');
+      hideT=setTimeout(close, 20000);
+      lastAuto=Date.now();
+    }
+  }
+  function close(){
+    clearTimeout(hideT);
+    modal.classList.remove('open');
+    bar.classList.remove('run','arm');
+    document.body.style.overflow='';
+    auto=false;
+  }
+
+  btn.addEventListener('click', ()=>open(false));
   modal.querySelectorAll('[data-rank-close]').forEach(el=>el.addEventListener('click', close));
   /* Capture, ahead of the deck's own Escape — it checks for an open dialog and
      this one has to be counted before it decides to leave the slideshow. */
@@ -4844,6 +4889,44 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
       e.stopPropagation(); close();
     }
   }, true);
+
+  /* At a booth nobody thinks to press a button, so the board shows itself when
+     the games come into view — including on the way back from a game, which is
+     exactly when the new score has landed. It only does this when there is
+     something to show, it will not do it twice inside a minute, and the first
+     scroll or tap sends it away early. */
+  const section=document.getElementById('game');
+  if(section && typeof IntersectionObserver!=='undefined'){
+    let inView=false;
+    const anyScores=()=>GAMES.some(g=>board(g.id).length);
+    new IntersectionObserver(function(entries){
+      const e=entries[0];
+      if(!e) return;
+      if(!e.isIntersecting){ inView=false; return; }
+      if(inView) return;
+      inView=true;
+      if(modal.classList.contains('open')) return;
+      if(Date.now()-lastAuto < 60000) return;
+      if(!anyScores()) return;
+      setTimeout(function(){
+        if(!inView || modal.classList.contains('open')) return;
+        open(true);
+      }, 700);
+    },{threshold:.45}).observe(section);
+
+    ['wheel','touchstart','pointerdown'].forEach(function(t){
+      addEventListener(t, function(e){
+        if(!auto) return;
+        if(e.target && e.target.closest && e.target.closest('.rank-panel')) return;
+        close();
+      }, {passive:true});
+    });
+    /* Driving the deck counts as wanting it gone, the same as scrolling —
+       otherwise the board rides along on top of the next slide. */
+    addEventListener('keydown', function(e){
+      if(auto && e.key!=='Escape') close();
+    }, true);
+  }
 })();
 
 /* ── SHELF STAGE ──────────────────────────────────────────────────────
