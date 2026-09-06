@@ -233,6 +233,11 @@ body.space-theme .nav-trust-logo{background:rgba(255,255,255,.94);border-radius:
 body.slides .pres-ctl .pres-step{display:grid}
 /* slide one ends in the welcome marquee, a full-width band the control was
    sitting on top of; in the deck it rides above whatever the slide ends with */
+/* Outside the deck this is a control for a mode you are not in, and it is a
+   third floating thing landing on product names and headings all the way down
+   the page. The header's own button starts the deck; the orientation buttons
+   live inside it. */
+body:not(.slides) .pres-ctl{display:none}
 body.slides .pres-ctl{bottom:84px}
 /* 84px clears whatever a slide ends with, except on the welcome slide, where it
    sat on the moving partner marks. Swept expanded (263x48) at six sizes in 10px
@@ -1103,7 +1108,7 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .fan-wrap{margin-top:26px}
 .fan-layout{--fan-card:clamp(150px,19vw,270px);
   position:relative;display:flex;justify-content:center;align-items:center;
-  width:100%;height:calc(var(--fan-card) * 1.68);margin:0 auto;
+  width:100%;height:calc(var(--fan-card) * 1.68 + 4rem);margin:0 auto;
   perspective:1600px}
 .fan-card{position:absolute;left:50%;top:50%;width:var(--fan-card);
   aspect-ratio:1 / 1.414;margin-left:calc(var(--fan-card) / -2);
@@ -1501,6 +1506,16 @@ body:not(.slides).mq-near{--fab-bottom:var(--mq-lift,22px)}
 .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
 @keyframes tbounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
 
+/* Outside the deck the page keeps scrolling under these two, and on a small
+   screen they land on a product name here, a paragraph there — there is no
+   fixed height that avoids everything on a page fifteen sections long. So they
+   step back instead: when there is text directly behind them they fade, and
+   they come straight back on hover, on tap, and the moment the text moves on.
+   Still there, still one tap away, no longer sitting on a word. */
+body.fab-duck .halal-fab,body.fab-duck .chat-fab{opacity:.2}
+.halal-fab,.chat-fab{transition:opacity .28s ease}
+.chat-fab{transition:transform .25s,bottom .3s ease,opacity .28s ease}
+
 /* BPJPH halal certification mark. It rides on the same --fab-bottom the chat
    button uses, so wherever that button moves to clear something, this moves
    with it and the gap between the two never changes. Nothing to click here —
@@ -1569,6 +1584,14 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
   .hero{height:auto;display:block}
   .hero .hero-stage{flex:none}
   .hero-stage{height:auto;min-height:0;aspect-ratio:5/4;display:block;padding-bottom:0}
+  /* ...but a deck slide is a whole screen whatever shape the screen is. Left on
+     the scrolling layout's auto height, slide one ended 300px short of the
+     bottom on a 900x1440 screen and the welcome band — and the two buttons that
+     step over it — sat in the middle of nowhere. */
+  body.slides #top > .slide-fit{min-height:100vh;display:flex;flex-direction:column}
+  body.slides #top .hero-stage{flex:1 1 auto;min-height:0;aspect-ratio:auto;height:auto}
+  body.slides #top .hero-frame{height:100%;display:flex}
+  body.slides #top .hero-kv-img{height:100%;width:100%;object-fit:cover}
   .hero-frame{height:100%;width:100%;display:block}
   .hero-kv-img{width:100%;height:100%;object-fit:cover;-webkit-mask-image:none;mask-image:none}
   /* stacked instead of side by side: art in the upper two-thirds, type below */
@@ -3335,7 +3358,7 @@ const GALLERY_DOCS = [
   }
 
   function place(el,x,y,rot,scale,z,opacity){
-    el.style.transform='translate3d('+x.toFixed(2)+'rem,'+y.toFixed(2)+'rem,0) '+
+    el.style.transform='translate3d('+x.toFixed(2)+'rem,calc('+y.toFixed(2)+'rem + var(--fan-shift,0px)),0) '+
       'rotate('+rot.toFixed(2)+'deg) scale('+scale.toFixed(4)+')';
     el.style.zIndex=String(z);
     el.style.opacity=String(opacity);
@@ -3355,6 +3378,7 @@ const GALLERY_DOCS = [
   let spreadFit=1;
 
   function probe(v){
+    layout.style.setProperty('--fan-shift','0px');
     spreadFit=v; render(null);
     const box=layout.getBoundingClientRect();
     const out=cards.map(function(el){
@@ -3398,6 +3422,28 @@ const GALLERY_DOCS = [
     spreadFit=Math.max(0.2, Math.min(1, f));
     hovered=held;
     render(null);
+
+    /* The cards pivot below themselves and every slot but the middle one is
+       offset downwards, so the fan hangs low in its own box — 36px of unused
+       room above it and 82px hanging out below, at 1920. In the deck, where the
+       slide is scaled to fill the screen, that put the bottom row of captions on
+       the edge of the screen with a gap over the top of the fan. The offset is
+       measured and handed back as a shift, so the fan sits in the middle of the
+       box wherever the box ends up. */
+    const box=layout.getBoundingClientRect();
+    const px=layout.offsetWidth ? box.width/layout.offsetWidth : 1;   // the deck's scale
+    let top=Infinity, bot=-Infinity;
+    cards.forEach(function(el){
+      if(el.getAttribute('aria-hidden')==='true') return;
+      const r=el.getBoundingClientRect();
+      if(!r.height) return;
+      top=Math.min(top,r.top); bot=Math.max(bot,r.bottom);
+    });
+    if(isFinite(top) && isFinite(bot) && px>0.01){
+      const off=((box.top+box.bottom)/2 - (top+bot)/2)/px;
+      layout.style.setProperty('--fan-shift', Math.round(off)+'px');
+    }
+
     void layout.offsetWidth;              // commit the pose before transitions come back
     layout.classList.remove('measuring');
   }
@@ -3510,6 +3556,71 @@ const GALLERY_DOCS = [
   window.__fanFit=function(){ if(entered) calibrate(); };
 })();
 
+
+
+/* ============================================================
+   GETTING OUT OF THE WAY OF THE WORDS
+
+   The chat button and the halal mark are fixed to the bottom-right corner, and
+   outside the deck the whole page scrolls past underneath them. Over fifteen
+   sections there is no height that clears everything, so rather than move them
+   they fade whenever there is text directly behind them. Three points across
+   the pair are hit-tested on each scroll — the browser answers what is under a
+   point far faster than any sweep of the page could — and a pointer over the
+   button brings them straight back.
+   ============================================================ */
+(function(){
+  const halal=document.querySelector('.halal-fab'), fab=document.querySelector('.chat-fab');
+  if(!halal || !fab || typeof document.elementsFromPoint!=='function') return;
+  const OURS='.halal-fab,.chat-fab,.pres-ctl,header,#rankModal,.cmodal,.bookmodal,.chat-panel';
+  let queued=false, hover=false;
+
+  /* Its own words, not a container's: a wrapper reports the text of everything
+     inside it and would leave the pair faded over empty space. */
+  function speaks(el){
+    if(!el || el===document.body || el===document.documentElement) return false;
+    for(const n of el.childNodes) if(n.nodeType===3 && n.textContent.trim()) return true;
+    return false;
+  }
+  function check(){
+    queued=false;
+    if(hover || document.body.classList.contains('slides')){
+      document.body.classList.remove('fab-duck'); return;
+    }
+    const a=halal.getBoundingClientRect(), b=fab.getBoundingClientRect();
+    const L=Math.min(a.left,b.left), R=Math.max(a.right,b.right);
+    const T=Math.min(a.top,b.top),  B=Math.max(a.bottom,b.bottom);
+    /* A grid rather than a handful of points: a line of type is a few pixels
+       tall, and four samples fell between the lines often enough to leave the
+       pair sitting on a product name. Four across by eight down is 32
+       hit-tests, which the browser answers in well under a frame. */
+    let over=false;
+    for(let i=0;i<4 && !over;i++){
+      for(let j=0;j<8 && !over;j++){
+        const x=L+6+(R-L-12)*(i/3), y=T+4+(B-T-8)*(j/7);
+        if(x<0||y<0||x>innerWidth||y>innerHeight) continue;
+        /* A few deep, not just the topmost: type often sits under a card's own
+           background layer, and stopping at the first thing behind the pair
+           found the card and never the words on it. */
+        let seen=0;
+        for(const el of document.elementsFromPoint(x,y)){
+          if(el.closest && el.closest(OURS)) continue;
+          if(speaks(el)){ over=true; break; }
+          if(++seen>=8) break;
+        }
+      }
+    }
+    document.body.classList.toggle('fab-duck', over);
+  }
+  const ping=()=>{ if(!queued){ queued=true; requestAnimationFrame(check); } };
+  addEventListener('scroll', ping, {passive:true});
+  addEventListener('resize', ping);
+  ['pointerenter','focusin'].forEach(t=>fab.addEventListener(t,function(){
+    hover=true; document.body.classList.remove('fab-duck'); }));
+  ['pointerleave','focusout'].forEach(t=>fab.addEventListener(t,function(){ hover=false; ping(); }));
+  setTimeout(ping, 900);
+  ping();
+})();
 
 
 /* ============================================================
@@ -5017,6 +5128,11 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     function consider(){
       if(share() < 0.55){ armed=true; return; }        // left, so it may fire again
       if(!armed || pending) return;
+      /* Only in the deck. On the scrolling page the games are one section among
+         fifteen and you pass through them on the way somewhere else — a board
+         that opened itself there read as arriving at random. In the deck you
+         arrive at the slide deliberately, and that is when it belongs. */
+      if(!document.body.classList.contains('slides')) return;
       if(modal.classList.contains('open')) return;
       if(Date.now()-lastAuto < 60000) return;
       if(!anyScores()) return;
