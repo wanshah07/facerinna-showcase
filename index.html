@@ -510,7 +510,13 @@ section{padding:74px 0;position:relative}
    same feel. Every card is transformed straight from a rAF loop rather
    than through re-renders, and the ring loops by folding each card's
    distance into the shorter way round — no cloned nodes. */
-.cf{--cf-card:clamp(190px,26vw,340px);
+/* The card was sized off the window's width alone. On a short screen the stage
+   is short too, and a card sized for the width did not fit it — at 1280x720 the
+   packs were cut off 20px from the bottom by the stage's own clip, at 1024x640
+   by 33px. Height is in the size now, so the cards shrink when the stage does
+   and the cut never happens. Above about 1500px nothing binds and the card is
+   the same 340px it was. */
+.cf{--cf-card:clamp(190px,min(26vw,34vh),340px);
   position:absolute;inset:0;z-index:3;display:grid;place-items:center;
   perspective:calc(var(--cf-card) * 3);cursor:grab;outline:none;touch-action:pan-y}
 .cf:active{cursor:grabbing}
@@ -665,7 +671,6 @@ body.space-theme .pres-ctl button:hover{background:rgba(255,255,255,.10)}
 /* panels that hardcode a light fill */
 body.space-theme .knob,body.space-theme .knob--about{background:rgba(232,239,249,.92)}
 body.space-theme .cpanel,body.space-theme .chat-panel{background:#141a2e;color:var(--ink)}
-body.space-theme .chat-hint{background:rgba(18,22,40,.9);border-color:rgba(255,255,255,.16);color:#E8EFF9}
 body.space-theme .thumb h3{color:var(--ink)}
 body.space-theme .series-head{border-bottom-color:rgba(255,255,255,.16)}
 body.space-theme .tag-best{box-shadow:0 4px 10px rgba(0,0,0,.5)}
@@ -1462,11 +1467,6 @@ body:not(.slides).mq-near{--fab-bottom:var(--mq-lift,22px)}
 /* In the deck the pill floats over the slide and covered a product's name at
    1366x768 — a fixed overlay is invisible to the fit, which measures the
    section. The robot itself stays, so the chat is still one tap away. */
-body.slides .chat-hint{display:none !important}
-.chat-hint{position:fixed;right:94px;bottom:calc(var(--fab-bottom,22px) + 16px);z-index:90;background:var(--surface);border:1px solid var(--line);
-  border-radius:999px;padding:8px 15px;font-size:.8rem;font-weight:600;color:var(--ink);box-shadow:var(--shadow-md);
-  animation:hintpulse 5s ease-in-out infinite}
-@keyframes hintpulse{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 .chat-panel{position:fixed;right:22px;bottom:98px;z-index:95;width:min(370px,calc(100vw - 32px));height:min(540px,calc(100vh - 130px));
   background:var(--surface);border-radius:22px;box-shadow:0 24px 60px rgba(23,50,79,.3);display:none;flex-direction:column;overflow:hidden;
   border:1px solid var(--line)}
@@ -1500,23 +1500,23 @@ body.slides .chat-hint{display:none !important}
 .typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:tbounce 1.1s infinite}
 .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
 @keyframes tbounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
-@media(max-width:520px){.chat-hint{display:none}}
 
 /* BPJPH halal certification mark. It rides on the same --fab-bottom the chat
    button uses, so wherever that button moves to clear something, this moves
    with it and the gap between the two never changes. Nothing to click here —
    it states a fact — so it lets taps through to whatever is under it. */
 /* The column is exactly the chat button's width, so the two circles share a
-   centre and a right edge — centring the column on the label instead put the
-   mark 25px off the button below it. The label is wider than the column and
-   hangs off the same right edge rather than being centred, which would have
-   taken it past the edge of the screen. */
+   centre — centring the column on the label instead put the mark 25px off the
+   button below it. On two lines the label is narrower than the column, so it
+   centres over both without reaching past the edge of the screen, and it fits
+   the deck's 92px gutter as well. */
 .halal-fab{position:fixed;right:22px;bottom:calc(var(--fab-bottom,22px) + 78px);z-index:90;
-  width:64px;display:flex;flex-direction:column;align-items:flex-end;gap:5px;
+  width:64px;display:flex;flex-direction:column;align-items:center;gap:5px;
   pointer-events:none;transition:bottom .3s ease}
-.halal-lbl{font-size:.58rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
-  color:#5C2A72;background:rgba(255,255,255,.94);border:1px solid rgba(92,42,114,.22);
-  padding:3px 9px;border-radius:99px;white-space:nowrap;box-shadow:0 3px 10px rgba(23,50,79,.14);
+.halal-lbl{font-size:.55rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  line-height:1.25;text-align:center;color:#5C2A72;background:rgba(255,255,255,.94);
+  border:1px solid rgba(92,42,114,.22);padding:4px 7px;border-radius:12px;
+  box-shadow:0 3px 10px rgba(23,50,79,.14);
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .halal-badge{width:64px;height:64px;border-radius:50%;background:#fff;
   border:1px solid rgba(92,42,114,.18);box-shadow:0 12px 28px rgba(92,42,114,.26);
@@ -1525,7 +1525,7 @@ body.slides .chat-hint{display:none !important}
 @media(max-width:520px){
   .halal-badge{width:52px;height:52px}
   .halal-badge img{height:34px}
-  .halal-fab{bottom:calc(var(--fab-bottom,22px) + 72px);align-items:center}
+  .halal-fab{bottom:calc(var(--fab-bottom,22px) + 72px)}
   .halal-lbl{font-size:.54rem;padding:2px 7px}}
 /* In the deck what keeps the chat button off every slide is the 92px gutter
    each one holds down both sides: the button is 64px wide at right:22, so it
@@ -1539,9 +1539,8 @@ body.slides .chat-hint{display:none !important}
 body.slides .halal-fab{align-items:center}
 body.slides .halal-badge{width:52px;height:52px}
 body.slides .halal-badge img{height:34px}
-/* The label is what makes the stack too wide, so the deck drops it — the same
-   trade the chat pill already takes here, and for the same reason. */
-body.slides .halal-lbl{display:none}
+/* On two lines the label is narrower than the button's own column, so the deck
+   keeps it now — it was only ever dropped there for being too wide. */
 /* The welcome slide is the exception: it is full-bleed, so it has no gutter to
    hide in, and the only band clear of the art, the arrows, the counter and the
    marks at every screen size already belongs to the chat button. Measured at
@@ -2087,10 +2086,9 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
 
 <!-- RINNA CHAT ASSISTANT -->
 <div class="halal-fab" id="halalFab">
-  <span class="halal-lbl">Halal Certified</span>
+  <span class="halal-lbl">Halal<br>Certified</span>
   <span class="halal-badge"><img src="halal-bpjph.webp" alt="BPJPH Halal Indonesia certification mark" width="201" height="360"></span>
 </div>
-<div class="chat-hint" id="chatHint">💬 Ask Prof Facy about any product</div>
 <button class="chat-fab" id="chatFab" aria-label="Chat with Prof Facy"><svg viewBox="20 24 200 176" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M52 78 Q46 22 88 44 Q70 52 66 84 Z" fill="#3FA6EE"/>
   <path d="M188 78 Q194 22 152 44 Q170 52 174 84 Z" fill="#3FA6EE"/>
@@ -5336,7 +5334,7 @@ function launchConfetti(){
   var fab=document.getElementById('chatFab'), panel=document.getElementById('chatPanel'),
       msgs=document.getElementById('chatMsgs'), chips=document.getElementById('chatChips'),
       inp=document.getElementById('chatIn'), send=document.getElementById('chatSend'),
-      hint=document.getElementById('chatHint'), closeBtn=document.getElementById('chatClose');
+      closeBtn=document.getElementById('chatClose');
   var opened=false;
 
   function esc(s){return s.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -5465,7 +5463,7 @@ function launchConfetti(){
   // 'Acne & oily skin' hits 'acne', 'Sunscreen & SPF' hits 'spf', etc.
 
   function openChat(){
-    panel.classList.add('open');hint.style.display='none';
+    panel.classList.add('open');
     if(!opened){opened=true;welcome();}
     setTimeout(function(){inp.focus();},200);
   }
@@ -5474,7 +5472,8 @@ function launchConfetti(){
   closeBtn.addEventListener('click',closeChat);
   send.addEventListener('click',function(){handle(inp.value);inp.value='';});
   inp.addEventListener('keydown',function(e){if(e.key==='Enter'){handle(inp.value);inp.value='';}});
-  setTimeout(function(){if(!opened)hint.style.display='block';},1500);
+  /* the pill that used to nudge people toward the chat is gone; the robot
+     speaks for itself and the corner is quieter for the halal mark. */
 })();
 
 
