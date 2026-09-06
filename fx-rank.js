@@ -9,6 +9,10 @@
  * The board lives in localStorage, so a booth iPad builds its own leaderboard
  * through the day with nothing to host and nothing to go down. It is per
  * browser and per game — that is the point at a booth, not a limitation.
+ *
+ * It shows as a popup that takes itself away after ten seconds, so the result
+ * screen the game already draws is not pushed around, and a small corner button
+ * brings it back at any time — before a run as much as after one.
  */
 (function () {
   var CFG = window.FX_RANK;
@@ -57,11 +61,29 @@
     '.fxr-go:active{transform:translateY(4px);box-shadow:0 2px 0 #1B87C6}' +
     '.fxr-go[disabled]{opacity:.45;cursor:not-allowed;box-shadow:0 6px 0 #1B87C6}' +
     '.fxr-err{margin:12px 0 0;font-size:13px;font-weight:700;color:#FFD9D4;min-height:18px}' +
-    /* the panel that lands on the game's own result screen */
-    '.fxr-board{width:min(380px,88vw);margin:18px auto 4px;text-align:left;' +
-      'background:rgba(255,255,255,.10);border-radius:16px;padding:14px 16px}' +
-    '.fxr-board h3{margin:0 0 10px;font-size:11px;letter-spacing:.32em;text-transform:uppercase;' +
-      'font-weight:800;color:#9FD8FF}' +
+    /* The board is a popup in the free bottom-right corner rather than a panel
+       inside the result screen: the games size those screens themselves, and a
+       block dropped into one pushed their buttons off small phones. */
+    '.fxr-pop{position:fixed;right:14px;bottom:66px;z-index:80;width:min(330px,calc(100vw - 28px));' +
+      'text-align:left;color:#fff;border-radius:18px;padding:15px 16px 13px;overflow:hidden;' +
+      'background:linear-gradient(180deg,rgba(12,32,50,.94),rgba(8,22,34,.97));' +
+      'border:1.5px solid rgba(255,255,255,.16);box-shadow:0 18px 44px rgba(4,14,24,.5);' +
+      '-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);' +
+      'opacity:0;transform:translateY(14px) scale(.97);pointer-events:none;' +
+      'transition:opacity .24s ease,transform .24s cubic-bezier(.22,1.15,.36,1)}' +
+    '.fxr-pop.on{opacity:1;transform:none;pointer-events:auto}' +
+    '@media(prefers-reduced-motion:reduce){.fxr-pop{transition:opacity .2s ease}}' +
+    '.fxr-pop h3{margin:0 0 10px;font-size:11px;letter-spacing:.32em;text-transform:uppercase;' +
+      'font-weight:800;color:#9FD8FF;padding-right:26px}' +
+    /* the ten seconds, drawn — nobody has to wonder whether it is stuck */
+    '.fxr-bar{position:absolute;left:0;bottom:0;height:3px;width:100%;' +
+      'background:linear-gradient(90deg,#2CA9F0,#54C1F5);transform-origin:left center;' +
+      'transform:scaleX(1)}' +
+    '.fxr-bar.run{transform:scaleX(0);transition:transform 10s linear}' +
+    '.fxr-x{position:absolute;top:9px;right:9px;width:26px;height:26px;border-radius:50%;' +
+      'border:0;cursor:pointer;font:inherit;font-size:15px;line-height:1;font-weight:800;' +
+      'color:rgba(255,255,255,.7);background:rgba(255,255,255,.10)}' +
+    '.fxr-x:hover{background:rgba(255,255,255,.20);color:#fff}' +
     '.fxr-row{display:flex;align-items:center;gap:10px;padding:7px 0;font-weight:700;' +
       'font-size:14px;color:rgba(255,255,255,.86);border-top:1px solid rgba(255,255,255,.10)}' +
     '.fxr-row:first-of-type{border-top:0}' +
@@ -71,6 +93,15 @@
     '.fxr-nm{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
     '.fxr-sc{flex:none;font-variant-numeric:tabular-nums}' +
     '.fxr-note{margin:10px 0 0;font-size:12px;font-weight:700;color:rgba(255,255,255,.55)}' +
+    /* the way back to the popup once it has gone; sits under it, never behind */
+    '.fxr-show{position:fixed;right:14px;bottom:14px;z-index:76;border:0;cursor:pointer;' +
+      'font:inherit;font-weight:800;font-size:13px;letter-spacing:.04em;' +
+      'padding:10px 15px;border-radius:99px;color:#EAF6FF;display:none;' +
+      'background:rgba(8,22,34,.62);border:1.5px solid rgba(255,255,255,.22);' +
+      '-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}' +
+    '.fxr-show.on{display:block}' +
+    '.fxr-show:hover{background:rgba(8,22,34,.82)}' +
+    '.fxr-show:active{transform:translateY(2px)}' +
     /* bottom-left: the games keep their score and their pause cluster in the
        top corners and their own buttons in the middle, so this corner is the
        one that is free in all five */
@@ -82,7 +113,24 @@
       'background:rgba(8,22,34,.62);border:1.5px solid rgba(255,255,255,.22);' +
       '-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}' +
     '.fxr-back:hover{background:rgba(8,22,34,.82)}' +
-    '.fxr-back:active{transform:translateY(2px)}';
+    '.fxr-back:active{transform:translateY(2px)}' +
+    /* Held upright — a phone, or a booth tablet in portrait — the games stack
+       their own Play / Again buttons low and across the middle, and the free
+       bottom-right corner is no longer free. The popup goes to the top instead:
+       empty on a result screen, and only borrowed for ten seconds mid-game by
+       someone who asked to see the board. */
+    '@media(orientation:portrait){' +
+      '.fxr-pop{top:12px;bottom:auto;left:12px;right:12px;width:auto;' +
+        'transform:translateY(-14px) scale(.97)}' +
+      '.fxr-pop.on{transform:none}' +
+    '}' +
+    /* And on a phone a labelled pill in either bottom corner still lands on
+       those buttons, so both shrink to their icons — which clears them. */
+    '@media(max-width:560px){' +
+      '.fxr-show,.fxr-back{padding:0;width:46px;height:46px;border-radius:50%;' +
+        'font-size:18px;line-height:44px;text-align:center}' +
+      '.fxr-show .fxr-lbl,.fxr-back .fxr-lbl{display:none}' +
+    '}';
   document.head.appendChild(css);
 
   /* ---- name gate ------------------------------------------------------- */
@@ -110,6 +158,7 @@
     player = v;
     write(NAME_KEY, player);
     gate.classList.add('hidden');
+    show.classList.add('on');
   }
   go.addEventListener('click', submit);
   input.addEventListener('keydown', function (e) {
@@ -146,7 +195,8 @@
   var back = document.createElement('button');
   back.className = 'fxr-back';
   back.type = 'button';
-  back.innerHTML = '\u2190 Booth';
+  back.innerHTML = '\u2190 <span class="fxr-lbl">Booth</span>';
+  back.setAttribute('aria-label', 'Back to the booth');
   back.addEventListener('click', function () {
     var from = document.referrer || '';
     if (history.length > 1 && from.indexOf(location.origin) === 0) history.back();
@@ -158,25 +208,12 @@
 
   var resultEl = document.querySelector(CFG.result);
   var scoreSel = CFG.score;
-  if (!resultEl) return;
 
   function currentScore() {
     var el = document.querySelector(scoreSel);
     if (!el) return null;
     var n = parseInt(String(el.textContent).replace(/[^0-9-]/g, ''), 10);
     return isNaN(n) ? null : n;
-  }
-
-  function panel() {
-    var p = resultEl.querySelector('.fxr-board');
-    if (!p) {
-      p = document.createElement('div');
-      p.className = 'fxr-board';
-      /* ahead of the buttons, so "play again" stays the last thing on screen */
-      var btn = resultEl.querySelector('.btn, .btnrow');
-      if (btn) resultEl.insertBefore(p, btn); else resultEl.appendChild(p);
-    }
-    return p;
   }
 
   function esc(s) {
@@ -214,13 +251,77 @@
     return out;
   }
 
-  function render(justScored, prevBest) {
+  /* ---- the popup ------------------------------------------------------- */
+
+  var pop = document.createElement('div');
+  pop.className = 'fxr-pop';
+  pop.setAttribute('role', 'status');
+  pop.setAttribute('aria-live', 'polite');
+  pop.innerHTML = '<div class="fxr-in-pop"></div>' +
+    '<button class="fxr-x" type="button" aria-label="Close the ranking">\u00D7</button>' +
+    '<i class="fxr-bar"></i>';
+  document.body.appendChild(pop);
+
+  var popBody = pop.querySelector('.fxr-in-pop');
+  var bar = pop.querySelector('.fxr-bar');
+
+  var show = document.createElement('button');
+  show.className = 'fxr-show';
+  show.type = 'button';
+  show.innerHTML = '\u{1F3C6} <span class="fxr-lbl">Ranking</span>';
+  show.setAttribute('aria-label', 'Show the booth ranking');
+  document.body.appendChild(show);
+
+  var lastRun = null;                 // the run the note is about, if there is one
+  var hideT = null;
+
+  function closePop() {
+    clearTimeout(hideT);
+    pop.classList.remove('on');
+    bar.classList.remove('run');
+  }
+
+  /* Ten seconds, restarted from the top each time it opens. The bar is reset
+     with the transition off and flushed before it is armed, otherwise the
+     browser animates it back to full width first. */
+  function openPop() {
+    fill();
+    pop.classList.add('on');
+    bar.classList.remove('run');
+    void bar.offsetWidth;
+    bar.classList.add('run');
+    clearTimeout(hideT);
+    hideT = setTimeout(closePop, 10000);
+  }
+
+  pop.querySelector('.fxr-x').addEventListener('click', closePop);
+  show.addEventListener('click', function () {
+    if (pop.classList.contains('on')) closePop(); else openPop();
+  });
+
+  /* Same reason the name field stops its keys: the games take taps on document
+     as gameplay — a shot, a jump, a catch — so a tap meant for these controls
+     must not also reach the game underneath. Their own handlers sit on the
+     elements themselves and still run. */
+  ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click',
+   'touchstart', 'touchend'].forEach(function (t) {
+    [pop, show, back].forEach(function (el) {
+      el.addEventListener(t, function (e) { e.stopPropagation(); });
+    });
+  });
+
+  function fill() {
     var rows = standings();
     var myPos = null;
     for (var i = 0; i < rows.length; i++) {
       if (rows[i].n === player) { myPos = i + 1; break; }
     }
     var html = '<h3>Booth ranking</h3>';
+    if (!rows.length) {
+      html += '<p class="fxr-note">No scores yet — yours will be the first.</p>';
+      popBody.innerHTML = html;
+      return;
+    }
     rows.slice(0, TOP).forEach(function (r, i) {
       html += '<div class="fxr-row' + (i + 1 === myPos ? ' me' : '') + '">' +
         '<span class="fxr-pos">' + (i + 1) + '</span>' +
@@ -232,21 +333,32 @@
         '<span class="fxr-nm">' + esc(player) + '</span>' +
         '<span class="fxr-sc">' + rows[myPos - 1].s + '</span></div>';
     }
-    html += '<p class="fxr-note">' +
-      (prevBest === null || justScored > prevBest
-        ? 'You scored ' + justScored + ' — your best yet.'
-        : 'You scored ' + justScored + ' · your best is ' + prevBest + '.') +
-      '</p>';
-    panel().innerHTML = html;
+    if (lastRun) {
+      html += '<p class="fxr-note">' +
+        (lastRun.prev === null || lastRun.score > lastRun.prev
+          ? 'You scored ' + lastRun.score + ' \u2014 your best yet.'
+          : 'You scored ' + lastRun.score + ' \u00B7 your best is ' + lastRun.prev + '.') +
+        '</p>';
+    }
+    popBody.innerHTML = html;
+  }
+
+  function render(justScored, prevBest) {
+    lastRun = { score: justScored, prev: prevBest };
+    openPop();
   }
 
   /* The result screen is shown by removing `hidden`, the same way every one of
      these games does it. Only the hidden -> shown edge counts, so a re-render
      of the same screen does not book the score twice. */
-  var wasHidden = resultEl.classList.contains('hidden');
-  new MutationObserver(function () {
-    var isHidden = resultEl.classList.contains('hidden');
-    if (wasHidden && !isHidden) record();
-    wasHidden = isHidden;
-  }).observe(resultEl, { attributes: true, attributeFilter: ['class'] });
+  /* If a game ever renames its result screen the board still works — you can
+     still open it from the corner button — it just stops booking new scores. */
+  if (resultEl) {
+    var wasHidden = resultEl.classList.contains('hidden');
+    new MutationObserver(function () {
+      var isHidden = resultEl.classList.contains('hidden');
+      if (wasHidden && !isHidden) record();
+      wasHidden = isHidden;
+    }).observe(resultEl, { attributes: true, attributeFilter: ['class'] });
+  }
 })();

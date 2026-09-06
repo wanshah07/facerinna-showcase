@@ -1134,6 +1134,10 @@ body.space-theme .fan-card{border-color:rgba(255,255,255,.18);
   box-shadow:0 18px 44px rgba(0,0,0,.55)}
 @media(hover:hover){.fan-card:hover{box-shadow:0 26px 56px rgba(16,32,52,.34)}}
 @media(prefers-reduced-motion:reduce){.fan-card{transition:opacity .2s ease}}
+/* While the fan is being measured it is placed twice in one task; a live
+   transition would hand back the pose it is animating away from, not the one
+   just written. */
+.fan-layout.measuring .fan-card{transition:none !important}
 
 /* ── THE FLIPBOOK ─────────────────────────────────────────────────────
    Tapping a gallery card opens the document as a book you can leaf
@@ -3193,9 +3197,70 @@ const GALLERY_DOCS = [
     el.style.opacity=String(opacity);
   }
 
+  /* The multiplier stepped 0.75 -> 1.0 at exactly 1024px, so the narrowest
+     desktop got the widest fan: at 1024 the outer cards ran past both edges of
+     the window and sat under the two corner buttons. Working the reach out
+     from the slot table under-reads it, because rotation and scale both change
+     what a card actually covers, so the fan is dealt once and then measured.
+     The one correction that follows is exact: a card's offset from the fan's
+     centre is linear in the multiplier, so scaling it by the worst card's
+     slack brings every card inside the same 92px gutter the deck keeps
+     everywhere else. Both renders happen in the same task, so the wide pass is
+     never painted. Past about 1100px nothing binds and the fan is untouched. */
+  const GUTTER=92;
+  let spreadFit=1;
+
+  function probe(v){
+    spreadFit=v; render(null);
+    const box=layout.getBoundingClientRect();
+    const out=cards.map(function(el){
+      if(el.getAttribute('aria-hidden')==='true') return null;
+      const r=el.getBoundingClientRect();
+      if(!r.width) return null;
+      return {off:(r.left+r.width/2)-(box.left+box.width/2), w:r.width};
+    });
+    out.mid=box.left+box.width/2;
+    return out;
+  }
+
+  /* The cards pivot at 50% 118%, below themselves, so a card's centre is not
+     where its offset alone would put it: the tilt and the shrink each shift it
+     sideways by an amount that has nothing to do with the spread. Two probes
+     separate the two — the part that moves with the multiplier and the part
+     that does not — and the answer that follows is exact rather than close.
+     Both probes and the final placing happen in one task with transitions off,
+     so none of it reaches the screen. */
+  function calibrate(){
+    if(!cards.length) return;
+    const held=hovered;
+    hovered=null;
+    layout.classList.add('measuring');
+    const wide=probe(1), tight=probe(0.5);
+    let f=1;
+    cards.forEach(function(el,i){
+      const a=wide[i], b=tight[i];
+      if(!a || !b) return;
+      const slope=(a.off-b.off)/0.5;       // px of offset per unit of spread
+      const fixed=a.off-slope;             // what the tilt contributes on its own
+      const half=a.w/2;
+      if(slope>0.5){
+        const room=(innerWidth-GUTTER)-wide.mid-half;
+        f=Math.min(f,(room-fixed)/slope);
+      } else if(slope<-0.5){
+        const room=GUTTER-wide.mid+half;
+        f=Math.min(f,(room-fixed)/slope);
+      }
+    });
+    spreadFit=Math.max(0.2, Math.min(1, f));
+    hovered=held;
+    render(null);
+    void layout.offsetWidth;              // commit the pose before transitions come back
+    layout.classList.remove('measuring');
+  }
+
   function render(direction){
     const map=visibleMap(centerIndex);
-    const mult=responsiveMultiplier(innerWidth);
+    const mult=responsiveMultiplier(innerWidth)*spreadFit;
     const hMult=heightMultiplier(innerWidth);
     const centerSlot=(slotCount-1)/2;
 
@@ -3280,12 +3345,12 @@ const GALLERY_DOCS = [
   let resizeTimer=null;
   addEventListener('resize', function(){
     clearTimeout(resizeTimer);
-    resizeTimer=setTimeout(function(){ render(null); }, 120);
+    resizeTimer=setTimeout(function(){ calibrate(); }, 120);
   });
 
   // The fan deals itself in when it first comes into view, not on load —
   // an entrance nobody is looking at is an entrance wasted.
-  function deal(){ if(entered) return; entered=false; render(null); entered=true; }
+  function deal(){ if(entered) return; calibrate(); entered=false; render(null); entered=true; }
   if(typeof IntersectionObserver!=='undefined'){
     const io=new IntersectionObserver(function(entries){
       if(entries[0] && entries[0].isIntersecting){ deal(); io.disconnect(); }
@@ -3294,6 +3359,11 @@ const GALLERY_DOCS = [
     // ...but never leave it invisible if the observer never fires
     setTimeout(deal, 4000);
   } else { deal(); }
+
+  /* The deck scales the whole slide, so the fan's real footprint changes
+     without the window ever resizing — the deck re-runs the fit after it
+     settles on a scale. */
+  window.__fanFit=function(){ if(entered) calibrate(); };
 })();
 
 
@@ -4130,6 +4200,7 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
       if(k===1){ w.style.removeProperty('--k'); w.style.marginBottom=''; }
     });
     if(window.__heroPeek) window.__heroPeek();
+    if(window.__fanFit) window.__fanFit();
     // let the observer settle on the sizes fit() just wrote before re-arming
     requestAnimationFrame(()=>{ fitting=false; });
   }
