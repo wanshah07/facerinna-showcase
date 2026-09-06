@@ -234,6 +234,10 @@ body.slides .pres-ctl .pres-step{display:grid}
 /* slide one ends in the welcome marquee, a full-width band the control was
    sitting on top of; in the deck it rides above whatever the slide ends with */
 body.slides .pres-ctl{bottom:84px}
+/* ...and outside the deck the page keeps scrolling, so a fixed offset would
+   leave these floating high on every other section. The lift is measured
+   instead, and only applied while the band is actually under them. */
+body:not(.slides).mq-near .pres-ctl{bottom:var(--mq-lift,16px)}
 body.slides .pres-count{display:block}
 .pres-count{padding:0 8px;font-size:.78rem;font-weight:700;color:var(--muted);white-space:nowrap;
   font-variant-numeric:tabular-nums}
@@ -755,7 +759,15 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .thumb .art img{max-height:292px;max-width:100%;width:auto;transition:transform .4s var(--ease,ease);
   filter:drop-shadow(0 22px 20px rgba(23,50,79,.20)) drop-shadow(0 4px 6px rgba(23,50,79,.10))}
 .thumb:hover .art img{transform:translateY(-8px) scale(1.06)}
-.thumb h3{font-size:1.02rem;margin:0;font-weight:600;line-height:1.3;color:var(--ink)}
+.thumb h3{font-size:1.02rem;margin:0;font-weight:600;line-height:1.3;color:var(--ink);
+  overflow-wrap:anywhere}
+/* The series grid states its column count so five products do not orphan one,
+   which is right on a screen but not on a phone: four or five stated columns
+   left each name 69px to live in, it could not break that small, and the
+   overflow let the whole page be dragged sideways. Below 640px the count goes
+   back to two and the names fit. */
+@media(max-width:640px){
+  .series-slide .thumb-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 12px}}
 .thumb .active{display:none}
 .thumb .tag-best{position:absolute;top:0;right:-2px;background:var(--brand);color:#fff;font-size:.6rem;font-weight:700;
   letter-spacing:.06em;padding:4px 9px;border-radius:999px;box-shadow:0 4px 10px rgba(46,124,190,.4)}
@@ -1312,7 +1324,12 @@ body.space-theme .fan-card{border-color:rgba(255,255,255,.18);
    slow idle orbit so an untouched booth screen still moves. Card geometry
    (size, radius, perspective) is driven by three custom properties, which is
    the only thing the breakpoints below have to change. */
-.cg-wrap{margin-top:30px;text-align:center}
+/* The wheel's side cards swing past the stage on a narrow screen — at 390px
+   they reached 27px beyond the right edge and the whole page could be dragged
+   sideways to follow them. Clipped here rather than on the ring itself:
+   `overflow` on the ring would flatten its 3D, and `clip` on this plain
+   wrapper leaves the vertical flow alone, unlike `hidden`. */
+.cg-wrap{margin-top:30px;text-align:center;overflow-x:clip}
 /* Radius is set for six cards, not the component's ten. A ring closes when
    radius ≈ width / (2·tan(180°/n)); at n=6 that is ~260px for a 300px card,
    so 340 keeps the cards just clear of each other. Holding the component's
@@ -1421,7 +1438,7 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
   box-shadow:0 25px 50px -12px rgba(0,0,0,.6)}
 
 /* RINNA CHAT WIDGET */
-.chat-fab{position:fixed;right:22px;bottom:22px;z-index:90;width:64px;height:64px;border-radius:50%;
+.chat-fab{position:fixed;right:22px;bottom:var(--fab-bottom,22px);z-index:90;width:64px;height:64px;border-radius:50%;
   background:linear-gradient(135deg,#3FA6EE,var(--brand-deep));border:0;cursor:pointer;box-shadow:0 12px 28px rgba(46,124,190,.45);
   display:grid;place-items:center;transition:transform .25s,bottom .3s ease}
 .chat-fab:hover{transform:scale(1.08)}
@@ -1432,14 +1449,17 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
    sits on the marquee, 140px on the partner marks, 220px on the slideshow
    counter, and 380px and up on the slideshow's next arrow at some sizes.
    300px is the one height that is clear at every size. */
-body.slides.bleed-slide .chat-fab{bottom:300px}
+body.slides.bleed-slide{--fab-bottom:300px}
+/* Same band, same problem, outside the deck — see .pres-ctl above. One
+   variable rather than a rule each, because the halal mark rides on it too. */
+body:not(.slides).mq-near{--fab-bottom:var(--mq-lift,22px)}
 .chat-fab svg{width:46px;height:46px}
 .chat-fab .dot{position:absolute;top:4px;right:4px;width:13px;height:13px;border-radius:50%;background:#2ECC8F;border:2.5px solid #fff}
 /* In the deck the pill floats over the slide and covered a product's name at
    1366x768 — a fixed overlay is invisible to the fit, which measures the
    section. The robot itself stays, so the chat is still one tap away. */
 body.slides .chat-hint{display:none !important}
-.chat-hint{position:fixed;right:94px;bottom:38px;z-index:90;background:var(--surface);border:1px solid var(--line);
+.chat-hint{position:fixed;right:94px;bottom:calc(var(--fab-bottom,22px) + 16px);z-index:90;background:var(--surface);border:1px solid var(--line);
   border-radius:999px;padding:8px 15px;font-size:.8rem;font-weight:600;color:var(--ink);box-shadow:var(--shadow-md);
   animation:hintpulse 5s ease-in-out infinite}
 @keyframes hintpulse{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
@@ -1477,6 +1497,43 @@ body.slides .chat-hint{display:none !important}
 .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
 @keyframes tbounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
 @media(max-width:520px){.chat-hint{display:none}}
+
+/* BPJPH halal certification mark. It rides on the same --fab-bottom the chat
+   button uses, so wherever that button moves to clear something, this moves
+   with it and the gap between the two never changes. Nothing to click here —
+   it states a fact — so it lets taps through to whatever is under it. */
+.halal-fab{position:fixed;right:22px;bottom:calc(var(--fab-bottom,22px) + 78px);z-index:90;
+  display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none;
+  transition:bottom .3s ease}
+.halal-lbl{font-size:.58rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  color:#5C2A72;background:rgba(255,255,255,.94);border:1px solid rgba(92,42,114,.22);
+  padding:3px 9px;border-radius:99px;white-space:nowrap;box-shadow:0 3px 10px rgba(23,50,79,.14);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.halal-badge{width:64px;height:64px;border-radius:50%;background:#fff;
+  border:1px solid rgba(92,42,114,.18);box-shadow:0 12px 28px rgba(92,42,114,.26);
+  display:grid;place-items:center}
+.halal-badge img{height:42px;width:auto;display:block}
+@media(max-width:520px){
+  .halal-badge{width:52px;height:52px}
+  .halal-badge img{height:34px}
+  .halal-fab{bottom:calc(var(--fab-bottom,22px) + 72px)}
+  .halal-lbl{font-size:.54rem;padding:2px 7px}}
+/* In the deck what keeps the chat button off every slide is the 92px gutter
+   each one holds down both sides: the button is 64px wide at right:22, so it
+   never leaves that strip at any height. The mark has to obey the same rule,
+   and the stack is only as narrow as its widest part — the label. On one line
+   that pill is ~115px and reached out of the gutter onto a product name here,
+   a caption there; on two it fits the 64px column with the mark. */
+body.slides .halal-fab{width:64px}
+/* The label is what makes the stack too wide, so the deck drops it — the same
+   trade the chat pill already takes here, and for the same reason. */
+body.slides .halal-lbl{display:none}
+/* The welcome slide is the exception: it is full-bleed, so it has no gutter to
+   hide in, and the only band clear of the art, the arrows, the counter and the
+   marks at every screen size already belongs to the chat button. Measured at
+   six sizes, the seat beside it is clear from 210px up at all of them, so on
+   that one slide the mark sits alongside rather than above. */
+body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
 
 /* FOOTER */
 .footer{background:var(--navy);color:#D7E5F2;padding:52px 0 30px}
@@ -2015,6 +2072,10 @@ body.slides .chat-hint{display:none !important}
 </div>
 
 <!-- RINNA CHAT ASSISTANT -->
+<div class="halal-fab" id="halalFab">
+  <span class="halal-lbl">Halal Certified</span>
+  <span class="halal-badge"><img src="halal-bpjph.webp" alt="BPJPH Halal Indonesia certification mark" width="201" height="360"></span>
+</div>
 <div class="chat-hint" id="chatHint">💬 Ask Prof Facy about any product</div>
 <button class="chat-fab" id="chatFab" aria-label="Chat with Prof Facy"><svg viewBox="20 24 200 176" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <path d="M52 78 Q46 22 88 44 Q70 52 66 84 Z" fill="#3FA6EE"/>
@@ -3437,6 +3498,39 @@ const GALLERY_DOCS = [
   window.__fanFit=function(){ if(entered) calibrate(); };
 })();
 
+
+
+/* ============================================================
+   THE WELCOME BAND AND THE TWO CORNER BUTTONS
+
+   Slide one ends in a full-width navy band, and outside the deck the chat
+   button, its pill and the presentation control all sit low enough to land on
+   its lettering. Lifting them everywhere would leave them floating high on
+   every other section, so the band's own position is watched and they step
+   over it only while it is there. The step is measured off the band rather
+   than guessed, because its height follows a clamped font size.
+   ============================================================ */
+(function(){
+  const band=document.querySelector('#top .hero-marquee');
+  if(!band) return;
+  const root=document.documentElement;
+  let queued=false;
+  function check(){
+    queued=false;
+    const r=band.getBoundingClientRect();
+    // the buttons live in the bottom ~86px; does the band reach into that?
+    const near = r.bottom > innerHeight-86 && r.top < innerHeight-16;
+    if(near){
+      const lift=Math.min(260, Math.max(22, Math.round(innerHeight - r.top + 14)));
+      root.style.setProperty('--mq-lift', lift+'px');
+    }
+    document.body.classList.toggle('mq-near', near);
+  }
+  const ping=()=>{ if(!queued){ queued=true; requestAnimationFrame(check); } };
+  addEventListener('scroll', ping, {passive:true});
+  addEventListener('resize', ping);
+  ping();
+})();
 
 
 /* ============================================================
@@ -4896,35 +4990,57 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
      something to show, it will not do it twice inside a minute, and the first
      scroll or tap sends it away early. */
   const section=document.getElementById('game');
-  if(section && typeof IntersectionObserver!=='undefined'){
-    let inView=false;
+  if(section){
     const anyScores=()=>GAMES.some(g=>board(g.id).length);
-    new IntersectionObserver(function(entries){
-      const e=entries[0];
-      if(!e) return;
-      if(!e.isIntersecting){ inView=false; return; }
-      if(inView) return;
-      inView=true;
+    /* How much of the screen the games are filling. Asked directly rather than
+       left to an observer alone: in the deck the slide is scaled and scrolled
+       programmatically, and an observer that misses one of those crossings
+       misses the only moment that matters. */
+    function share(){
+      const r=section.getBoundingClientRect();
+      const seen=Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
+      return seen>0 ? seen/Math.min(innerHeight, r.height||innerHeight) : 0;
+    }
+    let armed=true, pending=null;
+    function consider(){
+      if(share() < 0.55){ armed=true; return; }        // left, so it may fire again
+      if(!armed || pending) return;
       if(modal.classList.contains('open')) return;
       if(Date.now()-lastAuto < 60000) return;
       if(!anyScores()) return;
-      setTimeout(function(){
-        if(!inView || modal.classList.contains('open')) return;
+      armed=false;
+      pending=setTimeout(function(){
+        pending=null;
+        if(share() < 0.55 || modal.classList.contains('open')) return;
         open(true);
       }, 700);
-    },{threshold:.45}).observe(section);
+    }
+    let queued=false;
+    const ping=()=>{ if(!queued){ queued=true; requestAnimationFrame(function(){ queued=false; consider(); }); } };
+    addEventListener('scroll', ping, {passive:true, capture:true});
+    addEventListener('resize', ping);
+    if(typeof IntersectionObserver!=='undefined')
+      new IntersectionObserver(ping,{threshold:[0,.2,.55,.9]}).observe(section);
+    setInterval(ping, 1200);                            // last resort, costs nothing
+    ping();
 
+    /* Scrolling, tapping or driving the deck all mean the person wants the page
+       back, so any of them sends the board away early. The grace period is the
+       point: a trackpad throws wheel events for a second after the fingers
+       lift, and without it the board opened and was killed by the tail of the
+       very scroll that brought it up — a flash, and nothing more. */
+    const GRACE=1200;
+    function dismiss(e){
+      if(!auto) return;
+      if(Date.now()-lastAuto < GRACE) return;
+      if(e && e.target && e.target.closest && e.target.closest('.rank-panel')) return;
+      close();
+    }
     ['wheel','touchstart','pointerdown'].forEach(function(t){
-      addEventListener(t, function(e){
-        if(!auto) return;
-        if(e.target && e.target.closest && e.target.closest('.rank-panel')) return;
-        close();
-      }, {passive:true});
+      addEventListener(t, dismiss, {passive:true});
     });
-    /* Driving the deck counts as wanting it gone, the same as scrolling —
-       otherwise the board rides along on top of the next slide. */
     addEventListener('keydown', function(e){
-      if(auto && e.key!=='Escape') close();
+      if(e.key!=='Escape') dismiss(e);
     }, true);
   }
 })();
