@@ -1371,14 +1371,14 @@ body.space-theme .fan-card{border-color:rgba(255,255,255,.18);
   backdrop-filter:blur(16px) saturate(1.25);-webkit-backdrop-filter:blur(16px) saturate(1.25);
   border:1px solid rgba(255,255,255,.7)}
 .rank-panel .cclose{background:rgba(255,255,255,.75)}
-/* The twenty seconds, drawn, when the board opened itself. It rides the top of
+/* The ten seconds, drawn, when the board opened itself. It rides the top of
    the panel rather than the bottom: the panel scrolls on a short screen, and an
    absolutely placed bar would scroll away with the content. */
 .rank-bar{position:sticky;top:0;display:block;height:3px;border-radius:3px;margin:-6px 0 8px;
   background:linear-gradient(90deg,var(--brand),var(--brand-deep));
   transform-origin:left center;transform:scaleX(1);opacity:0;z-index:6}
 .rank-bar.arm{opacity:1;transition:none}
-.rank-bar.run{opacity:1;transform:scaleX(0);transition:transform 20s linear}
+.rank-bar.run{opacity:1;transform:scaleX(0);transition:transform 10s linear}
 .rank-head .cat{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal-deep)}
 .rank-head h3{font-size:1.32rem;margin:.15rem 0 .35rem}
 .rank-head p{margin:0 0 18px;font-size:.86rem;line-height:1.55;color:var(--ink-2);max-width:46ch}
@@ -4853,7 +4853,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   const bar=document.getElementById('rankBar');
   let hideT=null, auto=false, lastAuto=0;
 
-  /* Opened by hand it waits to be dismissed. Opened by itself it takes twenty
+  /* Opened by hand it waits to be dismissed. Opened by itself it takes ten
      seconds and goes, and it does not take the scroll with it — a board that
      appears while somebody is scrolling must not trap them. */
   function open(self){
@@ -4868,7 +4868,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
       void bar.offsetWidth;                  // commit it, then let it run down
       bar.classList.remove('arm');
       bar.classList.add('run');
-      hideT=setTimeout(close, 20000);
+      hideT=setTimeout(close, 10000);
       lastAuto=Date.now();
     }
   }
