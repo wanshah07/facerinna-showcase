@@ -70,7 +70,19 @@
     '.fxr-row.me .fxr-pos{color:#54C1F5}' +
     '.fxr-nm{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
     '.fxr-sc{flex:none;font-variant-numeric:tabular-nums}' +
-    '.fxr-note{margin:10px 0 0;font-size:12px;font-weight:700;color:rgba(255,255,255,.55)}';
+    '.fxr-note{margin:10px 0 0;font-size:12px;font-weight:700;color:rgba(255,255,255,.55)}' +
+    /* bottom-left: the games keep their score and their pause cluster in the
+       top corners and their own buttons in the middle, so this corner is the
+       one that is free in all five */
+    /* above the name gate (z-index 70) on purpose: someone who opens a game by
+       mistake, or does not want to give a name, must still have a way out */
+    '.fxr-back{position:fixed;left:14px;bottom:14px;z-index:75;border:0;cursor:pointer;' +
+      'font:inherit;font-weight:800;font-size:13px;letter-spacing:.04em;' +
+      'padding:10px 16px;border-radius:99px;color:#EAF6FF;' +
+      'background:rgba(8,22,34,.62);border:1.5px solid rgba(255,255,255,.22);' +
+      '-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}' +
+    '.fxr-back:hover{background:rgba(8,22,34,.82)}' +
+    '.fxr-back:active{transform:translateY(2px)}';
   document.head.appendChild(css);
 
   /* ---- name gate ------------------------------------------------------- */
@@ -103,8 +115,44 @@
   input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); submit(); }
   });
+
+  /* Every game binds its controls to document in the bubble phase — m mutes,
+     w/a/d move, space acts — and those handlers swallowed the very letters
+     people were trying to type: "Ahmad" arrived as "Ahd". Stopping the event
+     at the field keeps it from ever reaching document, and stopPropagation
+     does not affect the other listener on this same element, so Enter still
+     submits. */
+  ['keydown', 'keyup', 'keypress'].forEach(function (t) {
+    input.addEventListener(t, function (e) { e.stopPropagation(); });
+  });
+  /* And while the gate is up but the field is not focused, the game must not
+     hear the keys either. Capture runs ahead of the games' bubble handlers;
+     the field's own keys are let through untouched. */
+  ['keydown', 'keyup', 'keypress'].forEach(function (t) {
+    document.addEventListener(t, function (e) {
+      if (gate.classList.contains('hidden') || e.target === input) return;
+      e.stopPropagation();
+    }, true);
+  });
   /* a booth tablet opens the keyboard on focus, which is what we want here */
   setTimeout(function () { try { input.focus(); } catch (e) {} }, 120);
+
+  /* ---- the way back ---------------------------------------------------- */
+
+  /* In full screen there is no browser chrome to go back with, and the deck
+     now opens games in the same tab, so without this a game is a dead end.
+     history.back() is preferred when we arrived from the showcase: it returns
+     to the slide the visitor left, not to the top of the page. */
+  var back = document.createElement('button');
+  back.className = 'fxr-back';
+  back.type = 'button';
+  back.innerHTML = '\u2190 Booth';
+  back.addEventListener('click', function () {
+    var from = document.referrer || '';
+    if (history.length > 1 && from.indexOf(location.origin) === 0) history.back();
+    else location.href = 'index.html';
+  });
+  document.body.appendChild(back);
 
   /* ---- recording a finished run ---------------------------------------- */
 
