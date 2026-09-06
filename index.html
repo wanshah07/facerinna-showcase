@@ -1802,7 +1802,7 @@ body.slides .chat-hint{display:none !important}
            aria-label="Circular 3D gallery of the six booth games">
         <div class="cg-ring" id="gameRing">
           <div class="cg-item" role="group" aria-label="Match Lab">
-            <a class="cg-card" href="match-lab.html" target="_blank" rel="noopener" data-art="0">
+            <a class="cg-card" href="match-lab.html" data-art="0">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">01</span>
               <div class="cg-cap">
@@ -1814,7 +1814,7 @@ body.slides .chat-hint{display:none !important}
             </a>
           </div>
           <div class="cg-item" role="group" aria-label="Pack Match">
-            <a class="cg-card" href="pack-match.html" target="_blank" rel="noopener" data-art="1">
+            <a class="cg-card" href="pack-match.html" data-art="1">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">02</span>
               <div class="cg-cap">
@@ -1826,7 +1826,7 @@ body.slides .chat-hint{display:none !important}
             </a>
           </div>
           <div class="cg-item" role="group" aria-label="Shelf Shot">
-            <a class="cg-card" href="shelf-shot.html" target="_blank" rel="noopener" data-art="2">
+            <a class="cg-card" href="shelf-shot.html" data-art="2">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">03</span>
               <div class="cg-cap">
@@ -1838,7 +1838,7 @@ body.slides .chat-hint{display:none !important}
             </a>
           </div>
           <div class="cg-item" role="group" aria-label="Deep Lab">
-            <a class="cg-card" href="deep-lab.html" target="_blank" rel="noopener" data-art="3">
+            <a class="cg-card" href="deep-lab.html" data-art="3">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">04</span>
               <div class="cg-cap">
@@ -1850,7 +1850,7 @@ body.slides .chat-hint{display:none !important}
             </a>
           </div>
           <div class="cg-item" role="group" aria-label="Lab Run">
-            <a class="cg-card" href="lab-run.html" target="_blank" rel="noopener" data-art="4">
+            <a class="cg-card" href="lab-run.html" data-art="4">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">05</span>
               <div class="cg-cap">
@@ -5024,19 +5024,56 @@ function launchConfetti(){
   if(view) view.addEventListener('click', open);
 })();
 
-/* The game cards are target="_blank". On the page that is right — the
-   showcase stays where it was. In full screen it is not: the new tab opens
-   BEHIND the full-screen window, so the tap looks like it did nothing, which
-   at a booth is indistinguishable from a dead link. In the deck the game
-   takes the same tab instead, and the browser's back button returns to the
-   showcase exactly where it was left. */
-document.addEventListener('click', function(e){
-  if(e.defaultPrevented || e.button) return;
-  const a = e.target.closest && e.target.closest('.cg-card[href]');
-  if(!a || !document.body.classList.contains('slides')) return;
-  e.preventDefault();
-  location.href = a.getAttribute('href');
-});
+/* The games take the same tab. A second tab is a tab nobody closes at a
+   booth, and in full screen it opens BEHIND the window, so the tap looks like
+   it did nothing — indistinguishable from a dead link. Each game carries a
+   Booth button that comes back here, to the slide it was left on.
+   The exception is the artifact, which renders inside a sandboxed frame where
+   a top-level navigation is blocked: there the game needs its own tab or it
+   cannot open at all. */
+if (window.top !== window.self) {
+  document.querySelectorAll('.cg-card[href]').forEach(function(a){
+    a.target = '_blank';
+    a.rel = 'noopener';
+  });
+}
+
+/* Taking the same tab costs the visitor their place: coming back is a fresh
+   load, and a navigation drops full screen, so a presenter who was on the
+   games slide in the deck landed at the top of an ordinary scrolling page.
+   The position is put aside on the way out and restored on the way back.
+   Full screen itself cannot be restored — the browser only grants it on a
+   gesture — but the deck view and the slide can be, and the button is right
+   there if they want the chrome gone again. */
+(function(){
+  const KEY='fx.return';
+  document.addEventListener('click', function(e){
+    const a = e.target.closest && e.target.closest('.cg-card[href]');
+    if(!a || a.target === '_blank') return;
+    const d = window.__deck;
+    try{
+      sessionStorage.setItem(KEY, JSON.stringify({
+        deck: !!(d && d.mode()),
+        slide: Math.round(document.body.scrollTop / innerHeight),
+        y: scrollY
+      }));
+    }catch(err){}
+  });
+  let saved=null;
+  try{ saved = JSON.parse(sessionStorage.getItem(KEY) || 'null'); sessionStorage.removeItem(KEY); }catch(err){}
+  if(!saved) return;
+  addEventListener('load', function(){
+    setTimeout(function(){
+      const d = window.__deck;
+      if(saved.deck && d){
+        d.on('v');
+        setTimeout(function(){ document.body.scrollTo({top: saved.slide * innerHeight, behavior:'auto'}); }, 260);
+      } else if(saved.y){
+        scrollTo({top: saved.y, behavior:'auto'});
+      }
+    }, 120);
+  });
+})();
 </script>
 </body>
 </html>
