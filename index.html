@@ -41,6 +41,15 @@
    straight over its middle to the next section. */
 html{scroll-behavior:smooth;scroll-snap-type:y proximity;scroll-padding-top:72px}
 body > section{scroll-snap-align:start}
+/* Not on a phone. A flick there carries momentum, and the section snap cuts it
+   short — the page stops at a boundary instead of where the thumb sent it, and
+   every section becomes a wall. Slide-by-slide is what the deck is for; on a
+   phone this is a page and it should scroll like one. The deck's own snap is
+   scoped to body.slides and is more specific, so it still works if it is on. */
+@media(max-width:900px){
+  html{scroll-snap-type:none}
+  body > section{scroll-snap-align:none}
+}
 body{margin:0;background:var(--bg);color:var(--ink);
   font-family:'Inter',system-ui,-apple-system,sans-serif;
   line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
