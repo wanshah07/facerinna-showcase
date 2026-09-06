@@ -1369,10 +1369,12 @@ body.space-theme .cg-card{border-color:rgba(255,255,255,.18);
 .chat-fab:hover{transform:scale(1.08)}
 /* Every other slide keeps a 92px safe area in the bottom corners, so the
    button sits over nothing. The welcome slide is full-bleed by design — its
-   hero art is meant to reach the edges — and the corner lands on the scrolling
-   welcome marquee, with the partner-mark strip just above it. On that slide
-   alone the button lifts clear of both bands. */
-body.slides.bleed-slide .chat-fab{bottom:220px}
+   hero art is meant to reach the edges — so the button has to find a gap in a
+   busy slide. Sweeping every visible element in it at five viewports: 22px
+   sits on the marquee, 140px on the partner marks, 220px on the slideshow
+   counter, and 380px and up on the slideshow's next arrow at some sizes.
+   300px is the one height that is clear at every size. */
+body.slides.bleed-slide .chat-fab{bottom:300px}
 .chat-fab svg{width:46px;height:46px}
 .chat-fab .dot{position:absolute;top:4px;right:4px;width:13px;height:13px;border-radius:50%;background:#2ECC8F;border:2.5px solid #fff}
 /* In the deck the pill floats over the slide and covered a product's name at
