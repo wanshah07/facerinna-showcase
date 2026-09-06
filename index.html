@@ -234,6 +234,10 @@ body.slides .pres-ctl .pres-step{display:grid}
 /* slide one ends in the welcome marquee, a full-width band the control was
    sitting on top of; in the deck it rides above whatever the slide ends with */
 body.slides .pres-ctl{bottom:84px}
+/* 84px clears whatever a slide ends with, except on the welcome slide, where it
+   sat on the moving partner marks. Swept expanded (263x48) at six sizes in 10px
+   steps: 210-320 is clear at all of them, so 240. */
+body.slides.bleed-slide .pres-ctl{bottom:240px}
 /* ...and outside the deck the page keeps scrolling, so a fixed offset would
    leave these floating high on every other section. The lift is measured
    instead, and only applied while the band is actually under them. */
@@ -1502,9 +1506,14 @@ body.slides .chat-hint{display:none !important}
    button uses, so wherever that button moves to clear something, this moves
    with it and the gap between the two never changes. Nothing to click here —
    it states a fact — so it lets taps through to whatever is under it. */
+/* The column is exactly the chat button's width, so the two circles share a
+   centre and a right edge — centring the column on the label instead put the
+   mark 25px off the button below it. The label is wider than the column and
+   hangs off the same right edge rather than being centred, which would have
+   taken it past the edge of the screen. */
 .halal-fab{position:fixed;right:22px;bottom:calc(var(--fab-bottom,22px) + 78px);z-index:90;
-  display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none;
-  transition:bottom .3s ease}
+  width:64px;display:flex;flex-direction:column;align-items:flex-end;gap:5px;
+  pointer-events:none;transition:bottom .3s ease}
 .halal-lbl{font-size:.58rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
   color:#5C2A72;background:rgba(255,255,255,.94);border:1px solid rgba(92,42,114,.22);
   padding:3px 9px;border-radius:99px;white-space:nowrap;box-shadow:0 3px 10px rgba(23,50,79,.14);
@@ -1516,7 +1525,7 @@ body.slides .chat-hint{display:none !important}
 @media(max-width:520px){
   .halal-badge{width:52px;height:52px}
   .halal-badge img{height:34px}
-  .halal-fab{bottom:calc(var(--fab-bottom,22px) + 72px)}
+  .halal-fab{bottom:calc(var(--fab-bottom,22px) + 72px);align-items:center}
   .halal-lbl{font-size:.54rem;padding:2px 7px}}
 /* In the deck what keeps the chat button off every slide is the 92px gutter
    each one holds down both sides: the button is 64px wide at right:22, so it
@@ -1524,7 +1533,12 @@ body.slides .chat-hint{display:none !important}
    and the stack is only as narrow as its widest part — the label. On one line
    that pill is ~115px and reached out of the gutter onto a product name here,
    a caption there; on two it fits the 64px column with the mark. */
-body.slides .halal-fab{width:64px}
+/* At 1024x640 the range slide's shelf art reaches 74px past the gutter and
+   caught the bottom of the 64px mark. 52px, centred on the same column, clears
+   it and sits lighter on a scaled slide. */
+body.slides .halal-fab{align-items:center}
+body.slides .halal-badge{width:52px;height:52px}
+body.slides .halal-badge img{height:34px}
 /* The label is what makes the stack too wide, so the deck drops it — the same
    trade the chat pill already takes here, and for the same reason. */
 body.slides .halal-lbl{display:none}
