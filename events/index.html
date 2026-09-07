@@ -1165,6 +1165,7 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
            new ticket had just been issued would send somebody hunting for an
            email that is not coming. */
         state.done=true; state.code=res.code||""; state.dup=res.duplicate===true;
+        state.resent=res.resent===true;
         state.busy=false; render();
       })
       .catch(function(err){
@@ -1177,15 +1178,27 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
 
   function renderDone(){
     var first=state.data.name.trim().split(/\s+/)[0];
-    var line = state.dup
-      ? esc(first)+', you already have a ticket for this one. It was sent to '
-        + esc(state.data.email)+' when you registered. Show it at the door.'
-      : esc(first)+', your ticket is on its way to '
-        + esc(state.data.email)+'. Show it at the door.';
+    /* Three different things happened, and saying the wrong one sends
+       somebody to wait for an email that is not coming. */
+    var line;
+    if(state.dup && state.resent){
+      line = esc(first)+', you already had a ticket for this one, so we have '
+           + 'sent it to '+esc(state.data.email)+' again. Check your spam '
+           + 'folder if it does not appear.';
+    } else if(state.dup){
+      line = esc(first)+', you are already registered for this one. Your code '
+           + 'is below, and it is the same one we emailed to '
+           + esc(state.data.email)+'. That is all you need at the door.';
+    } else {
+      line = esc(first)+', your ticket is on its way to '
+           + esc(state.data.email)+'. Show it at the door.';
+    }
     mount.innerHTML =
       '<div class="msf-done">'
     +   '<div class="msf-tick">'+svgTick()+'</div>'
-    +   '<h4>'+(state.dup ? "Already registered" : "You are registered")+'</h4>'
+    +   '<h4>'+(state.dup
+          ? (state.resent ? "Sent again" : "Already registered")
+          : "You are registered")+'</h4>'
     +   '<p>'+line+'</p>'
     +   (state.code ? '<div class="msf-code"><span>Ticket code</span><b>'
         + esc(state.code)+'</b></div>' : '')

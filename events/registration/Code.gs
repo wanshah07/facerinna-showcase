@@ -53,6 +53,11 @@ var CONFIG = {
     checkedIn:'Checked in'
   },
 
+  /* How long before a repeat registration will re-send the ticket. Short
+     enough to help somebody who did not get theirs, long enough that the
+     public endpoint cannot be used to flood an inbox. */
+  RESEND_COOLDOWN_MIN: 10,
+
   QR_PROVIDER: 'quickchart',   // 'quickchart' | 'none'
   QR_SIZE: 320,
 
@@ -351,11 +356,43 @@ function doPost(e) {
               String(rows[i][emailCol] || '').trim().toLowerCase() === email.toLowerCase() &&
               (eventCol === -1 || String(rows[i][eventCol] || '').trim() === event)) {
             var existing = String(rows[i][at(CONFIG.OUT.ticket)] || '');
-            /* Not an error and not a new row: this person already has a
-               ticket for this event. The commonest reason a submission
-               leaves no new row, and the one that looks like data loss. */
-            logRow('DUPLICATE', email, event, 'already had ' + existing);
-            return reply({ ok: true, code: existing, duplicate: true });
+            var sentCol2 = at(CONFIG.OUT.sentAt);
+            var lastSent = sentCol2 > -1 ? rows[i][sentCol2] : '';
+
+            /* Somebody registering a second time for the same event is almost
+               always saying "my ticket never arrived". Returning the code
+               silently and sending nothing answered the wrong question: they
+               asked for an email. So send it again.
+
+               Rate-limited to once every RESEND_COOLDOWN_MIN, because this
+               endpoint is public and without a limit anyone could use it to
+               post the same address repeatedly and fill a stranger's inbox.
+               Under the limit they still get the code on screen. */
+            var mins = (lastSent instanceof Date)
+              ? (Date.now() - lastSent.getTime()) / 60000 : 1e9;
+
+            if (mins >= CONFIG.RESEND_COOLDOWN_MIN) {
+              try {
+                sendTicket({ to: email,
+                             name: String(rows[i][at(CONFIG.FIELDS.name)] || 'there'),
+                             event: event || 'Facerinna event', code: existing });
+                if (sentCol2 > -1) {
+                  sheet.getRange(i + 2, sentCol2 + 1).setValue(new Date());
+                }
+                logRow('DUPLICATE-RESENT', email, event, 'sent ' + existing + ' again');
+                return reply({ ok: true, code: existing, duplicate: true, resent: true });
+              } catch (mailErr) {
+                console.error(mailErr);
+                logRow('DUPLICATE', email, event,
+                       'resend failed: ' + mailErr + ' (code ' + existing + ')');
+                return reply({ ok: true, code: existing, duplicate: true, resent: false });
+              }
+            }
+
+            logRow('DUPLICATE', email, event,
+                   'already had ' + existing + ', resent ' + Math.round(mins) +
+                   ' min ago so not sending again');
+            return reply({ ok: true, code: existing, duplicate: true, resent: false });
           }
         }
       }

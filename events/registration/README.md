@@ -147,14 +147,21 @@ needed: when, outcome, email, event, note. Look there first.
 | Outcome | What it means |
 |---|---|
 | `OK` | Row written, ticket issued |
-| `DUPLICATE` | That email already had a ticket for that event, so the existing code was returned and no new row made |
+| `DUPLICATE-RESENT` | That email already had a ticket, so it was emailed again and no new row made |
+| `DUPLICATE` | Same, but the ticket had gone out within the last 10 minutes, so it was not sent again |
 | `REJECTED` | Failed a check — bad email, phone too short, consent not ticked |
 | `ERROR` | The script threw; the note carries the message |
 
-`DUPLICATE` is the one that looks like data loss and is not. The same person
-registering twice for the same event gets their original ticket back, on
-purpose, so a double tap or a refresh cannot mint two. Registering for a
-*different* event does create a new row.
+Neither DUPLICATE outcome is data loss. The same person registering twice for
+the same event gets their original ticket back, on purpose, so a double tap
+cannot mint two. Registering for a *different* event does create a new row.
+
+Somebody registering a second time is almost always saying "my ticket never
+arrived", so the ticket is emailed again rather than only shown on screen.
+Rate limited to once every `RESEND_COOLDOWN_MIN` (10 minutes): this endpoint
+is public, and without a limit anyone could post the same address repeatedly
+and fill a stranger's inbox. Inside that window the code still appears on
+screen, which is all the door needs.
 
 ## "The ticket email never arrived"
 
