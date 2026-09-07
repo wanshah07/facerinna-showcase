@@ -126,13 +126,66 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
   padding:22px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;
   transition:transform .25s,box-shadow .25s;
-  opacity:0;transform:translateY(16px);animation:rise .5s ease-out forwards}
-@keyframes rise{to{opacity:1;transform:none}}
+  opacity:0;transform:translateY(20px) scale(.96);filter:blur(6px);
+  animation:rise .55s cubic-bezier(.22,1,.36,1) forwards}
+@keyframes rise{to{opacity:1;transform:none;filter:blur(0)}}
 @media(prefers-reduced-motion:reduce){
   .card{animation:none;opacity:1;transform:none}
   .card:hover{transform:none}
 }
-.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.card:hover{transform:translateY(-6px) scale(1.02);box-shadow:var(--shadow-md)}
+
+/* ---- spotlight glow -------------------------------------------------
+   A light source follows the pointer and every card lights the part of its
+   border nearest to it, so the grid reads as one surface under one lamp.
+
+   Two things the reference component does are left out on purpose:
+
+   touch-action:none would stop a drag on a card from scrolling the page.
+   On a booth touchscreen, where the cards ARE most of the page, that makes
+   the events board unscrollable. It buys nothing here: the glow is driven
+   by pointermove, which needs no gesture claim.
+
+   background-attachment:fixed carries a shared viewport coordinate into
+   every card. It is the neat trick in the original, but it stops working
+   inside an element with a filter, and these cards animate in through
+   filter:blur. Each card is given the pointer in its OWN coordinates
+   instead, which survives filters and transforms.
+
+   The glow stays hidden until a real pointer moves, so a touch device is
+   not left with a lamp stuck in the top-left corner. */
+.card{position:relative}
+.card::before,.card::after{content:"";position:absolute;inset:-1px;border-radius:inherit;
+  pointer-events:none;opacity:0;transition:opacity .35s}
+:root.lamp .card::before,:root.lamp .card::after{opacity:1}
+/* the ring: a radial wash clipped to the border by two masks that intersect */
+.card::before{padding:1px;
+  background:radial-gradient(150px 150px at var(--gx,50%) var(--gy,50%),
+    hsl(var(--hue,205) 90% 62%), transparent 72%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  filter:brightness(1.15)}
+/* the wash inside the card, kept faint so text stays the loudest thing */
+.card::after{background:radial-gradient(190px 190px at var(--gx,50%) var(--gy,50%),
+  hsl(var(--hue,205) 90% 62% / .10), transparent 70%)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .card::after{
+    background:radial-gradient(190px 190px at var(--gx,50%) var(--gy,50%),
+      hsl(var(--hue,205) 90% 62% / .18), transparent 70%)}
+}
+:root[data-theme="dark"] .card::after{
+  background:radial-gradient(190px 190px at var(--gx,50%) var(--gy,50%),
+    hsl(var(--hue,205) 90% 62% / .18), transparent 70%)}
+/* the card's own content sits above both layers */
+.card > *{position:relative;z-index:1}
+@media (prefers-reduced-motion:reduce){
+  .card::before,.card::after{transition:none}
+}
+/* A coarse pointer never produces the hover the glow is built around. */
+@media (pointer:coarse){
+  :root.lamp .card::before,:root.lamp .card::after{opacity:0}
+}
 .banner{isolation:isolate}
 .card.past{opacity:.72}
 .card.past:hover{opacity:1}
@@ -159,7 +212,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
   position:relative;background:linear-gradient(130deg,var(--brand-soft),var(--surface-2))}
 .banner img{width:100%;height:100%;object-fit:cover;display:block;
   transition:transform .3s}
-.card:hover .banner img{transform:scale(1.05)}
+.card:hover .banner img{transform:scale(1.1)}
 /* No artwork in the sheet yet, so the placeholder has to carry the card on
    its own rather than look like a failed image. */
 .banner.ph{display:grid;place-items:center;
@@ -197,8 +250,28 @@ body{margin:0;background:var(--bg);color:var(--ink);
   letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-top:2px}
 /* Only the seconds pulse. Four pulsing cells reads as a broken screen. */
 .cd-cell.sec b{animation:beat 1s ease-in-out infinite}
-@keyframes beat{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes beat{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:.7}}
 @media(prefers-reduced-motion:reduce){.cd-cell.sec b{animation:none}}
+
+/* The started state, where the countdown was. */
+.started{margin-top:16px;text-align:center;padding:10px 0}
+.started b{display:block;font-size:1.05rem;font-weight:700;color:#0f9d58}
+:root[data-theme="dark"] .started b{color:#4ade80}
+@media(prefers-reduced-motion:no-preference){}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .started b{color:#4ade80}}
+.started span{display:block;font-size:.83rem;color:var(--muted);margin-top:2px}
+
+/* A real call to action, not a text link, when the row carries a URL. */
+.act .cta{display:block;width:100%;padding:0 18px;height:44px;line-height:44px;
+  border-radius:12px;text-align:center;font-weight:600;font-size:.92rem;color:#fff;
+  background:linear-gradient(120deg,var(--brand),var(--brand-deep));
+  box-shadow:0 8px 20px rgba(46,124,190,.30);text-decoration:none;
+  transition:transform .2s,box-shadow .2s,filter .2s}
+.act .cta:hover{transform:translateY(-2px) scale(1.02);filter:brightness(1.06);
+  box-shadow:0 12px 26px rgba(46,124,190,.38)}
+.act .cta:active{transform:scale(.98)}
+.act .cta:focus-visible{outline:2px solid var(--brand-deep);outline-offset:3px}
+.act{display:block}
 
 .meta{display:flex;flex-direction:column;gap:9px;font-size:.88rem;color:var(--ink-2);
   line-height:1.5}
@@ -461,7 +534,8 @@ function card(e, today, i){
   var st=statusOf(a,b,today);
   var img = safeUrl(e.image_url), link = safeUrl(e.action_url);
   var art = img
-    ? '<img src="'+esc(img)+'" alt="'+esc(e.event)+'" loading="lazy">'
+    ? '<img src="'+esc(img)+'" alt="'+esc(e.event)+'" loading="lazy" data-brand="'
+      + esc(e.brand || "Facerinna")+'">'
     : '<span class="mark">'+esc(e.brand || "Facerinna")+'</span>';
   var tag = st.label ? '<span class="tag '+st.cls+'">'+esc(st.label)+'</span>' : '';
 
@@ -472,7 +546,7 @@ function card(e, today, i){
   if(a && st.key==="upcoming"){
     target = +startMoment(a, e.start_time);
     cd = '<div class="cd" data-target="'+target+'">'
-       + '<div class="cd-lab">'+CAL+'<span>Starts in</span></div>'
+       + '<div class="cd-lab">'+CLK+'<span>Event starts in</span></div>'
        + '<div class="cd-grid">'
        +   '<div class="cd-cell"><b data-u="d">--</b><i>Days</i></div>'
        +   '<div class="cd-cell"><b data-u="h">--</b><i>Hrs</i></div>'
@@ -480,6 +554,12 @@ function card(e, today, i){
        +   '<div class="cd-cell sec"><b data-u="s">--</b><i>Sec</i></div>'
        + '</div></div>';
   }
+  /* An event already running says so where the countdown would be, rather
+     than leaving a gap the eye reads as a missing element. */
+  if(st.key==="live"){
+    cd = '<div class="started"><b>Event started</b><span>Come and find us</span></div>';
+  }
+
   /* Under a day out, and the card says so where the eye lands first. */
   var urgent = (target && target - Date.now() > 0 && target - Date.now() < 86400000)
     ? '<span class="urgent">Starts soon</span>' : '';
@@ -498,8 +578,15 @@ function card(e, today, i){
          + '</div>';
   }
 
+  /* The sheet's own label wins: "Reserve Your Spot" is wrong for a mall
+     pop-up nobody books. It is only the fallback when the row leaves it
+     blank, and it changes once the event is running. A row with no URL keeps
+     the plain text line -- a button that goes nowhere is worse on a booth
+     screen than no button at all. */
+  var fallbackLabel = (st.key==="live") ? "Join us" : "Reserve your spot";
   var act = link
-    ? '<a href="'+esc(link)+'" target="_blank" rel="noopener">'+esc(e.action_label||"Find out more")+'</a>'
+    ? '<a class="cta" href="'+esc(link)+'" target="_blank" rel="noopener">'
+      + esc(e.action_label || fallbackLabel)+'</a>'
     : (e.action_label ? '<span>'+esc(e.action_label)+'</span>' : '');
 
   return '<article class="card'+(st.key==="past"?" past":"")+'" style="animation-delay:'+(i*60)+'ms">'
@@ -555,6 +642,31 @@ function render(list){
   if(!html) html = '<div class="note">Nothing listed yet.</div>';
   document.getElementById("out").innerHTML = html;
   tickCountdowns();          /* fill the cells before the first tick lands */
+  wireImageFallback();
+}
+
+/* A URL pasted into the sheet can stop serving, or never have served an
+   image at all -- a Google Drive "share" link returns a viewer page, not a
+   file. Without this the card shows the browser's broken-image glyph, which
+   looks like the page is broken rather than the link. On failure the banner
+   falls back to the same gradient a row with no image gets. */
+function wireImageFallback(){
+  document.querySelectorAll(".banner img").forEach(function(img){
+    var swap = function(){
+      var bn = img.parentNode;
+      if(!bn || bn.classList.contains("ph")) return;
+      var name = img.getAttribute("data-brand") || "Facerinna";
+      bn.classList.add("ph");
+      img.remove();
+      var mark = document.createElement("span");
+      mark.className = "mark";
+      mark.textContent = name;
+      bn.insertBefore(mark, bn.firstChild);
+    };
+    img.addEventListener("error", swap);
+    /* An image that failed before this ran reports complete with no width. */
+    if(img.complete && img.naturalWidth === 0) swap();
+  });
 }
 
 function setFeed(cls, txt){
@@ -621,6 +733,51 @@ function tickCountdowns(){
   if(stale && Date.now() - lastAuto > 30000){ lastAuto = Date.now(); load(); }
 }
 setInterval(tickCountdowns, 1000);
+
+/* ---- spotlight -------------------------------------------------------
+   One listener for the page, throttled to a frame. Each card is handed the
+   pointer in its own coordinates, so the effect survives the filter the
+   entry animation leaves behind and any transform on the card.
+
+   The hue rides the pointer across the viewport the way the reference does,
+   but over a 55 degree arc inside the Facerinna blues rather than the 200
+   the original sweeps. A full sweep passes through yellow and green, which
+   on a page carrying the brand's own logo reads as a fault, not a flourish. */
+var HUE_BASE = 185, HUE_SPREAD = 55;
+(function(){
+  var px = 0, py = 0, queued = false, lit = false;
+
+  function paint(){
+    queued = false;
+    var root = document.documentElement;
+    if(!lit){ lit = true; root.classList.add("lamp"); }
+    root.style.setProperty("--hue",
+      (HUE_BASE + (px / Math.max(1, innerWidth)) * HUE_SPREAD).toFixed(1));
+    var cards = document.querySelectorAll(".card");
+    for(var i = 0; i < cards.length; i++){
+      var c = cards[i], r = c.getBoundingClientRect();
+      /* Skip a card that is nowhere near the screen: its glow cannot be seen
+         and reading its box still costs layout. */
+      if(r.bottom < -200 || r.top > innerHeight + 200) continue;
+      c.style.setProperty("--gx", (px - r.left).toFixed(0) + "px");
+      c.style.setProperty("--gy", (py - r.top).toFixed(0) + "px");
+    }
+  }
+
+  addEventListener("pointermove", function(e){
+    /* A finger reports pointerType "touch" and gives no hover, so the lamp
+       stays off rather than snapping to wherever the last tap landed. */
+    if(e.pointerType === "touch") return;
+    px = e.clientX; py = e.clientY;
+    if(!queued){ queued = true; requestAnimationFrame(paint); }
+  }, {passive:true});
+
+  /* Scrolling moves the cards under a stationary pointer, so the light has
+     to be re-solved even though the pointer never moved. */
+  addEventListener("scroll", function(){
+    if(lit && !queued){ queued = true; requestAnimationFrame(paint); }
+  }, {passive:true});
+})();
 
 document.getElementById("refresh").addEventListener("click", load);
 load();
