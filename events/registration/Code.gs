@@ -305,25 +305,30 @@ function plainText(t) {
  * about anybody else, and the guards below cap what a flood can cost.
  */
 function doPost(e) {
+  var email = '', event = '';
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
 
     var name  = String(body.name  || '').trim();
-    var email = String(body.email || '').trim();
+    email     = String(body.email || '').trim();
     var phone = String(body.phone || '').trim();
-    var event = String(body.event || '').trim();
+    event     = String(body.event || '').trim();
 
-    if (!name || name.length > 120)      return reply({ ok: false, error: 'bad name' });
-    if (!isEmail(email))                 return reply({ ok: false, error: 'bad email' });
-    if (phone.replace(/\D/g, '').length < 9) return reply({ ok: false, error: 'bad phone' });
-    if (body.consent !== true)           return reply({ ok: false, error: 'consent required' });
+    /* Every attempt is logged, not just the ones that succeed. A rejected
+       submission used to return an error to the browser and leave no trace
+       anywhere, so "somebody says they registered and there is no row" had no
+       answer. Now there is one. */
+    if (!name || name.length > 120)      return logged('REJECTED', email, event, 'bad name');
+    if (!isEmail(email))                 return logged('REJECTED', email, event, 'bad email');
+    if (phone.replace(/\D/g, '').length < 9) return logged('REJECTED', email, event, 'bad phone');
+    if (body.consent !== true)           return logged('REJECTED', email, event, 'consent not ticked');
 
     /* Client-side validation is a courtesy to the visitor, not a control:
        anyone can post here directly. Everything above is checked again. */
 
     var lock = LockService.getScriptLock();
     try { lock.waitLock(30000); } catch (err) {
-      return reply({ ok: false, error: 'busy' });
+      return logged('REJECTED', email, event, 'busy, could not get the lock');
     }
 
     try {
@@ -331,7 +336,9 @@ function doPost(e) {
       var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
       var at = function (h) { return headers.indexOf(h); };
 
-      if (at(CONFIG.OUT.ticket) === -1) return reply({ ok: false, error: 'not set up' });
+      if (at(CONFIG.OUT.ticket) === -1) {
+        return logged('REJECTED', email, event, 'sheet not set up, run setup()');
+      }
 
       /* The same person tapping Complete twice, or a double submit, must not
          produce two tickets. Match on email plus event. */
@@ -343,8 +350,12 @@ function doPost(e) {
           if (emailCol > -1 &&
               String(rows[i][emailCol] || '').trim().toLowerCase() === email.toLowerCase() &&
               (eventCol === -1 || String(rows[i][eventCol] || '').trim() === event)) {
-            return reply({ ok: true, code: String(rows[i][at(CONFIG.OUT.ticket)] || ''),
-                           duplicate: true });
+            var existing = String(rows[i][at(CONFIG.OUT.ticket)] || '');
+            /* Not an error and not a new row: this person already has a
+               ticket for this event. The commonest reason a submission
+               leaves no new row, and the one that looks like data loss. */
+            logRow('DUPLICATE', email, event, 'already had ' + existing);
+            return reply({ ok: true, code: existing, duplicate: true });
           }
         }
       }
@@ -389,14 +400,44 @@ function doPost(e) {
         if (sc > -1) sheet.getRange(written, sc + 1).setValue('EMAIL FAILED: ' + mailErr);
       }
 
+      logRow('OK', email, event, 'row ' + written + ', ' + code);
       return reply({ ok: true, code: code });
     } finally {
       lock.releaseLock();
     }
   } catch (err) {
     console.error(err);
-    return reply({ ok: false, error: 'server' });
+    return logged('ERROR', email, event, String(err && err.message ? err.message : err));
   }
+}
+
+/**
+ * One line per attempt on a Log tab, created on first use. Kept to the last
+ * 2000 lines so it cannot grow without bound on a sheet nobody prunes.
+ * Never throws: a logging failure must not swallow a registration.
+ */
+function logRow(outcome, email, event, note) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var log = ss.getSheetByName('Log');
+    if (!log) {
+      log = ss.insertSheet('Log');
+      log.getRange(1, 1, 1, 5)
+         .setValues([['When', 'Outcome', 'Email', 'Event', 'Note']]);
+      log.setFrozenRows(1);
+    }
+    log.appendRow([new Date(), outcome, email, event, note]);
+    var n = log.getLastRow();
+    if (n > 2001) log.deleteRows(2, n - 2001);
+  } catch (err) {
+    console.error('log failed: ' + err);
+  }
+}
+
+/** Log it and reply in one move, so no path can log without replying. */
+function logged(outcome, email, event, note) {
+  logRow(outcome, email, event, note);
+  return reply({ ok: false, error: note });
 }
 
 /**
@@ -587,6 +628,74 @@ function repairPhones() {
   cells.setValues(vals);
   return 'Repaired ' + fixed + '.' +
          (left.length ? ' Left as-is, please check: ' + left.join('; ') : '');
+}
+
+/**
+ * Answers "was the email actually sent?" without guessing.
+ *
+ * MailApp.sendEmail only throws when Google REFUSES the message -- a bad
+ * address, an exhausted quota, a missing scope. It returns quietly when Google
+ * accepts it, so a "Ticket sent" timestamp in the sheet means accepted, not
+ * delivered, and certainly not read. Those are three different things and the
+ * sheet can only ever know the first.
+ *
+ * The daily quota is the honest counter. It drops by one per recipient, so
+ * running this before and after a registration says whether anything left.
+ */
+function mailCheck() {
+  var lines = [];
+  lines.push('Script runs as: ' + Session.getEffectiveUser().getEmail());
+  lines.push('Emails left today: ' + MailApp.getRemainingDailyQuota());
+  lines.push('');
+  lines.push('That address is the SENDER. Tickets go to whatever address the');
+  lines.push('visitor typed into the form, which is the Email column.');
+  lines.push('');
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var head = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  var eCol = head.indexOf(CONFIG.FIELDS.email);
+  var sCol = head.indexOf(CONFIG.OUT.sentAt);
+  var last = sheet.getLastRow();
+
+  if (eCol > -1 && last > 1) {
+    var rows = sheet.getRange(2, 1, last - 1, head.length).getValues();
+    lines.push('Tickets were addressed to:');
+    for (var i = 0; i < rows.length; i++) {
+      var to = String(rows[i][eCol] || '').trim();
+      if (!to) continue;
+      var st = sCol > -1 ? String(rows[i][sCol] || '') : '(no column)';
+      lines.push('  row ' + (i + 2) + ': ' + to + '   [' + (st || 'NOT SENT') + ']');
+    }
+  }
+
+  var msg = lines.join('\n');
+  try { SpreadsheetApp.getUi().alert(msg); } catch (e) {}
+  console.log(msg);
+  return msg;
+}
+
+/**
+ * Re-sends the ticket for one row, to the address in that row. Use when
+ * somebody says theirs never arrived and you have checked their spam folder.
+ * Does NOT issue a new code: the ticket they were promised is the one they get.
+ */
+function resendTicket(rowNumber) {
+  if (!rowNumber || rowNumber < 2) return 'Give the row number, e.g. resendTicket(2).';
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var head = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  var row = sheet.getRange(rowNumber, 1, 1, head.length).getValues()[0];
+  var get = function (h) { var i = head.indexOf(h); return i === -1 ? '' : String(row[i] || '').trim(); };
+
+  var to = get(CONFIG.FIELDS.email), code = get(CONFIG.OUT.ticket);
+  if (!isEmail(to)) return 'Row ' + rowNumber + ' has no valid email.';
+  if (!code) return 'Row ' + rowNumber + ' has no ticket code.';
+
+  sendTicket({ to: to, name: get(CONFIG.FIELDS.name) || 'there',
+               event: get(CONFIG.FIELDS.event) || 'Facerinna event', code: code });
+
+  var sCol = head.indexOf(CONFIG.OUT.sentAt);
+  if (sCol > -1) sheet.getRange(rowNumber, sCol + 1).setValue(new Date());
+  return 'Re-sent ' + code + ' to ' + to + '. Quota left: ' + MailApp.getRemainingDailyQuota();
 }
 
 /** Sends one ticket to yourself so you can see it before the event does. */

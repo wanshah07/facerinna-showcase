@@ -139,6 +139,45 @@ registrations back up. It moves every row that has a ticket code, in order,
 from row 2 with no gaps, and it leaves anything without a ticket code where it
 is and names it in the result rather than deleting what it does not recognise.
 
+## "Somebody registered and there is no row"
+
+Every attempt now writes a line to a **Log** tab, created the first time it is
+needed: when, outcome, email, event, note. Look there first.
+
+| Outcome | What it means |
+|---|---|
+| `OK` | Row written, ticket issued |
+| `DUPLICATE` | That email already had a ticket for that event, so the existing code was returned and no new row made |
+| `REJECTED` | Failed a check — bad email, phone too short, consent not ticked |
+| `ERROR` | The script threw; the note carries the message |
+
+`DUPLICATE` is the one that looks like data loss and is not. The same person
+registering twice for the same event gets their original ticket back, on
+purpose, so a double tap or a refresh cannot mint two. Registering for a
+*different* event does create a new row.
+
+## "The ticket email never arrived"
+
+Run **`mailCheck`**. It reports which account the script sends as, how many
+emails that account has left today, and which address each ticket was
+addressed to.
+
+The thing to check first: tickets go to the address the visitor **typed into
+the form**, not to the mailbox that owns the script. Both test registrations
+so far went to the address in the Email column, so that is the inbox to look
+in — including Spam and Promotions, since a first message from a new sender
+with an image in it is exactly what a spam filter holds back.
+
+`MailApp.sendEmail` only throws when Google *refuses* the message. It returns
+quietly when Google *accepts* it. So a "Ticket sent" timestamp means accepted,
+not delivered, and certainly not read — three different things, and the sheet
+can only ever know the first. The daily quota in `mailCheck` is the honest
+counter: it drops by one per recipient sent.
+
+**`resendTicket(2)`** re-sends the ticket for a row, to the address in that
+row, keeping the same code. The ticket somebody was promised is the one they
+should get.
+
 ## What to know before you rely on it
 
 **The endpoint is public.** It is in the page source, so treat it as such.
