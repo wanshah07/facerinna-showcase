@@ -3427,8 +3427,24 @@ const GALLERY_DOCS = [
      that does not — and the answer that follows is exact rather than close.
      Both probes and the final placing happen in one task with transitions off,
      so none of it reaches the screen. */
+  /* A measurement taken while the fan is off the screen is meaningless: in the
+     horizontal deck the slides sit side by side, so the gallery's box can be a
+     whole screen to the right when the deck re-fits. Measured there, the room
+     to the window's edge comes out tiny and the spread collapses — which is
+     exactly what the fan did in horizontal full screen, 203px of card on card
+     at 1920. Off the screen, the last answer stands. */
+  function onScreen(){
+    const r=layout.getBoundingClientRect();
+    if(!r.width || !r.height) return false;
+    const mid=r.left+r.width/2;
+    if(mid<0 || mid>innerWidth) return false;      // the slide is not the one on screen
+    if(r.bottom<0 || r.top>innerHeight) return false;
+    const seen=Math.min(r.right,innerWidth)-Math.max(r.left,0);
+    return seen > r.width*0.8;                     // nor still sliding into place
+  }
+
   function calibrate(){
-    if(!cards.length) return;
+    if(!cards.length || !onScreen()) return;
     const held=hovered;
     hovered=null;
     layout.classList.add('measuring');
@@ -3583,6 +3599,30 @@ const GALLERY_DOCS = [
      without the window ever resizing — the deck re-runs the fit after it
      settles on a scale. */
   window.__fanFit=function(){ if(entered) calibrate(); };
+
+  /* ...and it has to be re-run when the fan actually arrives on screen, because
+     the fit that set the scale may well have happened while it was still a
+     slide away. Every arrival, not just the first: the scale can change while
+     the fan is off to the side. */
+  if(typeof IntersectionObserver!=='undefined'){
+    let wasIn=false, settle=null;
+    /* Twice, and late: the first arrives after the slide transition has run,
+       the second catches a deck that is still settling on its scale. Both are
+       cheap, and calibrate() itself returns without touching anything if the
+       fan is not properly on screen when they fire. */
+    const settleCalibrate=function(){
+      clearTimeout(settle);
+      settle=setTimeout(function(){
+        calibrate(); render(null);
+        settle=setTimeout(function(){ calibrate(); render(null); }, 900);
+      }, 450);
+    };
+    new IntersectionObserver(function(es){
+      const now=!!(es[0] && es[0].isIntersecting);
+      if(now && !wasIn && entered) settleCalibrate();
+      wasIn=now;
+    },{threshold:.25}).observe(layout);
+  }
 })();
 
 
