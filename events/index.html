@@ -430,8 +430,26 @@ function fetchJsonp(id,gid,ms){
       if(done) return; done=true; cleanup();
       try{
         if(!p||!p.table) throw new Error("malformed");
-        var cell=function(c){ return (c==null||c.v==null) ? "" :
-              (typeof c.v==="string" ? c.v : (c.f!=null?String(c.f):String(c.v))); };
+        /* gviz hands a date cell back as the STRING "Date(2026,8,10)" --
+           month zero-based -- with the sheet's display text in .f. Passing
+           .v straight through put that literal in start_date, every row
+           failed the date test, and the whole board fell into "Dates not
+           fixed yet" with no countdowns. It only showed up once the sheet
+           went public, because until then this path never returned at all.
+           The typed value is the exact one, so it is converted rather than
+           falling back to .f, whose format follows the viewer's locale. */
+        var cell=function(c){
+          if(c==null || c.v==null) return "";
+          if(typeof c.v==="string"){
+            var d=/^Date\((\d{4}),(\d{1,2}),(\d{1,2})/.exec(c.v);
+            if(d){
+              var pad=function(n){ return (n<10?"0":"")+n; };
+              return d[1]+"-"+pad(+d[2]+1)+"-"+pad(+d[3]);
+            }
+            return c.v;
+          }
+          return c.f!=null ? String(c.f) : String(c.v);
+        };
         /* gviz eats the header row into cols[].label — put it back as row 0
            so the shape matches parseCSV() exactly. */
         var out=[ (p.table.cols||[]).map(function(c){ return (c.label||"").trim(); }) ];
@@ -461,10 +479,34 @@ var DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
    in Malaysia (UTC+8) is still the 10th, but the same code in a negative
    offset would render the 9th. Splitting the parts avoids that entirely. */
 function parseDate(s){
-  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s||"").trim());
-  if(!m) return null;
-  var d=new Date(+m[1], +m[2]-1, +m[3]);
-  return isNaN(d.getTime()) ? null : d;
+  s = String(s||"").trim();
+  if(!s) return null;
+  var mk=function(y,mo,da){
+    var d=new Date(y, mo-1, da);
+    return (isNaN(d.getTime()) || d.getMonth()!==mo-1) ? null : d;
+  };
+
+  var m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+  if(m) return mk(+m[1], +m[2], +m[3]);
+
+  /* Belt and braces for the gviz literal, in case it reaches here by some
+     other path than the cell reader. Month is zero-based in that form. */
+  var g=/^Date\((\d{4}),(\d{1,2}),(\d{1,2})/.exec(s);
+  if(g) return mk(+g[1], +g[2]+1, +g[3]);
+
+  /* A sheet whose date column is formatted rather than plain text exports as
+     something slash-separated, and 3/4/2026 means March in one locale and
+     April in another. Where one part is over 12 the order is certain and it
+     is read; where both could be a month it is refused, because a card
+     showing the wrong month is worse than one saying the date is not fixed. */
+  var q=/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/.exec(s);
+  if(q){
+    var a=+q[1], b=+q[2], y=+q[3];
+    if(a>12 && b<=12) return mk(y, b, a);   /* D/M/YYYY */
+    if(b>12 && a<=12) return mk(y, a, b);   /* M/D/YYYY */
+    return null;
+  }
+  return null;
 }
 function midnight(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
 
