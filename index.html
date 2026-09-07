@@ -488,13 +488,28 @@ section{padding:74px 0;position:relative}
 /* RANGE / THUMBNAILS */
 #range{background:linear-gradient(180deg,var(--surface),#FFF)}
 /* 3D PRODUCT SHELF — full-screen, full-bleed section */
+/* The toolbar rides at the top-right of the heading, where the column is empty
+   at every width worth the deck's time, so it costs the slide no height. Under
+   700px the heading fills that corner, so it drops to its own row instead. */
+#range .wrap{position:relative}
+.shelf-tools{position:absolute;right:24px;top:0;z-index:6;
+  display:flex;align-items:center;gap:10px}
+/* The heading is capped at 46rem, so it only reaches the toolbar when the
+   column itself is narrower than the two of them together — about 950px. Below
+   that it gives up the width; above it, it never needed to, and reserving the
+   space anyway broke the title across two lines on a screen with room to
+   spare. */
+@media(min-width:701px) and (max-width:1150px){
+  #range .sec-head{max-width:calc(100% - 210px)}}
+@media(max-width:700px){
+  .shelf-tools{position:static;justify-content:flex-end;margin:-4px 0 10px}}
 .shelf-wrap{margin:8px 0 34px;width:100%}
 /* the stage was a painted panel because it held a rendered scene; now it is
    just the frame the carousel turns in, so the page's backdrop shows through */
 .shelf-stage{position:relative;width:100%;height:100vh;min-height:520px;max-height:900px;overflow:hidden;
   background:transparent;cursor:grab}
 .shelf-stage.dragging{cursor:grabbing}
-.shelf-fs{position:absolute;top:16px;right:16px;z-index:6;width:46px;height:46px;border-radius:12px;
+.shelf-fs{flex:0 0 auto;width:46px;height:46px;border-radius:12px;
   border:1px solid var(--line);background:rgba(255,255,255,.88);backdrop-filter:blur(6px);
   font-size:1.35rem;line-height:1;cursor:pointer;box-shadow:var(--shadow-sm);color:var(--brand-deep);
   transition:transform .2s}
@@ -685,7 +700,7 @@ body.space-theme .tag-best{box-shadow:0 4px 10px rgba(0,0,0,.5)}
 body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 
 /* backdrop switch */
-.shelf-bg{position:absolute;top:16px;left:16px;z-index:6;display:flex;gap:4px;padding:4px;
+.shelf-bg{display:flex;gap:4px;padding:4px;
   border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.88);
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:var(--shadow-sm)}
 .shelf-bg button{min-width:64px;height:38px;padding:0 12px;border:1px solid transparent;border-radius:9px;
@@ -693,11 +708,11 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
   transition:background .18s,color .18s}
 .shelf-bg button:hover{background:var(--surface-2)}
 .shelf-bg button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
-.shelf-stage[data-dark] .shelf-bg{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16)}
-.shelf-stage[data-dark] .shelf-bg button{color:rgba(248,250,252,.72)}
-.shelf-stage[data-dark] .shelf-bg button:hover{background:rgba(255,255,255,.10)}
-.shelf-stage[data-dark] .shelf-bg button[aria-pressed="true"]{background:#3B82F6;border-color:#3B82F6;color:#fff}
-.shelf-stage[data-dark] .shelf-fs{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16);color:#F8FAFC}
+#range[data-dark] .shelf-bg{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16)}
+#range[data-dark] .shelf-bg button{color:rgba(248,250,252,.72)}
+#range[data-dark] .shelf-bg button:hover{background:rgba(255,255,255,.10)}
+#range[data-dark] .shelf-bg button[aria-pressed="true"]{background:#3B82F6;border-color:#3B82F6;color:#fff}
+#range[data-dark] .shelf-fs{background:rgba(16,18,32,.72);border-color:rgba(255,255,255,.16);color:#F8FAFC}
 @media(max-width:700px){.shelf-bg{top:10px;left:10px}
   .shelf-bg button{min-width:0;padding:0 10px;height:36px;font-size:.72rem}}
 @media(max-width:700px){.shelf-stage{height:70vh;min-height:420px}.shelf-nav{width:40px;height:40px;font-size:1.25rem}}
@@ -1554,6 +1569,15 @@ body.fab-duck .halal-fab,body.fab-duck .chat-fab{opacity:.2}
 body.slides .halal-fab{align-items:center}
 body.slides .halal-badge{width:52px;height:52px}
 body.slides .halal-badge img{height:34px}
+/* Moving the shelf's toolbar up into the heading cost that slide a line of
+   type, which pushed the pack band 10px lower and left the mark clipping it
+   again at 1024x640. Between the packs and the chat button there is 58px there
+   — 40px with a gap either side is what fits, and it clears by 9px at 1280 and
+   1366 too. */
+@media(max-width:1100px){
+  body.slides .halal-fab{bottom:calc(var(--fab-bottom,22px) + 73px)}
+  body.slides .halal-badge{width:40px;height:40px}
+  body.slides .halal-badge img{height:26px}}
 /* On two lines the label is narrower than the button's own column, so the deck
    keeps it now — it was only ever dropped there for being too wide. */
 /* The welcome slide is the exception: it is full-bleed, so it has no gutter to
@@ -1726,6 +1750,16 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
       <h2>A complete, layer-able routine</h2>
       <p><b>Click any product to open its clinical data sheet.</b></p>
     </div>
+    <!-- These sat inside the stage, which clips, so no height cleared the packs
+         — they lived on the top corners of the outer two. Out here they are the
+         shelf's toolbar: above it, and clear of it. -->
+    <div class="shelf-tools">
+      <div class="shelf-bg" id="shelfBg" role="group" aria-label="Page backdrop">
+        <button type="button" data-bg="radial" aria-pressed="true">Light</button>
+        <button type="button" data-bg="aurora" aria-pressed="false">Aurora</button>
+      </div>
+      <button class="shelf-fs" id="shelfFS" aria-label="Toggle full screen" type="button">⛶</button>
+    </div>
   </div>
   <div class="shelf-wrap reveal" id="shelfWrap">
     <div class="shelf-stage" id="shelfStage" data-bg="radial">
@@ -1733,11 +1767,6 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
            aria-label="Product range coverflow">
         <div class="cf-track" id="cfTrack"></div>
       </div>
-      <div class="shelf-bg" id="shelfBg" role="group" aria-label="Page backdrop">
-        <button type="button" data-bg="radial" aria-pressed="true">Light</button>
-        <button type="button" data-bg="aurora" aria-pressed="false">Aurora</button>
-      </div>
-      <button class="shelf-fs" id="shelfFS" aria-label="Toggle full screen" type="button">⛶</button>
     </div>
     <div class="shelf-controls">
       <button class="shelf-nav" id="shelfPrev" aria-label="Previous product" type="button">‹</button>
@@ -5189,6 +5218,10 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   window.__bgMode.onChange(function(mode,dark){
     stage.dataset.bg=mode;
     if(dark) stage.dataset.dark='1'; else delete stage.dataset.dark;
+    /* the toolbar lives outside the stage now, so the flag has to reach the
+       section the two of them share */
+    const sec=document.getElementById('range');
+    if(sec){ if(dark) sec.dataset.dark='1'; else delete sec.dataset.dark; }
   });
   const fsBtn=document.getElementById('shelfFS');
   if(fsBtn){
