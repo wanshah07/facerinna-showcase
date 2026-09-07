@@ -50,9 +50,20 @@ everything looks fine because the editor shows the new version.
     Phone column format: TEXT  (correct)
     Ticket sent format: yyyy-mm-dd hh:mm  (correct)
 
-If the phone line says anything else, run **`fixFormats`** on its own. It
-applies the formats and reports what it finds afterwards, so the answer is
-evidence rather than a claim.
+If the phone line says anything else, do not chase the script for it. Pin the
+column from the spreadsheet instead:
+
+> click the **Phone column header** -> **Format -> Number -> Plain text**
+
+Three clicks, nothing to save, nothing to deploy, and it applies to the whole
+column including the rows nobody has used yet. `fixFormats` does the same
+thing from the script and reports what it finds afterwards, but when a script
+run is the thing in doubt, the menu removes the doubt rather than adding to
+it.
+
+The column format only matters for phone numbers typed straight into the
+sheet. Registrations arriving through the page are already written as text by
+doPost, cell by cell, whatever the column says.
 
 ## 2. Deploy it as a web app
 
