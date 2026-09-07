@@ -1,0 +1,2549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FACERINNA · Test Reports &amp; Claims</title>
+<meta name="description" content="FACERINNA test report &amp; claims vault — hover glossary, per-product test reports, technical claims and marketing claims, live from the Test Report &amp; Claims Matrix.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- The two benchmark cards are written in Tailwind utility classes, and the
+     utilities they use are defined below rather than pulled from the CDN.
+
+     The CDN was tried first and is the wrong call for this page. Tailwind's
+     Play build generates styles in the browser at runtime, so when the script
+     does not arrive the cards lose everything at once — no grid, no radius,
+     no padding, no shadow — while the rest of the page, which is hand-written
+     CSS, still looks finished. Measured exactly that here with the script
+     blocked: border-radius 0px, padding 0px, box-shadow none, display block.
+     This page is carried to a booth and read on venue wifi.
+
+     So the markup stays Tailwind — portable, and already correct if a real
+     build step is added later — and the utilities ship with the page. Every
+     rule is scoped under #benchmark, which does the job Tailwind's preflight
+     would otherwise do the opposite of: nothing here can reach the other
+     four sections. -->
+<style>
+  #benchmark .grid{display:grid}
+  #benchmark .gap-4{gap:1rem}
+  @media (min-width:768px){ #benchmark .md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))} }
+
+  #benchmark .flex{display:flex}
+  #benchmark .inline-flex{display:inline-flex}
+  #benchmark .flex-col{flex-direction:column}
+  #benchmark .items-center{align-items:center}
+  #benchmark .items-start{align-items:flex-start}
+  #benchmark .justify-between{justify-content:space-between}
+  #benchmark .shrink-0{flex-shrink:0}
+  #benchmark .gap-3{gap:.75rem}
+  #benchmark .mt-3{margin-top:.75rem}
+  #benchmark .leading-none{line-height:1}
+  #benchmark .text-\[1\.15rem\]{font-size:1.15rem}
+  #benchmark .w-fit{width:fit-content}
+  #benchmark .gap-2{gap:.5rem}
+  #benchmark .gap-1\.5{gap:.375rem}
+
+  #benchmark .rounded-2xl{border-radius:1rem}
+  #benchmark .rounded-full{border-radius:9999px}
+  #benchmark .border{border-width:1px;border-style:solid}
+  #benchmark .border-line{border-color:#D9E5F1}
+  #benchmark .bg-white{background-color:#fff}
+  #benchmark .p-6{padding:1.5rem}
+  #benchmark .px-3{padding-left:.75rem;padding-right:.75rem}
+  #benchmark .py-1{padding-top:.25rem;padding-bottom:.25rem}
+  #benchmark .m-0{margin:0}
+  #benchmark .mb-0{margin-bottom:0}
+  #benchmark .mb-3{margin-bottom:.75rem}
+  #benchmark .mt-2{margin-top:.5rem}
+  #benchmark .mt-5{margin-top:1.25rem}
+  #benchmark .no-underline{text-decoration:none}
+  #benchmark .shadow-sm{box-shadow:var(--shadow-sm)}
+
+  #benchmark .font-serif{font-family:'Fraunces',Georgia,serif}
+  #benchmark .font-semibold{font-weight:600}
+  #benchmark .font-bold{font-weight:700}
+  #benchmark .uppercase{text-transform:uppercase}
+  #benchmark .tracking-wide{letter-spacing:.025em}
+  #benchmark .leading-relaxed{line-height:1.625}
+  #benchmark .text-navy{color:#16324F}
+  #benchmark .text-ink2{color:#52697F}
+  #benchmark .text-brandDeep{color:#2E7CBE}
+  #benchmark .max-w-\[46ch\]{max-width:46ch}
+  #benchmark .text-\[1\.1rem\]{font-size:1.1rem}
+  #benchmark .text-\[0\.95rem\]{font-size:.95rem}
+  #benchmark .text-\[0\.9rem\]{font-size:.9rem}
+  #benchmark .text-\[0\.72rem\]{font-size:.72rem}
+
+  #benchmark .ring-1{box-shadow:inset 0 0 0 1px var(--tw-ring-color,transparent)}
+  #benchmark .ring-inset{--tw-ring-inset:inset}
+  #benchmark .ring-\[\#BCE7D6\]{--tw-ring-color:#BCE7D6}
+  #benchmark .ring-\[\#F0C4C0\]{--tw-ring-color:#F0C4C0}
+  #benchmark .bg-\[\#E7F8F1\]{background-color:#E7F8F1}
+  #benchmark .text-\[\#177A5C\]{color:#177A5C}
+  #benchmark .bg-\[\#FCEBEA\]{background-color:#FCEBEA}
+  #benchmark .text-\[\#A83A34\]{color:#A83A34}
+
+  #benchmark .transition{transition:transform .2s,box-shadow .2s,border-color .2s}
+  #benchmark .transition-transform{transition:transform .2s}
+  #benchmark .duration-200{transition-duration:.2s}
+  #benchmark .hover\:-translate-y-\[3px\]:hover{transform:translateY(-3px)}
+  #benchmark .hover\:border-brand:hover{border-color:#4898D8}
+  #benchmark .hover\:shadow-xl:hover{box-shadow:var(--shadow-md)}
+  #benchmark .group:hover .group-hover\:translate-x-1{transform:translateX(.25rem)}
+  #benchmark .focus-visible\:outline:focus-visible{outline-style:solid}
+  #benchmark .focus-visible\:outline-2:focus-visible{outline-width:2px}
+  #benchmark .focus-visible\:outline-offset-\[3px\]:focus-visible{outline-offset:3px}
+  #benchmark .focus-visible\:outline-brandDeep:focus-visible{outline-color:#2E7CBE}
+
+  @media (prefers-reduced-motion:reduce){
+    #benchmark .motion-reduce\:transition-none{transition:none}
+    #benchmark .motion-reduce\:hover\:translate-y-0:hover{transform:none}
+  }
+</style>
+<style>
+/* ============================================================
+   FACERINNA — Test Reports & Claims Vault (v3)
+   Theme matches the official FACERINNA showcase (facerinna-agm.html).
+   Live data: FACERINNA_Test_Report_Claims_Matrix (Google Sheet
+   15eD6XtMVN1BRm41cD9wm33QMwW16R5sS) — tabs are auto-detected by
+   header row, so gid order never breaks the page.
+   ============================================================ */
+
+:root{
+  --brand:#4898D8; --brand-deep:#2E7CBE; --brand-soft:#D9EAF8;
+  --navy:#16324F; --teal:#0E9AA3; --teal-deep:#0A7278; --teal-soft:#D6F3F1;
+  --gold:#C9A24B; --gold-deep:#A9812F; --gold-soft:#F5E9CE;
+  --bg:#EFF5FA; --surface:#FFFFFF; --surface-2:#E9F2FA; --line:#D9E5F1;
+  --ink:#1D344E; --ink-2:#52697F; --muted:#8299AD;
+  --amber:#8A6417; --amber-bg:#FFF7E6; --amber-line:#F0D9A0;
+  --red:#A83A34; --red-bg:#FCEBEA; --red-line:#F0C4C0;
+  --green:#177A5C; --green-bg:#E7F8F1; --green-line:#BCE7D6;
+  --shadow-sm:0 1px 2px rgba(23,50,79,.06), 0 4px 14px rgba(23,50,79,.05);
+  --shadow-md:0 10px 30px rgba(23,50,79,.10), 0 2px 6px rgba(23,50,79,.06);
+  --shadow-lg:0 26px 60px rgba(23,50,79,.20);
+  --radius:20px; --maxw:1180px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif;letter-spacing:-.01em;line-height:1.16;font-weight:600}
+img{max-width:100%;display:block}
+a{color:inherit}
+button{font:inherit}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:'Inter';font-weight:700;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand-deep)}
+.eyebrow .n{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--brand),var(--brand-deep));color:#fff;display:inline-grid;place-items:center;font-family:'Fraunces';font-size:.72rem;letter-spacing:0}
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .65s cubic-bezier(.2,.7,.2,1), transform .65s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* NO-JAVASCRIPT NOTICE — phone file previews (iOS Quick Look, in-app
+   attachment viewers) render HTML but block scripts, which would otherwise
+   leave this page looking empty and broken */
+.noscript-note{margin:0;padding:16px 22px;background:var(--amber-bg);border-bottom:1px solid var(--amber-line);
+  color:var(--amber);font-size:.88rem;line-height:1.55;text-align:center}
+.noscript-note b{display:block;font-size:.98rem;margin-bottom:4px}
+
+/* SCROLL PROGRESS */
+#scrollbar{position:fixed;top:0;left:0;height:3px;width:0;z-index:80;
+  background:linear-gradient(90deg,var(--brand),var(--teal),var(--gold));transition:width .1s linear}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:60;background:rgba(249,252,255,.78);backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom:1px solid var(--line);transition:box-shadow .3s}
+.nav.scrolled{box-shadow:var(--shadow-sm)}
+.nav-in{display:flex;align-items:center;justify-content:space-between;height:64px;gap:16px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;min-width:0}
+.logo-img{height:32px;width:auto;display:block;flex:0 0 auto}
+.brand-txt{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.brand-txt b{font-family:'Fraunces';font-size:.98rem;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-txt span{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--teal-deep);font-weight:700}
+.nav-links{display:flex;gap:4px;align-items:center}
+.nav-links a{padding:8px 13px;border-radius:999px;font-size:.83rem;font-weight:500;color:var(--ink-2);text-decoration:none;transition:.2s;white-space:nowrap}
+.nav-links a:hover{color:var(--brand-deep);background:var(--surface-2)}
+.nav-links a.active{color:var(--brand-deep);background:var(--brand-soft);font-weight:600}
+
+/* HERO — aurora */
+.hero{position:relative;overflow:hidden;padding:64px 0 68px;
+  background:linear-gradient(180deg,rgba(243,249,254,.55),rgba(239,245,250,.70))}
+/* ===== AURORA BACKGROUND =================================================
+   Drifting diagonal light, in place of the four radial blobs that were here
+   before. Two repeating linear gradients on one box: the colour bands, and
+   a white one cutting gaps into them so they read as separate ribbons
+   rather than a wash. Sliding background-position across 300% is what makes
+   the light travel — nothing is transformed, so it stays cheap.
+
+   Adapted, not transplanted. The original stacks a second copy with
+   mix-blend-mode:difference and relies on `invert` for light mode, which is
+   built for a dark surface: tried here first, it turned the brand blues to
+   grey-brown sludge over the pale hero. Difference and inversion are gone;
+   the bands are the FACERINNA palette laid straight over the light ground,
+   heavily blurred so they read as light rather than stripes.
+   ===================================================================== */
+.aurora{
+  /* Outer box: fixed, masked, and completely static. It never animates, so
+     the mask is rasterized once. */
+  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  -webkit-mask-image:radial-gradient(ellipse 110% 95% at 82% 4%,#000 8%,transparent 78%);
+  mask-image:radial-gradient(ellipse 110% 95% at 82% 4%,#000 8%,transparent 78%)}
+.aurora i{
+  /* Softness is built into the gradient, not applied afterwards.
+
+     This carried filter:blur(52px) over a layer larger than the viewport.
+     Measured: 7.2 fps with it, 30.6 fps without — the single most expensive
+     thing on the page, because a large-radius blur is recomputed over the
+     whole surface and is punishing anywhere the GPU is not doing the work.
+
+     Widely spaced rgba stops interpolate into each other smoothly, so the
+     bands read as diffuse light with no filter at all. The white "gaps"
+     layer is gone too: it cut hard ribbon edges that only a blur could
+     rescue. Movement is a transform, which the compositor can slide without
+     repainting. */
+  position:absolute;top:-12%;bottom:-12%;left:-30%;right:-30%;
+  background-image:repeating-linear-gradient(100deg,
+    rgba(46,124,190,.34) 0%,
+    rgba(127,178,229,.14) 8%,
+    rgba(72,152,216,.30) 16%,
+    rgba(169,217,212,.12) 25%,
+    rgba(14,154,163,.26) 33%,
+    rgba(127,178,229,.13) 41%,
+    rgba(46,124,190,.34) 50%);
+  background-size:62% 130%;
+  opacity:.85;
+  /* Paused by default; JS runs it only while the hero is on screen. A
+     continuously animated full-page layer under translucent sections costs
+     roughly half the frame rate (35 fps animating vs 60 static), because
+     every frame re-blends the whole stack above it. */
+  transform:translate3d(0,0,0);
+  animation:aurora 70s linear infinite;animation-play-state:paused}
+@keyframes aurora{
+  from{transform:translate3d(0,0,0)}
+  to{transform:translate3d(38%,0,0)}}
+.hero-grain{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.5;
+  background-image:radial-gradient(rgba(23,50,79,.055) 1px,transparent 1px);background-size:22px 22px}
+.hero-in{position:relative;z-index:2;max-width:54rem}
+.hero h1{font-size:clamp(2.2rem,4.6vw,3.4rem);margin:.55rem 0 .7rem;text-wrap:balance}
+.hero h1 .grad{background:linear-gradient(115deg,var(--brand) 10%,var(--brand-deep) 45%,var(--teal-deep) 75%,var(--brand) 100%);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 7s ease infinite}
+@keyframes shimmer{0%,100%{background-position:0% 0}50%{background-position:100% 0}}
+.hero .lede{font-size:1.07rem;color:var(--ink-2);max-width:44rem;margin:0 0 26px}
+.hero-stats{display:flex;gap:14px;flex-wrap:wrap}
+.hstat{background:rgba(255,255,255,.8);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:18px;
+  padding:14px 20px;box-shadow:var(--shadow-sm);min-width:118px;transition:transform .25s}
+.hstat:hover{transform:translateY(-4px)}
+.hstat .n{font-family:'Fraunces';font-weight:700;font-size:1.7rem;color:var(--brand-deep);line-height:1;font-variant-numeric:tabular-nums}
+.hstat .l{font-size:.72rem;color:var(--muted);margin-top:5px;letter-spacing:.02em}
+.sync-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px}
+.sync-badge{display:inline-flex;align-items:center;gap:7px;font-size:.76rem;font-weight:700;padding:7px 14px;border-radius:999px;border:1px solid transparent}
+.sync-badge .dot{width:8px;height:8px;border-radius:50%}
+.sync-badge.live{background:var(--green-bg);border-color:var(--green-line);color:var(--green)}
+.sync-badge.live .dot{background:var(--green);box-shadow:0 0 0 0 rgba(23,122,92,.4);animation:ping 2.2s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(23,122,92,.4)}70%{box-shadow:0 0 0 7px rgba(23,122,92,0)}100%{box-shadow:0 0 0 0 rgba(23,122,92,0)}}
+.sync-badge.cached{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber)}
+.sync-badge.cached .dot{background:var(--amber)}
+.sync-badge.loading{background:var(--surface-2);border-color:var(--line);color:var(--ink-2)}
+.sync-badge.loading .dot{background:var(--muted);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sync-retry{background:none;border:1px solid var(--line);color:var(--ink-2);font-size:.74rem;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer}
+.sync-retry:hover{border-color:var(--brand);color:var(--brand-deep)}
+
+/* SECTIONS */
+/* ===== DIGITAL SERENITY LAYER ===========================================
+   Ported from a React landing page. Its own palette is slate-on-black; the
+   colours here are the FACERINNA blues at the opacity a light page can take,
+   which is far lower than a dark one — the same values that read as a
+   whisper on black read as dirt on white.
+
+   Page-wide: a glow that follows the cursor, and a ring on click.
+   Hero only: the drawn grid, corner marks, drifting dots and the staged
+   word reveal. Structural decoration belongs where the page introduces
+   itself, not behind every table of lab results.
+   ===================================================================== */
+
+/* Cursor glow. Sits above the sections (z-index 1) and below the nav (60),
+   so it washes over content without ever covering the navigation. Fine
+   pointers only — it is attached in JS, which never runs on touch. */
+#mouse-glow{position:fixed;z-index:3;pointer-events:none;border-radius:50%;
+  top:0;left:0;width:min(46vw,420px);aspect-ratio:1;opacity:0;
+  background:radial-gradient(circle,rgba(46,124,190,.11),rgba(14,154,163,.06) 45%,transparent 72%);
+  /* Driven by transform, not left/top: those two are layout properties, so
+     every cursor move would re-lay-out and repaint a blurred 420px circle. */
+  will-change:transform,opacity;transform:translate3d(-50%,-50%,0);
+  transition:transform 90ms linear,opacity 320ms ease-out}
+
+.ripple-effect{position:fixed;z-index:70;pointer-events:none;width:10px;height:10px;
+  margin:-5px 0 0 -5px;border-radius:50%;border:1.5px solid rgba(46,124,190,.55);
+  animation:ripple-out .85s cubic-bezier(.22,.7,.3,1) forwards}
+@keyframes ripple-out{
+  from{transform:scale(.4);opacity:.9}
+  to{transform:scale(9);opacity:0}}
+
+/* Words rise, sharpen and settle. Delays are assigned in JS so the markup
+   keeps the heading as one readable sentence. */
+.word-animate{display:inline-block;opacity:0;animation:word-appear .8s ease-out forwards}
+@keyframes word-appear{
+  0%{opacity:0;transform:translateY(26px) scale(.9);filter:blur(9px)}
+  55%{opacity:.85;transform:translateY(7px) scale(.98);filter:blur(2px)}
+  100%{opacity:1;transform:none;filter:blur(0)}}
+
+/* Hero furniture. All of it decorative, so all of it aria-hidden and
+   pointer-events:none. */
+.hero-grid{position:absolute;inset:0;z-index:1;width:100%;height:100%;pointer-events:none}
+.hero-grid .grid-line{stroke:var(--brand);stroke-width:.6;opacity:0;
+  stroke-dasharray:6 6;stroke-dashoffset:1000;animation:grid-draw 2.4s ease-out forwards}
+@keyframes grid-draw{0%{stroke-dashoffset:1000;opacity:0}55%{opacity:.22}100%{stroke-dashoffset:0;opacity:.12}}
+.hero-grid .detail-dot{fill:var(--teal-deep);opacity:0;animation:dot-pulse 3.4s ease-in-out infinite}
+@keyframes dot-pulse{0%,100%{opacity:.18;transform:scale(1)}50%{opacity:.5;transform:scale(1.35)}}
+.corner-mark{position:absolute;z-index:1;width:34px;height:34px;pointer-events:none;opacity:0;
+  border:1px solid rgba(46,124,190,.22);animation:word-appear 1s ease-out forwards}
+.corner-mark.tl{top:18px;left:18px;border-right:0;border-bottom:0}
+.corner-mark.tr{top:18px;right:18px;border-left:0;border-bottom:0}
+.corner-mark.bl{bottom:18px;left:18px;border-right:0;border-top:0}
+.corner-mark.br{bottom:18px;right:18px;border-left:0;border-top:0}
+.float-dot{position:absolute;z-index:1;width:3px;height:3px;border-radius:50%;
+  background:var(--brand);pointer-events:none;opacity:0;animation:float-dot 7s ease-in-out infinite}
+@keyframes float-dot{
+  0%,100%{transform:translate(0,0);opacity:.18}
+  25%{transform:translate(5px,-12px);opacity:.5}
+  50%{transform:translate(-4px,-6px);opacity:.3}
+  75%{transform:translate(8px,-17px);opacity:.6}}
+@media(max-width:760px){.corner-mark{display:none}}
+
+section{padding:60px 0;position:relative;z-index:1;border-top:1px solid var(--line)}
+section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;background:var(--accent,var(--brand))}
+#glossary{--accent:linear-gradient(90deg,var(--brand),var(--brand-deep));background:linear-gradient(180deg,rgba(245,250,253,.80),rgba(239,247,246,.80))}
+#range{--accent:linear-gradient(90deg,var(--teal),var(--teal-deep));background:linear-gradient(180deg,rgba(255,255,255,.80),rgba(247,251,254,.80))}
+#labs{--accent:linear-gradient(90deg,var(--gold),var(--gold-deep));background:linear-gradient(180deg,rgba(252,249,243,.80),rgba(255,255,255,.80))}
+.sec-head{max-width:47rem;margin-bottom:32px;position:relative}
+.sec-head h2{font-size:clamp(1.75rem,3.3vw,2.45rem);margin:.5rem 0 .45rem;text-wrap:balance;position:relative;z-index:1}
+.sec-head p{color:var(--ink-2);font-size:1rem;position:relative;z-index:1}
+.sec-head .ghost{position:absolute;top:-34px;left:-14px;font-family:'Fraunces';font-weight:700;font-size:7.5rem;line-height:1;
+  color:var(--ink);opacity:.045;pointer-events:none;user-select:none;z-index:0}
+
+/* GLOSSARY */
+.gloss-tools{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
+.gloss-search{flex:1;min-width:220px;position:relative}
+.gloss-search input{width:100%;border:1.5px solid var(--line);border-radius:999px;padding:11px 18px 11px 40px;font:inherit;font-size:.9rem;outline:none;background:var(--surface);transition:border-color .2s, box-shadow .2s}
+.gloss-search input:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(72,152,216,.14)}
+.gloss-search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.gloss-count{font-size:.8rem;color:var(--muted);white-space:nowrap}
+.gloss-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-bottom:22px}
+.gchip{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--surface);border:1.5px solid var(--line);
+  border-radius:14px;padding:11px 14px;cursor:pointer;transition:.18s;font-family:'Inter';position:relative;overflow:hidden}
+.gchip::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(72,152,216,.10),transparent 70%);
+  transform:translateX(-100%);transition:transform .5s}
+.gchip:hover{border-color:var(--brand);transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.gchip:hover::after{transform:translateX(100%)}
+.gchip.active{border-color:var(--brand-deep);background:var(--brand-soft)}
+.gchip .code{font-family:'Fraunces';font-weight:700;font-size:1.05rem;color:var(--brand-deep)}
+.gchip .lbl{font-size:.71rem;color:var(--ink-2);line-height:1.3}
+.gloss-empty{display:none;text-align:center;color:var(--muted);padding:20px;font-size:.9rem}
+.gloss-detail{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-md)}
+.gd-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.gd-code{font-family:'Fraunces';font-weight:700;font-size:1.7rem;color:var(--brand-deep);background:var(--brand-soft);
+  border-radius:12px;padding:4px 14px;flex:0 0 auto}
+.gd-name{font-size:1.08rem;font-weight:700}
+.gd-dir{margin-left:auto;font-size:.76rem;font-weight:700;letter-spacing:.03em;padding:6px 12px;border-radius:999px;white-space:nowrap}
+.gd-dir.lower{background:var(--green-bg);color:var(--green)}
+.gd-dir.higher{background:var(--brand-soft);color:var(--brand-deep)}
+.gd-dir.other{background:var(--surface-2);color:var(--ink-2)}
+.gd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:14px 0}
+.gd-box{background:var(--surface-2);border-radius:12px;padding:11px 13px}
+.gd-box .k{font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.gd-box .v{font-size:.86rem;color:var(--ink);line-height:1.4}
+.gd-marketing{background:linear-gradient(150deg,var(--brand-soft),#FFF);border:1.5px dashed var(--brand);border-radius:14px;padding:14px 16px;margin-top:6px}
+.gd-marketing .k{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--brand-deep);margin-bottom:4px}
+.gd-marketing .v{font-size:.94rem;color:var(--navy);font-weight:600}
+.gd-note{margin-top:10px;font-size:.8rem;color:var(--ink-2);background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:10px;padding:9px 12px}
+
+/* HOVER GLOSSARY CARD — appears on hover of any .term, hides on leave */
+.term{color:var(--brand-deep);font-weight:700;cursor:help;border-bottom:1.5px dotted var(--brand);padding-bottom:1px;transition:.15s}
+.term:hover{background:var(--brand-soft);border-bottom-style:solid;border-radius:3px 3px 0 0}
+#hovercard{position:fixed;z-index:130;width:min(360px,calc(100vw - 28px));background:var(--surface);border:1px solid var(--line);
+  border-radius:16px;box-shadow:var(--shadow-lg);padding:16px 18px;pointer-events:none;opacity:0;transform:translateY(6px) scale(.98);
+  transition:opacity .18s cubic-bezier(.2,.7,.3,1), transform .18s cubic-bezier(.2,.7,.3,1)}
+#hovercard.show{opacity:1;transform:none}
+#hovercard::before{content:"";position:absolute;top:-6px;left:var(--arrow-x,28px);width:12px;height:12px;background:var(--surface);
+  border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg)}
+#hovercard.flip::before{top:auto;bottom:-6px;transform:rotate(225deg)}
+#hovercard .hc-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+#hovercard .hc-code{font-family:'Fraunces';font-weight:700;font-size:1.15rem;color:var(--brand-deep);background:var(--brand-soft);border-radius:9px;padding:2px 10px}
+#hovercard .hc-name{font-size:.85rem;font-weight:700;line-height:1.3}
+#hovercard .hc-dir{font-size:.66rem;font-weight:800;padding:3px 9px;border-radius:999px;margin-left:auto;white-space:nowrap}
+#hovercard .hc-row{display:flex;gap:8px;font-size:.78rem;color:var(--ink-2);margin:4px 0;line-height:1.45}
+#hovercard .hc-row b{flex:0 0 84px;color:var(--muted);font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
+#hovercard .hc-mkt{margin-top:8px;background:linear-gradient(150deg,var(--brand-soft),#FFF);border:1px dashed var(--brand);
+  border-radius:10px;padding:8px 11px;font-size:.8rem;font-weight:600;color:var(--navy)}
+#hovercard .hc-note{margin-top:7px;font-size:.72rem;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:8px;padding:6px 9px}
+
+/* PRODUCT RANGE */
+.range-tools{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.range-search{flex:1;min-width:200px;position:relative}
+.range-search input{width:100%;border:1.5px solid var(--line);border-radius:999px;padding:10px 16px 10px 38px;font:inherit;font-size:.88rem;outline:none;background:var(--surface);transition:.2s}
+.range-search input:focus{border-color:var(--teal);box-shadow:0 0 0 4px rgba(14,154,163,.12)}
+.range-search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.range-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.rf{background:var(--surface);border:1.5px solid var(--line);border-radius:999px;padding:8px 15px;font-size:.8rem;font-weight:600;
+  color:var(--ink-2);cursor:pointer;transition:.18s;display:inline-flex;align-items:center;gap:7px}
+.rf .swatch{width:9px;height:9px;border-radius:50%;background:var(--sc,var(--muted))}
+.rf .ct{font-size:.68rem;background:var(--surface-2);border-radius:999px;padding:1px 7px;color:var(--muted)}
+.rf:hover{border-color:var(--sc,var(--teal));transform:translateY(-2px)}
+.rf.active{background:var(--navy);border-color:var(--navy);color:#fff}
+.rf.active .ct{background:rgba(255,255,255,.18);color:#fff}
+.thumb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:18px;perspective:1200px}
+.thumb{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--sc,var(--teal));border-radius:var(--radius);padding:16px;
+  box-shadow:var(--shadow-sm);cursor:pointer;position:relative;overflow:hidden;text-align:left;
+  transition:box-shadow .3s, border-color .3s;transform-style:preserve-3d;will-change:transform}
+.thumb .glare{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;
+  background:radial-gradient(280px circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.55),transparent 60%)}
+.thumb:hover{box-shadow:var(--shadow-lg)}
+.thumb:hover .glare{opacity:1}
+.thumb .cat{font-size:.62rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--sc,var(--teal-deep))}
+/* product bubble — circular, series-tinted; pack-shot's white background is
+   blended away with mix-blend-mode:multiply so the bottle floats in the bubble */
+.thumb .art{aspect-ratio:1/1;width:100%;display:grid;place-items:center;margin:9px 0 12px;border-radius:50%;
+  position:relative;isolation:isolate;
+  background:radial-gradient(circle at 50% 36%,#fff 44%,color-mix(in srgb,var(--sc,#0E9AA3) 13%,#fff) 100%);
+  border:1px solid color-mix(in srgb,var(--sc,#0E9AA3) 20%,#fff);
+  box-shadow:inset 0 -20px 30px -22px color-mix(in srgb,var(--sc,#0E9AA3) 60%,transparent),
+             0 10px 24px -14px color-mix(in srgb,var(--sc,#0E9AA3) 55%,transparent);
+  transition:box-shadow .35s,border-color .3s}
+.thumb .art::after{content:"";position:absolute;inset:-2px;border-radius:50%;pointer-events:none;
+  background:conic-gradient(from 180deg,transparent 55%,color-mix(in srgb,var(--sc,#0E9AA3) 55%,transparent) 85%,transparent);
+  opacity:0;transition:opacity .4s}
+.thumb:hover .art::after{opacity:.5}
+.thumb:hover .art{border-color:color-mix(in srgb,var(--sc,#0E9AA3) 45%,#fff);
+  box-shadow:inset 0 -20px 30px -22px color-mix(in srgb,var(--sc,#0E9AA3) 60%,transparent),
+             0 18px 34px -14px color-mix(in srgb,var(--sc,#0E9AA3) 65%,transparent)}
+.thumb .art img{max-height:78%;max-width:76%;width:auto;object-fit:contain;mix-blend-mode:multiply;
+  transition:transform .45s cubic-bezier(.2,.7,.3,1.25)}
+.thumb:hover .art img{transform:translateY(-6px) scale(1.07)}
+.thumb .art .ph{font-size:2.4rem;opacity:.55}
+.thumb h3{font-size:.92rem;margin:.1rem 0 .2rem;font-weight:600;line-height:1.28}
+.thumb .code-line{font-size:.7rem;color:var(--muted);font-family:'Fraunces'}
+.thumb .databadge{margin-top:9px;display:inline-flex;align-items:center;gap:6px;font-size:.68rem;font-weight:700;padding:5px 10px;border-radius:999px;background:var(--green-bg);color:var(--green)}
+.thumb .tag-best{position:absolute;top:14px;right:12px;background:var(--brand);color:#fff;font-size:.56rem;font-weight:800;
+  letter-spacing:.06em;padding:4px 8px;border-radius:999px;box-shadow:0 4px 10px rgba(46,124,190,.4)}
+.range-empty{display:none;text-align:center;color:var(--muted);padding:26px;font-size:.9rem}
+
+/* LABS */
+.lab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+
+/* ---- COMPARE ---------------------------------------------------------
+   Horizontal bars: many rows, long labels, one measure. Bars are 18px with a
+   4px radius on the data end only — the axis end stays square so the zero
+   line reads as a baseline rather than a pill. Rows are 2px apart so adjacent
+   fills never touch. Every bar is directly labelled, which is also the relief
+   the contrast rule asks for. */
+.cmp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:20px 22px 16px;box-shadow:var(--shadow-sm)}
+.cmp-controls{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;margin-bottom:18px}
+.cmp-switch{display:inline-flex;gap:2px;padding:3px;background:var(--surface-2);border-radius:999px}
+.cmp-tab{border:0;background:transparent;color:var(--ink-2);font-size:.86rem;font-weight:600;
+  padding:7px 14px;border-radius:999px;cursor:pointer;transition:.18s}
+.cmp-tab:hover{color:var(--brand-deep)}
+.cmp-tab.is-on{background:var(--surface);color:var(--brand-deep);box-shadow:var(--shadow-sm)}
+.cmp-tab:focus-visible,.cmp-toggle:focus-visible,.cmp-row:focus-visible{outline:2px solid var(--brand-deep);outline-offset:2px}
+.cmp-filter{display:inline-flex;align-items:center;gap:8px;font-size:.82rem;color:var(--ink-2)}
+.cmp-filter select{font:inherit;font-size:.84rem;color:var(--ink);background:var(--surface);
+  border:1px solid var(--line);border-radius:999px;padding:7px 12px;max-width:16rem}
+.cmp-toggle{margin-left:auto;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+  font-size:.82rem;font-weight:600;padding:7px 14px;border-radius:999px;cursor:pointer;transition:.18s}
+.cmp-toggle:hover{border-color:var(--brand);color:var(--brand-deep)}
+.cmp-toggle[aria-pressed="true"]{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-deep)}
+
+.cmp-plot{display:flex;flex-direction:column;gap:2px}
+/* display:flex outranks the hidden attribute's UA rule, so the toggle showed
+   the table without ever hiding the bars. */
+.cmp-plot[hidden],.cmp-table[hidden]{display:none}
+.cmp-row{display:grid;grid-template-columns:minmax(10rem,22rem) 1fr;gap:14px;align-items:center;
+  width:100%;text-align:left;border:0;background:transparent;padding:5px 0;font:inherit;border-radius:8px}
+.cmp-row[data-clickable="1"]{cursor:pointer}
+.cmp-row[data-clickable="1"]:hover{background:var(--surface-2)}
+.cmp-name{min-width:0;font-size:.84rem;color:var(--ink);line-height:1.35}
+.cmp-name>b{display:block;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Its own line. Inline, it was the first thing the ellipsis ate, so nearly
+   every row showed a torn fragment of it or lost it outright. */
+.cmp-sub{display:block;color:var(--muted);font-size:.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmp-barwrap{display:flex;align-items:center;gap:10px;min-width:0}
+.cmp-track{display:block;flex:1 1 auto;min-width:0;height:18px;background:var(--surface-2);border-radius:0 4px 4px 0}
+.cmp-bar{display:block;height:100%;min-width:2px;background:var(--brand-deep);border-radius:0 4px 4px 0;
+  transition:width .5s cubic-bezier(.2,.7,.2,1),background .18s}
+.cmp-row:hover .cmp-bar,.cmp-row:focus-visible .cmp-bar{background:var(--brand)}
+.cmp-val{flex:0 0 auto;min-width:1.6rem;text-align:right;font-size:.84rem;font-weight:700;
+  color:var(--ink);font-variant-numeric:tabular-nums}
+
+.cmp-foot{margin:14px 0 0;font-size:.8rem;color:var(--muted)}
+.cmp-note{margin:8px 0 0;font-size:.78rem;color:var(--amber);background:var(--amber-bg);
+  border:1px solid var(--amber-line);border-radius:10px;padding:8px 12px}
+.cmp-table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:4px}
+.cmp-table th,.cmp-table td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+.cmp-table th{color:var(--ink-2);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+.cmp-table td:last-child,.cmp-table th:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.cmp-empty{padding:26px 0;color:var(--muted);font-size:.88rem}
+@media(max-width:640px){
+  .cmp-row{grid-template-columns:1fr;gap:4px}
+  .cmp-toggle{margin-left:0}
+}
+@media(prefers-reduced-motion:reduce){.cmp-bar{transition:none}}
+.bench-card{display:flex;flex-wrap:wrap;gap:18px 26px;align-items:center;justify-content:space-between;
+  text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);
+  border-left:4px solid var(--red);border-radius:16px;padding:22px 24px;box-shadow:var(--shadow-sm);
+  transition:transform .22s,box-shadow .22s,border-color .22s}
+.bench-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:var(--brand)}
+.bench-card:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+.bench-body{flex:1 1 360px;min-width:0}
+.bench-card h3{margin:8px 0 6px;font-size:1.1rem;color:var(--navy)}
+.bench-card p{margin:0;font-size:.9rem;line-height:1.6;color:var(--ink-2);max-width:62ch}
+.bench-flag{display:inline-block;font-size:.74rem;font-weight:600;background:var(--red-bg);
+  border:1px solid var(--red-line);color:var(--red);border-radius:999px;padding:4px 11px}
+.bench-alt{margin:12px 0 0;font-size:.82rem;line-height:1.55;color:var(--ink-2)}
+.bench-alt a{color:var(--brand-deep);font-weight:700}
+.bench-go{flex:0 0 auto;font-weight:700;font-size:.95rem;color:#fff;white-space:nowrap;
+  background:linear-gradient(120deg,var(--brand),var(--brand-deep));
+  border-radius:999px;padding:13px 26px;box-shadow:0 12px 28px rgba(46,124,190,.34)}
+@media (prefers-reduced-motion: reduce){ .bench-card{transition:none} .bench-card:hover{transform:none} }
+.lab-card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow-sm);transition:.22s}
+.lab-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-md)}
+.lab-card .name{font-size:.88rem;font-weight:700;color:var(--ink);line-height:1.35;font-family:'Fraunces'}
+.lab-card .meta{font-size:.76rem;color:var(--ink-2);margin-top:8px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.lab-card .meta b{color:var(--gold-deep);font-family:'Fraunces';font-size:1.05rem}
+
+/* VIEW TOGGLE + SERIES CARDS */
+.view-toggle{display:inline-flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:999px;padding:4px;margin-bottom:20px}
+.vt{background:none;border:0;border-radius:999px;padding:8px 18px;font-size:.83rem;font-weight:600;
+  color:var(--ink-2);cursor:pointer;transition:.2s}
+.vt:hover{color:var(--brand-deep)}
+.vt.active{background:var(--navy);color:#fff;box-shadow:var(--shadow-sm)}
+/* ===== ANIMATED GRADIENT BORDER =========================================
+   A conic gradient painted into the border box and rotated by animating
+   --gradient-angle. Two background layers: the first fills the padding box
+   with the card's own surface colour, the second fills the border box with
+   the gradient, so only the border shows it.
+
+   @property is what makes this animate at all. An unregistered custom
+   property is an untyped string to the animation engine, which cannot
+   interpolate it — the angle would jump 0deg to 360deg with nothing in
+   between. Registering it as <angle> gives a real tween. Browsers without
+   @property (Firefox before 128) show a static gradient border instead of
+   nothing, which is a fine floor.
+
+   Tunable per element: --gb-primary / --gb-secondary / --gb-accent,
+   --gb-bg, --gb-width, --gb-radius, --gb-speed. Pair the base class with
+   one of the three motion classes.
+   ===================================================================== */
+@property --gradient-angle{syntax:"<angle>";initial-value:0deg;inherits:false}
+@keyframes gradient-rotate{to{--gradient-angle:360deg}}
+.grad-border{
+  --gb-primary:var(--brand-deep);
+  --gb-secondary:var(--teal);
+  --gb-accent:#fff;
+  --gb-bg:var(--surface);
+  --gb-width:2px;
+  --gb-radius:var(--radius);
+  --gb-speed:5s;
+  border:var(--gb-width) solid transparent;
+  border-radius:var(--gb-radius);
+  background-image:
+    linear-gradient(var(--gb-bg),var(--gb-bg)),
+    conic-gradient(from var(--gradient-angle),
+      var(--gb-primary) 0%,
+      var(--gb-secondary) 25%,
+      var(--gb-accent) 30%,
+      var(--gb-secondary) 35%,
+      var(--gb-primary) 50%,
+      var(--gb-secondary) 75%,
+      var(--gb-accent) 80%,
+      var(--gb-secondary) 85%,
+      var(--gb-primary) 100%);
+  background-clip:padding-box,border-box;
+  background-origin:padding-box,border-box}
+.grad-border-auto{animation:gradient-rotate var(--gb-speed) linear infinite}
+.grad-border-hover:hover{animation:gradient-rotate var(--gb-speed) linear infinite}
+.grad-border-stop-hover{animation:gradient-rotate var(--gb-speed) linear infinite}
+.grad-border-stop-hover:hover{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){
+  .grad-border-auto,.grad-border-hover:hover,.grad-border-stop-hover{animation:none}
+}
+
+.series-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:18px}
+/* The card carries the gradient border, tinted from its own series colour,
+   and only turns while the cursor is on it — eight cards spinning at once on
+   a reference page people read is noise, not polish. The top edge stays
+   thicker so the card silhouette is unchanged. */
+.series-card{position:relative;overflow:hidden;text-align:left;cursor:pointer;
+  --gb-primary:color-mix(in srgb,var(--sc,#0E9AA3) 82%,#0b2233);
+  --gb-secondary:var(--sc,#0E9AA3);
+  --gb-accent:color-mix(in srgb,var(--sc,#0E9AA3) 22%,#fff);
+  --gb-bg:var(--surface);--gb-width:1.5px;--gb-speed:4s;
+  border-top-width:4px;
+  padding:20px 20px 18px;box-shadow:var(--shadow-sm);transition:transform .3s,box-shadow .3s}
+.series-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg)}
+.series-card::after{content:"";position:absolute;right:-46px;top:-46px;width:150px;height:150px;border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--sc,#0E9AA3) 22%,transparent),transparent 70%);pointer-events:none}
+.series-card .sc-no{font-family:'Fraunces';font-weight:700;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--sc,var(--teal-deep))}
+.series-card h4{font-family:'Fraunces';font-size:1.16rem;font-weight:700;margin:.2rem 0 .5rem;color:var(--navy);line-height:1.25;position:relative;z-index:1}
+.sc-bubbles{display:flex;margin:12px 0 14px;position:relative;z-index:1}
+.sc-bub{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;margin-right:-14px;
+  background:radial-gradient(circle at 50% 36%,#fff 45%,color-mix(in srgb,var(--sc,#0E9AA3) 16%,#fff));
+  border:1px solid color-mix(in srgb,var(--sc,#0E9AA3) 26%,#fff);box-shadow:var(--shadow-sm);overflow:hidden}
+.sc-bub img{max-width:72%;max-height:78%;object-fit:contain;mix-blend-mode:multiply}
+.sc-bub.more{font-size:.72rem;font-weight:800;color:var(--sc,var(--teal-deep));background:var(--surface-2)}
+.sc-stats{display:flex;gap:8px;flex-wrap:wrap;position:relative;z-index:1}
+.sc-stats span{font-size:.7rem;font-weight:700;background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:4px 11px}
+.sc-cta{margin-top:12px;font-size:.76rem;font-weight:700;color:var(--sc,var(--teal-deep));position:relative;z-index:1}
+
+/* series modal extras */
+.smodal{z-index:98}
+.sec-mini{font-family:'Inter';font-size:.7rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 12px}
+.pimg.cluster{display:flex !important;align-items:center;justify-content:center;gap:0}
+.pimg.cluster img{max-height:58% !important;max-width:40% !important;margin-right:-8%;
+  filter:drop-shadow(0 8px 12px rgba(23,50,79,.16))}
+.pimg.cluster img:last-child{margin-right:0}
+.series-products{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px;margin-bottom:20px}
+.sp-card{text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 10px;
+  cursor:pointer;transition:.22s;box-shadow:var(--shadow-sm)}
+.sp-card:hover{transform:translateY(-5px);box-shadow:var(--shadow-md);border-color:color-mix(in srgb,var(--sc,#0E9AA3) 45%,#fff)}
+.sp-bub{aspect-ratio:1/1;border-radius:50%;display:grid;place-items:center;margin-bottom:9px;overflow:hidden;
+  background:radial-gradient(circle at 50% 36%,#fff 45%,color-mix(in srgb,var(--sc,#0E9AA3) 15%,#fff));
+  border:1px solid color-mix(in srgb,var(--sc,#0E9AA3) 22%,#fff)}
+.sp-bub img{max-width:74%;max-height:80%;object-fit:contain;mix-blend-mode:multiply;transition:transform .35s}
+.sp-card:hover .sp-bub img{transform:scale(1.08) translateY(-3px)}
+.sp-card .n{font-size:.76rem;font-weight:600;line-height:1.3;color:var(--ink)}
+.sp-card .r{font-size:.66rem;color:var(--muted);margin-top:3px}
+.variant-note{display:block;margin-top:8px;font-size:.72rem;color:var(--ink-2);background:var(--surface-2);
+  border-radius:9px;padding:7px 11px}
+
+/* PRODUCT MODAL */
+.pmodal{position:fixed;inset:0;z-index:100;display:none}
+.pmodal.open{display:block}
+.pmodal .backdrop{position:absolute;inset:0;background:rgba(11,28,46,.6);backdrop-filter:blur(7px);animation:fadein .25s}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.ppanel{position:relative;max-width:900px;margin:3.5vh auto;max-height:93vh;overflow-y:auto;
+  background:var(--bg);border-radius:26px;box-shadow:var(--shadow-lg);
+  animation:ppop .38s cubic-bezier(.16,1.2,.3,1)}
+@keyframes ppop{from{opacity:0;transform:translateY(34px) scale(.96)}to{opacity:1;transform:none}}
+.pclose{position:absolute;top:16px;right:16px;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
+  background:var(--surface);cursor:pointer;font-size:1.02rem;color:var(--ink-2);z-index:6;box-shadow:var(--shadow-sm);transition:.2s}
+.pclose:hover{color:#fff;background:var(--navy);transform:rotate(90deg)}
+.phead{padding:26px 28px 26px;
+  background:radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--sc,#4898D8) 16%, #fff), #fff 72%);
+  border-bottom:1px solid var(--line);border-radius:26px 26px 0 0}
+.phead-top{text-align:center;max-width:44rem;margin:0 auto 4px}
+.phead .chip-row{justify-content:center}
+
+/* SPOTLIGHT — product in a bubble, evidence radiating out (per the LRP-style layout) */
+.spotlight{display:grid;grid-template-columns:1fr minmax(150px,196px) 1fr;gap:18px;align-items:center;margin-top:14px}
+.phead .pimg{aspect-ratio:1/1;width:100%;display:grid;place-items:center;border-radius:50%;position:relative;isolation:isolate;
+  background:radial-gradient(circle at 50% 36%,#fff 44%,color-mix(in srgb,var(--sc,#4898D8) 15%,#fff) 100%);
+  border:1px solid color-mix(in srgb,var(--sc,#4898D8) 26%,#fff);
+  box-shadow:inset 0 -26px 40px -28px color-mix(in srgb,var(--sc,#4898D8) 65%,transparent),
+             0 20px 44px -20px color-mix(in srgb,var(--sc,#4898D8) 60%,transparent)}
+.phead .pimg::before{content:"";position:absolute;inset:-10px;border-radius:50%;pointer-events:none;
+  border:1px dashed color-mix(in srgb,var(--sc,#4898D8) 32%,transparent);
+  animation:spin 34s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.phead .pimg img{max-height:80%;max-width:78%;width:auto;object-fit:contain;mix-blend-mode:multiply}
+.phead .pimg .ph{font-size:2.9rem;opacity:.5}
+
+.cal-col{display:flex;flex-direction:column;gap:15px;min-width:0}
+.cal{text-align:right;position:relative;opacity:0;transform:translateX(14px);
+  animation:calIn .5s cubic-bezier(.2,.8,.3,1) forwards}
+.cal-col.right .cal{text-align:left;transform:translateX(-14px)}
+@keyframes calIn{to{opacity:1;transform:none}}
+.cal-t{font-size:.68rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--cc,var(--brand-deep));line-height:1.25}
+.cal-rule{height:2px;margin:5px 0 6px;border-radius:2px;
+  background:linear-gradient(270deg,var(--cc,var(--brand-deep)),transparent)}
+.cal-col.right .cal-rule{background:linear-gradient(90deg,var(--cc,var(--brand-deep)),transparent)}
+.cal-v{font-size:.79rem;line-height:1.5;color:var(--ink);font-weight:600}
+.cal-v .term{white-space:nowrap}
+/* "+N more measures" is a real control: it opens the measures behind the
+   headline one. Sized for a fingertip, and it says which way it will go. */
+.cal-more{display:inline-flex;align-items:center;gap:5px;margin-top:4px;padding:3px 8px 3px 7px;
+  font:inherit;font-size:.72rem;font-weight:600;line-height:1.35;
+  color:var(--cc,var(--brand-deep));background:color-mix(in srgb,var(--cc,#4898D8) 9%,transparent);
+  border:1px solid color-mix(in srgb,var(--cc,#4898D8) 22%,transparent);border-radius:999px;
+  cursor:pointer;transition:background .15s,border-color .15s}
+.cal-more:hover{background:color-mix(in srgb,var(--cc,#4898D8) 17%,transparent);
+  border-color:color-mix(in srgb,var(--cc,#4898D8) 40%,transparent)}
+.cal-more:focus-visible{outline:2px solid var(--cc,var(--brand-deep));outline-offset:2px}
+.cal-more .chev{display:inline-block;font-size:.62rem;transition:transform .2s}
+/* Inline icons in place of emoji. An emoji is drawn by the reader's OS, so it
+   arrives in a different style and a colour nothing here chose; these inherit
+   the text colour and size and look the same everywhere. */
+.i{width:1.05em;height:1.05em;vertical-align:-.16em;flex:none}
+.seg-tab .ic .i,.empty-state .ic .i{width:1em;height:1em}
+.pimg .ph .i,.sp-bub .i{width:2.4rem;height:2.4rem;opacity:.45}
+.cal-more[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.cal-rest{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:5px;
+  font-size:.755rem;font-weight:500;color:var(--ink-2);line-height:1.45}
+.cal-rest li{position:relative;padding-right:11px}
+.cal-rest li::after{content:"";position:absolute;right:0;top:.52em;width:5px;height:5px;border-radius:50%;
+  background:color-mix(in srgb,var(--cc,#4898D8) 55%,transparent)}
+.cal-col.right .cal-rest li{padding-right:0;padding-left:11px}
+.cal-col.right .cal-rest li::after{right:auto;left:0}
+.cal-rest[hidden]{display:none}
+.cal-empty{grid-column:1/-1;text-align:center;font-size:.82rem;color:var(--muted);padding:6px 0}
+@media(max-width:760px){
+  .spotlight{grid-template-columns:1fr;gap:14px}
+  .phead .pimg{max-width:200px;margin:0 auto;order:-1}
+  .cal,.cal-col.right .cal{text-align:center}
+  .cal-rule,.cal-col.right .cal-rule{background:linear-gradient(90deg,transparent,var(--cc,var(--brand-deep)),transparent)}
+  /* 24px is a fine mouse target and a poor thumb one — give it real height
+     on touch, and centre the revealed measures with the rest of the card. */
+  .cal-more{padding:9px 14px;min-height:40px;margin-top:6px}
+  .cal-rest li,.cal-col.right .cal-rest li{padding:0}
+  .cal-rest li::after{display:none}
+  .cal-rest{gap:7px}
+}
+.phead .series-tag{display:inline-flex;align-items:center;gap:6px;font-size:.64rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:#fff;background:var(--sc,var(--teal));padding:4px 11px;border-radius:999px}
+.phead h3{font-size:1.3rem;margin:.4rem 0 .25rem}
+.phead .sub-line{font-size:.8rem;color:var(--ink-2)}
+.phead .chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.phead .mini-chip{font-size:.68rem;font-weight:700;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);
+  border-radius:8px;padding:3px 9px;font-family:'Fraunces'}
+.phead .mini-chip.link{text-decoration:none;color:var(--brand-deep);border-color:var(--brand-soft);background:var(--brand-soft);
+  cursor:pointer;transition:.18s}
+.phead .mini-chip.link:hover{background:var(--brand);color:#fff;transform:translateY(-1px)}
+
+/* segment switcher with sliding glider */
+.seg-wrap{position:sticky;top:0;z-index:5;background:rgba(239,245,250,.92);backdrop-filter:blur(10px);
+  padding:14px 28px 12px;border-bottom:1px solid var(--line)}
+.seg-tabs{position:relative;display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:16px;padding:5px;gap:0}
+.seg-glider{position:absolute;top:5px;bottom:5px;left:5px;width:calc((100% - 10px)/3);border-radius:12px;
+  background:linear-gradient(125deg,var(--sc,#2E7CBE), color-mix(in srgb, var(--sc,#2E7CBE) 70%, #16324F));
+  box-shadow:var(--shadow-md);transition:transform .32s cubic-bezier(.3,1.25,.4,1);pointer-events:none}
+.seg-tab{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:1px;background:none;border:0;
+  padding:9px 6px;border-radius:12px;cursor:pointer;transition:color .25s}
+.seg-tab .ic{font-size:1.05rem}
+.seg-tab .t{font-family:'Fraunces';font-weight:700;font-size:.85rem;color:var(--navy);transition:color .25s}
+.seg-tab .c{font-size:.65rem;color:var(--ink-2);font-weight:600;transition:color .25s}
+.seg-tab.active .t,.seg-tab.active .c{color:#fff}
+.seg-body{padding:22px 28px 30px}
+.seg-panel{display:none}
+.seg-panel.show{display:block;animation:panelin .3s cubic-bezier(.2,.8,.3,1)}
+@keyframes panelin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* test-report timeline */
+.timeline{position:relative;padding-left:26px}
+.timeline::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;
+  background:linear-gradient(180deg,var(--sc,var(--teal)),var(--line))}
+.rep-card{position:relative;border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;
+  background:var(--surface);box-shadow:var(--shadow-sm);transition:.22s}
+.rep-card:hover{box-shadow:var(--shadow-md);transform:translateX(3px)}
+.rep-card::before{content:"";position:absolute;left:-24px;top:22px;width:12px;height:12px;border-radius:50%;
+  background:var(--sc,var(--teal));border:2.5px solid #fff;box-shadow:0 0 0 2px var(--sc,var(--teal))}
+.rc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.rc-no{font-family:'Fraunces';font-weight:700;font-size:1.02rem;color:var(--brand-deep)}
+.rc-lab{font-size:.76rem;color:var(--ink-2)}
+.rc-date{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;font-weight:700;background:var(--surface-2);
+  color:var(--ink-2);border-radius:999px;padding:5px 11px;white-space:nowrap}
+.subject-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.subj{font-size:.72rem;font-weight:600;background:var(--surface-2);border-radius:9px;padding:4px 10px;color:var(--ink)}
+.subj b{color:var(--muted);font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.subj.nohuman{background:var(--teal-soft);color:var(--teal-deep)}
+.rc-params{margin-top:8px}
+.rc-params .k{font-size:.62rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.plist{display:flex;flex-wrap:wrap;gap:6px}
+.pitem{font-size:.76rem;font-weight:600;background:var(--brand-soft);color:var(--brand-deep);border-radius:999px;padding:4px 11px}
+
+/* technical claims */
+.tc-card{border:1px solid var(--line);border-radius:18px;margin-bottom:16px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden}
+.tc-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:13px 18px;background:linear-gradient(90deg, color-mix(in srgb, var(--sc,#2E7CBE) 10%, #fff), #fff);border-bottom:1px solid var(--line)}
+.tc-head b{font-family:'Fraunces';color:var(--brand-deep);font-size:.97rem}
+.tc-head .lab{font-size:.72rem;color:var(--ink-2)}
+.tc-body{padding:16px 18px}
+.cgroup{margin-bottom:14px}
+.cgroup:last-child{margin-bottom:0}
+.cgroup h6{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-family:'Inter';font-size:.7rem;font-weight:800;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--cg,var(--brand-deep))}
+.cgroup h6 .cnt{background:color-mix(in srgb, var(--cg,#2E7CBE) 14%, #fff);color:var(--cg);border-radius:999px;padding:1px 8px;font-size:.66rem}
+.cgroup ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.cgroup li{position:relative;font-size:.84rem;line-height:1.5;color:var(--ink);background:color-mix(in srgb, var(--cg,#2E7CBE) 6%, #fff);
+  border:1px solid color-mix(in srgb, var(--cg,#2E7CBE) 16%, #fff);border-radius:11px;padding:8px 12px 8px 32px;transition:.18s}
+.cgroup li:hover{transform:translateX(3px);border-color:color-mix(in srgb, var(--cg,#2E7CBE) 40%, #fff)}
+.cgroup li::before{content:"✓";position:absolute;left:11px;top:8px;font-weight:800;color:var(--cg,var(--brand-deep));font-size:.8rem}
+.cgroup.instrument{--cg:#2E7CBE}
+.cgroup.panel{--cg:#A9812F}
+.cgroup.other{--cg:#0A7278}
+.disc-box{background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:13px;padding:12px 15px;
+  font-size:.8rem;color:var(--amber);font-style:italic;line-height:1.55}
+.disc-box b{font-style:normal;display:flex;align-items:center;gap:6px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-size:.66rem}
+.disc-box .rep-ref{font-style:normal;font-weight:700;font-size:.68rem;background:#fff;border:1px solid var(--amber-line);
+  border-radius:999px;padding:2px 9px;margin-left:6px}
+
+/* marketing claims */
+.mk-block{border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);
+  margin-bottom:18px;overflow:hidden}
+.mk-block > .mk-head{display:flex;align-items:center;gap:9px;padding:13px 18px;border-bottom:1px solid var(--line);
+  font-family:'Fraunces';font-weight:700;font-size:.98rem;color:var(--navy);
+  background:linear-gradient(90deg, color-mix(in srgb, var(--mk,#177A5C) 10%, #fff), #fff)}
+.mk-block > .mk-head .sub{font-family:'Inter';font-weight:600;font-size:.7rem;color:var(--muted);margin-left:auto;text-transform:none;letter-spacing:0}
+.mk-body{padding:16px 18px}
+.mk-block.sku{--mk:#177A5C}
+.mk-block.series-blk{--mk:#7A67D0}
+.claim-pills{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.claim-pill{position:relative;font-size:.82rem;font-weight:600;line-height:1.45;color:var(--green);background:var(--green-bg);
+  border:1px solid var(--green-line);border-radius:11px;padding:8px 12px 8px 31px;transition:.18s}
+.claim-pill::before{content:"✓";position:absolute;left:11px;top:8px;font-weight:800;font-size:.8rem}
+.claim-pill:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+.series-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.series-banner .sb-name{font-family:'Fraunces';font-weight:700;color:#fff;background:var(--sc,#7A67D0);border-radius:11px;padding:6px 14px;font-size:.86rem}
+.series-skus{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.series-skus .ssku{font-size:.7rem;font-weight:600;background:var(--surface-2);border-radius:8px;padding:4px 10px;color:var(--ink-2)}
+.series-skus .ssku.this{background:var(--sc,#7A67D0);color:#fff}
+.mk-disc-list{display:flex;flex-direction:column;gap:9px}
+
+.empty-state{text-align:center;padding:32px 16px;color:var(--ink-2)}
+.empty-state .ic{font-size:2rem;margin-bottom:10px}
+.empty-state h5{font-family:'Fraunces';font-size:1.06rem;color:var(--ink);margin:0 0 6px}
+.empty-state p{font-size:.85rem;max-width:30rem;margin:0 auto;line-height:1.55}
+
+/* FOOTER */
+.footer{background:var(--navy);color:#D7E5F2;padding:40px 0 26px}
+/* Says which published build this is, same as the showcase. Without it there is
+   no way to tell a stale browser from a regression except by cloning the public
+   repository and rendering the served file. */
+.build-stamp{opacity:.55;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.footer-top{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+.footer .brand-txt b{color:#fff}
+.footer .brand-txt span{color:var(--brand)}
+.footer .fine{border-top:1px solid rgba(255,255,255,.12);padding-top:18px;font-size:.78rem;color:#8FA9C0;
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.footer .fine a{color:#BCD2E6;text-decoration:underline dotted;text-underline-offset:3px}
+.footer .fine a:hover{color:#fff}
+
+@media(max-width:760px){
+  .nav-links{display:none}
+  .phead{flex-direction:column;text-align:center}
+  .phead .chip-row{justify-content:center}
+  .seg-tab .c{display:none}
+  .seg-wrap{padding:12px 14px 10px}
+  .seg-body{padding:18px 14px 24px}
+  .claim-pills{grid-template-columns:1fr}
+  .rc-top{flex-direction:column}
+}
+/* refined scrollbars + focus */
+.ppanel::-webkit-scrollbar{width:10px}
+.ppanel::-webkit-scrollbar-track{background:transparent}
+.ppanel::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px;border:2.5px solid var(--bg)}
+.ppanel::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+:focus-visible{outline:2.5px solid var(--brand);outline-offset:2px;border-radius:6px}
+
+@media(prefers-reduced-motion:reduce){
+  .reveal{transition:none;opacity:1;transform:none}
+  .aurora i,.sync-badge.live .dot{animation:none}
+  /* Match the specificity of the rules being overridden: .hero-grid
+     .grid-line is a two-class selector, so a bare .grid-line here loses and
+     the grid animates on regardless. */
+  .word-animate,.corner-mark{animation:none;opacity:1}
+  .float-dot{animation:none;opacity:.3}
+  .hero-grid .grid-line{animation:none;opacity:.12;stroke-dashoffset:0}
+  .hero-grid .detail-dot{animation:none;opacity:.3}
+  #mouse-glow,.ripple-effect{display:none}
+  .hero h1 .grad{animation:none}
+}
+</style>
+</head>
+<body>
+
+<noscript>
+  <div class="noscript-note">
+    <b>This page needs JavaScript to show its data.</b>
+    Every product, test report and claim is built when the page opens, so a viewer that
+    doesn't run scripts shows only this heading. Phone file-previews usually block scripts —
+    open the file in a browser instead, or use the hosted link.
+  </div>
+</noscript>
+
+<div id="scrollbar"></div>
+
+<!-- one field of light behind the whole page, fixed to the viewport -->
+<div class="aurora"><i></i></div>
+
+<!-- NAV -->
+<header class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a href="#top" class="brand">
+      <img class="logo-img" src="data:image/png;base64,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" alt="FACERINNA — Dermatologist Care">
+      <span class="brand-txt"><b>FACERINNA</b><span>Test Reports &amp; Claims</span></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#range">Products</a>
+      <a href="#glossary">Glossary</a>
+      <a href="#labs">Labs</a>
+      <a href="#compare">Compare</a>
+      <a href="#benchmark">Benchmark</a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero" id="top" style="border-top:0">
+  <div class="hero-grain"></div>
+  <svg class="hero-grid" aria-hidden="true" preserveAspectRatio="none">
+    <line x1="0" y1="22%" x2="100%" y2="22%" class="grid-line" style="animation-delay:.5s"/>
+    <line x1="0" y1="78%" x2="100%" y2="78%" class="grid-line" style="animation-delay:.9s"/>
+    <line x1="22%" y1="0" x2="22%" y2="100%" class="grid-line" style="animation-delay:1.3s"/>
+    <line x1="78%" y1="0" x2="78%" y2="100%" class="grid-line" style="animation-delay:1.7s"/>
+    <circle cx="22%" cy="22%" r="2.5" class="detail-dot" style="animation-delay:2.4s"/>
+    <circle cx="78%" cy="22%" r="2.5" class="detail-dot" style="animation-delay:2.6s"/>
+    <circle cx="22%" cy="78%" r="2.5" class="detail-dot" style="animation-delay:2.8s"/>
+    <circle cx="78%" cy="78%" r="2.5" class="detail-dot" style="animation-delay:3s"/>
+  </svg>
+  <div class="corner-mark tl" style="animation-delay:3.2s"></div>
+  <div class="corner-mark tr" style="animation-delay:3.35s"></div>
+  <div class="corner-mark bl" style="animation-delay:3.5s"></div>
+  <div class="corner-mark br" style="animation-delay:3.65s"></div>
+  <div class="float-dot" style="top:26%;left:13%;animation-delay:.6s"></div>
+  <div class="float-dot" style="top:62%;left:87%;animation-delay:1.4s"></div>
+  <div class="float-dot" style="top:42%;left:8%;animation-delay:2.1s"></div>
+  <div class="float-dot" style="top:74%;left:92%;animation-delay:2.8s"></div>
+  <div class="wrap hero-in">
+    <div class="eyebrow reveal in"><span class="n">i</span>Regulatory Affairs · Internal Reference</div>
+    <h1 class="reveal in">Test Report &amp; <span class="grad">Claims Vault</span></h1>
+    <p class="lede reveal in">Start with a series, open any product, and read its test reports, the technical claims each report substantiates — instrument, consumer panel &amp; other — and the marketing-ready generic claims with their disclaimers. Hover any lab abbreviation anywhere on the page for an instant explainer.</p>
+    <div class="hero-stats reveal in" id="heroStats"></div>
+    <div class="sync-row reveal in">
+      <span class="sync-badge loading" id="syncBadge"><span class="dot"></span><span id="syncText">Checking for live data…</span></span>
+      <button type="button" class="sync-retry" id="syncRetry" style="display:none">↻ Retry live sync</button>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCT RANGE -->
+<section id="range">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="ghost">01</span><div class="eyebrow"><span class="n">1</span>By Product · Live from the Matrix</div>
+      <h2>Product Range</h2>
+      <p>Open any product for its Test Reports, Technical Claims and Marketing Claims.</p>
+    </div>
+    <div class="view-toggle" id="viewToggle">
+      <button type="button" class="vt active" data-view="series">By Series</button>
+      <button type="button" class="vt" data-view="all">All Products</button>
+    </div>
+    <div class="series-grid" id="seriesGrid"></div>
+    <div class="range-tools" id="rangeTools">
+      <div class="range-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" id="rangeSearch" placeholder="Search products or SKU codes…">
+      </div>
+    </div>
+    <div class="range-filters" id="rangeFilters"></div>
+    <div class="thumb-grid" id="thumbGrid"></div>
+    <div class="range-empty" id="rangeEmpty">No products match.</div>
+  </div>
+</section>
+
+<!-- PARAMETER GLOSSARY -->
+<section id="glossary">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="ghost">02</span><div class="eyebrow"><span class="n">2</span>Hover to Decode</div>
+      <h2>Parameter Glossary</h2>
+      <p>Every abbreviation that appears on a lab report. <b>Hover</b> any code — here or in any claim on this page — for what it measures, the instrument and the unit.</p>
+    </div>
+    <div class="gloss-tools">
+      <div class="gloss-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" id="glossSearch" placeholder="Search by code, name or meaning (e.g. TEWL, brightening, sebum)…">
+      </div>
+      <div class="gloss-count" id="glossCount"></div>
+    </div>
+    <div class="gloss-grid" id="glossGrid"></div>
+    <div class="gloss-empty" id="glossEmpty">No parameters match that search.</div>
+    <div class="gloss-detail" id="glossDetail"></div>
+  </div>
+</section>
+
+<!-- LABS -->
+<section id="labs">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="ghost">03</span><div class="eyebrow"><span class="n">3</span>Live from Test Reports</div>
+      <h2>Testing Laboratories</h2>
+      <p>Every laboratory cited in the matrix, with its live report count.</p>
+    </div>
+    <div class="lab-grid" id="labGrid"></div>
+  </div>
+</section>
+
+<!-- 04 · COMPARE
+     One measure — how many test reports sit behind a thing — across three
+     groupings. Deliberately one measure and one hue: the vault's brand hues do
+     not survive a categorical CVD check (worst adjacent pair #4898D8 / #2E7CBE
+     is ΔE 8.7 to normal vision, well under the 15 floor), and identity here is
+     carried by the row labels, not by colour. -->
+<section id="compare">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="ghost">04</span><div class="eyebrow"><span class="n">4</span>Live from Test Reports</div>
+      <h2>Compare the evidence</h2>
+      <p>Reports behind each product, laboratory and series. Click a bar to open its dossier.</p>
+    </div>
+
+    <div class="cmp-card">
+      <div class="cmp-controls">
+        <div class="cmp-switch" role="tablist" aria-label="What to compare">
+          <button type="button" class="cmp-tab is-on" role="tab" aria-selected="true" data-view="sku">By product</button>
+          <button type="button" class="cmp-tab" role="tab" aria-selected="false" data-view="lab">By laboratory</button>
+          <button type="button" class="cmp-tab" role="tab" aria-selected="false" data-view="series">By series</button>
+        </div>
+        <label class="cmp-filter" id="cmpFilterWrap">
+          <span>Series</span>
+          <select id="cmpSeries"></select>
+        </label>
+        <button type="button" class="cmp-toggle" id="cmpTableBtn" aria-pressed="false">Table</button>
+      </div>
+
+      <div class="cmp-plot" id="cmpPlot" role="img"></div>
+      <table class="cmp-table" id="cmpTable" hidden></table>
+      <p class="cmp-foot" id="cmpFoot"></p>
+      <p class="cmp-note" id="cmpNote" hidden></p>
+    </div>
+  </div>
+</section>
+
+<!-- 05 · BENCHMARK
+     Lives here rather than on the AGM page: this vault is FACERINNA's own
+     reports, and the benchmark is those same reports set against named
+     competitors. The step from one to the other is a step into comparative
+     material, so the card says so before it is opened.
+
+     This section used to be PRIVATE-ONLY and the benchmark was not a
+     published segment, because a page naming five competitor brands on a
+     public URL is comparative advertising under the NPRA Cosmetic
+     Advertisement rules. Both are published now, on the owner's explicit
+     instruction — they are the regulatory professional and it is their call.
+     Two copies go out: this named one, and an anonymised build of the same
+     file in which every brand and product name is replaced. build-public.js
+     carries the mapping and still fails the build if the anonymised copy
+     ever leaks a name. -->
+<section id="benchmark">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="ghost">05</span><div class="eyebrow"><span class="n">5</span>Against the Field</div>
+      <h2>Competitor Benchmark</h2>
+      <p>The same instrumented figures in this vault, set beside what the field publishes.
+        Eleven parameters, every bar carrying its source.</p>
+    </div>
+    <!-- Two routes to the same eleven parameters. Which one you send depends
+         entirely on who is receiving it, so they are two cards rather than one
+         card and a footnote: the choice should cost a glance, not a re-read.
+
+         The anonymised card carries an absolute URL because that copy exists
+         only as a built segment — there is no anonymised file in this
+         repository, so a relative path would resolve to nothing here. The
+         named card keeps the plain filename, which resolves beside this file
+         locally and is rewritten to ../facerinna-efficacy-benchmark/ on the
+         way out by sanitise().
+
+         No body copy and no "Open" label: the badge says what each one is and
+         the arrow says it opens. The whole card is the anchor, so the word was
+         never the target anyway — it only looked like the target. The arrow is
+         aria-hidden because the link already reads out its badge and heading;
+         announcing an arrow adds nothing to a screen reader.
+
+         The NPRA Annex I Part 10 position is no longer restated here. It has
+         not gone away: the badge carries the restriction, and the benchmark
+         page itself opens with "HCP version — not for consumer distribution"
+         and cites Part 10 on its face. -->
+    <div class="grid gap-4 md:grid-cols-2">
+
+      <a href="https://wanshah07.github.io/facerinna-benchmark-anon/" target="_blank" rel="noopener"
+         class="group flex flex-col rounded-2xl border border-line bg-white p-6 no-underline shadow-sm
+                transition duration-200 hover:-translate-y-[3px] hover:border-brand hover:shadow-xl
+                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px]
+                focus-visible:outline-brandDeep motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+        <span class="flex items-start justify-between gap-3">
+          <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#E7F8F1] px-3 py-1
+                       text-[0.72rem] font-semibold uppercase tracking-wide text-[#177A5C]
+                       ring-1 ring-inset ring-[#BCE7D6]">Shareable · no brand named</span>
+          <span aria-hidden="true" class="shrink-0 text-[1.15rem] font-bold leading-none text-brandDeep
+                       transition-transform duration-200 group-hover:translate-x-1">→</span>
+        </span>
+        <h3 class="m-0 mt-3 font-serif text-[1.1rem] font-semibold text-navy">Anonymised benchmark</h3>
+      </a>
+
+      <a href="../facerinna-efficacy-benchmark/" target="_blank" rel="noopener"
+         class="group flex flex-col rounded-2xl border border-line bg-white p-6 no-underline shadow-sm
+                transition duration-200 hover:-translate-y-[3px] hover:border-brand hover:shadow-xl
+                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px]
+                focus-visible:outline-brandDeep motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+        <span class="flex items-start justify-between gap-3">
+          <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#FCEBEA] px-3 py-1
+                       text-[0.72rem] font-semibold uppercase tracking-wide text-[#A83A34]
+                       ring-1 ring-inset ring-[#F0C4C0]">HCP only · brands named</span>
+          <span aria-hidden="true" class="shrink-0 text-[1.15rem] font-bold leading-none text-brandDeep
+                       transition-transform duration-200 group-hover:translate-x-1">→</span>
+        </span>
+        <h3 class="m-0 mt-3 font-serif text-[1.1rem] font-semibold text-navy">Named benchmark</h3>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<!-- SERIES MODAL -->
+<div class="pmodal smodal" id="smodal">
+  <div class="backdrop" data-close-s></div>
+  <div class="wrap">
+    <div class="ppanel" id="spanel">
+      <button class="pclose" data-close-s>✕</button>
+      <div class="phead" id="shead">
+        <div class="phead-top">
+          <span class="series-tag" id="sSeries"></span>
+          <h3 id="sName"></h3>
+          <div class="sub-line" id="sMeta"></div>
+        </div>
+        <div class="spotlight" id="sSpotlight">
+          <div class="cal-col" id="sCalLeft"></div>
+          <div class="pimg cluster" id="sImgWrap"></div>
+          <div class="cal-col right" id="sCalRight"></div>
+        </div>
+      </div>
+      <div class="seg-body">
+        <h5 class="sec-mini">Products in this series</h5>
+        <div class="series-products" id="sProducts"></div>
+        <div id="sDisc"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="pmodal" id="pmodal">
+  <div class="backdrop" data-close></div>
+  <div class="wrap">
+    <div class="ppanel" id="ppanel">
+      <button class="pclose" data-close>✕</button>
+      <div class="phead" id="phead">
+        <div class="phead-top">
+          <span class="series-tag" id="pSeries"></span>
+          <h3 id="pName"></h3>
+          <div class="sub-line" id="pActive"></div>
+          <div class="chip-row" id="pChips"></div>
+        </div>
+        <div class="spotlight" id="spotlight">
+          <div class="cal-col" id="calLeft"></div>
+          <div class="pimg" id="pImgWrap"></div>
+          <div class="cal-col right" id="calRight"></div>
+        </div>
+      </div>
+      <div class="seg-wrap">
+        <div class="seg-tabs" id="segTabs">
+          <div class="seg-glider" id="segGlider"></div>
+          <button class="seg-tab" data-seg="reports"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.2L4.8 18A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-3L14 9.2V3"/><path d="M7.5 15h9"/></svg></span><span class="t">Test Reports</span><span class="c" id="cReports"></span></button>
+          <button class="seg-tab" data-seg="tech"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21h12M9 21V9a3 3 0 0 1 6 0v12"/><path d="M12 3v3M5 14l3-3"/><circle cx="12" cy="9" r="1.2"/></svg></span><span class="t">Technical Claims</span><span class="c" id="cTech"></span></button>
+          <button class="seg-tab" data-seg="mkt"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h3l6 4V5L7 9H4Z"/><path d="M17 9a4 4 0 0 1 0 6"/></svg></span><span class="t">Marketing Claims</span><span class="c" id="cMkt"></span></button>
+        </div>
+      </div>
+      <div class="seg-body">
+        <div class="seg-panel" id="panelReports"></div>
+        <div class="seg-panel" id="panelTech"></div>
+        <div class="seg-panel" id="panelMkt"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HOVER GLOSSARY CARD -->
+<div id="hovercard" role="tooltip"></div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <a href="#top" class="brand">
+        <img class="logo-img" src="data:image/png;base64,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" alt="FACERINNA" style="filter:brightness(1.35) saturate(.9)">
+        <span class="brand-txt"><b>FACERINNA</b><span>Test Reports &amp; Claims</span></span>
+      </a>
+    </div>
+    <div class="fine">
+      <span>© 2026 FACERINNA® · Internal Regulatory Affairs reference. Not for external distribution.</span>
+      <span id="footerSync">Loading data…</span>
+      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-07 · ad08c35</span>
+
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   LIVE DATA — FACERINNA_Test_Report_Claims_Matrix
+   Sheet: https://docs.google.com/spreadsheets/d/15eD6XtMVN1BRm41cD9wm33QMwW16R5sS/edit
+   CSV endpoints (verified live, HTTP 200 text/csv, anonymous — 22 Aug 2026):
+     Test Reports & Claims    → …/export?format=csv&gid=378921450
+     Generic Claims by Series → …/export?format=csv&gid=610219740
+     SKU Index                → …/export?format=csv&gid=1440505952
+   Each fetched CSV is still identified by its header row (not by
+   gid order), so tab reordering in the sheet never breaks the page.
+   Data auto-refreshes every 3 minutes while the page is open.
+   ============================================================ */
+/* Two independent switches, both set by build-public.js:
+     PUBLIC_BUILD — hide links to internal source documents (report PDFs,
+       claims artwork). Safe to use with live data.
+     OFFLINE_DATA — bake the workbook data in and never contact Google, so
+       the workbook URLs are absent from the shipped source and cannot be
+       recovered by reading it. Costs live sync. */
+const PUBLIC_BUILD = true;
+const OFFLINE_DATA = false;
+const SHEET_ID = "15eD6XtMVN1BRm41cD9wm33QMwW16R5sS";
+const SHEET_EDIT_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
+/* every source has two Google CSV endpoints:
+   url — /export?format=csv (redirects to googleusercontent, CORS ok)
+   alt — /gviz/tq?tqx=out:csv (served directly, no redirect) — used
+   automatically whenever the primary endpoint fails in this browser */
+const csvUrl  = (id,gid) => `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+const gvizUrl = (id,gid) => `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}`;
+const CSV_SOURCES = [
+  {label:"Test Reports & Claims",    id:SHEET_ID, gid:"378921450",  url:csvUrl(SHEET_ID,"378921450"),  alt:gvizUrl(SHEET_ID,"378921450")},
+  {label:"Generic Claims by Series", id:SHEET_ID, gid:"610219740",  url:csvUrl(SHEET_ID,"610219740"),  alt:gvizUrl(SHEET_ID,"610219740")},
+  {label:"SKU Index",                id:SHEET_ID, gid:"1440505952", url:csvUrl(SHEET_ID,"1440505952"), alt:gvizUrl(SHEET_ID,"1440505952")},
+];
+/* product thumbnails + per-product source links come from the dashboard's
+   FACERINNA product sheet (native Google Sheet, columns: Image URL,
+   Product Name, SKU Code, Test Report URL, Claims URL) */
+const THUMB_SHEET_ID = "1F1zDeTnSrfZ7j7bIu7FfiHRW0eoXu3_n4NjFAmnWBfE";
+const THUMB_SOURCE = {label:"Product Images", id:THUMB_SHEET_ID, gid:"524451717",
+  url:csvUrl(THUMB_SHEET_ID,"524451717"), alt:gvizUrl(THUMB_SHEET_ID,"524451717")};
+const REFRESH_MS = 3 * 60 * 1000;   // auto-refresh every 3 minutes
+
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function parseCSV(text){
+  const rows = []; let row = [], field = '', inQ = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQ){
+      if(c === '"'){ if(text[i+1] === '"'){ field += '"'; i++; } else { inQ = false; } }
+      else field += c;
+    } else {
+      if(c === '"') inQ = true;
+      else if(c === ',') { row.push(field); field = ''; }
+      else if(c === '\r') { /* skip */ }
+      else if(c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else field += c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+function clean(v){
+  const t = (v==null?'':String(v)).trim();
+  return t.toLowerCase()==='none' ? '' : t;
+}
+function numish(v){ return /^\d+(\.\d+)?$/.test((v||'').trim()); }
+function dataRows(rows){
+  const h = rows.findIndex(r => (r[0]||'').trim()==='No.');
+  if(h===-1) return null;
+  return {header: rows[h].map(c=>(c||'').trim()), body: rows.slice(h+1).filter(r=>numish(r[0]))};
+}
+function classifyTab(header){
+  const H = header.join('|');
+  if(H.includes('Test Report No.') && H.includes('Claims')) return 'reports';
+  if(H.includes('Series-Level') || H.includes('SKUs in Series')) return 'series';
+  if(H.includes('Alias')) return 'skus';
+  return null;
+}
+const mapReport = r => ({no:parseFloat(r[0]),code:clean(r[1]),sku:clean(r[2]),reportNo:clean(r[3]),lab:clean(r[4]),
+  date:clean(r[5]),subject:clean(r[6]),param:clean(r[7]),claimsInstrument:clean(r[8]),claimsPanel:clean(r[9]),
+  claimsOther:clean(r[10]),genericClaims:clean(r[11]),disclaimer:clean(r[12])});
+const mapSeries = r => ({no:parseFloat(r[0]),series:clean(r[1]),skus:clean(r[2]),genericClaims:clean(r[3]),disclaimer:clean(r[4])});
+const mapSku = r => ({no:parseFloat(r[0]),code:clean(r[1]),sku:clean(r[2]),series:clean(r[3]),aliases:clean(r[4]),reportCount:parseFloat(r[5])||0});
+
+/* A hung request must not strand the page. Without a deadline, a mobile
+   connection that accepts the socket but never answers leaves fetch pending
+   forever — the JSONP fallback never gets its turn and the badge sits on
+   "Checking for live data…" indefinitely. Abort and let JSONP try. */
+async function fetchCsvText(url, timeoutMs){
+  const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ac ? setTimeout(()=>ac.abort(), timeoutMs || 12000) : null;
+  try{
+    const opts = {method:'GET', headers:{'Accept':'text/csv'}, mode:'cors', cache:'no-store'};
+    if(ac) opts.signal = ac.signal;
+    let res;
+    /* A blocked request and a refused one fail very differently, and the
+       difference is the whole diagnosis: fetch() rejects outright when the
+       network or CORS stops it, and resolves with a status when Google
+       answers. Collapsing both into one message is what made this page
+       impossible to debug from the badge. The AbortError is re-thrown below,
+       so the deadline still reports as a timeout rather than as a block. */
+    try{ res = await fetch(url, opts); }
+    catch(e){ throw (e && e.name === 'AbortError') ? e : new Error('request blocked (network, CORS or extension)'); }
+    if(res.status===404) throw new Error('HTTP 404 — sheet or tab gid not found');
+    if(res.status===403) throw new Error('HTTP 403 — not shared for anonymous access');
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const text = await res.text();
+    if(/^\s*<(!doctype|html)/i.test(text)) throw new Error('got a sign-in page — the sheet is not shared as "anyone with the link"');
+    return text;
+  }catch(e){
+    throw (e && e.name === 'AbortError') ? new Error('timed out') : e;
+  }finally{
+    if(timer) clearTimeout(timer);
+  }
+}
+
+/* ---- JSONP transport -------------------------------------------------
+   Google's /gviz/tq endpoint sends NO Access-Control-Allow-Origin header,
+   so fetch() against it is always blocked cross-origin. Loaded through a
+   <script> tag with responseHandler, though, no CORS check applies at all
+   — which is why this path also works from a file:// page, from a
+   sandboxed preview pane, and behind proxies that strip CORS headers.
+   Used automatically whenever the CSV fetch fails.                      */
+let __jsonpSeq = 0;
+function fetchJsonpRows(id, gid, timeoutMs){
+  return new Promise((resolve, reject)=>{
+    const cb = '__gviz_cb_' + (++__jsonpSeq);
+    const s = document.createElement('script');
+    let settled = false;
+    const cleanup = ()=>{ clearTimeout(timer); try{ delete window[cb]; }catch(_){ window[cb] = undefined; }
+                          if(s.parentNode) s.parentNode.removeChild(s); };
+    const timer = setTimeout(()=>{ if(!settled){ settled=true; cleanup(); reject(new Error('timeout')); } }, timeoutMs||20000);
+    window[cb] = payload =>{ if(settled) return; settled = true; cleanup();
+      try{ resolve(gvizToRows(payload)); }catch(e){ reject(e); } };
+    s.onerror = ()=>{ if(!settled){ settled=true; cleanup(); reject(new Error('script blocked')); } };
+    s.src = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq`
+          + `?tqx=out:json;responseHandler:${cb}&gid=${gid}&cacheBust=${Date.now()}`;
+    document.head.appendChild(s);
+  });
+}
+/* gviz consumes the sheet's first row into cols[].label, so put it back
+   as row 0 — the result matches parseCSV()'s shape exactly. */
+function gvizToRows(payload){
+  if(!payload || !payload.table) throw new Error('malformed gviz payload');
+  const cell = c => {
+    if(c == null || c.v == null) return '';
+    return typeof c.v === 'string' ? c.v : (c.f != null ? String(c.f) : String(c.v));
+  };
+  const rows = [ (payload.table.cols||[]).map(c => (c.label||'').trim()) ];
+  for(const r of (payload.table.rows||[])) rows.push((r.c||[]).map(cell));
+  return rows;
+}
+
+/* CSV fetch first (fast, cacheable); JSONP as the always-works fallback */
+async function fetchSourceRows(src){
+  try{ return parseCSV(await fetchCsvText(src.url)); }
+  catch(e1){
+    try{ return await fetchJsonpRows(src.id, src.gid); }
+    catch(e2){
+      const err = new Error(`${src.label}: csv ${e1.message} → jsonp ${e2.message}`);
+      /* .reason drops the source label, so it is safe to render on a page
+         that deliberately does not say where its data lives. The labelled
+         message stays for the console. */
+      err.reason = `csv ${e1.message} → jsonp ${e2.message}`;
+      throw err;
+    }
+  }
+}
+async function fetchTab(src){
+  const rows = await fetchSourceRows(src);
+  const d = dataRows(rows);
+  if(!d) throw new Error('header row not found in '+src.label);
+  d.text = JSON.stringify(rows);
+  return d;
+}
+/* thumbnail sheet: header row has "Image URL" / "Product Name" columns */
+function normalizeDriveImg(u){
+  if(!u) return '';
+  const m = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+  if(m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w800`;
+  return u;
+}
+function parseThumbs(rows){
+  const hi = rows.findIndex(r => r.some(c => (c||'').trim()==='Image URL'));
+  if(hi===-1) throw new Error('Image URL header not found');
+  const hdr = rows[hi].map(c=>(c||'').trim());
+  const ix = {};
+  hdr.forEach((h,i)=>ix[h]=i);
+  const out = [];
+  for(const r of rows.slice(hi+1)){
+    const name = (r[ix['Product Name']]||'').trim();
+    if(!name) continue;
+    /* On a public build the internal source-document columns are dropped as
+       the sheet is parsed, so they never enter page state at all. */
+    out.push({name, code:(r[ix['SKU Code']]||'').trim(),
+      img:normalizeDriveImg((r[ix['Image URL']]||'').trim()),
+      reportUrl:PUBLIC_BUILD?'':(r[ix['Test Report URL']]||'').trim(),
+      claimsUrl:PUBLIC_BUILD?'':(r[ix['Claims URL']]||'').trim()});
+  }
+  return out;
+}
+
+let REPORTS = [], SERIES = [], SKUS = [], THUMBS = [];
+/* Rows on the SKU Index that share one client SKU code are the same finished
+   product — e.g. FMS004001 is listed both as "B5 (Base Formulation)" and as
+   "Ceramide B5 Balancing Moisturizer". The base-formulation row's reports
+   substantiate the finished SKU, so they are folded into it: the row with the
+   most reports becomes the primary and the rest become listed variants.
+   The "NA" placeholder code is never treated as a shared code. */
+let VARIANT_OF = {};   // normSku(variant name) → normSku(primary name)
+function mergeSkuRows(list){
+  const byKey = new Map(), out = [];
+  for(const s of list){
+    const code = (s.code||'').trim().toUpperCase();
+    const key = (code && code !== 'NA' && code !== '-') ? 'C:'+code : 'N:'+normSku(s.sku);
+    if(!byKey.has(key)){ const g = Object.assign({}, s, {variants:[]}); byKey.set(key, g); out.push(g); continue; }
+    const g = byKey.get(key);
+    if((s.reportCount||0) > (g.reportCount||0)){          // incoming row is the finished SKU
+      g.variants.push({sku:g.sku, reportCount:g.reportCount});
+      g.sku = s.sku; g.series = s.series || g.series;
+      g.aliases = s.aliases || g.aliases; g.reportCount = s.reportCount;
+    } else {
+      g.variants.push({sku:s.sku, reportCount:s.reportCount});
+    }
+  }
+  VARIANT_OF = {};
+  for(const g of out) for(const v of g.variants) VARIANT_OF[normSku(v.sku)] = normSku(g.sku);
+  return out;
+}
+let IMG_MAP = {};   // normSku(name) → {img, reportUrl, claimsUrl}
+function buildImgMap(){
+  IMG_MAP = {};
+  for(const t of THUMBS){
+    const k = normSku(t.name);
+    if(!IMG_MAP[k]) IMG_MAP[k] = t;              // first row wins on duplicates
+    else {                                        // later rows may fill gaps
+      if(!IMG_MAP[k].img && t.img) IMG_MAP[k].img = t.img;
+      if(!IMG_MAP[k].reportUrl && t.reportUrl) IMG_MAP[k].reportUrl = t.reportUrl;
+      if(!IMG_MAP[k].claimsUrl && t.claimsUrl) IMG_MAP[k].claimsUrl = t.claimsUrl;
+    }
+  }
+}
+/* sync state machine: loading → live | live-stale (a refresh failed but
+   earlier live data is retained) | cached (snapshot fallback) */
+let syncState = 'loading';
+let lastCheckedAt = null;   // last fetch attempt (success or failure)
+let lastDataAt = null;      // last successful fetch of live data
+let lastErr = '';
+let lastErrShort = '';
+let lastHash = '';
+let nextRefreshAt = null;
+let refreshTimer = null;
+
+const fmtT = d => d ? d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return h.toString(36); }
+
+function updateSyncUI(){
+  const badge = document.getElementById('syncBadge');
+  const txt = document.getElementById('syncText');
+  const retry = document.getElementById('syncRetry');
+  const left = nextRefreshAt ? Math.max(0, nextRefreshAt - Date.now()) : null;
+  const mmss = left==null ? '' : `${Math.floor(left/60000)}:${String(Math.floor(left%60000/1000)).padStart(2,'0')}`;
+  if(syncState==='loading'){
+    badge.className='sync-badge loading';
+    txt.textContent='Checking for live data…';
+    retry.style.display='none';
+  } else if(syncState==='live'){
+    badge.className='sync-badge live';
+    txt.textContent=`Live data — synced ${fmtT(lastDataAt)} · auto-refresh in ${mmss}`;
+    retry.style.display='none';
+  } else if(syncState==='live-stale'){
+    badge.className='sync-badge cached';
+    txt.textContent=`Refresh interrupted — ${lastErrShort || 'reason unknown'} · showing data from ${fmtT(lastDataAt)} · retrying in ${mmss}`;
+    retry.style.display='inline-block';
+  } else {
+    badge.className='sync-badge cached';
+    txt.textContent = SNAP_REPORTS.length
+      ? `Live data unavailable — ${lastErrShort || 'reason unknown'} · offline copy from ${SNAPSHOT_DATE} · retrying in ${mmss}`
+      : `Live data unavailable — ${lastErrShort || 'reason unknown'} · no offline copy bundled · retrying in ${mmss}`;
+    retry.style.display='inline-block';
+  }
+  /* Reason on hover too, label-free for the same reason as the badge. */
+  badge.title = lastErrShort ? `Last attempt ${fmtT(lastCheckedAt)}\n${lastErrShort}` : '';
+  /* Footer shows sync state only. The source workbooks are deliberately not
+     named or linked here, so the page can be linked from an outward-facing
+     site without advertising where the data lives. */
+  const stateLabel = syncState==='live' ? `Data synced ${fmtT(lastDataAt)}`
+    : syncState==='live-stale' ? `Showing data from ${fmtT(lastDataAt)} · refreshing`
+    : syncState==='cached' ? `Offline copy · ${SNAPSHOT_DATE}` : 'Loading data…';
+  document.getElementById('footerSync').textContent = stateLabel;
+}
+
+async function loadLiveData(){
+  if(OFFLINE_DATA){                     // data is baked in; never call out
+    REPORTS = SNAP_REPORTS; SERIES = SNAP_SERIES; SKUS = mergeSkuRows(SNAP_SKUS);
+    THUMBS = SNAP_THUMBS; buildImgMap();
+    syncState = 'static';
+    document.getElementById('syncBadge').className = 'sync-badge live';
+    document.getElementById('syncText').textContent = 'Data as of ' + SNAPSHOT_DATE;
+    document.getElementById('syncRetry').style.display = 'none';
+    document.getElementById('footerSync').textContent = 'Data as of ' + SNAPSHOT_DATE;
+    renderAll(); refreshOpenModal();
+    return;
+  }
+  if(syncState==='loading') updateSyncUI();
+  lastCheckedAt = new Date();
+  try{
+    const [tabs, thumbsRes] = await Promise.all([
+      Promise.all(CSV_SOURCES.map(fetchTab)),
+      /* thumbnails are best-effort: their failure must not break the matrix sync */
+      fetchSourceRows(THUMB_SOURCE).then(parseThumbs).catch(()=>null),
+    ]);
+    let rep=null, ser=null, idx=null;
+    for(const t of tabs){
+      const kind = classifyTab(t.header);
+      if(kind==='reports' && (!rep || t.body.length > rep.body.length)) rep = t;
+      else if(kind==='series') ser = t;
+      else if(kind==='skus') idx = t;
+    }
+    if(!rep || !ser || !idx) throw new Error('could not identify all three tabs');
+    const thumbs = thumbsRes || SNAP_THUMBS;
+    const h = hashStr(rep.text) + hashStr(ser.text) + hashStr(idx.text) + hashStr(JSON.stringify(thumbs));
+    lastDataAt = new Date();
+    const changed = h !== lastHash;
+    lastHash = h;
+    syncState = 'live';
+    if(changed){
+      REPORTS = rep.body.map(mapReport);
+      SERIES = ser.body.map(mapSeries);
+      SKUS = mergeSkuRows(idx.body.map(mapSku));
+      THUMBS = thumbs;
+      buildImgMap();
+      renderAll();
+      refreshOpenModal();
+    }
+  }catch(err){
+    if(err.message !== lastErr) console.warn('[vault] live sync failed:', err.message);
+    lastErr = err.message;
+    lastErrShort = err.reason || err.message;
+    if(lastDataAt){
+      syncState = 'live-stale';           // keep the live data we already have
+    } else {
+      syncState = 'cached';
+      REPORTS = SNAP_REPORTS; SERIES = SNAP_SERIES; SKUS = mergeSkuRows(SNAP_SKUS);
+      THUMBS = SNAP_THUMBS;
+      buildImgMap();
+      renderAll();
+      refreshOpenModal();
+    }
+  }
+  scheduleRefresh();
+  updateSyncUI();
+}
+function scheduleRefresh(){
+  clearTimeout(refreshTimer);
+  nextRefreshAt = Date.now() + REFRESH_MS;
+  refreshTimer = setTimeout(loadLiveData, REFRESH_MS);
+}
+if(!OFFLINE_DATA) setInterval(updateSyncUI, 1000);   // live countdown in the badge
+document.getElementById('syncRetry').addEventListener('click', ()=>{clearTimeout(refreshTimer);loadLiveData();});
+
+/* ============================================================
+   GLOSSARY DATA
+   ============================================================ */
+const PARAMS = [
+{code:"SEB",name:"Sebum level / sebum secretion",measures:"Casual sebum on the skin surface, collected on a matt tape",instrument:"Sebumeter SM 815 (Courage+Khazaka)",unit:"µg/cm²",better:"Lower",marketing:"Oil control / less shine / mattifying",note:null},
+{code:"SCM",name:"Stratum corneum moisture / skin hydration",measures:"Electrical capacitance of the outermost skin layer = water content",instrument:"Corneometer CM 825",unit:"a.u. (corneometer units)",better:"Higher",marketing:"Hydration / moisturising",note:null},
+{code:"TEWL",name:"Transepidermal water loss",measures:"Water vapour flux leaving the skin = skin barrier integrity",instrument:"Tewameter TM 300 / VapoMeter",unit:"g/h/m²",better:"Lower",marketing:"Barrier repair / barrier strengthening",note:"The single most-used barrier endpoint"},
+{code:"MEL",name:"Melanin content / melanin index",measures:"Melanin absorption in the epidermis = pigmentation load",instrument:"Mexameter MX 18",unit:"a.u. (melanin index)",better:"Lower",marketing:"Acne mark fading / dark spot / brightening",note:"This is the true pigmentation endpoint — NOT chroma"},
+{code:"HB",name:"Haemoglobin content / erythema index",measures:"Haemoglobin absorption = redness / vascular reaction",instrument:"Mexameter MX 18",unit:"a.u. (erythema index)",better:"Lower",marketing:"Calms redness / soothing",note:null},
+{code:"L*",name:"Skin brightness L*",measures:"Lightness axis of CIE L*a*b*, 0 = black, 100 = white",instrument:"Chroma Meter CR-400 / spectrophotometer",unit:"L* value",better:"Higher",marketing:"Skin brightness / radiance / tone-up",note:null},
+{code:"a*",name:"Skin redness a*",measures:"Red ↔ green axis of CIE L*a*b*",instrument:"Chroma Meter CR-400",unit:"a* value",better:"Lower",marketing:"Less redness / evens out irritation",note:null},
+{code:"b*",name:"Skin yellowness b*",measures:"Yellow ↔ blue axis of CIE L*a*b*",instrument:"Chroma Meter CR-400",unit:"b* value",better:"Lower",marketing:"Less sallow / less dull-yellow",note:null},
+{code:"C*",name:"Skin chroma C*",measures:"Colour SATURATION, derived as √(a*²+b*²) — how intense the colour is",instrument:"Chroma Meter CR-400",unit:"C* value",better:"Lower",marketing:"More even, less intense skin colour",note:"Common mix-up: chroma ≠ melanin. If a report uses 'chroma' to mean pigmentation, map it to MEL"},
+{code:"ITA",name:"Individual Typology Angle",measures:"Derived from L* and b* — classifies skin tone depth",instrument:"Calculated from chroma meter data",unit:"degrees (°)",better:"Higher",marketing:"Skin tone level / whitening degree",note:null},
+{code:"GLO",name:"Skin glossiness",measures:"Specular vs diffuse light reflection off the skin surface",instrument:"Glossymeter GL 200",unit:"GU (gloss units)",better:"Higher",marketing:"Glow / glass skin / healthy sheen",note:"For an oil-control product, high gloss can read as 'oily' — pair it with SEB"},
+{code:"ROU",name:"Skin roughness (SEr)",measures:"Surface relief amplitude from a live skin image",instrument:"Visioscan VC 98 / PRIMOS / Antera 3D",unit:"a.u.",better:"Lower",marketing:"Smoother texture / refined skin",note:null},
+{code:"SMO",name:"Skin smoothness (SEsm)",measures:"Inverse surface relief — evenness of the skin micro-relief",instrument:"Visioscan VC 98",unit:"a.u.",better:"Higher",marketing:"Smoothness / soft touch",note:null},
+{code:"SCA",name:"Scaliness / desquamation (SEsc)",measures:"Amount of loose corneocyte flakes on the surface",instrument:"Visioscan VC 98",unit:"a.u.",better:"Lower",marketing:"Less flaking / less dry patches",note:null},
+{code:"ELA",name:"Skin elasticity R2 / R5 / R7",measures:"Skin deformation and recovery under controlled suction",instrument:"Cutometer Dual MPA 580",unit:"ratio (0–1)",better:"Higher",marketing:"Firmness / bounce / elasticity",note:"R2 = gross elasticity, R5 = net elasticity, R7 = biological elasticity"},
+{code:"WRI",name:"Wrinkle area / depth / count",measures:"Wrinkle geometry from a standardised image",instrument:"VISIA-CR / PRIMOS / Antera 3D",unit:"count, mm, %",better:"Lower",marketing:"Fine line reduction",note:null},
+{code:"POR",name:"Pore count / pore area",measures:"Number and surface area of visible pore openings",instrument:"VISIA-CR / Antera 3D",unit:"count, mm²",better:"Lower",marketing:"Pore refining / minimised pores",note:null},
+{code:"LES",name:"Lesion count (inflammatory / non-inflammatory)",measures:"Counted acne lesions — papules, pustules, comedones",instrument:"Dermatologist count / VISIA-CR",unit:"count",better:"Lower",marketing:"Fewer breakouts / acne reduction",note:"Counts are a medicinal-leaning endpoint — check wording before using in an ad"},
+{code:"STG",name:"Lactic acid sting test score",measures:"Self-reported stinging after 10% lactic acid on the nasolabial fold",instrument:"Subject rating, 0–3 scale",unit:"score",better:"Lower",marketing:"Better tolerance / suits sensitive skin",note:"Reported as 'skin tolerance to irritation improved by X%'"},
+{code:"PH",name:"Skin surface pH",measures:"pH of the acid mantle",instrument:"Skin-pH-Meter PH 905",unit:"pH units",better:"Toward 4.5–5.5",marketing:"Respects skin's natural pH",note:null},
+{code:"PAN",name:"Consumer panel / self-assessment",measures:"% of subjects who agreed with a given statement",instrument:"Structured questionnaire",unit:"% agreement",better:"Higher",marketing:"'X% agreed that…'",note:"Always subjective — must be worded as agreement, never as proof"},
+{code:"MCII",name:"Mean Cumulative Irritation Index",measures:"Averaged patch-test irritation score across the panel and all reading points",instrument:"ICDRG 0–4 scale, averaged per COLIPA/ICDRG guidance",unit:"index (0–4)",better:"Lower",marketing:"Near-zero = negligible / non-irritating",note:"Reported alongside raw reaction counts, e.g. '0/33 reactions'"},
+{code:"ISGA",name:"Investigator's Static Global Assessment",measures:"Dermatologist-graded overall acne severity on a fixed ordinal scale",instrument:"Clinical grading, typically 0 (clear) to 4 (severe)",unit:"grade",better:"Lower",marketing:"'X% graded cured / markedly effective'",note:"A clinician-assessed endpoint — cite the grading scale used"},
+{code:"GEA",name:"Global Evaluation of Acne",measures:"Overall investigator-rated acne severity, similar in intent to ISGA",instrument:"Clinical grading scale",unit:"grade",better:"Lower",marketing:"Overall acne severity improvement",note:null},
+{code:"SPF",name:"Sun Protection Factor",measures:"Ratio of UV dose needed to redden protected vs unprotected skin — mainly UVB",instrument:"In-vivo solar simulator per ISO 24444",unit:"factor (e.g. SPF 50)",better:"Higher",marketing:"Sun protection level",note:"A measured SPF above the label value supports the label claim; PA/UVA needs its own test"},
+{code:"PA",name:"PA grade / UVA protection",measures:"UVA protection factor tier (PA+ to PA++++), from UVA-PF testing",instrument:"ISO 24442 (in-vivo UVA) / ISO 24443 (in-vitro)",unit:"PA+ … PA++++",better:"Higher",marketing:"UVA / anti-photoaging protection",note:"PA++++ cannot be claimed from an SPF test alone — a UVA-PF report is required"},
+{code:"SIT",name:"In Vitro Skin Irritation Test (EpiDerm)",measures:"Tissue viability of a reconstructed human epidermis after product exposure",instrument:"EpiDerm™ RhE model, OECD TG 439",unit:"% viability",better:"Higher",marketing:"Non-irritating (validated non-animal method)",note:null},
+{code:"EIT",name:"In Vitro Eye Irritation Test (EpiOcular)",measures:"Tissue viability of a reconstructed human cornea-like epithelium",instrument:"EpiOcular™ model, OECD TG 492",unit:"% viability",better:"Higher",marketing:"Gentle on the eye area (validated non-animal method)",note:null},
+{code:"HRIPT",name:"Human Repeat Insult Patch Test",measures:"Sensitization potential over repeated induction + challenge patches",instrument:"~9-week repeated patch protocol",unit:"reactions / panel",better:"Lower",marketing:"Hypoallergenic substantiation",note:"'Hypoallergenic' claims usually require an HRIPT, not a single patch test"},
+{code:"ICDRG",name:"ICDRG patch-test scale",measures:"Standardised 0–4 grading of patch-test skin reactions",instrument:"Visual grading per International Contact Dermatitis Research Group",unit:"grade 0–4",better:"Lower",marketing:"Non-irritating / negligible irritation",note:null},
+{code:"COLIPA",name:"COLIPA patch-test guideline",measures:"European (Cosmetics Europe) protocol for 48-h occlusive patch testing",instrument:"48-h occlusive patch, dermatologist-graded",unit:"protocol",better:null,marketing:"Dermatologically tested",note:null},
+];
+
+/* Auto-link glossary terms inside claim text (applied AFTER esc()) */
+const TERM_PATTERNS = [
+  ["TEWL","TEWL"],["stratum corneum moisture","SCM"],["hemoglobin","HB"],["haemoglobin","HB"],
+  ["lactic acid sting","STG"],["sebum","SEB"],["melanin","MEL"],["glossiness","GLO"],
+  ["elasticity","ELA"],["ISGA","ISGA"],["MCII","MCII"],["HRIPT","HRIPT"],["ICDRG","ICDRG"],
+  ["COLIPA","COLIPA"],["EpiDerm","SIT"],["EpiOcular","EIT"],["SPF","SPF"],["PA\\+\\+\\+\\+","PA"],
+  ["skin a\\* value","a*"],["skin a\\*","a*"],["skin L\\* value","L*"],["skin L\\*","L*"],
+  ["wrinkle","WRI"],["non-comedogenic","POR"]
+];
+const TERM_RE = new RegExp('('+TERM_PATTERNS.map(p=>p[0]).sort((a,b)=>b.length-a.length).join('|')+')','gi');
+function linkTerms(escaped){
+  return escaped.replace(TERM_RE, m=>{
+    const hit = TERM_PATTERNS.find(p=>new RegExp('^'+p[0]+'$','i').test(m));
+    const code = hit ? hit[1] : null;
+    return code && paramByCode(code) ? `<span class="term" data-code="${esc(code)}">${m}</span>` : m;
+  });
+}
+function paramByCode(code){return PARAMS.find(p=>p.code.toLowerCase()===String(code).toLowerCase());}
+
+/* ============================================================
+   HOVER CARD — shows on hover of .term / .gchip, hides on leave
+   ============================================================ */
+const hovercard = document.getElementById('hovercard');
+let hcHideTimer = null;
+function dirClass(b){const x=(b||'').toLowerCase();return x==='lower'?'lower':x==='higher'?'higher':'other';}
+function dirText(b){const x=(b||'').toLowerCase();return x==='lower'?'↓ Lower is better':x==='higher'?'↑ Higher is better':(b||'');}
+function showHover(code, target){
+  const p = paramByCode(code);
+  if(!p) return;
+  clearTimeout(hcHideTimer);
+  hovercard.innerHTML = `
+    <div class="hc-head">
+      <span class="hc-code">${esc(p.code)}</span>
+      <span class="hc-name">${esc(p.name)}</span>
+      ${p.better?`<span class="hc-dir gd-dir ${dirClass(p.better)}">${esc(dirText(p.better))}</span>`:''}
+    </div>
+    <div class="hc-row"><b>Measures</b><span>${esc(p.measures)}</span></div>
+    <div class="hc-row"><b>Instrument</b><span>${esc(p.instrument)}</span></div>
+    <div class="hc-row"><b>Unit</b><span>${esc(p.unit)}</span></div>
+    <div class="hc-mkt">${esc(p.marketing)}</div>
+    ${p.note?`<div class="hc-note"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2.8 20h18.4L12 4Z"/><path d="M12 10v4M12 17.4v.2"/></svg> ${esc(p.note)}</div>`:''}
+  `;
+  const r = target.getBoundingClientRect();
+  hovercard.classList.add('show');
+  const hw = hovercard.offsetWidth, hh = hovercard.offsetHeight;
+  let x = Math.min(Math.max(10, r.left + r.width/2 - hw/2), window.innerWidth - hw - 10);
+  let flip = false;
+  let y = r.bottom + 10;
+  if(y + hh > window.innerHeight - 8){ y = r.top - hh - 10; flip = true; }
+  hovercard.style.left = x+'px';
+  hovercard.style.top = Math.max(8,y)+'px';
+  hovercard.style.setProperty('--arrow-x', Math.max(14, Math.min(hw-26, r.left + r.width/2 - x - 6))+'px');
+  hovercard.classList.toggle('flip', flip);
+}
+function hideHover(){ hcHideTimer = setTimeout(()=>hovercard.classList.remove('show'), 90); }
+document.body.addEventListener('pointerover', e=>{
+  const t = e.target.closest('.term,[data-hover-code]');
+  if(t){ showHover(t.dataset.code || t.dataset.hoverCode, t); }
+});
+document.body.addEventListener('pointerout', e=>{
+  const t = e.target.closest('.term,[data-hover-code]');
+  if(t) hideHover();
+});
+/* touch fallback: tap toggles */
+document.body.addEventListener('click', e=>{
+  const t = e.target.closest('.term');
+  if(t){ showHover(t.dataset.code, t); e.stopPropagation(); }
+  else if(!e.target.closest('#hovercard')) hovercard.classList.remove('show');
+});
+
+/* ============================================================
+   PRODUCTS — official FACERINNA photo catalogue (assets reused
+   from the FACERINNA AGM showcase)
+   ============================================================ */
+const PRODUCTS = [
+  // Niacinamide Brightening
+  {name:"2% Niacinamide Power Bright Cleanser", cat:"Niacinamide", active:"2% Niacinamide", img:""},
+  {name:"10% Niacinamide 3% TXA Bright Dark Spot Serum", cat:"Niacinamide", active:"10% Niacinamide · 3% TXA", img:"", best:true},
+  {name:"5% Niacinamide 1% TXA Bright Dark Spot Moisturizer", cat:"Niacinamide", active:"5% Niacinamide · 1% TXA", img:""},
+  {name:"Niacinamide Brightening Serum Sunscreen SPF50 PA++++", cat:"Niacinamide", active:"SPF50 PA++++ · 2% Niacinamide", img:"", best:true},
+  // Salicylic Acid Acne
+  {name:"Salicylic Acid Acne Gel Cleanser", cat:"Salicylic Acid", active:"0.5% Salicylic Acid · Centella", img:""},
+  {name:"Salicylic Acid Acne Toner", cat:"Salicylic Acid", active:"0.5% Salicylic Acid", img:""},
+  {name:"2% Salicylic Acid Acne Serum", cat:"Salicylic Acid", active:"2% Salicylic Acid · Madecassoside", img:""},
+  {name:"Salicylic Acid Acne Moisturizer", cat:"Salicylic Acid", active:"0.5% Salicylic Acid · 2% Niacinamide", img:""},
+  {name:"2% Salicylic Acid Dual-Action Acne Spot Gel", cat:"Salicylic Acid", active:"2% BHA · 2% Niacinamide · CICA", img:""},
+  // Ceramide
+  {name:"Low pH B5 Gel Cleanser", cat:"Ceramide", active:"pH 5.5 · B5 · Amino Acid", img:"", best:true},
+  {name:"Ceramide B5 Balancing Toner", cat:"Ceramide", active:"Ceramide · B5 · Hyaluronic Acid", img:""},
+  {name:"Ceramide B5 Balancing Moisturizer", cat:"Ceramide", active:"Ceramide · B5 · Squalane", best:true, img:""},
+  // Retinol
+  {name:"Retinol Anti-Aging Serum", cat:"Retinol", active:"Retinol · MVE Technology", img:""},
+  {name:"Retinol Anti-Aging Moisturizer", cat:"Retinol", active:"Retinol · Ceramide NP", img:""},
+  // B5 Barrier
+  {name:"5% B5 Centella Calming Gel Cream", cat:"B5 Barrier", active:"5% B5 · CICA · Ectoin", img:""},
+  {name:"5% B5 Niacinamide Bright Barrier Cream", cat:"B5 Barrier", active:"5% B5 · 2% Niacinamide · Squalane", img:""},
+  {name:"5% B5 Intensive Barrier Cream", cat:"B5 Barrier", active:"5% B5 · Zinc PCA · Squalane", img:""},
+  // Gentle Cleanser
+  {name:"Amino Acid pH-Balanced Cream Cleanser", cat:"Gentle Cleanse", active:"Amino Acid · B5 · Trehalose", img:""},
+  // Sunscreen
+  {name:"Acne Defense Matte Serum Sunscreen SPF50", cat:"Sunscreen", active:"SPF50 PA++++ · Centella · Bisabolol", img:""},
+  {name:"Physical Defense Barrier Serum Sunscreen SPF50", cat:"Sunscreen", active:"100% Mineral · AvoBrite™ · B5", img:""},
+];
+
+/* ============================================================
+   SNAPSHOT FALLBACK (only if the live sheet can't be reached)
+   ============================================================ */
+const SNAP_REPORTS = [];
+const SNAP_SERIES = [];
+const SNAP_SKUS = [];
+const SNAPSHOT_DATE = "2026-09-07";
+const SNAP_THUMBS = [];
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function normSku(s){return (s||'').toUpperCase().replace(/^FACERINNA\s+/,'').replace(/PA\+{1,4}/g,'').replace(/[^A-Z0-9]/g,'');}
+function embeddedPhotoFor(name){const n=normSku(name);const p=PRODUCTS.find(x=>normSku(x.name)===n);return p?p.img:null;}
+/* live product sheet image first, embedded showcase pack-shot as fallback */
+function photoFor(name){
+  const t = IMG_MAP[normSku(name)];
+  return (t && t.img) || embeddedPhotoFor(name);
+}
+function linksFor(name){ return IMG_MAP[normSku(name)] || {}; }
+/* if a Drive thumbnail fails to load (offline / rate-limited), swap to the
+   embedded pack-shot, or a flask glyph when there is none */
+window.__imgFallback = function(el){
+  el.onerror = null;
+  const fb = el.dataset.fb;
+  if(fb){ el.src = fb; return; }
+  const holder = el.parentElement;
+  if(holder) holder.innerHTML = '<span class="ph"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.2L4.8 18A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-3L14 9.2V3"/><path d="M7.5 15h9"/></svg></span>';
+};
+function artHTML(name){
+  const live = IMG_MAP[normSku(name)] && IMG_MAP[normSku(name)].img;
+  const emb = embeddedPhotoFor(name);
+  const src = live || emb;
+  if(!src) return '<span class="ph"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.2L4.8 18A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-3L14 9.2V3"/><path d="M7.5 15h9"/></svg></span>';
+  const fb = (live && emb) ? ` data-fb="${emb}"` : '';
+  return `<img src="${src}"${fb} alt="${esc(name)}" loading="lazy" onerror="__imgFallback(this)">`;
+}
+function bestFor(name){const n=normSku(name);const p=PRODUCTS.find(x=>normSku(x.name)===n);return !!(p&&p.best);}
+function activeFor(name){const n=normSku(name);const p=PRODUCTS.find(x=>normSku(x.name)===n);return p?p.active:'';}
+function reportsFor(skuName){const n=normSku(skuName);
+  return REPORTS.filter(r=>{const k=normSku(r.sku);return k===n||VARIANT_OF[k]===n;});}
+function seriesFor(name){return SERIES.find(s=>s.series===name);}
+function parseNumList(text){
+  if(!text) return [];
+  const parts = text.replace(/\r/g,'').split(/\n(?=\d+\.\s)/).map(x=>x.replace(/^\d+\.\s*/,'').trim()).filter(Boolean);
+  return parts.length ? parts : [text.trim()];
+}
+function shortSeries(s){ const m=(s||'').match(/—\s*(.+)$/); return m?m[1].trim():(s||''); }
+
+const SERIES_COLORS = {};
+const SERIES_PALETTE = ['#2E7CBE','#0E9AA3','#2F9E6E','#7A67D0','#B85C9E','#D98E2B','#5B7FA6','#7E8D53'];
+function seriesColor(name){
+  if(!(name in SERIES_COLORS)){
+    const i = SERIES.findIndex(s=>s.series===name);
+    SERIES_COLORS[name] = SERIES_PALETTE[(i>=0?i:Object.keys(SERIES_COLORS).length) % SERIES_PALETTE.length];
+  }
+  return SERIES_COLORS[name];
+}
+
+/* ============================================================
+   GLOSSARY SECTION
+   ============================================================ */
+const glossGrid = document.getElementById('glossGrid');
+const glossDetail = document.getElementById('glossDetail');
+let activeCode = PARAMS[0].code;
+function renderGlossDetail(code){
+  const p = paramByCode(code);
+  if(!p){glossDetail.innerHTML='';return;}
+  glossDetail.innerHTML = `
+    <div class="gd-head">
+      <div class="gd-code">${esc(p.code)}</div>
+      <div><div class="gd-name">${esc(p.name)}</div></div>
+      ${p.better?`<div class="gd-dir ${dirClass(p.better)}">${esc(dirText(p.better))}</div>`:''}
+    </div>
+    <div class="gd-grid">
+      <div class="gd-box"><div class="k">What it measures</div><div class="v">${esc(p.measures)}</div></div>
+      <div class="gd-box"><div class="k">Typical instrument</div><div class="v">${esc(p.instrument)}</div></div>
+      <div class="gd-box"><div class="k">Unit</div><div class="v">${esc(p.unit)}</div></div>
+    </div>
+    <div class="gd-marketing"><div class="k">Plain-language / marketing translation</div><div class="v">${esc(p.marketing)}</div></div>
+    ${p.note?`<div class="gd-note"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2.8 20h18.4L12 4Z"/><path d="M12 10v4M12 17.4v.2"/></svg> ${esc(p.note)}</div>`:''}
+  `;
+}
+function renderGlossGrid(filter){
+  const f = (filter||'').trim().toLowerCase();
+  const list = PARAMS.filter(p=>!f || p.code.toLowerCase().includes(f) || p.name.toLowerCase().includes(f) || (p.marketing||'').toLowerCase().includes(f));
+  document.getElementById('glossCount').textContent = `${list.length} of ${PARAMS.length} parameters`;
+  document.getElementById('glossEmpty').style.display = list.length? 'none':'block';
+  glossGrid.innerHTML = list.map(p=>`
+    <button type="button" class="gchip ${p.code===activeCode?'active':''}" data-code="${esc(p.code)}" data-hover-code="${esc(p.code)}">
+      <span class="code">${esc(p.code)}</span>
+      <span class="lbl">${esc(p.marketing)}</span>
+    </button>`).join('');
+  glossGrid.querySelectorAll('.gchip').forEach(el=>el.addEventListener('click',()=>{
+    activeCode = el.dataset.code;
+    renderGlossGrid(document.getElementById('glossSearch').value);
+    renderGlossDetail(activeCode);
+  }));
+}
+document.getElementById('glossSearch').addEventListener('input',e=>renderGlossGrid(e.target.value));
+
+/* ============================================================
+   PRODUCT RANGE
+   ============================================================ */
+let activeSeries = 'All';
+let rangeQuery = '';
+function renderFilters(){
+  const counts = {};
+  SKUS.forEach(s=>{counts[s.series]=(counts[s.series]||0)+1;});
+  const chips = [['All', SKUS.length, null], ...SERIES.map(s=>[s.series, counts[s.series]||0, seriesColor(s.series)])];
+  document.getElementById('rangeFilters').innerHTML = chips.map(([name,ct,col])=>`
+    <button type="button" class="rf ${name===activeSeries?'active':''}" data-series="${esc(name)}" ${col?`style="--sc:${col}"`:''}>
+      ${col?'<span class="swatch"></span>':''}${esc(name==='All'?'All series':shortSeries(name))}<span class="ct">${ct}</span>
+    </button>`).join('');
+  document.querySelectorAll('.rf').forEach(el=>el.addEventListener('click',()=>{
+    activeSeries = el.dataset.series; renderFilters(); renderThumbs();
+  }));
+}
+function renderThumbs(){
+  const q = rangeQuery.toLowerCase();
+  const list = SKUS.filter(s=>
+    (activeSeries==='All'||s.series===activeSeries) &&
+    (!q || s.sku.toLowerCase().includes(q) || (s.code||'').toLowerCase().includes(q)));
+  document.getElementById('rangeEmpty').style.display = list.length?'none':'block';
+  document.getElementById('thumbGrid').innerHTML = list.map((s,i)=>{
+    const col = seriesColor(s.series);
+    const n = reportsFor(s.sku).length;
+    return `
+    <button type="button" class="thumb reveal" style="--sc:${col};transition-delay:${Math.min(i*40,320)}ms" data-sku="${esc(s.sku)}">
+      <span class="glare"></span>
+      ${bestFor(s.sku)?'<span class="tag-best">BEST-SELLER</span>':''}
+      <div class="cat">${esc(shortSeries(s.series))}</div>
+      <div class="art">${artHTML(s.sku)}</div>
+      <h3>${esc(s.sku.replace(/^FACERINNA\s+/i,''))}</h3>
+      <div class="code-line">${esc(s.code||'—')}</div>
+      <span class="databadge"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.2L4.8 18A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-3L14 9.2V3"/><path d="M7.5 15h9"/></svg> ${n} report${n!==1?'s':''} on file</span>
+    </button>`;
+  }).join('');
+  const thumbs = document.querySelectorAll('#thumbGrid .thumb');
+  thumbs.forEach(t=>{
+    t.addEventListener('click',()=>openProduct(t.dataset.sku));
+    attachTilt(t);
+  });
+  observeReveals();
+}
+document.getElementById('rangeSearch').addEventListener('input',e=>{rangeQuery=e.target.value;renderThumbs();});
+
+/* 3D tilt + glare (pointer-tracking, vanilla) */
+const FINE_POINTER = matchMedia('(pointer:fine)').matches && !matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+/* ============================================================
+   DIGITAL SERENITY — cursor glow, click ripple, staged headline
+   ============================================================ */
+(function serenity(){
+  const REDUCED = matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  /* The aurora drifts only while the hero is in view.
+
+     Measured on this page: animating it costs about half the frame rate,
+     because it sits under translucent sections and every frame re-blends
+     everything above it. But the drift is only a flourish on arrival — once
+     you have scrolled into the reports nobody is watching the background,
+     and that is exactly when smooth scrolling matters. So it moves at the
+     top and holds still below, and will-change is set only while it moves
+     rather than permanently pinning a viewport-sized texture in memory. */
+  const auroraLayer = document.querySelector('.aurora i');
+  const heroEl = document.getElementById('top');
+  if(auroraLayer && heroEl && !REDUCED && 'IntersectionObserver' in window){
+    new IntersectionObserver(([entry]) => {
+      const on = entry.isIntersecting;
+      auroraLayer.style.animationPlayState = on ? 'running' : 'paused';
+      auroraLayer.style.willChange = on ? 'transform' : 'auto';
+    }, {threshold:0}).observe(heroEl);
+  }
+
+  /* Headline words rise in sequence. Split at runtime rather than in the
+     markup so the heading stays one readable sentence in the source, and so
+     build-public.js never has to reason about it.
+
+     .grad is animated whole, never split: it paints its text with
+     background-clip:text, and a gradient clipped to one word at a time would
+     restart per word instead of sweeping across the phrase. */
+  if(!REDUCED){
+    const h1 = document.querySelector('.hero h1');
+    if(h1){
+      let i = 0;
+      const START = 260, STEP = 110;
+      [...h1.childNodes].forEach(node => {
+        if(node.nodeType === 3){
+          const frag = document.createDocumentFragment();
+          node.textContent.split(/(\s+)/).forEach(part => {
+            if(!part.trim()){ if(part) frag.appendChild(document.createTextNode(part)); return; }
+            const s = document.createElement('span');
+            s.className = 'word-animate';
+            s.style.animationDelay = (START + (i++) * STEP) + 'ms';
+            s.textContent = part;
+            frag.appendChild(s);
+          });
+          h1.replaceChild(frag, node);
+        } else if(node.nodeType === 1){
+          /* WRAP an element, never relabel it. Putting .word-animate on .grad
+             directly leaves it invisible: `.hero h1 .grad` is the more
+             specific selector, so its `animation:shimmer` wins outright,
+             word-appear never runs, and the opacity:0 that .word-animate sets
+             is never animated away. A wrapper carries the reveal; the element
+             inside keeps its own animation. */
+          const w = document.createElement('span');
+          w.className = 'word-animate';
+          w.style.animationDelay = (START + (i++) * STEP) + 'ms';
+          h1.replaceChild(w, node);
+          w.appendChild(node);
+        }
+      });
+    }
+  }
+
+  /* A glow that follows the cursor. Skipped entirely on touch and under
+     reduced motion — FINE_POINTER already folds both in. */
+  if(FINE_POINTER){
+    const glow = document.createElement('div');
+    glow.id = 'mouse-glow';
+    document.body.appendChild(glow);
+    let x = 0, y = 0, queued = false;
+    addEventListener('mousemove', e => {
+      x = e.clientX; y = e.clientY;
+      if(queued) return;              // one write per frame, not one per event
+      queued = true;
+      requestAnimationFrame(() => {
+        glow.style.transform = `translate3d(${x}px,${y}px,0) translate(-50%,-50%)`;
+        glow.style.opacity = '1';
+        queued = false;
+      });
+    }, {passive:true});
+    document.addEventListener('mouseleave', () => { glow.style.opacity = '0'; });
+  }
+
+  /* A ring on click. Listens on the capture phase so it still fires for
+     controls that stop propagation, and removes itself on animationend
+     rather than on a timer that could outlive the element. */
+  if(!REDUCED){
+    addEventListener('click', e => {
+      const r = document.createElement('div');
+      r.className = 'ripple-effect';
+      r.style.left = e.clientX + 'px';
+      r.style.top  = e.clientY + 'px';
+      document.body.appendChild(r);
+      r.addEventListener('animationend', () => r.remove(), {once:true});
+    }, {passive:true, capture:true});
+  }
+})();
+function attachTilt(el){
+  if(!FINE_POINTER) return;
+  el.addEventListener('pointermove',e=>{
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left)/r.width, py = (e.clientY - r.top)/r.height;
+    el.style.transform = `rotateY(${(px-.5)*9}deg) rotateX(${(0.5-py)*9}deg) translateY(-6px)`;
+    el.style.setProperty('--gx', (px*100)+'%');
+    el.style.setProperty('--gy', (py*100)+'%');
+  });
+  el.addEventListener('pointerleave',()=>{ el.style.transform=''; });
+}
+
+/* ============================================================
+   LABS — computed live
+   ============================================================ */
+function renderLabs(){
+  const map = new Map();
+  REPORTS.forEach(r=>{
+    if(!r.lab) return;
+    if(!map.has(r.lab)) map.set(r.lab,{count:0,skus:new Set()});
+    const e = map.get(r.lab); e.count++; e.skus.add(r.sku);
+  });
+  const labs = [...map.entries()].sort((a,b)=>b[1].count-a[1].count);
+  document.getElementById('labGrid').innerHTML = labs.map(([name,e],i)=>`
+    <div class="lab-card reveal" style="transition-delay:${Math.min(i*35,280)}ms">
+      <div class="name">${esc(name)}</div>
+      <div class="meta"><span>${e.skus.size} SKU${e.skus.size!==1?'s':''} covered</span><b>${e.count}</b></div>
+    </div>`).join('');
+  observeReveals();
+}
+
+/* ============================================================
+   COMPARE — one measure, three groupings
+   ============================================================ */
+let cmpView = 'sku';
+let cmpSeriesFilter = 'All';
+let cmpAsTable = false;
+
+/* The matrix spells one laboratory two ways ("Co. Ltd." and "Co., Ltd."), and
+   two bars for one lab is a wrong chart. Grouping is done on a key that ignores
+   punctuation and case; the label shown is the spelling that appears most, and
+   any group built from more than one spelling is declared under the chart
+   rather than quietly merged. The sheet is not edited from here. */
+const cmpLabKey = s => String(s||'').toLowerCase().replace(/[.,]/g,'').replace(/\s+/g,' ').trim();
+
+function cmpRows(){
+  const merged = [];
+  if(cmpView === 'lab'){
+    const g = new Map();
+    REPORTS.forEach(r=>{
+      const raw = (r.lab||'').trim(); if(!raw) return;
+      const k = cmpLabKey(raw);
+      if(!g.has(k)) g.set(k, {spellings:new Map(), count:0, skus:new Set()});
+      const e = g.get(k);
+      e.spellings.set(raw, (e.spellings.get(raw)||0) + 1);
+      e.count++; e.skus.add(r.sku);
+    });
+    const rows = [...g.values()].map(e=>{
+      const spellings = [...e.spellings.entries()].sort((a,b)=>b[1]-a[1]);
+      if(spellings.length > 1) merged.push(spellings.map(x=>x[0]));
+      return {name: spellings[0][0], sub: e.skus.size + ' SKU' + (e.skus.size!==1?'s':''), value: e.count};
+    });
+    return {rows, merged, clickable:false};
+  }
+
+  if(cmpView === 'series'){
+    const rows = SERIES.map(se=>{
+      const skus = SKUS.filter(k=>k.series===se.series);
+      const value = REPORTS.filter(r=>skus.some(k=>k.sku===r.sku)).length;
+      return {name: shortSeries(se.series), sub: skus.length + ' SKU' + (skus.length!==1?'s':''), value};
+    }).filter(r=>r.value > 0);
+    return {rows, merged, clickable:false};
+  }
+
+  const rows = SKUS
+    .filter(k=>cmpSeriesFilter==='All' || k.series===cmpSeriesFilter)
+    .map(k=>({name: k.sku.replace(/^FACERINNA\s+/i,''), sub: shortSeries(k.series),
+              value: reportsFor(k.sku).length, sku: k.sku}))
+    .filter(r=>r.value > 0);
+  return {rows, merged, clickable:true};
+}
+
+function renderCompare(){
+  const plot = document.getElementById('cmpPlot');
+  const table = document.getElementById('cmpTable');
+  const foot = document.getElementById('cmpFoot');
+  const note = document.getElementById('cmpNote');
+  if(!plot) return;
+
+  const {rows, merged, clickable} = cmpRows();
+  rows.sort((a,b)=> b.value - a.value || a.name.localeCompare(b.name));
+  const max = rows.reduce((m,r)=>Math.max(m,r.value), 0);
+  const total = rows.reduce((t,r)=>t + r.value, 0);
+  const what = cmpView==='sku' ? 'product' : cmpView==='lab' ? 'laboratory' : 'series';
+  const plural = cmpView==='lab' ? 'laboratories' : cmpView==='series' ? 'series' : 'products';
+
+  document.getElementById('cmpFilterWrap').style.display = cmpView==='sku' ? '' : 'none';
+
+  plot.setAttribute('aria-label',
+    'Test reports per ' + what + '. ' + rows.map(r=>r.name + ': ' + r.value).join('; '));
+
+  if(!rows.length){
+    plot.innerHTML = '<div class="cmp-empty">No reports match this filter.</div>';
+  } else {
+    plot.innerHTML = rows.map(r=>{
+      const pct = max ? (r.value / max) * 100 : 0;
+      const tag = clickable ? 'button' : 'div';
+      const attrs = clickable ? ' type="button" data-clickable="1" data-sku="' + esc(r.sku) + '"' : '';
+      const tip = esc(r.name) + ' — ' + r.value + ' report' + (r.value!==1?'s':'') + (r.sub ? ' · ' + esc(r.sub) : '');
+      return '<' + tag + ' class="cmp-row"' + attrs + ' title="' + tip + '">'
+        + '<span class="cmp-name"><b>' + esc(r.name) + '</b>'
+        + (r.sub ? '<span class="cmp-sub">' + esc(r.sub) + '</span>' : '') + '</span>'
+        + '<span class="cmp-barwrap"><span class="cmp-track">'
+        + '<span class="cmp-bar" style="width:' + pct.toFixed(1) + '%"></span></span>'
+        + '<span class="cmp-val">' + r.value + '</span></span>'
+        + '</' + tag + '>';
+    }).join('');
+    if(clickable) plot.querySelectorAll('.cmp-row').forEach(el=>
+      el.addEventListener('click', ()=>openProduct(el.dataset.sku)));
+  }
+
+  table.innerHTML = rows.length
+    ? '<thead><tr><th>' + what[0].toUpperCase() + what.slice(1) + '</th><th>Reports</th></tr></thead><tbody>'
+      + rows.map(r=>'<tr><td>' + esc(r.name)
+          + (r.sub ? ' <span class="cmp-sub">· ' + esc(r.sub) + '</span>' : '')
+          + '</td><td>' + r.value + '</td></tr>').join('')
+      + '</tbody>'
+    : '';
+
+  /* Only meaningful when nothing is filtered out. Under a series filter the
+     rest are excluded on purpose, not unmatched. */
+  const filtered = cmpView === 'sku' && cmpSeriesFilter !== 'All';
+  const missing = filtered ? 0 : REPORTS.length - total;
+  foot.textContent = rows.length
+    ? total + ' report' + (total!==1?'s':'') + ' across ' + rows.length + ' ' + (rows.length===1?what:plural)
+      + ' · highest ' + max
+      /* Reports whose SKU name matches nothing in the index fall outside every
+         grouping. Saying so beats a total that quietly disagrees with the hero
+         count directly above it. */
+      + (missing > 0 ? ' · ' + missing + ' not matched to a ' + what : '')
+    : '';
+
+  if(merged.length){
+    note.hidden = false;
+    note.textContent = 'Grouped as one: ' + merged.map(g=>g.join('  /  ')).join(' — ')
+      + '. The same laboratory is spelled more than one way in the matrix; worth fixing at source.';
+  } else {
+    note.hidden = true;
+  }
+
+  plot.hidden = cmpAsTable;
+  table.hidden = !cmpAsTable;
+}
+
+function initCompare(){
+  document.querySelectorAll('.cmp-tab').forEach(t=>t.addEventListener('click',()=>{
+    cmpView = t.dataset.view;
+    document.querySelectorAll('.cmp-tab').forEach(o=>{
+      const on = o === t;
+      o.classList.toggle('is-on', on);
+      o.setAttribute('aria-selected', String(on));
+    });
+    renderCompare();
+  }));
+  document.getElementById('cmpSeries').addEventListener('change', e=>{
+    cmpSeriesFilter = e.target.value; renderCompare();
+  });
+  const tb = document.getElementById('cmpTableBtn');
+  tb.addEventListener('click', ()=>{
+    cmpAsTable = !cmpAsTable;
+    tb.setAttribute('aria-pressed', String(cmpAsTable));
+    renderCompare();
+  });
+}
+
+function renderCompareFilter(){
+  const sel = document.getElementById('cmpSeries');
+  if(!sel) return;
+  const names = SERIES.map(s=>s.series);
+  if(!names.includes(cmpSeriesFilter)) cmpSeriesFilter = 'All';
+  sel.innerHTML = ['All'].concat(names).map(n=>
+    '<option value="' + esc(n) + '"' + (n===cmpSeriesFilter?' selected':'') + '>'
+    + esc(n==='All' ? 'All series' : shortSeries(n)) + '</option>').join('');
+}
+
+/* ============================================================
+   HERO STATS (animated counters)
+   ============================================================ */
+function renderHeroStats(){
+  const labs = new Set(REPORTS.map(r=>r.lab).filter(Boolean)).size;
+  const stats = [[SKUS.length,'SKUs tracked'],[REPORTS.length,'Test reports'],[SERIES.length,'Product series'],[labs,'Independent labs']];
+  document.getElementById('heroStats').innerHTML = stats.map(([n,l])=>`
+    <div class="hstat"><div class="n" data-count="${n}">0</div><div class="l">${esc(l)}</div></div>`).join('');
+  document.querySelectorAll('#heroStats .n').forEach(el=>{
+    const target = +el.dataset.count; const t0 = performance.now(); const dur = 1100;
+    (function step(now){
+      const p = Math.min(1,(now-t0)/dur); const e2 = 1-Math.pow(1-p,3);
+      el.textContent = Math.round(target*e2);
+      if(p<1) requestAnimationFrame(step);
+    })(t0);
+  });
+}
+
+/* ============================================================
+   PRODUCT MODAL — 3 segments
+   ============================================================ */
+const pmodal = document.getElementById('pmodal');
+const segTabs = document.querySelectorAll('.seg-tab');
+const segGlider = document.getElementById('segGlider');
+const panels = {reports:document.getElementById('panelReports'),tech:document.getElementById('panelTech'),mkt:document.getElementById('panelMkt')};
+const SEG_ORDER = ['reports','tech','mkt'];
+
+let currentSeg = 'reports';
+function setSeg(which){
+  currentSeg = which;
+  const idx = SEG_ORDER.indexOf(which);
+  segGlider.style.transform = `translateX(${idx*100}%)`;
+  segTabs.forEach(t=>t.classList.toggle('active', t.dataset.seg===which));
+  SEG_ORDER.forEach(k=>panels[k].classList.toggle('show', k===which));
+}
+segTabs.forEach(t=>t.addEventListener('click',()=>setSeg(t.dataset.seg)));
+
+function subjectHTML(text){
+  if(!text) return '';
+  if(!/^\s*1\./.test(text)) return `<div class="subject-chips"><span class="subj nohuman"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.6" opacity=".55"/></svg> ${esc(text)}</span></div>`;
+  const items = parseNumList(text).map(it=>{
+    const m = it.match(/^([^:]{2,26}):\s*(.+)$/s);
+    return m ? `<span class="subj"><b>${esc(m[1])}</b>${esc(m[2])}</span>` : `<span class="subj">${esc(it)}</span>`;
+  });
+  return `<div class="subject-chips">${items.join('')}</div>`;
+}
+function paramsHTML(text){
+  const items = parseNumList(text);
+  if(!items.length) return '';
+  return `<div class="rc-params"><div class="k">Parameters / tests</div><div class="plist">${items.map(it=>`<span class="pitem">${linkTerms(esc(it))}</span>`).join('')}</div></div>`;
+}
+
+function renderReportsPanel(reps){
+  if(!reps.length){
+    panels.reports.innerHTML = `<div class="empty-state"><div class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.2L4.8 18A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-3L14 9.2V3"/><path d="M7.5 15h9"/></svg></div><h5>No test reports on file yet</h5><p>Once a report row is added on the sheet's Test Reports &amp; Claims tab, it appears here on next load.</p></div>`;
+    return;
+  }
+  panels.reports.innerHTML = `<div class="timeline">` + reps.map(r=>`
+    <div class="rep-card">
+      <div class="rc-top">
+        <div><div class="rc-no">Report No. ${esc(r.reportNo||'—')}</div><div class="rc-lab">${esc(r.lab||'')}</div></div>
+        <span class="rc-date"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2.4"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg> ${esc(r.date||'—')}</span>
+      </div>
+      ${subjectHTML(r.subject)}
+      ${paramsHTML(r.param)}
+    </div>`).join('') + `</div>`;
+}
+
+function claimGroup(cls, icon, title, text){
+  const items = parseNumList(text);
+  if(!items.length) return '';
+  return `<div class="cgroup ${cls}"><h6>${icon} ${esc(title)} <span class="cnt">${items.length}</span></h6>
+    <ul>${items.map(it=>`<li>${linkTerms(esc(it))}</li>`).join('')}</ul></div>`;
+}
+function renderTechPanel(reps){
+  const cards = reps.filter(r=>r.claimsInstrument||r.claimsPanel||r.claimsOther);
+  if(!cards.length){
+    panels.tech.innerHTML = `<div class="empty-state"><div class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21h12M9 21V9a3 3 0 0 1 6 0v12"/><path d="M12 3v3M5 14l3-3"/><circle cx="12" cy="9" r="1.2"/></svg></div><h5>No technical claims extracted yet</h5><p>The Claims — Instrument / Consumer Panel / Other columns are empty for this SKU's reports.</p></div>`;
+    return;
+  }
+  panels.tech.innerHTML = cards.map(r=>`
+    <div class="tc-card">
+      <div class="tc-head"><b>Report No. ${esc(r.reportNo||'—')}</b><span class="lab">${esc(r.lab||'')}</span></div>
+      <div class="tc-body">
+        ${claimGroup('instrument','<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="8" width="19" height="8" rx="1.6"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/></svg>','Claims — Instrument Measured', r.claimsInstrument)}
+        ${claimGroup('panel','<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="9" r="2.6"/><circle cx="16" cy="9" r="2.6"/><path d="M3.5 19c.6-2.7 2.4-4 4.5-4s3.9 1.3 4.5 4M15 15c2.1 0 3.9 1.3 4.5 4"/></svg>','Claims — Consumer Panel', r.claimsPanel)}
+        ${claimGroup('other','<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>','Claims — Other', r.claimsOther)}
+        ${r.disclaimer?`<div class="disc-box"><b><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg> Required disclaimer</b>${esc(r.disclaimer)}</div>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function renderMktPanel(sku, reps){
+  const generic = reps.map(r=>r.genericClaims).find(Boolean) || '';
+  const genItems = parseNumList(generic);
+  /* distinct disclaimers with the reports that use them */
+  const discMap = new Map();
+  reps.forEach(r=>{
+    if(!r.disclaimer) return;
+    if(!discMap.has(r.disclaimer)) discMap.set(r.disclaimer, []);
+    discMap.get(r.disclaimer).push(r.reportNo);
+  });
+  const ser = seriesFor(sku.series);
+  const col = seriesColor(sku.series);
+  let html = '';
+
+  html += `<div class="mk-block sku">
+    <div class="mk-head"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 9.5 17.5 19.5 6.5"/></svg> Generic Claims — this SKU <span class="sub">from the Test Reports &amp; Claims tab</span></div>
+    <div class="mk-body">
+      ${genItems.length?`<div class="claim-pills">${genItems.map(it=>`<div class="claim-pill">${linkTerms(esc(it))}</div>`).join('')}</div>`
+        :`<div class="empty-state" style="padding:10px"><p>No generic claims recorded for this SKU yet.</p></div>`}
+      ${discMap.size?`<div style="margin-top:14px" class="mk-disc-list">
+        ${[...discMap.entries()].map(([d,rs])=>`<div class="disc-box"><b><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg> Disclaimer ${rs.filter(Boolean).map(x=>`<span class="rep-ref">${esc(x)}</span>`).join('')}</b>${esc(d)}</div>`).join('')}
+      </div>`:''}
+    </div>
+  </div>`;
+
+  if(ser){
+    const skuLines = ser.skus ? ser.skus.split(/\n/).map(x=>x.trim()).filter(Boolean) : [];
+    const serItems = parseNumList(ser.genericClaims);
+    html += `<div class="mk-block series-blk" style="--sc:${col}">
+      <div class="mk-head"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1a2 2 0 0 1 1.4.6l6 6a2 2 0 0 1 0 2.8l-7.1 7.1a2 2 0 0 1-2.8 0l-6-6a2 2 0 0 1-.6-1.4Z"/><circle cx="8" cy="8" r="1.3"/></svg> Generic Claims — ${esc(shortSeries(ser.series))} Series <span class="sub">series-level, shared across the range</span></div>
+      <div class="mk-body">
+        <div class="series-banner"><span class="sb-name" style="--sc:${col}">${esc(ser.series)}</span></div>
+        ${skuLines.length?`<div class="series-skus">${skuLines.map(l=>{
+          const isThis = normSku(l.split('—').pop())===normSku(sku.sku);
+          return `<span class="ssku ${isThis?'this':''}" ${isThis?`style="--sc:${col}"`:''}>${esc(l)}</span>`;}).join('')}</div>`:''}
+        ${serItems.length?`<div class="claim-pills">${serItems.map(it=>`<div class="claim-pill">${linkTerms(esc(it))}</div>`).join('')}</div>`:''}
+        ${ser.disclaimer?`<div style="margin-top:14px"><div class="disc-box"><b><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg> Series disclaimer</b>${esc(ser.disclaimer)}</div></div>`:''}
+      </div>
+    </div>`;
+  }
+  panels.mkt.innerHTML = html;
+}
+
+/* ============================================================
+   SPOTLIGHT — benefit callouts derived from the SKU's live claims
+   ============================================================ */
+const BENEFITS = [
+  {key:'SKIN BARRIER',        c:'#2E7CBE', re:/\b(tewl|transepidermal|barrier)\b/i},
+  {key:'HYDRATION',           c:'#2F9E6E', re:/(hydrat|moistur|stratum corneum|water[- ]oil|water content)/i},
+  {key:'SOOTHING / REDNESS',  c:'#B85C9E', re:/(redness|h[ae]moglobin|erythema|sooth|calm|skin a\*)/i},
+  {key:'OIL CONTROL',         c:'#D98E2B', re:/(sebum|oil (level|content|production)|oil[- ]control|shine|matt)/i},
+  {key:'BRIGHTENING / MARKS', c:'#7A67D0', re:/(melanin|brightness|brighten|dark spot|acne mark|whiten|l\* value|ita)/i},
+  {key:'ACNE / LESIONS',      c:'#0E9AA3', re:/(acne|lesion|bump|papule|comedon|isga|gea|blackhead|pustul)/i},
+  {key:'TOLERANCE',           c:'#5B7FA6', re:/(sting|sensitive skin|tolerance|non-irritating|irritation)/i},
+  {key:'TEXTURE / PORES',     c:'#7E8D53', re:/(rough|smooth|gloss|pore|texture|scal|elastic|wrinkle|firm)/i},
+  {key:'SUN PROTECTION',      c:'#C9A24B', re:/(\bspf\b|pa\+|uva|water resist)/i},
+  {key:'SAFETY VERIFIED',     c:'#177A5C', re:/(patch test|dermatolog|zero reaction|0% irritation|epiderm|epiocular|colipa|icdrg|heavy metal|microbiolog)/i},
+];
+/* prefer a short line carrying a measured figure */
+function scoreLine(l){
+  let s = 0;
+  if(/\d+(\.\d+)?\s*%/.test(l)) s += 100;
+  if(/\b\d+d\b|\bday/i.test(l)) s += 20;
+  s -= Math.min(60, Math.floor(l.length / 4));
+  return s;
+}
+function benefitsFor(reps){
+  const lines = [];
+  for(const r of reps){
+    for(const f of ['claimsInstrument','claimsPanel','claimsOther'])
+      for(const l of parseNumList(r[f])) lines.push(l);
+  }
+  return benefitsFromLines(lines);
+}
+function benefitsFromLines(lines){
+  const out = [];
+  for(const b of BENEFITS){
+    const hits = lines.filter(l => b.re.test(l));
+    if(!hits.length) continue;
+    /* Keep them all, strongest first. The headline is the best-evidenced
+       line; the rest sit behind the "+N more" control rather than being
+       counted and thrown away. Identical lines are collapsed — the same
+       measure often appears on several reports in a series. */
+    const ranked = [...new Set(hits)].sort((x,y)=>scoreLine(y)-scoreLine(x));
+    out.push({key:b.key, c:b.c, best:ranked[0], rest:ranked.slice(1), n:ranked.length});
+  }
+  /* strongest evidence first, then split evenly around the bubble */
+  return out.sort((a,b)=>scoreLine(b.best)-scoreLine(a.best)).slice(0,8);
+}
+function renderSpotlight(reps){ paintSpotlight('calLeft','calRight', benefitsFor(reps),
+  'No extracted claims yet for this SKU — see Test Reports.'); }
+function paintSpotlight(leftId, rightId, items, emptyMsg){
+  const L = document.getElementById(leftId), R = document.getElementById(rightId);
+  if(!items.length){
+    L.innerHTML = `<div class="cal-empty">${esc(emptyMsg)}</div>`; R.innerHTML = '';
+    return;
+  }
+  const half = Math.ceil(items.length / 2);
+  const draw = (arr, offset) => arr.map((b,i)=>{
+    const extra = b.rest.length;
+    const id = `${leftId}-${offset+i}`;
+    return `
+    <div class="cal" style="--cc:${b.c};animation-delay:${(offset+i)*70}ms">
+      <div class="cal-t">${esc(b.key)}</div>
+      <div class="cal-rule"></div>
+      <div class="cal-v">${linkTerms(esc(b.best))}</div>
+      ${extra ? `<button type="button" class="cal-more" aria-expanded="false" aria-controls="${id}">
+          <span class="chev">▾</span><span class="lbl">+${extra} more measure${extra>1?'s':''}</span>
+        </button>
+        <ul class="cal-rest" id="${id}" hidden>
+          ${b.rest.map(l=>`<li>${linkTerms(esc(l))}</li>`).join('')}
+        </ul>` : ''}
+    </div>`;
+  }).join('');
+  L.innerHTML = draw(items.slice(0,half), 0);
+  R.innerHTML = draw(items.slice(half), half);
+  [L,R].forEach(col => col.querySelectorAll('.cal-more').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const list = document.getElementById(btn.getAttribute('aria-controls'));
+      const open = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!open));
+      list.hidden = open;
+      const n = list.children.length;
+      btn.querySelector('.lbl').textContent =
+        open ? `+${n} more measure${n>1?'s':''}` : 'Show less';
+    });
+  }));
+}
+
+/* ============================================================
+   SERIES LAYER — series cards → series spotlight → its products
+   ============================================================ */
+let currentView = 'series';
+function skusInSeries(name){ return SKUS.filter(s=>s.series===name); }
+function seriesReportCount(name){
+  return skusInSeries(name).reduce((n,s)=>n+reportsFor(s.sku).length, 0);
+}
+function renderSeriesGrid(){
+  const grid = document.getElementById('seriesGrid');
+  if(!SERIES.length){          // no live data and no bundled fallback
+    grid.innerHTML = `<div class="cal-empty" style="padding:26px">
+      Product data could not be loaded. This view reads its data live, so it needs
+      network access to the source workbooks.</div>`;
+    return;
+  }
+  grid.innerHTML = SERIES.map((ser,i)=>{
+    const col = seriesColor(ser.series);
+    const list = skusInSeries(ser.series);
+    const imgs = list.map(s=>photoFor(s.sku)).filter(Boolean).slice(0,4);
+    const extra = list.length - imgs.length;
+    return `
+    <button type="button" class="series-card grad-border grad-border-hover reveal" style="--sc:${col};transition-delay:${Math.min(i*55,330)}ms"
+            data-series="${esc(ser.series)}">
+      <div class="sc-no">Series ${esc(String(ser.no||i+1))}</div>
+      <h4>${esc(shortSeries(ser.series))}</h4>
+      <div class="sc-bubbles">
+        ${imgs.map(src=>`<span class="sc-bub"><img src="${src}" alt="" loading="lazy" onerror="this.parentElement.remove()"></span>`).join('')}
+        ${extra>0?`<span class="sc-bub more">+${extra}</span>`:''}
+      </div>
+      <div class="sc-stats">
+        <span>${list.length} product${list.length!==1?'s':''}</span>
+        <span><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.2L4.8 18A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-3L14 9.2V3"/><path d="M7.5 15h9"/></svg> ${seriesReportCount(ser.series)} reports</span>
+      </div>
+      <div class="sc-cta">View series claims →</div>
+    </button>`;
+  }).join('');
+  grid.querySelectorAll('.series-card').forEach(el=>el.addEventListener('click',()=>openSeries(el.dataset.series)));
+  observeReveals();
+}
+
+const smodal = document.getElementById('smodal');
+let currentSeriesName = null;
+function openSeries(name){
+  const ser = seriesFor(name);
+  if(!ser) return;
+  currentSeriesName = name;
+  const col = seriesColor(name);
+  const list = skusInSeries(name);
+
+  document.getElementById('shead').style.setProperty('--sc', col);
+  document.getElementById('sSeries').textContent = 'Series ' + (ser.no||'');
+  document.getElementById('sSeries').style.background = col;
+  document.getElementById('sName').textContent = shortSeries(name);
+  document.getElementById('sMeta').textContent =
+    `${list.length} product${list.length!==1?'s':''} · ${seriesReportCount(name)} test reports on file`;
+
+  const imgs = list.map(s=>photoFor(s.sku)).filter(Boolean).slice(0,3);
+  document.getElementById('sImgWrap').innerHTML = imgs.length
+    ? imgs.map(src=>`<img src="${src}" alt="" onerror="this.remove()">`).join('')
+    : '<span class="ph"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2c0 5 8 6 8 10s-8 5-8 10"/><path d="M16 2c0 5-8 6-8 10s8 5 8 10" opacity=".55"/><path d="M9 6h6M8 12h8M9 18h6" opacity=".8"/></svg></span>';
+
+  paintSpotlight('sCalLeft','sCalRight', benefitsFromLines(parseNumList(ser.genericClaims)),
+    'No series-level generic claims recorded yet.');
+
+  document.getElementById('sProducts').innerHTML = list.map(s=>{
+    const n = reportsFor(s.sku).length;
+    const img = photoFor(s.sku);
+    return `
+    <div class="sp-card" style="--sc:${col}" data-sku="${esc(s.sku)}">
+      <div class="sp-bub">${img?`<img src="${img}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode(''))">`:'<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6.2L4.8 18A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-3L14 9.2V3"/><path d="M7.5 15h9"/></svg>'}</div>
+      <div class="n">${esc(s.sku.replace(/^FACERINNA\s+/i,''))}</div>
+      <div class="r">${n} report${n!==1?'s':''}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('sProducts').querySelectorAll('.sp-card')
+    .forEach(el=>el.addEventListener('click',()=>openProduct(el.dataset.sku)));
+
+  document.getElementById('sDisc').innerHTML = ser.disclaimer
+    ? `<div class="disc-box"><b><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg> Series disclaimer</b>${esc(ser.disclaimer)}</div>` : '';
+
+  document.getElementById('spanel').scrollTop = 0;
+  smodal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSeries(){
+  currentSeriesName = null;
+  smodal.classList.remove('open');
+  if(!pmodal.classList.contains('open')) document.body.style.overflow = '';
+}
+smodal.querySelectorAll('[data-close-s]').forEach(el=>el.addEventListener('click',closeSeries));
+
+function setView(v){
+  currentView = v;
+  document.querySelectorAll('.vt').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  document.getElementById('seriesGrid').style.display = v==='series' ? 'grid' : 'none';
+  ['rangeTools','rangeFilters','thumbGrid'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = v==='all' ? '' : 'none';
+  });
+  if(v==='all') renderThumbs();
+}
+document.querySelectorAll('.vt').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+
+let currentSkuName = null;
+function openProduct(skuName, keepSeg){
+  const sku = SKUS.find(s=>s.sku===skuName);
+  if(!sku) return;
+  currentSkuName = skuName;
+  const col = seriesColor(sku.series);
+  const reps = reportsFor(sku.sku);
+
+  document.getElementById('phead').style.setProperty('--sc', col);
+  document.getElementById('segGlider').style.setProperty('--sc', col);
+  document.getElementById('pImgWrap').innerHTML = artHTML(sku.sku);
+  document.getElementById('pSeries').textContent = sku.series;
+  document.getElementById('pSeries').style.background = col;
+  document.getElementById('pName').textContent = sku.sku.replace(/^FACERINNA\s+/i,'');
+  document.getElementById('pActive').textContent = activeFor(sku.sku) || '';
+  const chips = [];
+  if(sku.code) chips.push(`Code: ${sku.code}`);
+  if(sku.aliases) chips.push(`Also known as: ${sku.aliases}`);
+  const vNote = (sku.variants&&sku.variants.length)
+    ? `<span class="variant-note"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M10 13a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.3 1.3"/><path d="M14 11a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 19.7l1.3-1.3"/></svg> Includes ${sku.variants.map(v=>`<b>${esc(v.sku.replace(/^FACERINNA\s+/i,''))}</b> (${v.reportCount} report${v.reportCount!==1?'s':''})`).join(', ')} — same SKU code ${esc(sku.code||'')}, reports combined.</span>`
+    : '';
+  const links = linksFor(sku.sku);
+  document.getElementById('pChips').innerHTML =
+    chips.map(c=>`<span class="mini-chip">${esc(c)}</span>`).join('') +
+    (!PUBLIC_BUILD && links.reportUrl?`<a class="mini-chip link" href="${esc(links.reportUrl)}" target="_blank" rel="noopener">Source report PDF ↗</a>`:'') +
+    (!PUBLIC_BUILD && links.claimsUrl?`<a class="mini-chip link" href="${esc(links.claimsUrl)}" target="_blank" rel="noopener">Claims artwork ↗</a>`:'') + vNote;
+
+  const techCount = reps.filter(r=>r.claimsInstrument||r.claimsPanel||r.claimsOther).length;
+  const hasGeneric = reps.some(r=>r.genericClaims);
+  document.getElementById('cReports').textContent = reps.length ? `${reps.length} on file` : 'none yet';
+  document.getElementById('cTech').textContent = techCount ? `${techCount} report${techCount>1?'s':''}` : 'none yet';
+  document.getElementById('cMkt').textContent = hasGeneric ? 'SKU + series' : (seriesFor(sku.series)?'series only':'none yet');
+
+  renderSpotlight(reps);
+  renderReportsPanel(reps);
+  renderTechPanel(reps);
+  renderMktPanel(sku, reps);
+  if(keepSeg){ setSeg(currentSeg); }
+  else{
+    setSeg('reports');
+    document.getElementById('ppanel').scrollTop = 0;
+  }
+  pmodal.classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeProduct(){
+  currentSkuName = null;
+  pmodal.classList.remove('open');
+  if(!smodal.classList.contains('open')) document.body.style.overflow='';
+}
+/* after an auto-refresh changes the data, re-render an open product
+   in place (same SKU, same segment, no scroll jump) */
+function refreshOpenModal(){
+  if(currentSkuName && pmodal.classList.contains('open')){
+    if(SKUS.some(s=>s.sku===currentSkuName)) openProduct(currentSkuName, true);
+    else closeProduct();               // SKU row removed from the sheet
+  }
+}
+pmodal.querySelectorAll('[data-close]').forEach(el=>el.addEventListener('click',closeProduct));
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    hovercard.classList.remove('show');
+    if(pmodal.classList.contains('open')) closeProduct();
+    else closeSeries();
+  }
+});
+
+/* ============================================================
+   MASTER RENDER + CHROME
+   ============================================================ */
+function renderAll(){
+  renderHeroStats();
+  renderFilters();
+  renderThumbs();
+  renderSeriesGrid();
+  renderLabs();
+  renderCompareFilter();
+  renderCompare();
+  setView(currentView);
+  if(currentSeriesName && smodal.classList.contains('open')) openSeries(currentSeriesName);
+}
+let revealIO = null;
+function observeReveals(){
+  if(!revealIO) revealIO = new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add('in');revealIO.unobserve(e.target);}
+  }),{threshold:.12});
+  document.querySelectorAll('.reveal:not(.in)').forEach(el=>revealIO.observe(el));
+}
+renderGlossGrid('');
+renderGlossDetail(activeCode);
+initCompare();
+renderAll();
+loadLiveData();
+
+const nav = document.getElementById('nav');
+const bar = document.getElementById('scrollbar');
+const secIds = ['range','glossary','labs','compare'];
+addEventListener('scroll',()=>{
+  nav.classList.toggle('scrolled',scrollY>10);
+  const h = document.documentElement;
+  bar.style.width = (scrollY/(h.scrollHeight-h.clientHeight)*100)+'%';
+  let cur = '';
+  secIds.forEach(id=>{const s=document.getElementById(id);if(s&&scrollY>=s.offsetTop-140)cur=id;});
+  document.querySelectorAll('.nav-links a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+cur));
+});
+</script>
+</body>
+</html>
