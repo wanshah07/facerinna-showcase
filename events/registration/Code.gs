@@ -358,8 +358,14 @@ function doPost(e) {
       put(CONFIG.FIELDS.phone, phone);
       put(CONFIG.FIELDS.event, event);
       put(CONFIG.OUT.ticket,   code);
-      sheet.appendRow(row);
-      var written = sheet.getLastRow();
+      /* NOT appendRow. It writes below getLastRow(), which is the last row
+         used ANYWHERE on the sheet -- a note somebody types in row 500, or a
+         stray value left by a check, and the next registration lands at 501
+         with 498 blank rows above it. The registrations are what define the
+         end of the data, so the first free row is found from the Timestamp
+         column alone. */
+      var written = firstFreeRow(sheet, at('Timestamp'));
+      sheet.getRange(written, 1, 1, row.length).setValues([row]);
 
       /* Belt as well as braces. The column format above covers rows added
          later, but a sheet set up before that change, or a column somebody
@@ -467,6 +473,55 @@ function escapeHtml(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/**
+ * The row after the last filled cell in one column, ignoring anything else on
+ * the sheet. Reads the column in one call rather than probing row by row.
+ */
+function firstFreeRow(sheet, colIndex) {
+  if (colIndex < 0) return sheet.getLastRow() + 1;   /* no Timestamp column */
+  var max = sheet.getMaxRows();
+  if (max < 2) return 2;
+  var col = sheet.getRange(2, colIndex + 1, max - 1, 1).getValues();
+  for (var i = col.length - 1; i >= 0; i--) {
+    if (String(col[i][0]).trim() !== '') return i + 3;   /* +2 offset, +1 next */
+  }
+  return 2;
+}
+
+/**
+ * Moves registrations back up when something below them has scattered the
+ * rows. Reads every row that has a ticket code, in order, and rewrites them
+ * from row 2 with no gaps. Anything without a ticket code is left where it is
+ * and reported, because this must never quietly delete something it does not
+ * recognise.
+ */
+function compactRows() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var head = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  var codeCol = head.indexOf(CONFIG.OUT.ticket);
+  if (codeCol === -1) return 'No ticket column. Run setup() first.';
+
+  var last = sheet.getLastRow();
+  if (last < 2) return 'Nothing to compact.';
+
+  var all = sheet.getRange(2, 1, last - 1, head.length).getValues();
+  var keep = [], strays = [];
+  for (var i = 0; i < all.length; i++) {
+    var hasCode = String(all[i][codeCol] || '').trim() !== '';
+    var hasAnything = all[i].some(function (v) { return String(v).trim() !== ''; });
+    if (hasCode) keep.push(all[i]);
+    else if (hasAnything) strays.push('row ' + (i + 2));
+  }
+
+  sheet.getRange(2, 1, last - 1, head.length).clearContent();
+  if (keep.length) sheet.getRange(2, 1, keep.length, head.length).setValues(keep);
+
+  return 'Compacted ' + keep.length + ' registration(s) to rows 2-' + (keep.length + 1) + '.' +
+         (strays.length
+           ? ' NOT moved, no ticket code, please check before deleting: ' + strays.join(', ')
+           : '');
 }
 
 /**

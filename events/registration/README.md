@@ -116,6 +116,18 @@ letting one ticket through twice.
 
 ---
 
+## If registrations appear far down the sheet
+
+Rows are written after the last filled cell in the **Timestamp** column, not
+after the last used cell anywhere on the sheet. That means a note typed in a
+spare column no longer pushes the next registration hundreds of rows down.
+
+It is narrower, not bulletproof: something left in the Timestamp column itself,
+below the data, still shifts the next write. Run **`compactRows`** to pull the
+registrations back up. It moves every row that has a ticket code, in order,
+from row 2 with no gaps, and it leaves anything without a ticket code where it
+is and names it in the result rather than deleting what it does not recognise.
+
 ## What to know before you rely on it
 
 **The endpoint is public.** It is in the page source, so treat it as such.
