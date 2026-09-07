@@ -5203,14 +5203,18 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
          arrive at the slide deliberately, and that is when it belongs. */
       if(!document.body.classList.contains('slides')) return;
       if(modal.classList.contains('open')) return;
-      if(Date.now()-lastAuto < 60000) return;
       if(!anyScores()) return;
+      /* No cooldown: every arrival at the games shows the board, however many
+         times you come back. `armed` only clears once the section has actually
+         left the screen, so one arrival still opens it once. The wait is what
+         it takes to be sure the slide is not still moving — a quarter second,
+         not the three quarters it was, which read as slow. */
       armed=false;
       pending=setTimeout(function(){
         pending=null;
         if(share() < 0.55 || modal.classList.contains('open')) return;
         open(true);
-      }, 700);
+      }, 250);
     }
     let queued=false;
     const ping=()=>{ if(!queued){ queued=true; requestAnimationFrame(function(){ queued=false; consider(); }); } };
