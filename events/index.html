@@ -281,7 +281,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .meta .row span{min-width:0;overflow-wrap:anywhere}
 
 .spot{margin-top:14px;padding:11px 13px;border-radius:11px;background:var(--surface-2);
-  border-left:3px solid var(--brand);font-size:.85rem;line-height:1.5}
+  font-size:.85rem;line-height:1.5}
 .spot b{display:block;color:var(--ink);font-weight:700}
 .spot span{color:var(--ink-2)}
 
@@ -473,10 +473,23 @@ function midnight(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate());
    column in 24h HH:MM is read instead. With no start_time the count runs to
    midnight at the start of the day, which is the honest reading of a row that
    only gives a date. */
-function startMoment(d, hhmm){
-  var m=/^(\d{1,2}):(\d{2})$/.exec(String(hhmm||"").trim());
+function startMoment(d, hhmm, timeText){
   var t=new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  if(m) t.setHours(Math.min(23,+m[1]), Math.min(59,+m[2]), 0, 0);
+  var m=/^(\d{1,2}):(\d{2})$/.exec(String(hhmm||"").trim());
+  if(m){ t.setHours(Math.min(23,+m[1]), Math.min(59,+m[2]), 0, 0); return t; }
+
+  /* Falling back to midnight left every card counting to the same instant, so
+     three events months apart all read 08:48:00 and differed only in the day
+     count -- correct, and it looks broken. The display column opens with a
+     time in every row we have ("8.00 am - 5.30 pm"), so read that when the
+     shape is unambiguous. Anything that does not match this exactly is left
+     at midnight rather than guessed at. */
+  var g=/^\s*(\d{1,2})[.:](\d{2})\s*(am|pm)\b/i.exec(String(timeText||""));
+  if(g){
+    var h=+g[1] % 12;
+    if(/pm/i.test(g[3])) h+=12;
+    t.setHours(h, Math.min(59,+g[2]), 0, 0);
+  }
   return t;
 }
 
@@ -544,7 +557,7 @@ function card(e, today, i){
      rather than each card owning a timer. */
   var cd='', target=0;
   if(a && st.key==="upcoming"){
-    target = +startMoment(a, e.start_time);
+    target = +startMoment(a, e.start_time, e.time);
     cd = '<div class="cd" data-target="'+target+'">'
        + '<div class="cd-lab">'+CLK+'<span>Event starts in</span></div>'
        + '<div class="cd-grid">'
@@ -570,6 +583,15 @@ function card(e, today, i){
   /* Only shown when the sheet carries the column. An attendee count is not
      something to invent for a card that a clinic partner will read. */
   if(e.attendees) meta += '<div class="row">'+PPL+'<span>'+esc(e.attendees)+' attending</span></div>';
+
+  /* The date block already says the date is not settled. A details cell that
+     repeats it leaves the card saying the same thing twice, in two places, in
+     two different wordings. Drop the repeat and keep whatever else the cell
+     carries. */
+  var details = String(e.details || "").trim();
+  if(!a){
+    details = details.replace(/(^|\s)dates?\s+(to\s+be\s+confirmed|not\s+(yet\s+)?(fixed|confirmed))\s*\.?/i, " ").trim();
+  }
 
   var spot='';
   if(e.highlight){
@@ -600,7 +622,7 @@ function card(e, today, i){
     + (meta ? '<div class="meta">'+meta+'</div>' : '')
     + cd
     + spot
-    + (e.details ? '<p class="details">'+esc(e.details)+'</p>' : '')
+    + (details ? '<p class="details">'+esc(details)+'</p>' : '')
     + (act ? '<div class="act">'+act+'</div>' : '')
     + '</article>';
 }
@@ -686,10 +708,16 @@ function stamp(src){
 
 function load(){
   setFeed("", "Loading…");
+  /* Paint the saved rows straight away on the first load. Waiting for the
+     network meant up to fifteen seconds of grey skeletons on a booth screen
+     -- no cards, and so no countdown, which is exactly what a visitor would
+     report as "the countdown is missing". Live data replaces this the moment
+     it lands, and the badge says which one is on screen. */
+  if(!primed){ primed = true; render(FALLBACK); }
   /* CSV first (one request, no script tag); JSONP is the fallback for the
      CORS block, which is the common case from a plain browser. */
   fetchCsv(SHEET_ID, GID)
-    .catch(function(){ return fetchJsonp(SHEET_ID, GID, 15000); })
+    .catch(function(){ return fetchJsonp(SHEET_ID, GID, 8000); })
     .then(function(rows){
       var objs=toObjects(rows);
       if(!objs.length) throw new Error("empty");
@@ -713,7 +741,7 @@ function load(){
 
 /* One timer for the whole page. Cards are re-rendered on every load, so this
    reads the DOM each tick rather than holding references that go stale. */
-var lastAuto = 0;
+var lastAuto = 0, primed = false;
 function tickCountdowns(){
   var now=Date.now(), stale=false;
   var els=document.querySelectorAll(".cd");
