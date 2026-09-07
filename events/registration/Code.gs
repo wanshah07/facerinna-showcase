@@ -42,6 +42,10 @@ var CONFIG = {
     event: 'Which event are you attending?'
   },
 
+  /* Only used when the page posts directly (doPost). A sheet created for that
+     needs these exact headers in row 1; setup() writes them if the sheet is
+     empty. */
+
   /* Columns this script writes back. They are created if missing. */
   OUT: {
     ticket:   'Ticket code',
@@ -67,10 +71,26 @@ function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheets()[0];
 
+  /* An empty sheet means this is the web-app setup, not a form's response
+     sheet, so lay out the columns the page will post into. */
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, 5).setValues([[
+      'Timestamp', CONFIG.FIELDS.name, CONFIG.FIELDS.email,
+      CONFIG.FIELDS.phone, CONFIG.FIELDS.event
+    ]]);
+    sheet.setFrozenRows(1);
+  }
+
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'onFormSubmitHandler') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('onFormSubmitHandler').forSpreadsheet(ss).onFormSubmit().create();
+  /* Only useful when a Google Form feeds this sheet. Harmless otherwise: it
+     simply never fires when the page posts through doPost instead. */
+  try {
+    ScriptApp.newTrigger('onFormSubmitHandler').forSpreadsheet(ss).onFormSubmit().create();
+  } catch (err) {
+    console.warn('No form attached; doPost is the way in. ' + err);
+  }
 
   var headers = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn()))
                      .getValues()[0].map(String);
@@ -233,6 +253,111 @@ function plainText(t) {
          'You are registered for ' + t.event + '.\n\n' +
          'Ticket code: ' + t.code + '\n\n' +
          'Show this at the door.\n\nFacerinna';
+}
+
+// ------------------------------------------------- the web app endpoint
+
+/**
+ * The events page posts here. Deploy: Deploy > New deployment > Web app,
+ * "Execute as: Me", "Who has access: Anyone". Paste the /exec URL into
+ * REGISTER_ENDPOINT in events/index.html.
+ *
+ * "Anyone" means anyone: this URL is in the page source, so treat it as
+ * public. It only ever appends a row and sends one email, it returns nothing
+ * about anybody else, and the guards below cap what a flood can cost.
+ */
+function doPost(e) {
+  try {
+    var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+
+    var name  = String(body.name  || '').trim();
+    var email = String(body.email || '').trim();
+    var phone = String(body.phone || '').trim();
+    var event = String(body.event || '').trim();
+
+    if (!name || name.length > 120)      return reply({ ok: false, error: 'bad name' });
+    if (!isEmail(email))                 return reply({ ok: false, error: 'bad email' });
+    if (phone.replace(/\D/g, '').length < 9) return reply({ ok: false, error: 'bad phone' });
+    if (body.consent !== true)           return reply({ ok: false, error: 'consent required' });
+
+    /* Client-side validation is a courtesy to the visitor, not a control:
+       anyone can post here directly. Everything above is checked again. */
+
+    var lock = LockService.getScriptLock();
+    try { lock.waitLock(30000); } catch (err) {
+      return reply({ ok: false, error: 'busy' });
+    }
+
+    try {
+      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+      var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+      var at = function (h) { return headers.indexOf(h); };
+
+      if (at(CONFIG.OUT.ticket) === -1) return reply({ ok: false, error: 'not set up' });
+
+      /* The same person tapping Complete twice, or a double submit, must not
+         produce two tickets. Match on email plus event. */
+      var last = sheet.getLastRow();
+      if (last > 1) {
+        var emailCol = at(CONFIG.FIELDS.email), eventCol = at(CONFIG.FIELDS.event);
+        var rows = sheet.getRange(2, 1, last - 1, sheet.getLastColumn()).getValues();
+        for (var i = 0; i < rows.length; i++) {
+          if (emailCol > -1 &&
+              String(rows[i][emailCol] || '').trim().toLowerCase() === email.toLowerCase() &&
+              (eventCol === -1 || String(rows[i][eventCol] || '').trim() === event)) {
+            return reply({ ok: true, code: String(rows[i][at(CONFIG.OUT.ticket)] || ''),
+                           duplicate: true });
+          }
+        }
+      }
+
+      var code = makeCode();
+      var row = new Array(headers.length).fill('');
+      var put = function (header, value) { var c = at(header); if (c > -1) row[c] = value; };
+      put('Timestamp', new Date());
+      put(CONFIG.FIELDS.name,  name);
+      put(CONFIG.FIELDS.email, email);
+      put(CONFIG.FIELDS.phone, phone);
+      put(CONFIG.FIELDS.event, event);
+      put(CONFIG.OUT.ticket,   code);
+      sheet.appendRow(row);
+      var written = sheet.getLastRow();
+
+      /* The ticket code goes back either way. If the email fails the visitor
+         still has something to show at the door, and the sheet records that
+         the email did not go. */
+      try {
+        sendTicket({ to: email, name: name, event: event || 'Facerinna event', code: code });
+        var sentCol = at(CONFIG.OUT.sentAt);
+        if (sentCol > -1) sheet.getRange(written, sentCol + 1).setValue(new Date());
+      } catch (mailErr) {
+        console.error(mailErr);
+        var sc = at(CONFIG.OUT.sentAt);
+        if (sc > -1) sheet.getRange(written, sc + 1).setValue('EMAIL FAILED: ' + mailErr);
+      }
+
+      return reply({ ok: true, code: code });
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    console.error(err);
+    return reply({ ok: false, error: 'server' });
+  }
+}
+
+/**
+ * Apps Script cannot answer a CORS preflight, so the page posts with the
+ * default content type to keep the request "simple". JSON out is fine.
+ */
+function reply(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/** So opening the /exec URL in a browser says something useful. */
+function doGet() {
+  return reply({ ok: true, service: 'Facerinna event registration' });
 }
 
 // ------------------------------------------------------------- check-in

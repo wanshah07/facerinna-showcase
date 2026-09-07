@@ -304,11 +304,92 @@ body{margin:0;background:var(--bg);color:var(--ink);
   padding:26px;text-align:center;font-size:.86rem;color:var(--ink-2);line-height:1.6}
 .rmodal-wait a{color:var(--brand-deep);font-weight:600}
 .rmodal-body iframe{position:relative;z-index:1;background:transparent}
+/* A class selector beats the user agent's [hidden]{display:none}, so every
+   element here that sets its own display must turn itself off explicitly.
+   Without this the "Opening the form" overlay stayed on top of the form it
+   was supposed to be replaced by -- and an assertion on el.hidden still
+   passed, because the attribute was set. The attribute was never the
+   question. */
+.rmodal-wait[hidden],.rmodal-body iframe[hidden],.msf[hidden]{display:none}
 @media(max-width:560px){
   .rmodal{padding:0}
   .rmodal-box{max-width:none;height:100%;border-radius:0}
 }
 body.rmodal-on{overflow:hidden}
+
+/* ---- the multi-step form ---------------------------------------------
+   Three questions, one at a time. A booth visitor with a phone in one hand
+   answers three short things faster than they read one long form. */
+.msf{padding:26px 22px 24px;display:flex;flex-direction:column;height:100%;
+  overflow-y:auto;-webkit-overflow-scrolling:touch}
+.msf-dots{display:flex;align-items:center;justify-content:center;gap:11px;margin-bottom:26px}
+.msf-dot{display:flex;align-items:center;justify-content:center;width:34px;height:34px;
+  border-radius:50%;border:0;font:inherit;font-size:.86rem;font-weight:600;
+  font-variant-numeric:tabular-nums;background:var(--surface-2);color:var(--muted);
+  transition:.45s cubic-bezier(.22,1,.36,1)}
+.msf-dot.done{background:var(--brand-soft);color:var(--brand-deep);cursor:pointer}
+.msf-dot.now{background:var(--brand-deep);color:#fff;
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--brand) 20%,transparent)}
+.msf-dot:disabled{cursor:not-allowed}
+.msf-link{position:relative;height:2px;width:42px;background:var(--line);overflow:hidden}
+.msf-link i{position:absolute;inset:0;background:var(--brand);transform-origin:left;
+  transform:scaleX(0);transition:transform .55s cubic-bezier(.22,1,.36,1)}
+.msf-link.on i{transform:scaleX(1)}
+
+.msf-bar{height:2px;border-radius:2px;background:var(--surface-2);overflow:hidden;margin-bottom:26px}
+.msf-bar i{display:block;height:100%;width:0;
+  background:linear-gradient(90deg,var(--brand),var(--brand-deep));
+  transition:width .7s cubic-bezier(.22,1,.36,1)}
+
+.msf-step{animation:msfIn .5s cubic-bezier(.22,1,.36,1) both}
+@keyframes msfIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){
+  .msf-step{animation:none}
+  .msf-link i,.msf-bar i,.msf-dot{transition:none}
+}
+.msf-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
+.msf-head label{font-size:1.05rem;font-weight:600;letter-spacing:-.01em}
+.msf-head span{font-size:.74rem;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.msf input{width:100%;height:52px;padding:0 15px;border-radius:11px;font:inherit;font-size:1rem;
+  color:var(--ink);background:var(--surface);border:1px solid var(--line);
+  transition:border-color .3s,box-shadow .3s}
+.msf input:focus{outline:none;border-color:var(--brand);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 22%,transparent)}
+.msf input[aria-invalid="true"]{border-color:#d03b3b}
+.msf-err{margin:8px 0 0;font-size:.82rem;color:#d03b3b;min-height:1.1em}
+
+.msf-consent{margin:16px 0 0;display:flex;gap:10px;align-items:flex-start;
+  font-size:.8rem;line-height:1.55;color:var(--ink-2)}
+.msf-consent input{width:17px;height:17px;flex:0 0 auto;margin-top:2px;height:17px}
+.msf-consent a{color:var(--brand-deep)}
+
+.msf-foot{margin-top:auto;padding-top:22px}
+.msf-go{width:100%;height:48px;border:0;border-radius:12px;font:inherit;font-size:.95rem;
+  font-weight:600;color:#fff;cursor:pointer;display:inline-flex;align-items:center;
+  justify-content:center;gap:8px;
+  background:linear-gradient(120deg,var(--brand),var(--brand-deep));
+  box-shadow:0 8px 20px rgba(46,124,190,.28);transition:.25s}
+.msf-go:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.06)}
+.msf-go:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;transform:none}
+.msf-back{display:block;width:100%;margin-top:12px;padding:8px;border:0;background:none;
+  font:inherit;font-size:.85rem;color:var(--muted);cursor:pointer;transition:.2s}
+.msf-back:hover{color:var(--ink)}
+
+/* done */
+.msf-done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:14px;padding:20px 0;
+  animation:msfIn .6s cubic-bezier(.22,1,.36,1) both}
+.msf-tick{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;
+  background:color-mix(in srgb,#0f9d58 14%,transparent);border:2px solid color-mix(in srgb,#0f9d58 35%,transparent)}
+.msf-tick svg{width:30px;height:30px;stroke:#0f9d58;fill:none;stroke-width:3;
+  stroke-linecap:round;stroke-linejoin:round}
+.msf-done h4{margin:0;font-family:'Fraunces',Georgia,serif;font-size:1.25rem;font-weight:600}
+.msf-done p{margin:0;font-size:.88rem;color:var(--ink-2);max-width:34ch;line-height:1.6}
+.msf-code{margin-top:4px;padding:14px 20px;border-radius:12px;background:var(--surface-2)}
+.msf-code b{display:block;font-size:1.32rem;font-weight:700;letter-spacing:.07em;
+  font-variant-numeric:tabular-nums}
+.msf-code span{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:3px}
 
 .meta{display:flex;flex-direction:column;gap:9px;font-size:.88rem;color:var(--ink-2);
   line-height:1.5}
@@ -392,9 +473,10 @@ footer{margin:56px 0 0;padding:22px 0 40px;border-top:1px solid var(--line);
       </div>
       <button class="rmodal-x" id="rmX" type="button" aria-label="Close">&#10005;</button>
     </div>
-    <div class="rmodal-body">
-      <div class="rmodal-wait" id="rmWait">Opening the form&hellip;</div>
-      <iframe id="rmFrame" title="Registration form" src="about:blank"></iframe>
+    <div class="rmodal-body" id="rmBody">
+      <div class="rmodal-wait" id="rmWait" hidden>Opening the form&hellip;</div>
+      <iframe id="rmFrame" title="Registration form" src="about:blank" hidden></iframe>
+      <div class="msf" id="msf"></div>
     </div>
   </div>
 </div>
@@ -412,6 +494,16 @@ var GID = "0";
    already filled in, which is the difference between one form and five. */
 var DEFAULT_FORM =
   "https://docs.google.com/forms/d/e/1FAIpQLSew0h9ZESmDLy7uWTP3snK9qpZsU0TtdLvz0cb--WGYHU8r8w/viewform";
+
+/* The Apps Script web app that takes a registration, writes it to the sheet in
+   ridzuan@skintificmalaysia.com, issues a ticket code and emails it back.
+   Deploy events/registration/Code.gs as a web app and paste its /exec URL
+   here. Until then the button falls back to embedding the Google Form above,
+   so the booth keeps working rather than offering a form that goes nowhere. */
+var REGISTER_ENDPOINT = "";
+
+/* Where the privacy notice lives. Shown next to the consent box. */
+var PRIVACY_URL = "";
 
 /* Baked-in copy of the same rows. Shown only when the sheet cannot be read,
    and labelled as such — a booth screen should never be blank, but it should
@@ -927,12 +1019,155 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
 (function(){
   var box=document.getElementById("rmodal"), frame=document.getElementById("rmFrame"),
       wait=document.getElementById("rmWait"), title=document.getElementById("rmTitle"),
-      sub=document.getElementById("rmSub"), x=document.getElementById("rmX");
+      sub=document.getElementById("rmSub"), x=document.getElementById("rmX"),
+      mount=document.getElementById("msf");
   var lastFocus=null, waitT=null;
 
+  /* ---- the three questions ---------------------------------------- */
+  var STEPS=[
+    {key:"name",  label:"Name",  type:"text",  hint:"Your full name",
+     check:function(v){ return v.trim().length>=2 ? "" : "Please enter your name."; }},
+    {key:"email", label:"Email", type:"email", hint:"you@example.com",
+     check:function(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim())
+        ? "" : "That does not look like an email address."; }},
+    {key:"phone", label:"Phone", type:"tel",   hint:"01X-XXX XXXX",
+     /* Malaysian mobiles are 9 or 10 digits after the leading zero, and people
+        type them with spaces, dashes and +60. Count digits, not characters. */
+     check:function(v){ var d=v.replace(/\D/g,"");
+        return d.length>=9 && d.length<=15 ? "" : "Please enter a valid phone number."; }}
+  ];
+
+  var state=null;
+
+  function svgTick(){ return '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>'; }
+
+  function render(){
+    if(!state) return;
+    if(state.done){ renderDone(); return; }
+
+    var i=state.step, st=STEPS[i];
+    var dots="";
+    for(var k=0;k<STEPS.length;k++){
+      var cls = k<i ? "done" : (k===i ? "now" : "");
+      dots += '<button type="button" class="msf-dot '+cls+'" data-goto="'+k+'"'
+            + (k<i ? "" : " disabled")
+            + ' aria-label="Step '+(k+1)+'">'
+            + (k<i ? svgTick() : (k+1)) + '</button>';
+      if(k<STEPS.length-1) dots += '<span class="msf-link'+(k<i?" on":"")+'"><i></i></span>';
+    }
+
+    var last = (i===STEPS.length-1);
+    var consent = last
+      ? '<label class="msf-consent"><input type="checkbox" id="msfOk"'
+        + (state.consent ? " checked" : "") + '>'
+        + '<span>I agree that Facerinna may use my name, email and phone number to '
+        + 'issue my ticket and contact me about this event.'
+        + (PRIVACY_URL ? ' <a href="'+esc(PRIVACY_URL)+'" target="_blank" rel="noopener">Privacy notice</a>.' : '')
+        + '</span></label>'
+      : "";
+
+    mount.innerHTML =
+      '<div class="msf-dots">'+dots+'</div>'
+    + '<div class="msf-bar"><i style="width:'+(((i+1)/STEPS.length)*100)+'%"></i></div>'
+    + '<div class="msf-step">'
+    +   '<div class="msf-head"><label for="msfIn">'+esc(st.label)+'</label>'
+    +     '<span>'+(i+1)+'/'+STEPS.length+'</span></div>'
+    +   '<input id="msfIn" type="'+st.type+'" placeholder="'+esc(st.hint)+'" '
+    +     'value="'+esc(state.data[st.key]||"")+'" autocomplete="'
+    +     (st.key==="name"?"name":st.key==="email"?"email":"tel")+'">'
+    +   '<p class="msf-err" id="msfErr" role="alert">'+esc(state.error||"")+'</p>'
+    +   consent
+    + '</div>'
+    + '<div class="msf-foot">'
+    +   '<button type="button" class="msf-go" id="msfGo">'
+    +     (state.busy ? "Sending…" : (last ? "Complete" : "Continue"))
+    +   '</button>'
+    +   (i>0 ? '<button type="button" class="msf-back" id="msfBack">Go back</button>' : '')
+    + '</div>';
+
+    var input=document.getElementById("msfIn");
+    input.focus();
+    syncGo();
+    input.addEventListener("input", function(){
+      state.data[st.key]=input.value;
+      if(state.error){ state.error=""; document.getElementById("msfErr").textContent=""; }
+      syncGo();
+    });
+    input.addEventListener("keydown", function(ev){
+      if(ev.key==="Enter"){ ev.preventDefault(); advance(); }
+    });
+    var ok=document.getElementById("msfOk");
+    if(ok) ok.addEventListener("change", function(){ state.consent=ok.checked; syncGo(); });
+    document.getElementById("msfGo").addEventListener("click", advance);
+    var back=document.getElementById("msfBack");
+    if(back) back.addEventListener("click", function(){ state.step--; state.error=""; render(); });
+    mount.querySelectorAll("[data-goto]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var k=+b.dataset.goto;
+        if(k<state.step){ state.step=k; state.error=""; render(); }
+      });
+    });
+  }
+
+  /* The button is disabled until the step can actually be completed, so
+     nobody taps Continue and is told off for something they can see. */
+  function syncGo(){
+    var st=STEPS[state.step], go=document.getElementById("msfGo");
+    if(!go) return;
+    var filled=String(state.data[st.key]||"").trim().length>0;
+    var last=state.step===STEPS.length-1;
+    go.disabled = state.busy || !filled || (last && !state.consent);
+  }
+
+  function advance(){
+    if(state.busy) return;
+    var st=STEPS[state.step], v=String(state.data[st.key]||"");
+    var err=st.check(v);
+    if(err){ state.error=err;
+      var e=document.getElementById("msfErr"); if(e) e.textContent=err;
+      var inp=document.getElementById("msfIn"); if(inp) inp.setAttribute("aria-invalid","true");
+      return; }
+    state.error="";
+    if(state.step < STEPS.length-1){ state.step++; render(); return; }
+    if(!state.consent) return;
+    submit();
+  }
+
+  function submit(){
+    state.busy=true; render();
+    var payload={ name:state.data.name.trim(), email:state.data.email.trim(),
+                  phone:state.data.phone.trim(), event:state.event, consent:true };
+    /* No custom headers on purpose. A POST with the default content type is a
+       simple request, so the browser sends no preflight -- and an Apps Script
+       web app cannot answer a preflight. */
+    fetch(REGISTER_ENDPOINT, { method:"POST", body:JSON.stringify(payload) })
+      .then(function(r){ return r.json(); })
+      .then(function(res){
+        if(!res || res.ok!==true) throw new Error((res && res.error) || "rejected");
+        state.done=true; state.code=res.code||""; state.busy=false; render();
+      })
+      .catch(function(err){
+        state.busy=false;
+        state.error="We could not send that. Please try again, or register at the booth.";
+        render();
+        console.warn("registration failed:", err);
+      });
+  }
+
+  function renderDone(){
+    mount.innerHTML =
+      '<div class="msf-done">'
+    +   '<div class="msf-tick">'+svgTick()+'</div>'
+    +   '<h4>You are registered</h4>'
+    +   '<p>'+esc(state.data.name.split(" ")[0])+', your ticket is on its way to '
+    +     esc(state.data.email)+'. Show it at the door.</p>'
+    +   (state.code ? '<div class="msf-code"><span>Ticket code</span><b>'
+        + esc(state.code)+'</b></div>' : '')
+    + '</div>';
+  }
+
+  /* ---- opening and closing ---------------------------------------- */
   function embedUrl(u){
-    /* Forms refuse to frame without this, and a stray existing query must be
-       kept rather than clobbered -- a pre-filled link is all query string. */
     if(/[?&]embedded=true\b/.test(u)) return u;
     return u + (u.indexOf("?")>=0 ? "&" : "?") + "embedded=true";
   }
@@ -940,28 +1175,40 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
   function open(url, name){
     lastFocus=document.activeElement;
     title.textContent = name ? "Register: "+name : "Register";
-    sub.textContent = "The form is hosted by Google. Your details go to Facerinna, not to this page.";
-    wait.innerHTML = "Opening the form&hellip;";
-    wait.style.display="";
-    frame.src = embedUrl(url);
     box.hidden=false; box.classList.add("open");
     document.body.classList.add("rmodal-on");
+
+    if(REGISTER_ENDPOINT){
+      /* Our own form, posting to our own script. */
+      sub.textContent = "Three quick questions. Your ticket arrives by email.";
+      frame.hidden=true; wait.hidden=true; mount.hidden=false;
+      state={ step:0, data:{}, error:"", busy:false, done:false, consent:false, event:name||"" };
+      render();
+    } else {
+      /* Not deployed yet -- fall back to the Google Form rather than showing
+         a form whose Complete button has nowhere to send anything. */
+      sub.textContent = "The form is hosted by Google.";
+      mount.hidden=true; frame.hidden=false; wait.hidden=false;
+      wait.innerHTML="Opening the form&hellip;";
+      wait.style.display="";
+      frame.src=embedUrl(url);
+      clearTimeout(waitT);
+      waitT=setTimeout(function(){
+        wait.innerHTML='Still loading. If nothing appears, '
+          + '<a href="'+url.replace(/"/g,"&quot;")+'" target="_blank" rel="noopener">'
+          + 'open the form in a new tab</a>.';
+      },6000);
+    }
     x.focus();
-    /* A form that never loads -- no signal, a blocked domain, a form since
-       closed -- would otherwise leave a blank panel. Offer the real link. */
-    clearTimeout(waitT);
-    waitT=setTimeout(function(){
-      wait.innerHTML = 'Still loading. If nothing appears, '
-        + '<a href="'+url.replace(/"/g,"&quot;")+'" target="_blank" rel="noopener">'
-        + 'open the form in a new tab</a>.';
-    }, 6000);
   }
 
   function close(){
     clearTimeout(waitT);
     box.classList.remove("open"); box.hidden=true;
     document.body.classList.remove("rmodal-on");
-    frame.src="about:blank";          /* stop the form running behind the page */
+    frame.src="about:blank";
+    mount.innerHTML="";
+    state=null;
     if(lastFocus && lastFocus.focus) lastFocus.focus();
   }
 
@@ -969,8 +1216,6 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
     if(frame.src && frame.src!=="about:blank"){ clearTimeout(waitT); wait.style.display="none"; }
   });
 
-  /* Delegated: the cards are replaced on every load, so a listener bound to a
-     button would be lost on the next refresh. */
   document.addEventListener("click", function(ev){
     var btn=ev.target.closest && ev.target.closest(".cta[data-form]");
     if(btn){ ev.preventDefault(); open(btn.dataset.form, btn.dataset.event); return; }
@@ -978,7 +1223,13 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
   });
   x.addEventListener("click", close);
   addEventListener("keydown", function(ev){
-    if(ev.key==="Escape" && box.classList.contains("open")) close();
+    /* Escape mid-form would throw away three answers, so it only closes once
+       the visitor is done or has not started. */
+    if(ev.key!=="Escape" || !box.classList.contains("open")) return;
+    if(state && !state.done && (state.data.name||state.data.email||state.data.phone)){
+      if(!confirm("Close and lose what you have entered?")) return;
+    }
+    close();
   });
 })();
 

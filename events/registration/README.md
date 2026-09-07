@@ -1,96 +1,88 @@
-# Event tickets — setup
+# Event registration and tickets — setup
 
-Google Form collects the registration. A Google Sheet holds the responses.
-Apps Script watches that sheet, issues a ticket code, draws a QR for it, and
-emails the registrant. Scanning the QR at the door marks them present.
+The events page carries its own three-step form. It posts to an Apps Script
+web app, which writes the row, issues a ticket code, and emails it back. The
+code appears on screen straight away, so somebody who mistypes their email
+still leaves with a ticket.
+
+No Google Form is involved. Nothing is stored by the page itself.
 
 Cost: nothing. No server, no third-party account.
 
 ---
 
-## Before you start: which account owns this
+## Already done
 
-Install everything under **the mailbox you want on the ticket**. Apps Script
-sends as whoever owns the script, and it cannot send as somebody else without
-a Workspace-wide delegation.
+**The response sheet exists**, in `ridzuan@skintificmalaysia.com`, with the
+header row the script expects:
 
-So if tickets should come from `ridzuan@skintificmalaysia.com`, sign in as
-that account and create the Form there. Do not create it under one account and
-try to point the script at it from another.
+**[FACERINNA — Event Registrations (live)](https://docs.google.com/spreadsheets/d/1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso/edit)**
 
-The registration form the booth page currently links to
-(`1FAIpQLSew0h9ZES…`) is owned by a different account. Either move ticketing to
-that account, or make a new form under `ridzuan@` and put its link in the
-`form_url` column of the events sheet. Pick one before you build anything on
-top of it.
+| Timestamp | Name | Email | Phone | Which event are you attending? | Ticket code | Ticket sent | Checked in |
+|---|---|---|---|---|---|---|---|
+
+Do not rename those headers. The script matches on them by name, and a rename
+is the failure that looks like nothing is wrong until the first ticket goes
+out addressed to nobody.
 
 ---
 
-## 1. The form
+## 1. Paste the script
 
-New Google Form under the right account. Add these questions, and note the
-exact wording — the script matches on it.
+Open that sheet → **Extensions → Apps Script**. Delete the placeholder, paste
+all of `Code.gs`, save.
 
-| Question | Type | Required |
-|---|---|---|
-| Name | Short answer | yes |
-| Email | Short answer, with email validation | yes |
-| Phone | Short answer | yes |
-| Which event are you attending? | Dropdown, one option per event | yes |
+Run **`setup`** once from the toolbar. Google asks you to authorise it: it
+needs to read the sheet, send email, and fetch the QR image. It warns that the
+app is unverified, which is what Google says about any script you wrote
+yourself; you reach it through *Advanced → Go to (project name)*.
 
-Under **Settings → Responses**, turn *Collect email addresses* off if you are
-asking for it yourself — two email columns is how the wrong one ends up used.
+Because the sheet already has its headers, `setup` will report that the fields
+were found and simply confirm. If it lists anything as NOT FOUND, a header has
+been changed — put it back rather than editing the script.
 
-### The PDPA notice
+## 2. Deploy it as a web app
 
-Name, phone and email are personal data under Malaysia's PDPA. Put a notice on
-the form itself, as a description under the title, before you collect anything.
-It has to say what you collect, why, how long you keep it, who sees it, and how
-someone asks for it back. Below is a starting point, **not legal advice** — the
-retention period and the contact are yours to decide, and somebody at Facerinna
-has to own it:
+**Deploy → New deployment → Web app.**
 
-> We collect your name, email and phone number to issue your event ticket and
-> to contact you about this event. Your details are kept by MY Virtue Rinna
-> Sdn. Bhd. and are not sold or shared with third parties. We keep them for
-> [12 months] after the event, then delete them. To see, correct or delete
-> your details, email [contact@…].
+| Setting | Value |
+|---|---|
+| Execute as | **Me** (ridzuan@skintificmalaysia.com) |
+| Who has access | **Anyone** |
 
-Fill in the brackets. A notice with placeholders left in is worse than none.
+"Anyone" is required: the people registering are not signed in to your
+Workspace. Read the note on what that exposes below before you accept it.
 
-## 2. The response sheet
+Copy the **/exec** URL it gives you.
 
-In the form: **Responses → Link to Sheets → Create a new spreadsheet**.
+## 3. Point the page at it
 
-## 3. The script
+In `events/index.html`, near the top of the script block:
 
-In that sheet: **Extensions → Apps Script**. Delete the placeholder, paste all
-of `Code.gs`, save.
+```js
+var REGISTER_ENDPOINT = "";   // paste the /exec URL between the quotes
+```
 
-Check `CONFIG.FIELDS` at the top. The left side is what the script needs; the
-right side must match your form questions **exactly**, including capitals and
-the question mark. This is the single most common thing to get wrong.
+Until that is filled in the button falls back to embedding the old Google
+Form, so the booth keeps working rather than offering a form with nowhere to
+send anything.
 
-Run **`setup`** once from the editor toolbar. Google will ask you to authorise
-it — it needs to read the sheet, send email, and fetch the QR image. It will
-warn that the app is unverified; that is expected for a script you wrote
-yourself, and you reach it through *Advanced → Go to (project name)*.
-
-`setup` adds three columns (`Ticket code`, `Ticket sent`, `Checked in`) and
-installs the trigger. If it reports fields NOT FOUND, fix `CONFIG.FIELDS` and
-run it again. Running it twice is safe — it clears its own old trigger first,
-so nobody gets two tickets.
+Set `PRIVACY_URL` in the same place once the privacy notice has a home. The
+consent line renders without a link if it is left blank, which is worse.
 
 ## 4. Test it before the event, not at it
 
-Run **`sendTestTicket`** to send one to yourself. Then submit the real form
-once and check that a code appears in the sheet and an email arrives.
+- Run **`sendTestTicket`** in the editor. A ticket should arrive in your inbox.
+- Open the events page, tap **Register here**, and complete the three steps
+  with your own details. A row should appear in the sheet, a code on screen,
+  and an email within a minute.
+- Submit the same email for the same event again. You should get the *same*
+  code back, not a second row.
 
 ## 5. Check-in at the door
 
-Scan the QR with any phone scanner; it reads out the code. To mark someone
-present, run `checkIn("FCR-XXXX-XXXX")` from the Apps Script editor, or build a
-small web app around it later.
+Scan the QR with any phone camera; it reads out the code. To mark someone
+present, run `checkIn("FCR-XXXX-XXXX")` from the editor.
 
 `checkIn` refuses a code that has already been used and says so, rather than
 letting one ticket through twice.
@@ -99,27 +91,68 @@ letting one ticket through twice.
 
 ## What to know before you rely on it
 
-**Sending limits.** A free gmail.com account sends 100 emails a day; a
-Workspace account sends 1500. A pop-up that registers 200 people in a morning
-will hit the free limit and stop.
+**The endpoint is public.** It is in the page source, so treat it as such.
+It only ever appends a row and sends one email; it returns nothing about
+anybody else, and it cannot be used to read the sheet. Every field is
+re-validated server-side, because the checks in the page are a courtesy to the
+visitor, not a control. A repeat of the same email for the same event returns
+the existing code instead of creating a second row, so a refresh or a double
+tap cannot produce two tickets.
+
+If it is ever abused, redeploy with a new URL and update `REGISTER_ENDPOINT`;
+the old URL dies with the old deployment.
+
+**Sending limits.** A Workspace account sends 1500 emails a day. A pop-up that
+registers 200 people in a morning is fine; a campaign that registers 2000 is
+not.
 
 **Where the QR is drawn.** `quickchart.io` renders it, and the only thing sent
 there is the ticket code — an opaque string like `FCR-7K2M-9XQ4`. No name,
-phone or email leaves Google. If you want nothing at all to leave, set
-`CONFIG.QR_PROVIDER = 'none'`; the email still carries the code in text and the
-door can type it in.
+phone or email leaves Google. Set `CONFIG.QR_PROVIDER = 'none'` and even that
+stops; the email still carries the code in text.
 
-**If the QR service is down**, the ticket still sends, without the image. That
-is deliberate: the code is what checks someone in, the picture is convenience.
+**If the email fails**, the visitor still gets their code on screen and the
+sheet records `EMAIL FAILED` against that row, so you can see who to chase.
 
-**Failures are not silent.** If the script throws, it emails the script owner
-with the row number and the stack. A ticket that quietly fails to send is a
-person turned away at the door.
+**Failures are not silent.** If the script throws, it emails the owner with the
+row number and the stack.
 
-**Codes.** Two groups of four from a 32-character alphabet with no O/0 or I/1,
-because these get read aloud and typed by hand. That is 32^8 combinations;
-20,000 generated in testing produced no collision.
+**Codes** are two groups of four from a 32-character alphabet with no O/0 or
+I/1, because they get read aloud and typed by hand at a busy door. That is
+32^8 combinations; 20,000 generated in testing produced no collision.
 
-**This script has not been run.** It was written and syntax-checked here, and
-the code generator and validators were unit-tested, but nothing in this
-sandbox can execute Apps Script or send Gmail. Step 4 is the real test.
+---
+
+## PDPA
+
+Name, phone and email are personal data under Malaysia's PDPA. The form
+carries a consent tickbox and will not submit without it, and the wording says
+what the data is used for. That is the mechanism; the policy is yours.
+
+You still need a privacy notice somewhere the link can point at. It has to say
+what you collect, why, how long you keep it, who sees it, and how someone asks
+for it back. A starting point, **not legal advice**:
+
+> We collect your name, email and phone number to issue your event ticket and
+> to contact you about this event. Your details are held by MY Virtue Rinna
+> Sdn. Bhd. and are not sold or shared with third parties. We keep them for
+> [12 months] after the event, then delete them. To see, correct or delete
+> your details, email [contact@…].
+
+Fill in the brackets before it goes live. A notice with placeholders left in
+is worse than none, and somebody at Facerinna has to own the retention period
+and the contact address.
+
+---
+
+## What has not been tested
+
+**The Apps Script has never been run.** It is syntax-checked, and the code
+generator and the email validator are unit-tested, but nothing in the sandbox
+this was written in can execute Apps Script, send Gmail, or deploy a web app.
+
+**The page side has been tested end to end** against a mock of this endpoint:
+the three steps, the per-step validation, the consent gate, a successful
+submission returning a code, and a server error leaving the form intact with a
+retry. What has not been proven is that the two halves agree — that is step 4,
+and it takes two minutes.
