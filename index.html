@@ -5230,32 +5230,54 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
       const seen=Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
       return seen>0 ? seen/Math.min(innerHeight, r.height||innerHeight) : 0;
     }
-    let armed=true, pending=null;
+    /* The board shows itself in BOTH modes now. It used to be deck-only, and
+       the reason was real: on the scrolling page the games are one section
+       among fifteen, and a board that opened while you were on your way past
+       read as arriving at random. Refusing to open there answered that by
+       giving up. What actually separates the two cases is not the deck — it is
+       whether the person ARRIVED or is merely PASSING THROUGH, and that can be
+       asked directly:
+
+         arrived  = the games fill most of the screen, and the scrolling has
+                    stopped
+         passing  = they cross the screen while the page is still moving
+
+       So each mode gets the threshold and the wait its own motion deserves.
+       The deck moves in discrete, programmatic jumps and settles at once; the
+       page is dragged by a finger or a trackpad and keeps coasting. */
+    const deck=()=>document.body.classList.contains('slides');
+    const NEED  =()=> deck() ? 0.55 : 0.78;   // how much of the screen counts as arrival
+    const SETTLE=()=> deck() ? 250  : 650;    // how long stillness must last first
+    let armed=true, pending=null, lastMove=0;
     function consider(){
-      if(share() < 0.55){ armed=true; return; }        // left, so it may fire again
+      const need=NEED();
+      if(share() < need){                              // left, so it may fire again
+        armed=true;
+        if(pending){ clearTimeout(pending); pending=null; }
+        return;
+      }
       if(!armed || pending) return;
-      /* Only in the deck. On the scrolling page the games are one section among
-         fifteen and you pass through them on the way somewhere else — a board
-         that opened itself there read as arriving at random. In the deck you
-         arrive at the slide deliberately, and that is when it belongs. */
-      if(!document.body.classList.contains('slides')) return;
       if(modal.classList.contains('open')) return;
       if(!anyScores()) return;
       /* No cooldown: every arrival at the games shows the board, however many
          times you come back. `armed` only clears once the section has actually
-         left the screen, so one arrival still opens it once. The wait is what
-         it takes to be sure the slide is not still moving — a quarter second,
-         not the three quarters it was, which read as slow. */
+         left the screen, so one arrival still opens it once. */
       armed=false;
-      pending=setTimeout(function(){
+      const wait=SETTLE();
+      pending=setTimeout(function tick(){
         pending=null;
-        if(share() < 0.55 || modal.classList.contains('open')) return;
+        if(share() < NEED() || modal.classList.contains('open')) return;
+        /* On the page, the wait is measured from the LAST scroll, not from the
+           first qualifying frame — a slow drag would otherwise satisfy a fixed
+           delay while still moving. Momentum scrolling is exactly this case. */
+        const quiet=Date.now()-lastMove;
+        if(!deck() && quiet < wait){ pending=setTimeout(tick, wait-quiet); return; }
         open(true);
-      }, 250);
+      }, wait);
     }
     let queued=false;
     const ping=()=>{ if(!queued){ queued=true; requestAnimationFrame(function(){ queued=false; consider(); }); } };
-    addEventListener('scroll', ping, {passive:true, capture:true});
+    addEventListener('scroll', function(){ lastMove=Date.now(); ping(); }, {passive:true, capture:true});
     addEventListener('resize', ping);
     if(typeof IntersectionObserver!=='undefined')
       new IntersectionObserver(ping,{threshold:[0,.2,.55,.9]}).observe(section);
