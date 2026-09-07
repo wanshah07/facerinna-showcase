@@ -41,6 +41,19 @@ Because the sheet already has its headers, `setup` will report that the fields
 were found and simply confirm. If it lists anything as NOT FOUND, a header has
 been changed — put it back rather than editing the script.
 
+**Save before you run.** Apps Script runs the *saved* file, not what is on
+screen. Pasting and pressing Run without Ctrl+S runs the old code, and
+everything looks fine because the editor shows the new version.
+
+`setup` now reads the formats back and shows them in its alert:
+
+    Phone column format: TEXT  (correct)
+    Ticket sent format: yyyy-mm-dd hh:mm  (correct)
+
+If the phone line says anything else, run **`fixFormats`** on its own. It
+applies the formats and reports what it finds afterwards, so the answer is
+evidence rather than a claim.
+
 ## 2. Deploy it as a web app
 
 **Deploy → New deployment → Web app.**
@@ -54,6 +67,20 @@ been changed — put it back rather than editing the script.
 Workspace. Read the note on what that exposes below before you accept it.
 
 Copy the **/exec** URL it gives you.
+
+### Editing the script later does NOT change what /exec runs
+
+This is the one that catches people. A deployment is frozen to the version it
+was made from. Paste new code, save it, run `setup` — and `/exec` still serves
+the old code, because nothing told it otherwise. The editor and the live
+endpoint are two different things.
+
+After any change to `doPost`, `sendTicket` or anything else the page reaches:
+
+**Deploy → Manage deployments → (pencil) Edit → Version: New version → Deploy**
+
+The URL stays the same. Skip this and the fix you just pasted is not live, and
+the only way you find out is by testing a registration and reading the row.
 
 ## 3. Point the page at it
 

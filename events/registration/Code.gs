@@ -122,7 +122,23 @@ function setup() {
     if (headers.indexOf(CONFIG.FIELDS[k]) === -1) missing.push(CONFIG.FIELDS[k]);
   });
 
-  var msg = 'Trigger installed. Output columns ready.';
+  /* Reading the formats back turns "did setup run?" into something this
+     alert answers. Pasting without saving, or an error partway, both leave
+     the editor looking correct while nothing was applied -- and the only
+     symptom is a phone number quietly losing its leading zero weeks later. */
+  var checks = [];
+  var phoneNow = phoneAt > 0
+    ? sheet.getRange(2, phoneAt).getNumberFormat() : null;
+  checks.push('Phone column format: ' +
+    (phoneNow === '@' ? 'TEXT  (correct)' : String(phoneNow) + '  <-- NOT TEXT'));
+  var sentAt = colOf(CONFIG.OUT.sentAt);
+  if (sentAt > 0) {
+    var f = sheet.getRange(2, sentAt).getNumberFormat();
+    checks.push('Ticket sent format: ' + f +
+      (f.indexOf('hh') > -1 ? '  (correct)' : '  <-- no time shown'));
+  }
+
+  var msg = 'Trigger installed. Output columns ready.\n\n' + checks.join('\n');
   if (missing.length) {
     /* Loud on purpose. A mismatched header is the failure that looks like
        nothing is wrong until the first ticket goes out addressed to nobody. */
@@ -451,6 +467,40 @@ function escapeHtml(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/**
+ * Just the column formats, on their own. Run this if setup() reported the
+ * phone column as anything other than TEXT, or if somebody reformatted the
+ * column later. Returns what it found afterwards, so the result is evidence
+ * rather than a claim.
+ */
+function fixFormats() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var head = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  var rows = Math.max(1, sheet.getMaxRows() - 1);
+  var out = [];
+
+  var p = head.indexOf(CONFIG.FIELDS.phone) + 1;
+  if (p > 0) {
+    sheet.getRange(2, p, rows, 1).setNumberFormat('@');
+    out.push('Phone -> ' + sheet.getRange(2, p).getNumberFormat());
+  } else {
+    out.push('Phone column NOT FOUND -- check CONFIG.FIELDS.phone against the header.');
+  }
+
+  ['Timestamp', CONFIG.OUT.sentAt, CONFIG.OUT.checkedIn].forEach(function (h) {
+    var c = head.indexOf(h) + 1;
+    if (c > 0) {
+      sheet.getRange(2, c, rows, 1).setNumberFormat('yyyy-mm-dd hh:mm');
+      out.push(h + ' -> ' + sheet.getRange(2, c).getNumberFormat());
+    }
+  });
+
+  SpreadsheetApp.flush();
+  var msg = out.join('\n');
+  try { SpreadsheetApp.getUi().alert(msg); } catch (e) {}
+  return msg;
 }
 
 /**
