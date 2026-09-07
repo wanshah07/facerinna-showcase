@@ -1,0 +1,1558 @@
+<!doctype html>
+<!--
+  FACERINNA — Instrumental Efficacy Benchmark (interactive)
+  Self-contained. No external scripts, fonts or network calls.
+
+  EMBEDDING INTO THE FACERINNA AGM DASHBOARD
+  ------------------------------------------
+  Option A (safest):  <iframe src="../facerinna-efficacy-benchmark/"
+                              style="width:100%;height:100vh;border:0"
+                              title="FACERINNA Efficacy Benchmark"></iframe>
+  Option B (inline):  copy everything inside <body> plus the <style> block.
+                      All CSS is scoped under .fr-bench and all JS lives in
+                      one IIFE, so nothing leaks into the host page.
+
+  Dark mode follows the host: prefers-color-scheme, or <html data-theme="dark">.
+  The page paints its own ambient background (.fr-plane, "Soft Pastel Blend").
+  Pasting inline rather than iframing? See the note on .fr-plane in the CSS.
+
+  DATA PROVENANCE
+  ---------------
+  Facerinna bars  : FACERINNA_TEST REPORTS & CLAIMS (Test Reports tab, 80 rows,
+                    MY Virtue Rinna Sdn. Bhd.) + INBIOSIS-UKM INB/FITO/2026/04 & /08.
+  Competitor bars : peer-reviewed publications and brand-published clinical data,
+                    retrieved 2 September 2026. Full list in the References panel.
+  Deck of record  : FACERINNA_Competitor_Benchmark_v3.pptx (21 slides, 16 charts)
+                    + FR_vs_Competitor B group_Ranking.pdf (layman ranking set).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FACERINNA Efficacy Benchmark</title>
+<style>
+/* ============================================================
+   TOKENS
+   Palette validated with the dataviz six-checks validator:
+   light  all-pairs  CVD ΔE 9.2  ·  normal-vision ΔE 24.0  → PASS
+   dark   all-pairs  CVD ΔE 9.4  ·  normal-vision ΔE 20.9  → PASS
+   Light-mode aqua is sub-3:1 on surface → relief rule applied:
+   every bar carries a visible direct value label AND a table view.
+   ============================================================ */
+.fr-bench{
+  color-scheme: light;
+  --plane:#f9f9f7;
+  --surface:#fcfcfb;
+  --surface-2:#f4f3ef;
+  --ink:#0b0b0b;
+  --ink-2:#52514e;
+  --muted:#898781;
+  --grid:#e1e0d9;
+  --axis:#c3c2b7;
+  --hair:rgba(11,11,11,.10);
+
+  --fr:#2a78d6;        /* Facerinna            */
+  --lrp:#eb6834;       /* Competitor A       */
+  --wider:#1baf7a;     /* Competitor C/Competitor E/Competitor D/Competitor B */
+  --ref:#898781;       /* label claim / study control / blank */
+
+  --good:#0ca30c;
+  --warn:#fab219;
+  --crit:#d03b3b;
+
+  --r:10px;
+  --fs: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])) .fr-bench{
+    color-scheme: dark;
+    --plane:#0d0d0d; --surface:#1a1a19; --surface-2:#232322;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --hair:rgba(255,255,255,.10);
+    --fr:#3987e5; --lrp:#d95926; --wider:#199e70; --ref:#898781;
+  }
+}
+:root[data-theme="dark"] .fr-bench{
+  color-scheme: dark;
+  --plane:#0d0d0d; --surface:#1a1a19; --surface-2:#232322;
+  --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --hair:rgba(255,255,255,.10);
+  --fr:#3987e5; --lrp:#d95926; --wider:#199e70; --ref:#898781;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--plane,#f9f9f7)}
+.fr-bench{
+  position:relative;
+  font-family:var(--fs);
+  background:var(--plane); color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 72px;
+}
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 20px}
+
+/* ---------- ambient plane: "Soft Pastel Blend" -------------------------
+   Ported from the 21st.dev Gradient Builder recipe. The React version uses
+   container-query units against a sized wrapper; this layer is pinned to the
+   viewport instead, so cqmin becomes vmin one-for-one.
+   position:fixed is correct for the standalone page and inside an iframe.
+   If you paste this page INLINE into the AGM dashboard, change fixed ->
+   absolute so the layer cannot paint behind the host's own content.
+   Cards stay fully opaque on --surface, so nothing in a chart is read
+   against the gradient and the validated contrast still holds.        */
+.fr-plane{
+  position:fixed; inset:-0.8vmin; z-index:0; pointer-events:none;
+  filter:blur(0.4vmin);
+  background-color:#D6F0E4;
+  background-image:
+    radial-gradient(circle at 65.44% 45.18%, rgba(251,233,240,1) 0%, rgba(251,233,240,0) 45.3%),
+    radial-gradient(circle at 28.2% 73.9%,  rgba(205,231,240,1) 0%, rgba(205,231,240,0) 56.85%),
+    radial-gradient(circle at 52.5% 19.29%, rgba(230,214,245,1) 0%, rgba(230,214,245,0) 68.75%),
+    radial-gradient(circle at 79.87% 84.43%,rgba(214,240,228,1) 0%, rgba(214,240,228,0) 80.3%);
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])) .fr-plane{
+    background-color:#0d0d0d;
+    background-image:
+      radial-gradient(circle at 65.44% 45.18%, rgba(74,58,103,.42) 0%, rgba(74,58,103,0) 45.3%),
+      radial-gradient(circle at 28.2% 73.9%,  rgba(28,73,96,.42)  0%, rgba(28,73,96,0)  56.85%),
+      radial-gradient(circle at 52.5% 19.29%, rgba(58,50,96,.42)  0%, rgba(58,50,96,0)  68.75%),
+      radial-gradient(circle at 79.87% 84.43%,rgba(25,86,68,.42)  0%, rgba(25,86,68,0)  80.3%);
+  }
+}
+:root[data-theme="dark"] .fr-plane{
+  background-color:#0d0d0d;
+  background-image:
+    radial-gradient(circle at 65.44% 45.18%, rgba(74,58,103,.42) 0%, rgba(74,58,103,0) 45.3%),
+    radial-gradient(circle at 28.2% 73.9%,  rgba(28,73,96,.42)  0%, rgba(28,73,96,0)  56.85%),
+    radial-gradient(circle at 52.5% 19.29%, rgba(58,50,96,.42)  0%, rgba(58,50,96,0)  68.75%),
+    radial-gradient(circle at 79.87% 84.43%,rgba(25,86,68,.42)  0%, rgba(25,86,68,0)  80.3%);
+}
+
+/* ---------- header ---------- */
+.hdr{padding:28px 0 4px}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+h1{font-size:clamp(26px,4.2vw,40px);line-height:1.08;margin:10px 0 6px;letter-spacing:-.02em;font-weight:650}
+.sub{color:var(--ink-2);font-size:15px;line-height:1.55;max-width:74ch;margin:0}
+.metaline{margin-top:10px;color:var(--ink-2);font-size:12.5px;line-height:1.6}
+
+.bar-tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:22px 0 6px;
+  position:sticky;top:0;z-index:30;padding:10px 0;border-bottom:1px solid var(--hair);
+  background:color-mix(in srgb,var(--surface) 78%,transparent);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+@supports not (backdrop-filter:blur(1px)){ .bar-tools{background:var(--surface)} }
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--hair);border-radius:999px;padding:3px}
+.seg button{appearance:none;border:0;background:transparent;color:var(--ink-2);font:inherit;font-size:13.5px;
+  font-weight:600;padding:7px 16px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.10)}
+.seg button:focus-visible{outline:2px solid var(--fr);outline-offset:2px}
+.tool-note{font-size:12.5px;color:var(--ink-2)}
+/* Keyboard shortcuts, hidden where there is no keyboard. On a phone this row
+   had nowhere to go and ran off the right edge of the toolbar, clipping the
+   word it was explaining — and a tap-only reader could not have used it
+   anyway. Keyed to hover, which is what actually distinguishes a pointer
+   from a fingertip; a narrow desktop window keeps the hint. */
+@media(hover:none),(max-width:640px){.kbd-hint{display:none}}
+
+/* ---------- compliance strip ---------- */
+.strip{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r);padding:11px 14px;font-size:12.5px;
+  line-height:1.5;border:1px solid var(--hair);margin:16px 0 0}
+.strip.hcp{background:color-mix(in srgb,var(--crit) 9%,var(--surface));border-color:color-mix(in srgb,var(--crit) 30%,var(--hair))}
+.strip.lay{background:color-mix(in srgb,var(--fr) 8%,var(--surface))}
+.strip b{color:var(--ink)}
+.strip .ic{font-size:14px;line-height:1.2}
+
+/* ---------- verdict tiles ---------- */
+.verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:22px 0 8px}
+.tile{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);padding:16px 18px}
+.tile .rank{font-size:34px;font-weight:680;letter-spacing:-.03em;line-height:1}
+.tile .rank.n1{color:var(--good)} .tile .rank.n2{color:var(--fr)} .tile .rank.n3{color:var(--warn)}
+.tile .rlabel{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:8px 0 8px;font-weight:600}
+.tile ul{margin:0;padding-left:17px;font-size:13.5px;line-height:1.65;color:var(--ink-2)}
+
+/* ---------- nav pills ---------- */
+.pills{display:flex;flex-wrap:wrap;gap:7px;margin:26px 0 6px}
+.pills a{font-size:12.5px;text-decoration:none;color:var(--ink-2);background:var(--surface);
+  border:1px solid var(--hair);border-radius:999px;padding:6px 12px;white-space:nowrap}
+.pills a:hover{border-color:var(--fr);color:var(--ink)}
+
+/* ---------- card ---------- */
+.card{background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:20px 22px 18px;margin:16px 0;scroll-margin-top:104px}
+.card-head{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between}
+.card h2{font-size:20px;margin:0;letter-spacing:-.01em;font-weight:650}
+.card .h2sub{font-size:14px;color:var(--muted);font-weight:500;margin:3px 0 0}
+.card .csub{font-size:13px;color:var(--ink-2);margin:8px 0 0;line-height:1.55;max-width:80ch}
+.badge{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:6px;
+  display:inline-flex;gap:5px;align-items:center;border:1px solid transparent;white-space:nowrap}
+.badge.direct{background:color-mix(in srgb,var(--good) 14%,var(--surface));color:var(--ink);border-color:color-mix(in srgb,var(--good) 40%,transparent)}
+.badge.partial{background:color-mix(in srgb,var(--warn) 20%,var(--surface));color:var(--ink);border-color:color-mix(in srgb,var(--warn) 50%,transparent)}
+.badge.none{background:var(--surface-2);color:var(--ink-2);border-color:var(--hair)}
+
+/* ---------- chart ---------- */
+.chart{margin:18px 0 4px}
+.chart-title{font-size:13px;font-weight:650;color:var(--ink);margin:0 0 2px}
+.chart-note{font-size:12px;color:var(--muted);margin:0 0 12px;line-height:1.5}
+.rows{display:flex;flex-direction:column;gap:9px}
+.rows.grouped{padding-top:14px}
+.row{display:grid;grid-template-columns:minmax(150px,30%) 1fr;gap:14px;align-items:center;
+  border-radius:8px;padding:3px 4px;margin:-3px -4px;cursor:default}
+.row:hover,.row:focus-visible{background:var(--surface-2);outline:none}
+.row:focus-visible{box-shadow:0 0 0 2px var(--fr)}
+.rlab{font-size:12.5px;line-height:1.4;color:var(--ink-2);display:flex;gap:7px;align-items:flex-start}
+.dot{flex:0 0 auto;width:9px;height:9px;border-radius:3px;margin-top:4px}
+.track{display:flex;align-items:center;gap:9px;min-width:0}
+.barzone{flex:1 1 auto;min-width:0}
+.bar{height:18px;border-radius:0 4px 4px 0;min-width:2px;transition:width .45s cubic-bezier(.2,.7,.3,1)}
+.bar.grp{height:13px}
+.val{flex:0 0 62px;font-size:12.5px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.val small{font-weight:500;color:var(--muted)}
+.nr{font-size:12px;color:var(--muted);font-style:italic;padding-left:1px}
+.gstack{position:relative}
+.rline{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--axis);pointer-events:none}
+.rline b{position:absolute;top:-15px;left:4px;font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap}
+.axis{margin-top:12px;border-top:1px solid var(--grid);display:grid;grid-template-columns:minmax(150px,30%) 1fr;gap:14px}
+.axis .ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding-top:5px;
+  font-variant-numeric:tabular-nums;margin-right:71px}
+
+/* grouped chart */
+.grow{display:grid;grid-template-columns:minmax(150px,30%) 1fr;gap:14px;align-items:center;padding:5px 4px;border-radius:8px}
+.grow:hover{background:var(--surface-2)}
+.gstack{display:flex;flex-direction:column;gap:4px;min-width:0}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:14px 0 0;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+/* ---------- panels ---------- */
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+@media(max-width:760px){.panels{grid-template-columns:1fr}}
+.panel{background:var(--surface-2);border-radius:10px;padding:13px 15px}
+.panel h3{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:700}
+.panel p{margin:0;font-size:13px;line-height:1.62;color:var(--ink-2)}
+.panel ul{margin:0;padding-left:17px;font-size:13px;line-height:1.65;color:var(--ink-2)}
+.panel .bm{color:var(--ink);font-weight:500}
+.panel .en{color:var(--muted);font-size:12.5px}
+
+.srcline{margin-top:14px;padding-top:11px;border-top:1px solid var(--hair);font-size:11px;line-height:1.65;color:var(--muted)}
+
+/* ---------- table view ---------- */
+.tbtn{appearance:none;border:1px solid var(--hair);background:var(--surface);color:var(--ink-2);
+  font:inherit;font-size:12px;font-weight:600;padding:5px 11px;border-radius:7px;cursor:pointer;margin-top:14px}
+.tbtn:hover{border-color:var(--fr);color:var(--ink)}
+.tbtn:focus-visible{outline:2px solid var(--fr);outline-offset:2px}
+.tblwrap{overflow-x:auto;margin-top:12px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:520px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--grid);vertical-align:top;line-height:1.5}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+tbody tr:hover{background:var(--surface-2)}
+
+/* ---------- disclosure sections ---------- */
+details.big{background:var(--surface);border:1px solid var(--hair);border-radius:14px;margin:16px 0;overflow:hidden;scroll-margin-top:104px}
+details.big>summary{cursor:pointer;padding:16px 22px;font-size:16px;font-weight:650;list-style:none;display:flex;justify-content:space-between;gap:12px;align-items:center}
+details.big>summary::-webkit-details-marker{display:none}
+details.big>summary::after{content:"＋";color:var(--muted);font-weight:400;font-size:18px}
+details.big[open]>summary::after{content:"−"}
+details.big>summary:focus-visible{outline:2px solid var(--fr);outline-offset:-2px}
+details.big .body{padding:0 22px 20px}
+details.big .body p{font-size:13px;line-height:1.65;color:var(--ink-2)}
+
+.footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--hair);font-size:11.5px;color:var(--ink-2);line-height:1.7}
+
+/* ---------- tooltip ---------- */
+#fr-tip{position:fixed;z-index:99;pointer-events:none;opacity:0;transition:opacity .12s;
+  background:var(--ink);color:var(--surface);border-radius:8px;padding:9px 11px;font-size:12px;line-height:1.5;
+  max-width:330px;box-shadow:0 6px 20px rgba(0,0,0,.22)}
+#fr-tip b{display:block;font-size:12.5px;margin-bottom:3px}
+#fr-tip em{font-style:normal;opacity:.72;display:block;margin-top:4px;font-size:11px}
+
+
+/* ---------- scroll progress ---------- */
+.progress{position:fixed;top:0;left:0;height:2px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--fr),var(--wider));transition:width .1s linear}
+
+/* ---------- hero figure (exactly one per view) ---------- */
+.hero{display:flex;flex-wrap:wrap;align-items:baseline;gap:14px 20px;margin:24px 0 4px;
+  background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:20px 22px}
+.hero .fig{font-size:clamp(44px,7vw,60px);line-height:.92;font-weight:680;letter-spacing:-.035em;color:var(--fr)}
+.hero .fig small{font-size:.42em;font-weight:600;letter-spacing:-.01em;color:var(--ink-2)}
+.hero .say{flex:1 1 340px;min-width:0}
+.hero .say b{display:block;font-size:15px;margin-bottom:3px}
+.hero .say span{font-size:13px;color:var(--ink-2);line-height:1.55}
+.hero .meter{flex:1 1 100%;display:flex;gap:3px;margin-top:4px}
+.hero .meter i{flex:1;height:6px;border-radius:2px;background:var(--grid)}
+.hero .meter i.on{background:var(--fr)}
+.hero .meter i.par{background:color-mix(in srgb,var(--fr) 40%,var(--grid))}
+
+/* ---------- verdict tiles ---------- */
+.tile{position:relative;overflow:hidden}
+.tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accentbar,var(--grid))}
+.tile.t1{--accentbar:var(--good)} .tile.t2{--accentbar:var(--fr)} .tile.t3{--accentbar:var(--warn)}
+
+/* ---------- nav pills: scroll-spy ---------- */
+.pills{position:sticky;top:52px;z-index:25;padding:8px 0;flex-wrap:nowrap;overflow-x:auto;
+  scrollbar-width:none;-ms-overflow-style:none;
+  background:color-mix(in srgb,var(--surface) 90%,transparent);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-radius:12px;margin-left:-6px;margin-right:-6px;padding-left:6px;padding-right:6px}
+@supports not (backdrop-filter:blur(1px)){ .pills{background:var(--surface)} }
+.pills::-webkit-scrollbar{display:none}
+.pills a{transition:background .18s,color .18s,border-color .18s}
+.pills a[aria-current="true"]{background:var(--fr);border-color:var(--fr);color:#fff;font-weight:600}
+
+/* ---------- bar reveal ---------- */
+.bar{--w:0%}
+.reveal-ready .chart:not(.seen) .bar{width:0 !important}
+.reveal-ready .chart .bar{transition:width .62s cubic-bezier(.22,.68,.24,1)}
+.reveal-ready .chart .bar{transition-delay:calc(var(--i,0) * 55ms)}
+.reveal-ready .chart:not(.seen) .val,
+.reveal-ready .chart:not(.seen) .nr{opacity:0}
+.reveal-ready .chart .val,.reveal-ready .chart .nr{transition:opacity .4s ease;
+  transition-delay:calc(var(--i,0) * 55ms + 260ms)}
+
+/* ---------- evidence coverage matrix ---------- */
+.cov{overflow-x:auto;margin-top:4px}
+.covgrid{display:grid;gap:2px;min-width:520px;
+  grid-template-columns:minmax(150px,1.4fr) repeat(6,minmax(58px,1fr))}
+.covgrid .h{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;padding:0 4px 8px;text-align:center;line-height:1.3}
+.covgrid .h.l{text-align:left}
+.covgrid .p{font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;padding:5px 4px;line-height:1.3}
+.covgrid .c{display:flex;align-items:center;justify-content:center;padding:5px 0;border-radius:6px}
+.covgrid .c:hover{background:var(--surface-2)}
+.covgrid .c i{width:15px;height:15px;border-radius:50%;display:block}
+.covgrid .c i.full{background:var(--fr)}
+.covgrid .c i.full.comp{background:var(--wider)}
+.covgrid .c i.part{background:linear-gradient(90deg,var(--wider) 50%,transparent 50%);box-shadow:inset 0 0 0 1.5px var(--wider)}
+.covgrid .c i.none{background:transparent;box-shadow:inset 0 0 0 1.5px var(--grid)}
+.covkey{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:12px;color:var(--ink-2)}
+.covkey span{display:inline-flex;align-items:center;gap:7px}
+.covkey i{width:13px;height:13px;border-radius:50%;display:block}
+
+/* ---------- keyboard hint ---------- */
+kbd{font:inherit;font-size:10.5px;font-weight:700;border:1px solid var(--hair);border-bottom-width:2px;
+  border-radius:4px;padding:1px 5px;background:var(--surface-2);color:var(--ink-2)}
+
+@media (prefers-reduced-motion: reduce){
+  .reveal-ready .chart .bar{transition:none;width:var(--w) !important}
+  .reveal-ready .chart .val,.reveal-ready .chart .nr{transition:none;opacity:1}
+  .progress{transition:none}
+  html{scroll-behavior:auto !important}
+}
+html{scroll-behavior:smooth}
+
+
+/* ---------- parameter thumbnails ---------- */
+.thumbs{display:grid;gap:12px;margin:18px 0 4px;
+  grid-template-columns:repeat(auto-fill,minmax(228px,1fr))}
+.thumb{position:relative;text-align:left;font:inherit;cursor:pointer;
+  background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:14px 15px 13px;
+  display:flex;flex-direction:column;gap:9px;
+  transition:border-color .18s,box-shadow .18s,transform .18s}
+.thumb:hover{border-color:var(--fr);box-shadow:0 6px 18px rgba(0,0,0,.09);transform:translateY(-2px)}
+.thumb:focus-visible{outline:2px solid var(--fr);outline-offset:2px}
+.thumb[aria-pressed="true"]{border-color:var(--fr);box-shadow:inset 0 0 0 1px var(--fr)}
+.thumb .tt{font-size:14px;font-weight:640;line-height:1.25;letter-spacing:-.01em}
+.thumb .tk{font-size:11.5px;color:var(--muted);line-height:1.35}
+.thumb .foot{display:flex;align-items:center;justify-content:flex-end;margin-top:auto;padding-top:2px}
+.thumb .go{font-size:15px;line-height:1;color:var(--ink-2);font-weight:700;
+  transition:transform .18s,color .18s}
+.thumb:hover .go{color:var(--fr);transform:translateX(3px)}
+.thumb .badge{position:absolute;top:12px;right:12px;font-size:9px;padding:3px 6px}
+/* Inline icons replace the emoji that used to sit here. An emoji renders as
+   whatever the reader's OS decides — a different drawing on iOS, Android and
+   Windows, in a colour nothing on the page chose. These inherit the text
+   colour and size, and say the same thing in every browser. */
+.ic .i,.i{width:1.05em;height:1.05em;vertical-align:-.16em;flex:none}
+
+/* Each thumbnail carries a photograph of what the parameter is about, tinted
+   per parameter with a colour that holds up on both the light and dark
+   palettes above. The line-drawn icon that used to sit on top of it is gone:
+   on several parameters — wrinkles, marks, the barrier lattice — a few
+   strokes inside a rounded box read as a small chart, which is the one thing
+   the card is not. */
+.thumb .ill{position:relative;display:grid;place-items:center;border-radius:9px;aspect-ratio:16/8.2;
+  overflow:hidden;
+  background:radial-gradient(circle at 50% 32%,var(--surface) 38%,color-mix(in srgb,var(--ptint) 14%,var(--surface)));
+  border:1px solid color-mix(in srgb,var(--ptint) 22%,var(--hair));color:var(--ptint)}
+/* When the photograph never arrives — offline, a blocked CDN, a slow phone —
+   onerror takes it out of the DOM and the parameter's tint wash is what is
+   left behind the number. The scrim under the figure is painted by .illstat
+   rather than by the image, so the card still reads. It is never blank. */
+.thumb .ill img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
+/* A wash in the parameter's own colour, so eleven photographs from eleven
+   photographers still read as one set rather than a stock-photo grid. */
+.thumb .ill::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--ptint) 42%,transparent),
+                                    color-mix(in srgb,var(--ptint) 12%,transparent) 55%,
+                                    transparent)}
+/* The number that used to sit in the card footer now sits on the photograph:
+   Facerinna's own result, and directly under it the same result set against
+   the best published competitor figure in that chart. The comparison is the
+   point of the page, so it is on the thumbnail rather than one click away.
+   The scrim is painted here, not on the image, so the figure stays legible
+   when the photograph fails to load and only the tint wash is behind it. */
+.thumb .illstat{position:absolute;left:0;right:0;bottom:0;z-index:4;
+  display:flex;flex-direction:column;gap:1px;padding:20px 11px 9px;
+  background:linear-gradient(to top,rgba(10,16,24,.74),rgba(10,16,24,.34) 52%,transparent)}
+.thumb .statv{font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.05;color:#fff;
+  font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.55)}
+.thumb .statv em{font-style:normal;font-size:.58em;font-weight:600;opacity:.82;margin-left:1px}
+/* Sign and word carry the direction as well as the colour: a reader who
+   cannot separate the greens from the oranges still reads "+5.6 pts ahead". */
+.thumb .statc{font-size:10.5px;font-weight:600;line-height:1.3;color:rgba(255,255,255,.9);
+  text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.thumb .statc b{font-weight:750}
+.thumb .statc.lead b{color:#8DEBBE}
+.thumb .statc.trail b{color:#FFC49E}
+.thumb .statc.level b{color:#CFE4FF}
+@media(max-width:520px){.thumb .statv{font-size:19px}}
+
+
+.detailbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0 -4px}
+.detailbar button{appearance:none;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;
+  background:var(--surface);border:1px solid var(--hair);color:var(--ink-2);border-radius:8px;padding:6px 12px}
+.detailbar button:hover{border-color:var(--fr);color:var(--ink)}
+.detailbar button:focus-visible{outline:2px solid var(--fr);outline-offset:2px}
+.detailbar .where{font-size:12.5px;color:var(--ink-2);margin-right:auto}
+#detail .card{animation:cardin .34s cubic-bezier(.22,.68,.24,1) both}
+@keyframes cardin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){
+  #detail .card{animation:none}
+  .thumb{transition:none}
+}
+@media print{
+  .thumbs,.detailbar{display:none}
+}
+
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.hidden{display:none !important}
+
+@media(max-width:640px){
+  .pills{top:96px}
+  .card{scroll-margin-top:150px}
+  .row,.grow,.axis{grid-template-columns:1fr;gap:4px}
+  .rlab{margin-bottom:2px}
+}
+@media print{
+  .fr-plane,.progress{display:none}
+  .bar-tools,.tbtn,.pills{display:none}
+  .reveal-ready .chart:not(.seen) .bar{width:var(--w) !important}
+  .reveal-ready .chart:not(.seen) .val{opacity:1}
+  .card,details.big{break-inside:avoid;border-color:#ccc}
+  .fr-bench{--plane:#fff;--surface:#fff}
+  details.big{display:block}
+  details.big>.body{display:block !important}
+}
+</style>
+</head>
+<body>
+<div class="fr-bench" id="app">
+<div class="fr-plane" aria-hidden="true"></div>
+<div class="progress" id="progress" aria-hidden="true"></div>
+<div class="wrap">
+
+  <header class="hdr">
+    <div class="eyebrow" id="eyebrow">Facerinna · AGM evidence pack</div>
+    <h1 id="mainTitle">Instrumental Efficacy Benchmark</h1>
+    <p class="sub" id="mainSub"></p>
+    <div class="metaline">
+      82 third-party test reports · MY Virtue Rinna Sdn. Bhd. · benchmarked against Competitor A,
+      Competitor B (Competitor B group), Competitor C, Competitor D and Competitor E · prepared 2 September 2026
+    </div>
+  </header>
+
+  <div class="bar-tools">
+    <div class="seg" role="group" aria-label="Reading level">
+      <button type="button" id="btnLay"  aria-pressed="true">Layman view</button>
+      <button type="button" id="btnTech" aria-pressed="false">Technical view</button>
+    </div>
+    <div class="seg" role="group" aria-label="Brand filter">
+      <button type="button" class="fbtn" data-f="all" aria-pressed="true">All brands</button>
+      <button type="button" class="fbtn" data-f="fr"  aria-pressed="false">Facerinna only</button>
+    </div>
+    <span class="tool-note" id="toolNote"></span>
+    <span class="tool-note kbd-hint" style="margin-left:auto"><kbd>L</kbd> / <kbd>T</kbd> switch view · <kbd>F</kbd> filter</span>
+  </div>
+
+  <div class="strip lay" id="stripLay">
+    <span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+    <div><b>How to read this.</b> Every bar is a published result. Longer is better.
+    Blue bars are Facerinna, coloured bars are competitor brands, grey bars are label
+    claims and study controls.</div>
+  </div>
+  <div class="strip hcp hidden" id="stripHcp">
+    <span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2.8 20h18.4L12 4Z"/><path d="M12 10v4M12 17.4v.2"/></svg></span>
+    <div><b>HCP version — not for consumer distribution.</b> Comparative material against named brands.
+    None of these comparisons may migrate to consumer copy: comparative advertising against a named brand
+    engages the NPRA Cosmetic Advertisement rules and Guidelines Annex I Part 10.
+    Study designs, panels, timepoints and metrics differ — <b>this is not a head-to-head trial</b>,
+    except the INBIOSIS-UKM EpiDermFT run.</div>
+  </div>
+
+  <section class="hero" aria-label="Headline result">
+    <div class="fig">7<small> / 11</small></div>
+    <div class="say">
+      <b>Facerinna holds the leading published figure in 7 of the 11 parameters benchmarked.</b>
+      <span id="heroSay"></span>
+    </div>
+    <div class="meter" aria-hidden="true">
+      <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i>
+      <i class="on"></i><i class="on"></i><i class="par"></i><i class="par"></i><i></i><i></i>
+    </div>
+  </section>
+
+  <div class="verdict">
+    <div class="tile t1">
+      <div class="rank n1">#1</div>
+      <div class="rlabel">Facerinna leads on the published number</div>
+      <ul><li>Skin barrier (TEWL)</li><li>Hydration</li><li>Oil control</li><li>Wrinkles</li>
+      <li>Calming redness &amp; itch</li><li>Sunscreen (measured SPF)</li><li>Repair genes vs Competitor D</li></ul>
+    </div>
+    <div class="tile t2">
+      <div class="rank n2">#2</div>
+      <div class="rlabel">Close behind</div>
+      <ul><li>Sensitive skin — 4 points behind Competitor A</li>
+      <li>Acne — same result as Competitor A, reached 12× faster</li></ul>
+    </div>
+    <div class="tile t3">
+      <div class="rank n3">▼</div>
+      <div class="rlabel">Behind</div>
+      <ul><li>Dark spots — Competitor C and Competitor A hold longer, doctor-scored trials</li></ul>
+    </div>
+  </div>
+
+  <nav class="pills" id="pills" aria-label="Jump to parameter"></nav>
+
+  <div class="thumbs" id="thumbs" role="group" aria-label="Choose a parameter"></div>
+
+  <div class="detailbar hidden" id="detailbar">
+    <span class="where" id="detailWhere"></span>
+    <button type="button" id="btnPrev">← Previous</button>
+    <button type="button" id="btnNext">Next →</button>
+    <button type="button" id="btnAll">Show every parameter</button>
+    <button type="button" id="btnClose">Close</button>
+  </div>
+
+  <main id="sections"></main>
+
+  <div id="techExtras"></div>
+
+  <!-- The layman reader gets the one line that has to be there: the images are
+       stock, and none of them is a study subject. The method note, the panel
+       sizes and the sign-off line are all written for someone reading the
+       charts as evidence, so they live in the technical view with the rest of
+       the method. -->
+  <div class="footer" id="footLay">
+    Card photographs from <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>,
+    illustrative only — none shows a FACERINNA subject, product or result.
+  </div>
+
+  <div class="footer hidden" id="footTech">
+    <b>Card photographs.</b> Parameter images from <a href="https://unsplash.com" target="_blank"
+    rel="noopener">Unsplash</a>, by Aleksandr Eremin, H&amp;CO, MagicPattern, Agata Create,
+    Ante Hamersmit, Koen Emmers, Rodion Kutsaiev, Shelter, Polina Grishma, Trnava University and
+    Billy Huynh, used under the Unsplash Licence. They are illustrative only — none shows a
+    FACERINNA subject, product or result.<br><br>
+    <b>How to read the bars.</b> Facerinna figures are mean % change vs baseline from third-party
+    instrumented reports (Courage+Khazaka MPA580, Antera 3D, VISIA, PRIMOS-CR), single-arm before/after,
+    n ≈ 30–32, sensitive-skin-screened panels, p &lt; 0.05 unless flagged. Competitor figures are the
+    strongest number that brand puts in the public record. A larger % from a single-arm study does not
+    beat a smaller % from a randomised controlled trial. Check each bar against its comparability badge.
+    <br><br>
+    Verdict lines on efficacy positioning are proposals for sign-off by Wan as safety assessor / RA lead.
+  </div>
+</div>
+</div>
+<div id="fr-tip" role="tooltip" aria-hidden="true"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ======================================================================
+   DATA
+   brand codes: fr = Facerinna · lrp = Competitor A · wider = Competitor C /
+   Competitor E / Competitor D / Competitor B · ref = study control, vehicle, blank or label
+   only = tech view · lay = layman view · both = default
+   ====================================================================== */
+var BRAND = {
+  fr   : {name:"Facerinna",           v:"--fr"},
+  lrp  : {name:"Competitor A",      v:"--lrp"},
+  wider: {name:"Competitor C / Competitor E / Competitor D / Competitor B", v:"--wider"},
+  ref  : {name:"Label claim / study control", v:"--ref"}
+};
+
+var S = [
+
+/* 1 — SENSITIVITY ---------------------------------------------------- */
+{
+ id:"sensitivity",
+ pill:{lay:"Sensitive skin", tech:"Sting score"},
+ lay:{
+   title:"Gentle on sensitive skin",
+   kicker:"Lactic-acid sting test, 4 weeks",
+   sub:"How much less the skin stings after 4 weeks · higher is better",
+   tldr:["Both top products roughly halve stinging.",
+         "Our moisturizer sits right beside Competitor A's best sensitive-skin cream.",
+         "Our cleansers and retinol calmed the skin too, which is unusual for those product types."]
+ },
+ tech:{
+   title:"Skin sensitivity — lactic-acid sting score",
+   sub:"Mean % reduction in stinging score after 28 days of use · sensitive-skin panels",
+   badge:"direct",
+   reading:"Competitor A's flagship sensitive-skin cream and Facerinna's Ceramide B5 moisturizer land within 5 points of each other on the same test (3.9→1.4 vs 5→2). Every Facerinna SKU tested, including two cleansers and a retinol, cut sting ≥ 43%.",
+   watch:"Facerinna: 10% lactic acid at the nasolabial fold, scored 0 / 2.5 / 5 / 8 min, D28, n ≈ 30 each. Competitor A: global cutaneous reactivity 0–3 scale, n = 107, open-label, Poland. Same test principle, different scale — directionally comparable, not statistically.",
+   src:"¹ Kerob D, et al. Clin Cosmet Investig Dermatol 2023;16:1861, doi:10.2147/CCID.S418483 (3.9→1.4, D28) · ² Baohua E202501296 · ³ Baohua E202501295 · ⁴ Baohua E202501286 · ⁵ Baohua E202501350 · ⁶ Baohua E202501289 · ⁷ Baohua E202501348 — all 'Lactic acid sting score' table, D28"
+ },
+ charts:[{ unit:"%", rows:[
+   {b:"lrp",v:64,   lay:"Competitor A sensitive-skin cream",       tech:"Competitor A Competitor A sensitive-skin cream (n=107) ¹"},
+   {b:"fr", v:59.57,lay:"Facerinna Ceramide B5 Moisturizer",          tech:"Facerinna Ceramide B5 Balancing Moisturizer (n=31) ²"},
+   {b:"fr", v:48.84,lay:"Facerinna Niacinamide Sunscreen",            tech:"Facerinna Niacinamide Brightening Sunscreen (n=32) ³"},
+   {b:"fr", v:48.72,lay:"Facerinna Retinol Serum",                    tech:"Facerinna Retinol Anti Aging Serum (n=30) ⁴"},
+   {b:"fr", v:46.58,lay:"Facerinna Low pH B5 Cleanser",               tech:"Facerinna Low pH B5 Gel Cleanser (n=30) ⁵"},
+   {b:"fr", v:43.49,lay:"Facerinna Salicylic Acid Moisturizer",       tech:"Facerinna Salicylic Acid Acne Moisturizer (n=30) ⁶"},
+   {b:"fr", v:43.16,lay:"Facerinna Niacinamide Cleanser",             tech:"Facerinna 2% Niacinamide Power Bright Cleanser (n=31) ⁷"}
+ ]}]
+},
+
+/* 2 — ACNE ----------------------------------------------------------- */
+{
+ id:"acne",
+ pill:{lay:"Clearing acne", tech:"Acne lesions"},
+ lay:{
+   title:"Clearing acne",
+   kicker:"Counted pimples and spots",
+   sub:"How many fewer pimples and spots · higher is better",
+   tldr:["Both land on about the same result. The timelines are far apart.",
+         "Competitor A needed 12 weeks to clear about 7 in 10 spots.",
+         "Facerinna's serum reached it in 1 week, starting from 3× more spots.",
+         "Competitor B and Competitor D publish no spot-count numbers."]
+ },
+ tech:{
+   title:"Acne — lesion / blemish reduction",
+   sub:"Mean % reduction in counted lesions · Facerinna D7 vs Competitor A peer-reviewed 12-wk data and 4-wk brand gradings",
+   badge:"direct",
+   reading:"Peer-reviewed Competitor A acne gel monotherapy (Han 2026, Korea, open-label): total lesions 22.85 → 6.27 (−72.6%, n=151) over 12 weeks; −79.0% in the sensitive-skin subgroup. Facerinna's 2% SA serum reached −73.7% (40.7 → 10.7) at D7 — similar magnitude in one-twelfth the time, on a 3× higher baseline. Also on file: Antera-3D bump volume −81.0% (SA Moisturizer) and −80.6% (SA Cleanser) at D28.",
+   watch:"ISGA effective rate = % of subjects 'cured + markedly effective', not a lesion %. Facerinna D7 = 1-week Youzhi study (D14 survey mismatch flagged in the matrix). Han 2026 is non-randomised with baseline imbalance — the authors' own caveat. Competitor A acne gel is 0.5% SA + LHA; Facerinna is 2% SA.",
+   src:"¹ Han JH, et al. J Cosmet Dermatol 2026;25:e70831, doi:10.1111/jocd.70831 (Table 2: 22.85→6.27; Table 4: 24.29→5.10) · ² Youzhi YDJC20250815003H04 (Table 5.1.5, 40.68→10.72) · ³ laroche-posay.us Competitor A acne gel clinical gradings, accessed 2 Sep 2026 · ⁴ laroche-posay.us / LovelySkin Competitor A acne serum clinical results · ⁵ Baohua E202501289 (ISGA D28)"
+ },
+ charts:[{ unit:"%", rows:[
+   {b:"lrp",v:79,   lay:"Competitor A Competitor A acne gel (sensitive skin, 12 weeks)", tech:"Competitor A Competitor A acne gel — total lesions, 12 wk, sensitive subgroup (n=77) ¹"},
+   {b:"fr", v:76.67,only:"tech", tech:"Facerinna SA Acne Moisturizer — ISGA effective rate, D28 (n=30)* ⁵", lay:"Facerinna Salicylic Acid Moisturizer"},
+   {b:"fr", v:73.65,lay:"Facerinna 2% Salicylic Acid Serum (1 week)", tech:"Facerinna 2% SA Acne Serum — total lesions, D7 (n=30) ²"},
+   {b:"lrp",v:72.6, lay:"Competitor A Competitor A acne gel (all users, 12 weeks)", tech:"Competitor A Competitor A acne gel — total lesions, 12 wk, all monotherapy (n=151) ¹"},
+   {b:"lrp",v:66,   lay:"Competitor A Competitor A acne gel — blackheads (4 weeks)", tech:"Competitor A Competitor A acne gel — blackheads, 4 wk (n=45, brand) ³"},
+   {b:"lrp",v:45,   lay:"Competitor A Competitor A acne serum — pimples (4 weeks)", tech:"Competitor A Competitor A acne serum — pimples, 4 wk (brand) ⁴"},
+   {b:"lrp",v:44,   lay:"Competitor A Competitor A acne gel — blemishes (4 weeks)", tech:"Competitor A Competitor A acne gel — blemishes, 4 wk (n=45, brand) ³"}
+ ], note:{tech:"* ISGA effective rate is a % of subjects, not a lesion count — shown for completeness, kept out of the ranking claim."}}]
+},
+
+/* 3 — POST-ACNE MARKS ------------------------------------------------ */
+{
+ id:"marks",
+ pill:{lay:"Acne marks", tech:"Post-acne marks"},
+ lay:{
+   title:"Fading acne marks & redness",
+   kicker:"Colour meter vs doctor's eye",
+   sub:"How much the marks and redness faded · higher is better",
+   tldr:["Acne redness fell by more than half in 1 week.",
+         "Different rulers: Competitor A grades by eye, Facerinna measures with a colour meter.",
+         "Our numbers look smaller because the instrument is stricter, not because the result is weaker."]
+ },
+ tech:{
+   title:"Post-acne marks &amp; redness",
+   sub:"Facerinna instrumented colour metrics (Mexameter melanin / haemoglobin, VISIA a*) vs Competitor A expert-graded mark reduction",
+   badge:"partial",
+   reading:"The metrics diverge: Competitor A grades visible marks by eye (expert grading, %-reduction of a score); Facerinna measures colour with Mexameter (melanin, haemoglobin) and VISIA a*. A −20% melanin index is a large instrumental shift but is not the same quantity as a −44% graded mark score.",
+   watch:"Where Facerinna is stronger: 28-day paired instrumental data with p &lt; 0.001 on every colour endpoint; Competitor A publishes the graded number only. For an HCP audience, lead with the instrument and the p-value, not the headline %.",
+   src:"¹ Youzhi YDJC20250815003H04 (a* 13.86→6.29) · ² Competitor A acne serum −49% post-acne marks, 4 wk, brand clinical results (LovelySkin / laroche-posay.us) · ³ Competitor A acne gel −44% PIH, brand clinical · ⁴ Baohua E202501289 (melanin 226→179; a* 28.82→24.66) · ⁵ Baohua E202501287 (a* 28.68→23.62; Hb 311→267)"
+ },
+ charts:[{ unit:"%", rows:[
+   {b:"fr", v:54.59,lay:"Facerinna 2% Salicylic Acid Serum — acne redness (1 week)", tech:"Facerinna 2% SA Serum — a* acne redness, D7 (n=30) ¹"},
+   {b:"lrp",v:49,   lay:"Competitor A Competitor A acne serum — marks (4 weeks, doctor score)", tech:"Competitor A Competitor A acne serum — post-acne marks, 4 wk ²"},
+   {b:"lrp",v:44,   lay:"Competitor A Competitor A acne gel — dark marks (4 weeks, doctor score)", tech:"Competitor A Competitor A acne gel — PIH, 4 wk ³"},
+   {b:"fr", v:20.45,lay:"Facerinna SA Moisturizer — mark darkness (4 weeks, meter)", tech:"Facerinna SA Moisturizer — melanin (acne marks), D28 (n=30) ⁴"},
+   {b:"fr", v:17.43,lay:"Facerinna 2% SA Serum — redness (4 weeks, meter)", tech:"Facerinna 2% SA Serum — a* redness, D28 (n=30) ⁵"},
+   {b:"fr", v:15.01,lay:"Facerinna SA Moisturizer — redness (4 weeks, meter)", tech:"Facerinna SA Moisturizer — a* redness, D28 (n=30) ⁴"},
+   {b:"fr", v:14.06,lay:"Facerinna 2% SA Serum — blood-flow redness (4 weeks)", tech:"Facerinna 2% SA Serum — haemoglobin, D28 (n=30) ⁵"}
+ ]}]
+},
+
+/* 4 — PIGMENTATION --------------------------------------------------- */
+{
+ id:"pigment",
+ pill:{lay:"Dark spots", tech:"Pigmentation"},
+ lay:{
+   title:"Fading dark spots",
+   kicker:"Where the competition is ahead",
+   sub:"How much lighter the dark areas became · higher is better",
+   tldr:["Competitor C leads here, fairly. Their ingredient has years of trials behind it.",
+         "But the rulers differ: Competitor C and Competitor A use doctor scoring over 3 months; Facerinna uses a light meter after 1 month.",
+         "A 3-month Facerinna study would let us compare properly."]
+ },
+ tech:{
+   title:"Pigmentation &amp; brightening — wider field",
+   sub:"Facerinna Mexameter melanin index (D28) vs Competitor C brightening range mMASI trials (12 wk) vs Competitor A Competitor A brightening serum graded spot contrast (15 wk)",
+   badge:"partial",
+   reading:"Competitor C owns the deepest pigmentation evidence in this field: three RCT-grade Competitor C brightening active datasets plus a 629-patient real-world study, all on mMASI. The −76% real-world figure is uncontrolled and inflates against the −36% to −43% RCT range — treat the RCTs as the benchmark. Facerinna's −19% melanin index at 4 weeks is a different instrument on a shorter clock.",
+   watch:"mMASI is a clinician composite (area × darkness × homogeneity); Mexameter melanin is a single-site optical index. Competitor A's Competitor A brightening serum numbers are graded spot contrast and % of subjects improved; the peer-reviewed Competitor A brightening serum trial reports non-inferiority to hydroquinone 4% on mMASI (n=109), not a melanin index. Do not present these bars as 'Facerinna beats Competitor A brightening serum' — present as 'instrumentally proven brightening at D28'. Neither Competitor B nor Competitor D publish a pigmentation %.",
+   src:"¹ Schuster B, et al. Int J Cosmet Sci 2026 (11-country, n=629) · ² Lima PB, et al. JEADV 2021 (Competitor C brightening active 43% [35–50] vs HQ 33% [23–42]) · ³ Lekhavat C, et al. Dermatol Ther (Heidelb) 2026 (36.1% vs 16.1%, p&lt;0.001; NCT03926845) · ⁴ laroche-posay.us Competitor A brightening serum, N=85; RCT Passeron T, et al. Dermatol Ther (Heidelb) 2025;15:2379, doi:10.1007/s13555-025-01473-4 · ⁵ Baohua E202501288 (194→156) · ⁶ Baohua E202501295 (183→161)"
+ },
+ charts:[{ unit:"%", rows:[
+   {b:"wider",v:76,  only:"tech", tech:"Competitor C brightening range regimen — mMASI, 12 wk, real-world open-label (n=629) ¹", lay:"Competitor C brightening range (real-world, uncontrolled)"},
+   {b:"wider",v:43,  lay:"Competitor C brightening range (12 weeks, doctor score)", tech:"Competitor C 0.2% Competitor C brightening active — mMASI, 12 wk, RCT vs HQ 4% (n=50) ²"},
+   {b:"wider",v:36.1,lay:"Competitor C brightening range (12 weeks, doctor score, larger study)", tech:"Competitor C 0.2% Competitor C brightening active — mMASI, 12 wk, RCT vs vehicle (n=200) ³"},
+   {b:"ref",  v:33,  only:"tech", tech:"Hydroquinone 4% (comparator arm) — mMASI, 12 wk ²", lay:"Hydroquinone 4% (prescription standard)"},
+   {b:"lrp",  v:30,  lay:"Competitor A Competitor A brightening serum (15 weeks, doctor score)", tech:"Competitor A Competitor A brightening serum — age-spot contrast, 15 wk (n=85) ⁴"},
+   {b:"fr",   v:18.97,lay:"Facerinna Niacinamide + TXA Serum (4 weeks, skin meter)", tech:"Facerinna 10% Niacinamide 3% TXA Serum — melanin, D28 (n=30) ⁵"},
+   {b:"ref",  v:16.1,only:"tech", tech:"Competitor C brightening active vehicle arm — mMASI, 12 wk ³", lay:"Placebo cream (vehicle arm)"},
+   {b:"fr",   v:11.08,lay:"Facerinna Niacinamide Sunscreen (4 weeks, skin meter)", tech:"Facerinna Niacinamide Sunscreen SPF50 — melanin, D28 (n=32) ⁶"}
+ ]},
+ { only:"tech", title:"Facerinna range — Mexameter melanin index, D28", unit:"%", rows:[
+   {b:"fr",v:20.45,tech:"SA Acne Moisturizer (n=30) — E202501289", lay:"SA Acne Moisturizer"},
+   {b:"fr",v:18.97,tech:"10% Niacinamide 3% TXA Serum (n=30) — E202501288", lay:"Niacinamide + TXA Serum"},
+   {b:"fr",v:14.57,tech:"2% Niacinamide Cleanser (n=31) — E202501348", lay:"Niacinamide Cleanser"},
+   {b:"fr",v:13.65,tech:"SA Acne Gel Cleanser (n=31) — E202501349", lay:"SA Gel Cleanser"},
+   {b:"fr",v:11.08,tech:"Niacinamide Sunscreen SPF50 (n=32) — E202501295", lay:"Niacinamide Sunscreen"},
+   {b:"fr",v:10.3, tech:"5% Niacinamide 1% TXA Moisturizer (n=32) — E202501278", lay:"5% Niacinamide + TXA Moisturizer"}
+ ]}]
+},
+
+/* 5 — BARRIER / TEWL ------------------------------------------------- */
+{
+ id:"barrier",
+ pill:{lay:"Skin barrier", tech:"TEWL"},
+ lay:{
+   title:"Stronger skin barrier",
+   kicker:"Water lost through the skin",
+   sub:"How much less water the skin loses · higher is better",
+   tldr:["A weak barrier lets water out and irritants in.",
+         "Only Competitor E publishes a number to compare against, from one application on a healthy arm.",
+         "Competitor A, Competitor D, Competitor C and Competitor B say 'proven' but give no figure."]
+ },
+ tech:{
+   title:"Skin barrier — transepidermal water loss (TEWL)",
+   sub:"Mean % reduction in TEWL, Tewameter TM300 open chamber, D28 unless stated · competitors publish significance only",
+   badge:"none",
+   reading:"Competitor A's evidence is stronger by design (RCT, controlled) but weaker by disclosure (no mean %). Facerinna's −20% to −41% at D28 on barrier-impaired panels (baseline TEWL 18–29 g/m²/h) is publishable-grade and currently un-contested in the public record. Competitor E's −25% comes from a single application on healthy volar forearm at a baseline of 8.45 g/m²/h — the same % is a much smaller absolute repair.",
+   watch:"What Competitor A has published: Competitor A sensitive-skin cream — TEWL 'significantly improved (p&lt;0.0001)', 99% of subjects showed a TEWL decrease at D28 (n=107) ⁷. Competitor A body balm — TEWL significantly lower than urea 10% at weeks 4, 8, 12 in a double-blind RCT (n=60); values shown only in figures ⁸.",
+   src:"¹ Baohua E202501286 (28.63→15.86) · ² Baohua E202501289 (22.28→14.15) · ³ Baohua E202501296 (20.81→14.63) · ⁴ Baohua E202501287 (18.27→12.91) · ⁵ Baohua E202600150 (22.13→16.47 D7) · ⁶ Baohua E202501298 (18.83→14.65) · ⁷ Kerob 2023 doi:10.2147/CCID.S418483 · ⁸ Prakoeswa CRS, et al. J Cosmet Dermatol 2025;24:e70051, doi:10.1111/jocd.70051 · ⁹ Spada F, et al. Clin Cosmet Investig Dermatol 2018;11:491, doi:10.2147/CCID.S177697"
+ },
+ charts:[{ unit:"%", rows:[
+   {b:"fr",   v:41.32,lay:"Facerinna Retinol Serum (4 weeks)",              tech:"Facerinna Retinol Anti Aging Serum, D28 (n=30) ¹"},
+   {b:"fr",   v:32.92,lay:"Facerinna Salicylic Acid Moisturizer (4 weeks)", tech:"Facerinna SA Acne Moisturizer, D28 (n=30) ²"},
+   {b:"fr",   v:28.75,lay:"Facerinna Ceramide B5 Moisturizer (4 weeks)",    tech:"Facerinna Ceramide B5 Balancing Moisturizer, D28 (n=31) ³"},
+   {b:"fr",   v:28.36,lay:"Facerinna 2% Salicylic Acid Serum (4 weeks)",    tech:"Facerinna 2% SA Acne Serum, D28 (n=30) ⁴"},
+   {b:"wider",v:25,   lay:"Competitor E ceramide cream (single use, 2 hours)", tech:"Competitor E ceramide cream — 2 h, single application, healthy forearm (n=10) ⁹"},
+   {b:"fr",   v:24.37,lay:"Facerinna 5% B5 Centella Cream (1 week)",        tech:"Facerinna 5% B5 Centella Gel Cream, D7 (n=30) ⁵"},
+   {b:"fr",   v:20.1, lay:"Facerinna Salicylic Acid Toner (4 weeks)",       tech:"Facerinna SA Acne Toner, D28 (n=31) ⁶"}
+ ]},
+ { only:"tech", title:"Acute barrier repair — TEWL % reduction after ONE application", unit:"%", rows:[
+   {b:"wider",v:25,   tech:"Competitor E ceramide cream — 2 h (n=10), healthy forearm, baseline 8.45 g/m²/h ⁹", lay:"Competitor E ceramide cream — 2 h"},
+   {b:"fr",   v:22.34,tech:"Facerinna 5% B5 Centella — 1 h post red-light challenge (n=30), baseline 25.05 ⁵", lay:"Facerinna 5% B5 Centella — 1 h"},
+   {b:"wider",v:22,   tech:"Competitor E ceramide cream — 4 h to 24 h (n=10) ⁹", lay:"Competitor E ceramide cream — 4–24 h"},
+   {b:"fr",   v:13.71,tech:"Facerinna 5% B5 Intensive — 15 min post red-light (n=30), baseline 25.80", lay:"Facerinna 5% B5 Intensive — 15 min"}
+ ], note:{tech:"Same % on a challenged face at baseline 25 g/m²/h is a far larger absolute repair than on a healthy forearm at 8.45."}}]
+},
+
+/* 6 — HYDRATION ------------------------------------------------------ */
+{
+ id:"hydration",
+ pill:{lay:"Hydration", tech:"Corneometer"},
+ lay:{
+   title:"Hydration",
+   kicker:"Moisture held in the skin",
+   sub:"How much more moisture in the skin after 4 weeks · higher is better",
+   tldr:["Every Facerinna product raised moisture, the wash-off cleansers included.",
+         "Instant effect: our 5% B5 Bright Barrier Cream more than doubled skin moisture 15 seconds after applying.",
+         "No competitor publishes a comparable moisture figure. They say '24-hour' or '48-hour hydration' instead."]
+ },
+ tech:{
+   title:"Hydration — Corneometer CM825",
+   sub:"Long-term D28 gains and immediate single-application gains · arbitrary capacitance units, higher = better",
+   badge:"none",
+   reading:"Seven SKUs carry a quantified D28 hydration gain; the Ceramide B5 moisturizer leads at +57.9%. The immediate-effect set is the stronger commercial asset: +112% at 15 seconds (5% B5 Bright Barrier) and the Intertek 4 h run against a blank reference arm (+85.1% vs +28.9%) is the only competitor-controlled hydration data on file.",
+   watch:"Competitor A on record: Competitor A sensitive-skin cream — 97% of subjects with improved hydration at D28 (n=107), no mean % ¹¹. Competitor A body balm — greatest hydration gain of 4 products on stripped skin at 4 h (n=36), absolute units only ¹²; &gt; urea 10% at wk 8 and 12 ¹³. Intertek report carries duplicated baselines — flagged in the matrix, re-verify before external use.",
+   src:"¹ Baohua E202501296 · ² E202501288 · ³ E202501279 · ⁴ E202501298 · ⁵ E202501348 · ⁶ E202501350 · ⁷ E202501278 · ⁸ Baohua E202600151 (38.5→79.8 at 15 s) · ⁹ Intertek SZPJ50019-01 (33.23→61.5 vs blank 32.2→41.5) · ¹⁰ Baohua E202600409a · ¹¹ Kerob 2023 doi:10.2147/CCID.S418483 · ¹² De Decker I, et al. Burns 2022, doi:10.1016/j.burns.2022.04.025 · ¹³ Prakoeswa 2025 doi:10.1111/jocd.70051"
+ },
+ charts:[{ title:"28-day % increase vs baseline", unit:"%", rows:[
+   {b:"fr",v:57.86,lay:"Facerinna Ceramide B5 Moisturizer",        tech:"Ceramide B5 Balancing Moisturizer (n=31) ¹"},
+   {b:"fr",v:49.41,lay:"Facerinna Niacinamide + TXA Serum",        tech:"10% Niacinamide 3% TXA Serum (n=30) ²"},
+   {b:"fr",v:41.27,lay:"Facerinna Retinol Moisturizer",            tech:"Retinol Anti Aging Moisturizer (n=31) ³"},
+   {b:"fr",v:38.28,lay:"Facerinna Salicylic Acid Toner",           tech:"Salicylic Acid Acne Toner (n=31) ⁴"},
+   {b:"fr",v:30.95,lay:"Facerinna Niacinamide Cleanser",           tech:"2% Niacinamide Power Bright Cleanser (n=31) ⁵"},
+   {b:"fr",v:25.79,lay:"Facerinna Low pH B5 Cleanser",             tech:"Low pH B5 Gel Cleanser (n=30) ⁶"},
+   {b:"fr",v:25.67,lay:"Facerinna 5% Niacinamide + TXA Moisturizer",tech:"5% Niacinamide 1% TXA Moisturizer (n=32) ⁷"}
+ ]},
+ { title:"Immediate effect — % increase after one application", unit:"%", rows:[
+   {b:"fr", v:112.03,lay:"Facerinna 5% B5 Bright Barrier Cream — 15 seconds", tech:"5% B5 Bright Barrier Cream — 15 s (n=31) ⁸"},
+   {b:"fr", v:85.07, lay:"Facerinna Ceramide B5 Moisturizer — 4 hours",       tech:"Ceramide B5 Moisturizer — 4 h ⁹"},
+   {b:"fr", v:37.46, lay:"Facerinna 5% B5 Intensive Barrier — 15 minutes",    tech:"5% B5 Intensive Barrier — 15 min (n=30) ¹⁰"},
+   {b:"ref",v:28.88, lay:"Untreated control patch — 4 hours",                 tech:"Blank reference (untreated site) — 4 h ⁹"}
+ ]}]
+},
+
+/* 7 — SEBUM ---------------------------------------------------------- */
+{
+ id:"sebum",
+ pill:{lay:"Oil control", tech:"Sebum"},
+ lay:{
+   title:"Oil control",
+   kicker:"Surface oil measured with a meter",
+   sub:"How much less surface oil after 4 weeks · higher is better",
+   tldr:["The leave-on products cut surface oil by about half.",
+         "Competitor A's figure is a doctor's eye-score, not a meter reading.",
+         "Competitor C, Competitor D, Competitor B and Competitor E give no oil number at all."]
+ },
+ tech:{
+   title:"Oil control — skin surface sebum (Sebumeter SM815)",
+   sub:"Mean % reduction in surface sebum, µg/cm², D28 unless stated",
+   badge:"partial",
+   reading:"Six Facerinna SKUs carry a quantified oil-control number; the two leave-ons hit ~−53% at D28 on sensitive-skin panels. Han 2026: Competitor A acne gel monotherapy cut a clinician-rated sebum score from 5.28 to 3.43 (−35.0%) over 12 weeks — a 0–10 visual scale, not a Sebumeter reading, hence PARTIAL.",
+   watch:"The Youzhi cleanser study (YDJC20250818010H04) recorded a +18% sebum RISE at D7, read in the report as 'normalisation' — keep it out of oil-control claims entirely. Competitor A mattifier: 'superior to zinc', no % ⁸. Competitor A mask (Zhang 2024, n=177): 'reduced sebum', figures only ⁹.",
+   src:"¹ Baohua E202501296 (59→26) · ² E202501288 (72→34) · ³ E202501298 (71→36) · ⁴ E202600409a (79→41 D7) · ⁵ E202501348 (67→39) · ⁶ Han JH, et al. J Cosmet Dermatol 2026, doi:10.1111/jocd.70831 (Table 2) · ⁷ E202501349 (60→43) · ⁸ laroche-posay-me.com Competitor A mattifier · ⁹ Zhang X, et al. J Cosmet Dermatol 2024 (Competitor A mask)"
+ },
+ charts:[{ unit:"%", rows:[
+   {b:"fr", v:53.41,lay:"Facerinna Ceramide B5 Moisturizer",           tech:"Ceramide B5 Balancing Moisturizer (n=31) ¹"},
+   {b:"fr", v:52.25,lay:"Facerinna Niacinamide + TXA Serum",           tech:"10% Niacinamide 3% TXA Serum (n=30) ²"},
+   {b:"fr", v:49.15,lay:"Facerinna Salicylic Acid Toner",              tech:"Salicylic Acid Acne Toner (n=31) ³"},
+   {b:"fr", v:48.32,lay:"Facerinna 5% B5 Intensive Barrier Cream (1 week)", tech:"5% B5 Intensive Barrier Cream, D7 (n=30) ⁴"},
+   {b:"fr", v:40.29,lay:"Facerinna Niacinamide Cleanser",              tech:"2% Niacinamide Power Bright Cleanser (n=31) ⁵"},
+   {b:"lrp",v:35,   lay:"Competitor A Competitor A acne gel (12 weeks, doctor score)", tech:"Competitor A Competitor A acne gel — clinician sebum score 0–10, 12 wk (n=151)* ⁶"},
+   {b:"fr", v:24.87,lay:"Facerinna Salicylic Acid Gel Cleanser",       tech:"Salicylic Acid Acne Gel Cleanser (n=31) ⁷"}
+ ]}]
+},
+
+/* 8 — WRINKLES ------------------------------------------------------- */
+{
+ id:"wrinkles",
+ pill:{lay:"Wrinkles", tech:"Anti-ageing"},
+ lay:{
+   title:"Smoothing wrinkles",
+   kicker:"Measured by 3-D scanner, two labs",
+   sub:"How much shallower and smaller the wrinkles became after 4 weeks · higher is better",
+   tldr:["Two independent labs measured our retinol serum on 3-D scanners.",
+         "Face wrinkles came out about 40% shallower, crow's feet about 10% smaller. Quote both numbers.",
+         "Competitor A's retinol reports only what users felt, not what a scanner measured."]
+ },
+ tech:{
+   title:"Anti-ageing — wrinkles, firmness &amp; elasticity",
+   sub:"Antera 3D / PRIMOS-CR fringe projection / Cutometer MPA580, D28 · Competitor A Competitor A retinol serum publishes consumer-perception data only",
+   badge:"none",
+   reading:"Two independent labs: Baohua (face, Antera 3D, −42.5% average depth) and Guangzhou King Test (eye contour, PRIMOS-CR, −9.6% volume). The gap between them is the honest range — quote both. Baohua's −42% is inflated by 8 subjects hitting zero measurable depth; state that in any HCP deck.",
+   watch:"Competitor A Competitor A retinol serum: 88% 'skin feels firmer' at 8 weeks, 82% 'looks younger' — consumer self-assessment, no instrumental % ⁴. Peer-reviewed Competitor D group retinol (Retinol 0.2%/LR2412, n=120): wrinkle improvement not statistically different from tretinoin 0.025% at 12 weeks ⁵ — that is the credible ceiling for the category, and it is not a number Facerinna has beaten.",
+   src:"¹ Baohua E202501286 (depth 0.060→0.036 mm; volume 1.192→0.673 mm³; F4 0.9632→0.6775; R2 56.5→64.4) · ² Baohua E202501279 · ³ Guangzhou King Test GZ25012301500002E (volume 2.20→1.99 mm³; grade 3.73→3.33) · ⁴ laroche-posay.com Competitor A retinol serum clinical results · ⁵ Bouloc A, et al. J Cosmet Dermatol 2015;14:40, doi:10.1111/jocd.12131"
+ },
+ charts:[{ unit:"%", rows:[
+   {b:"fr",v:44.4, lay:"Facerinna Retinol Serum — wrinkle volume",        tech:"Retinol Serum — wrinkle volume, Antera 3D (n=30) ¹"},
+   {b:"fr",v:42.47,lay:"Facerinna Retinol Serum — wrinkle depth",         tech:"Retinol Serum — average wrinkle depth, Antera 3D (n=30) ¹"},
+   {b:"fr",v:39.19,lay:"Facerinna Retinol Moisturizer — wrinkle depth",   tech:"Retinol Moisturizer — average wrinkle depth (n=31) ²"},
+   {b:"fr",v:36.15,lay:"Facerinna Retinol Moisturizer — wrinkle volume",  tech:"Retinol Moisturizer — wrinkle volume (n=31) ²"},
+   {b:"fr",v:29.13,lay:"Facerinna Retinol Serum — firmness",              tech:"Retinol Serum — firmness F4, Cutometer (n=30) ¹"},
+   {b:"fr",v:14.33,lay:"Facerinna Retinol Serum — elasticity",            tech:"Retinol Serum — elasticity R2, Cutometer (n=30) ¹"},
+   {b:"fr",v:10.72,lay:"Facerinna Retinol Serum — crow's feet (2nd lab, doctor grade)", tech:"Retinol Serum — crow's-feet grade, dermatologist, 2nd lab (n=30) ³"},
+   {b:"fr",v:9.55, lay:"Facerinna Retinol Serum — crow's feet (2nd lab, 3-D scan)",     tech:"Retinol Serum — crow's-feet volume, PRIMOS-CR, 2nd lab (n=30) ³"}
+ ]}]
+},
+
+/* 9 — SOOTHING ------------------------------------------------------- */
+{
+ id:"soothing",
+ pill:{lay:"Redness & itch", tech:"Soothing (B5)"},
+ lay:{
+   title:"Calming redness & itch",
+   kicker:"Skin irritated first, then treated once",
+   sub:"How much calmer the skin was after ONE application · higher is better",
+   tldr:["We irritated the skin first, with light or histamine, then treated it once.",
+         "Itch fell by more than 8 in 10 inside 15 minutes.",
+         "Competitor A Competitor A soothing balm and Competitor B report '9 in 10 patients felt better'. That is a survey, not a measurement."]
+ },
+ tech:{
+   title:"Soothing &amp; redness — B5 range",
+   sub:"Acute (single application, post-challenge) and 7-day continuous use vs Competitor A Competitor A soothing balm",
+   badge:"partial",
+   reading:"Facerinna holds the only instrumented acute-soothing numbers in this comparison — red-light and histamine challenge models, Mexameter haemoglobin, VISIA red-area and Tewameter read-outs at 15 min and 1 h. Competitor A's data is clinician-graded and observational. Both B5 creams share Competitor A soothing balm's 5% panthenol positioning.",
+   watch:"Competitor A soothing balm (observational, 14 d): 84% of patients improved, 93–96% in moderate–severe cases ³; 90% 'high improvement' in the Competitor D group summary ⁴. Competitor A sensitive-skin cream: redness score −100% at D28 ⁵. No Mexameter / red-area % published by any competitor.",
+   src:"¹ Baohua E202600409a (pruritus 2.03→0.30; TEWL arm 18.87→11.53; red area 46.36→38.40; D7 43.57→32.54) · ² Baohua E202600150 (TEWL 25.05→18.89; Hb 391→321; a* 35.14→28.88 D7) · ³ Szczech J, et al. Forum Dermatologicum 2024;10(4) · ⁴ lorealdermatologicalbeauty.com Competitor A soothing balm B5+ results · ⁵ Kerob 2023 doi:10.2147/CCID.S418483"
+ },
+ charts:[{ title:"Acute — % improvement after one application", unit:"%", rows:[
+   {b:"fr",v:85.56,lay:"Facerinna 5% B5 Intensive Cream — itch (15 min)",           tech:"B5 Intensive — pruritus score, 15 min, histamine challenge (n=30) ¹"},
+   {b:"fr",v:36.97,lay:"Facerinna 5% B5 Intensive Cream — water loss, itchy arm (15 min)", tech:"B5 Intensive — TEWL arm (histamine), 15 min ¹"},
+   {b:"fr",v:22.34,lay:"Facerinna 5% B5 Centella Cream — water loss (1 hour)",      tech:"Centella — TEWL, 1 h post red-light ²"},
+   {b:"fr",v:21.52,lay:"Facerinna 5% B5 Centella Cream — red area (1 hour)",        tech:"Centella — red area, 1 h ²"},
+   {b:"fr",v:18.05,lay:"Facerinna 5% B5 Centella Cream — redness (1 hour)",         tech:"Centella — haemoglobin, 1 h ²"},
+   {b:"fr",v:16.19,lay:"Facerinna 5% B5 Intensive Cream — red area (15 min)",       tech:"B5 Intensive — red area, 15 min ¹"}
+ ]},
+ { title:"7-day continuous use — % improvement", unit:"%", rows:[
+   {b:"fr",v:47.1, lay:"Facerinna 5% B5 Centella — bump volume (7 days)", tech:"Centella — papule volume, D7 ²"},
+   {b:"fr",v:26.26,lay:"Facerinna 5% B5 Intensive — red area (7 days)",   tech:"B5 Intensive — red area, D7 (n=30) ¹"},
+   {b:"fr",v:18.63,lay:"Facerinna 5% B5 Intensive — redness (7 days)",    tech:"B5 Intensive — haemoglobin, D7 ¹"},
+   {b:"fr",v:18.51,lay:"Facerinna 5% B5 Centella — redness a* (7 days)",  tech:"Centella — a* redness, D7 (n=30) ²"},
+   {b:"fr",v:17.02,lay:"Facerinna 5% B5 Centella — blood-flow redness (7 days)", tech:"Centella — haemoglobin, D7 ²"}
+ ]}]
+},
+
+/* 10 — GENES (grouped) ----------------------------------------------- */
+{
+ id:"genes",
+ grouped:true,
+ pill:{lay:"Repair genes", tech:"Barrier genes"},
+ lay:{
+   title:"Skin-repair genes: Facerinna B5 vs Competitor D",
+   kicker:"The one true head-to-head in this pack",
+   sub:"Lab skin model, tested side by side · above 1 = switched up, below 1 = switched down",
+   tldr:["The only true head-to-head in this pack: same lab, same day.",
+         "Facerinna B5 switched the skin's repair genes up (claudin-1 more than 5×) and turned an inflammation signal almost off.",
+         "Competitor D switched the same repair genes down.",
+         "Competitor D's inflammation value was not reported."]
+ },
+ tech:{
+   title:"In vitro barrier genes — head-to-head",
+   sub:"EpiDermFT™ full-thickness model (MatTek EFT-412), 6 h + 18 h, RT-qPCR fold-change vs PBS negative control (1.0 = no change)",
+   badge:"direct",
+   reading:"Same lab, same run, same tissue lot. Facerinna B5 up-regulated filaggrin (×1.23) and claudin-1 (×5.39) while Competitor D down-regulated both (×0.11, ×0.40). IL-8 fell to ×0.10 with Facerinna. Viability equivalent (103.1% vs 101.3%). This is the fastest route to a citable paper — the Competitor D head-to-head is the story.",
+   watch:"IL-1α rose ×2.01 with Facerinna — state it, do not omit it. Duplicate tissues only: mechanistic support, not clinical proof. The Competitor D IL-8 value is NOT reported in the summary — it is shown here as 'not reported', not as zero (the source deck used a 0 placeholder, which reads as a result and is not one). Competitor D is a Competitor D group brand, not Competitor A itself. INBIOSIS permission for commercial use is on file.",
+   src:"¹ INBIOSIS-UKM INB/FITO/2026/08 'Skin_Barrier_Enhancement_Facerinna_21082026' (order Makmal Fitomikseutikal_008_2026), lot B04BD03TY; prepared N.H. Mohd Rosedi, reviewed Dr M.N. Sarian. INB/FITO/2026/04 EpiOcular EIT (OECD TG 492, 85.0% viability) on file separately."
+ },
+ series:[{k:"fr",label:"Facerinna B5"},{k:"wider",label:"Competitor D (Competitor D group)"}],
+ charts:[{ unit:"×", refline:1, max:6, rows:[
+   {lay:"Filaggrin — barrier protein",     tech:"FLG — filaggrin (barrier protein)",          fr:1.23, wider:0.11},
+   {lay:"Claudin-1 — seals gaps",          tech:"CLDN1 — claudin-1 (tight junction)",         fr:5.39, wider:0.40},
+   {lay:"NRF2 — antioxidant defence",      tech:"NRF2 — antioxidant response",                fr:0.67, wider:0.50},
+   {lay:"IL-8 — inflammation signal",      tech:"IL-8 — inflammatory chemokine",              fr:0.10, wider:null},
+   {lay:"IL-1α — inflammation signal",     tech:"IL-1α — inflammatory cytokine (rose — disclose)", fr:2.01, wider:null, only:"tech"},
+   {lay:"Tissue still alive",              tech:"Viability % ÷ 100 (tissue survival)",         fr:1.031, wider:1.013}
+ ], note:{both:"Competitor D IL-8 and both IL-1α values are not reported in the lab summary — shown as 'not reported', never as zero."}}]
+},
+
+/* 11 — SPF ----------------------------------------------------------- */
+{
+ id:"spf",
+ pill:{lay:"Sun protection", tech:"In vivo SPF"},
+ lay:{
+   title:"Sun protection",
+   kicker:"Measured SPF against the label",
+   sub:"Measured SPF versus what the label says · higher is better",
+   tldr:["Both Facerinna sunscreens tested higher than the 50 on the label.",
+         "After 40 minutes in water the physical sunscreen still gave SPF 31. It passes the 'water resistant' test.",
+         "Competitor A does not publish its measured SPF, only the label."]
+ },
+ tech:{
+   title:"Sun protection — in vivo SPF vs label",
+   sub:"ISO 24444:2019/Amd1:2022 in vivo SPF · water resistance ISO 16217:2020 · absolute SPF, not %",
+   badge:"partial",
+   reading:"Both Facerinna sunscreens over-deliver on label: 63.8 (95% CI 7.9%) and 56.3 (CI 54.9–57.7) vs labelled 50. Competitor A does not release in vivo SPF values for Competitor A sunscreen; the label SPF50+ is the only public figure, so the grey bar is a floor, not a measurement — it is a label, not a result.",
+   watch:"Water resistance 55.5% retention (lower 90% CI 53.9%) clears the 50% ISO 16217 threshold — claim 'water resistant', NOT 'very water resistant'. SKINPROOF excluded 1 of 11 subjects for erythema on the product site — record it in the PIF. Cross-check NPRA sunscreen labelling rules before any 'SPF 60+' wording; a measured 63.8 does not automatically license a higher label claim.",
+   src:"¹ SKINPROOF SPF.PDD.R.590 (batch A08AH01TY, ISO 24444:2019/Amd1:2022; P5 ref 31.5, P8 ref 65.9) · ² Guangdong Youzhi GXYZ2606090009EN (batch THD2919A; SPF 56.3 SD 2.0; WR 55.5% SD 3.7%) · ³ Product labels, NOT250607035K / Physical Defense · ⁴ Competitor A sunscreen label claim, laroche-posay.com"
+ },
+ charts:[{ unit:"SPF", dec:1, rows:[
+   {b:"fr", v:63.8,lay:"Facerinna Niacinamide Sunscreen — measured",      tech:"Facerinna Niacinamide Brightening Serum Sunscreen — measured in vivo (n=10) ¹"},
+   {b:"fr", v:56.3,lay:"Facerinna Physical Defense Sunscreen — measured", tech:"Facerinna Physical Defense Barrier Serum Sunscreen — measured in vivo (n=10) ²"},
+   {b:"ref",v:50,  lay:"Facerinna — label says",                          tech:"Facerinna — labelled SPF (both SKUs) ³"},
+   {b:"ref",v:50,  lay:"Competitor A Competitor A sunscreen — label says (no measured value published)", tech:"Competitor A Competitor A sunscreen — labelled SPF 50+ (no in vivo value published) ⁴"},
+   {b:"fr", v:31.7,lay:"Facerinna Physical — after 40 min in water",       tech:"Facerinna Physical — SPF after 40 min water immersion, ISO 16217 ²"}
+ ]}]
+}
+];
+
+/* ---- technical-only extra sections --------------------------------- */
+var WIDER_ROWS = [
+ ["Sting / sensitivity","● −59.6% D28","● −64% D28 ¹","◐ 100% 'soothed' (serum, 4 wk) ⁶","○","○","○"],
+ ["Acne lesions","● −73.7% D7","● −72.6% 12 wk ²","◐ 93% of subjects 'clearer', 12 wk ⁷","◐ 'corrects blemishes in 2 wk' ⁸","◐ inflammatory lesions ↓ vs control (RCT) ⁹","○"],
+ ["Pigmentation","● melanin −19.0% D28","◐ 90–94% improved; mMASI non-inferior to HQ4% ³","◐ 86% agree 'reduced dark spots' ⁶","● mMASI −43% vs HQ −33% (RCT) ¹⁰; −36.1% vs vehicle −16.1% (n=200) ¹¹","○","○"],
+ ["TEWL","● −41.3% D28","◐ 99% of subjects ↓ ⁴","○","◐ '48 h barrier' (n=27, single app) ⁸","◐ ↓ vs control, values in figures ⁹","● −25% at 2 h, −22% to 24 h (n=10) ¹²"],
+ ["Hydration","● +57.9% D28; +112% at 15 s","◐ 97% of subjects ↑ ⁴","◐ '48-hour hydration' ⁶","◐ '48 h / 72 h' (n=44, single app) ¹³","◐ 24 h, split-leg n=49, no % ¹⁴","◐ &gt; Competitor D lotion at 24 h (p=0.012), units in figure ¹²"],
+ ["Sebum","● −53.4% D28","◐ clinician score −35% ²","○","○","◐ 'no significant difference' vs control ¹⁵","○"],
+ ["Wrinkles","● depth −42.5% D28","◐ consumer % only ⁵","○","○","○","○"],
+ ["Redness / soothing","● pruritus −85.6% 15 min","◐ 84–90% improved ⁵","◐ 100% 'soothed' ⁶","○","○","○"]
+];
+
+var SCORECARD = [
+ ["Sting / sensitivity","−59.6% D28 · Ceramide B5 Moisturizer (E202501296)","−64% D28 · Competitor A sensitive-skin cream (Kerob 2023)","At par"],
+ ["Acne lesions","−73.7% D7 · 2% SA Serum (YDJC20250815003H04)","−72.6% 12 wk · Competitor A acne gel (Han 2026, n=151)","At par (faster)"],
+ ["Post-acne marks","−20.5% melanin D28 · SA Moisturizer (E202501289)","−49% graded marks 4 wk · Competitor A acne serum","Not comparable"],
+ ["Pigmentation","−19.0% melanin D28 · 10% Niacinamide Serum (E202501288)","Competitor C brightening range mMASI −43% (RCT vs HQ4%, Lima 2021)","Competitor evidence stronger"],
+ ["TEWL","−41.3% D28 · Retinol Serum (E202501286)","Competitor E −25% at 2 h single app (Spada 2018)","Facerinna quantified"],
+ ["Hydration","+57.9% D28 · Ceramide B5 (E202501296); +112% at 15 s","97% subjects improved · Competitor A sensitive-skin cream","Facerinna quantified"],
+ ["Sebum","−53.4% D28 · Ceramide B5 (E202501296)","−35% clinician score 12 wk · Competitor A acne gel","Not comparable"],
+ ["Wrinkles","−42.5% depth D28 · Retinol Serum (E202501286)","Consumer % only; parity with tretinoin (Bouloc 2015)","Facerinna quantified"],
+ ["Soothing","−85.6% pruritus 15 min · B5 Intensive (E202600409a)","84–90% patients improved · Competitor A soothing balm B5+","Facerinna instrumented"],
+ ["Barrier genes (in vitro)","FLG ×1.23, CLDN1 ×5.39","Competitor D ×0.11, ×0.40 — same run (INB/FITO/2026/08)","Ahead"],
+ ["SPF","63.8 measured vs 50 label (SPF.PDD.R.590)","Label SPF50+ only","Facerinna disclosed"]
+];
+
+var GLOSSARY = [
+ ["TEWL","Tewameter TM300 (open chamber)","g/(m²·h) · lower = better","Water escaping through the stratum corneum — the standard barrier-integrity read-out"],
+ ["SC moisture / hydration","Corneometer CM825 (capacitance)","arbitrary CU 0–120 · higher = better","Water content of the upper stratum corneum"],
+ ["Sebum","Sebumeter SM815 (photometric tape)","µg/cm² · lower = better","Surface casual sebum level; oil-control endpoint"],
+ ["Melanin index","Mexameter MX18 (narrow-band reflectance)","index · lower = lighter","Relative melanin content — brightening / dark-spot endpoint"],
+ ["Haemoglobin (erythema) index","Mexameter MX18","index · lower = less red","Blood content in superficial dermis — redness / irritation"],
+ ["L*, a*, b*, ITA°","Chromameter / VISIA + Image-Pro (CIELab)","L*↑ lighter · a*↓ less red · ITA°↑ lighter","ITA° = arctan((L*−50)/b*) × 180/π — the phototype angle"],
+ ["Lactic-acid sting score","10% lactic acid, nasolabial fold, scored 0/2.5/5/8 min","cumulative score · lower = less sensitive","Neurosensory reactivity — the operational definition of 'sensitive skin'"],
+ ["Wrinkle depth / volume, Ra","Antera 3D or PRIMOS-CR fringe projection","mm / mm³ / µm · lower = smoother","3-D topography of wrinkles and texture roughness"],
+ ["F4, R2 (Cutometer)","Cutometer MPA580 suction","F4 lower = firmer · R2 (%) higher = more elastic","Viscoelastic skin mechanics — firming / elasticity claims"],
+ ["Lesion count / ISGA","Dermatologist count; ISGA 0–5","count ↓ · ISGA 'effective' = cured + markedly effective","Clinical acne severity"],
+ ["mMASI","Modified Melasma Area &amp; Severity Index (clinician)","0–24 · lower = better","Area × darkness × homogeneity — the melasma trial standard"],
+ ["Fold change (qPCR)","RT-qPCR vs GAPDH, EpiDermFT","× vs negative control · 1.0 = no change","FLG barrier protein · CLDN1 tight junction · IL-1α/IL-8 inflammation · NRF2 antioxidant"],
+ ["In vivo SPF / WR","ISO 24444:2019 / ISO 16217:2020","SPF = MEDp/MEDu · WR % retained","Label SPF must be ≤ measured; WR ≥ 50% retention to claim 'water resistant'"]
+];
+
+/* ======================================================================
+   RENDER
+   ====================================================================== */
+var mode = "lay", filter = "all", active = null, showAll = false;
+try{ var st = localStorage.getItem("fr-bench-mode"); if(st==="tech"||st==="lay") mode=st; }catch(e){}
+
+var tip = document.getElementById("fr-tip");
+function fmt(v,dec){ return (dec===1 ? v.toFixed(1) : (Math.round(v*10)/10).toFixed(v%1===0?0:1)); }
+function esc(s){ return String(s).replace(/&(?![a-z#]+;)/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"); }
+
+function visibleRows(ch){
+  return ch.rows.filter(function(r){
+    if(r.only && r.only!==mode) return false;
+    if(filter==="fr"){
+      if(ch.rows[0] && ch.rows[0].fr!==undefined) return true;   /* grouped chart: keep */
+      if(r.b!=="fr") return false;
+    }
+    return true;
+  });
+}
+
+function barHTML(sec, ch){
+  var rows = visibleRows(ch);
+  if(!rows.length) return "<p class='chart-note'>No Facerinna bar in this chart.</p>";
+  var grouped = !!sec.grouped;
+  var maxv = ch.max || Math.max.apply(null, rows.map(function(r){
+    return grouped ? Math.max(r.fr||0, r.wider||0) : r.v;
+  }));
+  maxv = maxv*1.02;
+  var out = "";
+
+  if(grouped){
+    var first = true;
+    rows.forEach(function(r,gi){
+      var cells = sec.series.map(function(s,si){
+        var v = r[s.k];
+        if(v===null||v===undefined){
+          return "<div class='track'><span class='nr' style='--i:"+(gi*2+si)+"'>"+esc(s.label)+" — not reported</span></div>";
+        }
+        var w = Math.max(0.6,(v/maxv)*100);
+        return "<div class='track' tabindex='0' role='img' aria-label='"+esc(s.label+" "+(mode==="tech"?r.tech:r.lay)+" fold change "+v)+"'"+
+               " data-tip=\""+esc(s.label)+"\" data-tip2=\""+esc(mode==="tech"?r.tech:r.lay)+"\" data-tipv=\"×"+v+"\">"+
+               "<div class='barzone'><div class='bar grp' style='--w:"+w.toFixed(2)+"%;--i:"+(gi*2+si)+";width:"+w.toFixed(2)+"%;background:var("+BRAND[s.k].v+")'></div></div>"+
+               "<span class='val' style='--i:"+(gi*2+si)+"'>×"+v+"</span></div>";
+      }).join("");
+      var rl = ch.refline ? "<div class='rline' style='left:calc(("+(ch.refline/maxv)+") * (100% - 71px))'>"+
+              (first ? "<b>"+ch.refline.toFixed(1)+" = no change</b>" : "")+"</div>" : "";
+      first = false;
+      out += "<div class='grow'><div class='rlab'>"+esc(mode==="tech"?r.tech:r.lay)+"</div><div class='gstack'>"+rl+cells+"</div></div>";
+    });
+    out += "<div class='axis'><div></div><div class='ticks'><span>0</span><span>×"+
+           (Math.round(maxv))+" fold change</span></div></div>";
+  } else {
+    rows.forEach(function(r,i){
+      var w = Math.max(0.6,(r.v/maxv)*100);
+      var label = mode==="tech" ? r.tech : r.lay;
+      var unit = ch.unit==="%" ? "%" : "";
+      var pre  = ch.unit==="SPF" ? "SPF " : "";
+      out += "<div class='row' tabindex='0' role='img' aria-label='"+esc(label+": "+pre+fmt(r.v,ch.dec)+unit)+"'"+
+             " data-tip=\""+esc(BRAND[r.b].name)+"\" data-tip2=\""+esc(label)+"\" data-tipv=\""+pre+fmt(r.v,ch.dec)+unit+"\">"+
+             "<div class='rlab'><span class='dot' style='background:var("+BRAND[r.b].v+")'></span><span>"+esc(label)+"</span></div>"+
+             "<div class='track'><div class='barzone'><div class='bar' style='--w:"+w.toFixed(2)+"%;--i:"+i+";width:"+w.toFixed(2)+"%;background:var("+BRAND[r.b].v+")'></div></div>"+
+             "<span class='val' style='--i:"+i+"'>"+pre+fmt(r.v,ch.dec)+"<small>"+unit+"</small></span></div></div>";
+    });
+    out += "<div class='axis'><div></div><div class='ticks'><span>0</span><span>"+
+           (ch.unit==="SPF"?"SPF ":"")+Math.round(maxv/2)+(ch.unit==="%"?"%":"")+"</span><span>"+
+           (ch.unit==="SPF"?"SPF ":"")+Math.round(maxv)+(ch.unit==="%"?"%":"")+"</span></div></div>";
+  }
+  return "<div class='rows"+(grouped?" grouped":"")+"'>"+out+"</div>";
+}
+
+function tableHTML(sec,ch){
+  var rows = visibleRows(ch), grouped=!!sec.grouped, h,b;
+  if(grouped){
+    h = "<tr><th>Gene / endpoint</th><th class='num'>Facerinna B5</th><th class='num'>Competitor D</th></tr>";
+    b = rows.map(function(r){
+      return "<tr><td>"+esc(mode==="tech"?r.tech:r.lay)+"</td><td class='num'>×"+r.fr+"</td><td class='num'>"+
+             (r.wider==null?"not reported":"×"+r.wider)+"</td></tr>";
+    }).join("");
+  } else {
+    h = "<tr><th>Product / study</th><th>Brand</th><th class='num'>"+(ch.unit==="SPF"?"SPF":"% change")+"</th></tr>";
+    b = rows.map(function(r){
+      return "<tr><td>"+esc(mode==="tech"?r.tech:r.lay)+"</td><td>"+esc(BRAND[r.b].name)+"</td><td class='num'>"+
+             fmt(r.v,ch.dec)+(ch.unit==="%"?"%":"")+"</td></tr>";
+    }).join("");
+  }
+  return "<div class='tblwrap'><table><thead>"+h+"</thead><tbody>"+b+"</tbody></table></div>";
+}
+
+function legendHTML(sec,ch){
+  if(sec.grouped){
+    return "<div class='legend'>"+sec.series.map(function(s){
+      return "<span><i style='background:var("+BRAND[s.k].v+")'></i>"+esc(s.label)+"</span>";
+    }).join("")+"<span><i style='background:var(--surface-2);border:1px solid var(--hair)'></i>not reported</span></div>";
+  }
+  var used = {}; visibleRows(ch).forEach(function(r){used[r.b]=1;});
+  var keys = ["fr","lrp","wider","ref"].filter(function(k){return used[k];});
+  if(keys.length<2) return "";
+  return "<div class='legend'>"+keys.map(function(k){
+    return "<span><i style='background:var("+BRAND[k].v+")'></i>"+esc(BRAND[k].name)+"</span>";
+  }).join("")+"</div>";
+}
+
+var BADGE_TXT = {
+  direct :["✓","Direct comparison","Same endpoint, same unit, same or similar duration."],
+  partial:["≈","Partial comparison","Same skin outcome, different metric or timepoint."],
+  none   :["–","No competitor %","Competitors publish significance or %-of-subjects only — Facerinna shown alone."]
+};
+
+
+/* Headline figure for a thumbnail: the best Facerinna value in the section's
+   first chart, or for the gene chart the claudin-1 fold change. */
+function headline(sec){
+  var ch = sec.charts[0];
+  if(sec.grouped){
+    var r = ch.rows.filter(function(x){ return x.fr != null; })
+                   .sort(function(a,b){ return b.fr - a.fr; })[0];
+    return {v:"\u00d7"+r.fr, unit:""};
+  }
+  var frs = ch.rows.filter(function(r){ return r.b==="fr" && (!r.only || r.only===mode); });
+  if(!frs.length) frs = ch.rows.filter(function(r){ return !r.only || r.only===mode; });
+  var best = frs.slice().sort(function(a,b){ return b.v - a.v; })[0];
+  if(!best) return {v:"", unit:""};
+  return ch.unit==="SPF"
+    ? {v:"SPF "+best.v.toFixed(1), unit:""}
+    : {v:fmt(best.v, ch.dec), unit:"%"};
+}
+
+/* Short names for the comparison line. BRAND[].name is written for the chart
+   legend and is too long for a thumbnail — "Competitor C / Competitor E / Competitor D / Competitor B"
+   will not fit beside a number in a 228px card. */
+var CMP_SHORT = {lrp:"Competitor A", wider:"best rival", ref:"label"};
+
+/* The comparison behind the headline number: Facerinna's best figure in the
+   section's first chart set against the best competitor figure in the same
+   chart, in the same unit. Returns null when the section has no competitor
+   value to compare with — several parameters are ones where only Facerinna
+   publishes a mean %, and inventing a comparison there would be a claim the
+   file cannot support. */
+function compareStat(sec){
+  var ch = sec.charts[0];
+
+  if(sec.grouped){
+    /* Head-to-head chart: one row per gene, each carrying both brands. Take
+       the gene where Facerinna moved furthest and that the competitor also
+       reported — IL-8 has no Competitor D value, so it cannot be the comparison. */
+    var ck = (sec.series && sec.series[1]) ? sec.series[1].k : "wider";
+    var cn = (sec.series && sec.series[1]) ? sec.series[1].label : "competitor";
+    var g = ch.rows.filter(function(r){
+              return (!r.only || r.only===mode) && r.fr != null && r[ck] != null;
+            }).sort(function(a,b){ return b.fr - a.fr; })[0];
+    if(!g) return null;
+    /* No derived ratio here: the competitor's own reported fold-change is
+       printed as it stands, next to a direction marker. Dividing one fold
+       change by the other would put a number on the card that is in no
+       report. */
+    return {state: g.fr > g[ck] ? "lead" : (g.fr < g[ck] ? "trail" : "level"),
+            gap  : (g.fr > g[ck] ? "\u25b2" : (g.fr < g[ck] ? "\u25bc" : "=")) +
+                   " vs \u00d7"+g[ck].toFixed(2),
+            join : " ",
+            who  : cn.split(" (")[0]};
+  }
+
+  var vis  = ch.rows.filter(function(r){ return !r.only || r.only===mode; });
+  var frs  = vis.filter(function(r){ return r.b==="fr"; });
+  var cmps = vis.filter(function(r){ return r.b!=="fr"; });
+  if(!frs.length || !cmps.length) return null;
+
+  var best = frs.slice().sort(function(a,b){ return b.v - a.v; })[0];
+  var rival= cmps.slice().sort(function(a,b){ return b.v - a.v; })[0];
+  var d    = best.v - rival.v;
+  var unit = ch.unit==="SPF" ? "" : " pts";
+  var mag  = Math.abs(d);
+
+  return {state: mag < 0.5 ? "level" : (d > 0 ? "lead" : "trail"),
+          gap  : mag < 0.5 ? "level with"
+                           : (d > 0 ? "+" : "\u2212")+fmt(mag, ch.dec != null ? ch.dec : 1)+unit,
+          who  : CMP_SHORT[rival.b] || BRAND[rival.b].name};
+}
+
+/* The headline number and its comparison, laid over the thumbnail photograph.
+   This replaced a four-bar sparkline: the bars showed the shape of a chart
+   the reader was about to open anyway, and said nothing about how Facerinna
+   placed in it. */
+function statHTML(sec){
+  var h = headline(sec);
+  if(!h.v) return "";
+
+  /* Under "Facerinna only" the chart drops every competitor bar. A thumbnail
+     that still reads "vs Competitor A" contradicts the control the reader
+     just used, and not naming a rival is the whole point of that filter —
+     it is the view for a room where a comparative claim is not wanted. So
+     the number stands alone and the comparison line is not rendered. */
+  var c = filter === "fr" ? null : compareStat(sec);
+  var line = filter === "fr" ? ""
+           : (c ? "<b>"+c.gap+"</b>"+(c.join || (c.state==="level" ? " " : " vs "))+esc(c.who)
+                : "only published mean");
+
+  return "<span class='illstat'>"+
+           "<span class='statv'>"+esc(h.v)+"<em>"+h.unit+"</em></span>"+
+           (line ? "<span class='statc "+(c ? c.state : "alone")+"'>"+line+"</span>" : "")+
+         "</span>";
+}
+
+var PARAM_PHOTO = {"sensitivity": {"u": "https://images.unsplash.com/photo-1491929536571-bdbc57e72324?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "Still water at first light", "by": "Aleksandr Eremin", "h": "notevilbird"}, "acne": {"u": "https://images.unsplash.com/photo-1558346648-9757f2fa4474?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "Smooth white marble", "by": "H&CO", "h": "hngstrm"}, "marks": {"u": "https://images.unsplash.com/photo-1635776062043-223faf322554?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "A soft gradient fading from yellow to pink and pale blue", "by": "MagicPattern", "h": "magicpattern"}, "pigment": {"u": "https://images.unsplash.com/photo-1564132254865-639bfec4c5bf?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "Palm shadow falling across a pale surface", "by": "Agata Create", "h": "agatacreate"}, "barrier": {"u": "https://images.unsplash.com/photo-1626285094816-39f688104ce0?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "A honeycomb lattice", "by": "Ante Hamersmit", "h": "ante_kante"}, "hydration": {"u": "https://images.unsplash.com/photo-1582789829727-39505f4e6f94?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "A water droplet rippling outward in a shallow tank", "by": "Koen Emmers", "h": "andreasemmers"}, "sebum": {"u": "https://images.unsplash.com/photo-1551651056-2cb4d5c104be?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "Beads of oil and water, macro", "by": "Rodion Kutsaiev", "h": "frostroomhead"}, "wrinkles": {"u": "https://images.unsplash.com/photo-1611851131774-3646430bc683?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "Fine ripples in wet sand", "by": "Shelter", "h": "shelter"}, "soothing": {"u": "https://images.unsplash.com/photo-1702416062979-dc44baa952c1?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "A green leaf holding water drops, close up", "by": "Polina Grishma", "h": "polina_grishma"}, "genes": {"u": "https://images.unsplash.com/photo-1602052577122-f73b9710adba?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "A laboratory bench with a microscope", "by": "Trnava University", "h": "trnavskauni"}, "spf": {"u": "https://images.unsplash.com/photo-1501630834273-4b5604d2ee31?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&w=560&h=287&q=70", "a": "Bright sky and cloud", "by": "Billy Huynh", "h": "billy_huy"}};
+var PARAM_TINT = {"sensitivity": "#C2557A", "acne": "#C9803A", "marks": "#B5566B", "pigment": "#8A6BC4", "barrier": "#3E8FD0", "hydration": "#12A3AC", "sebum": "#C08F1E", "wrinkles": "#7A67D0", "soothing": "#D96A6A", "genes": "#1E9070", "spf": "#D9922B"};
+
+function thumbsHTML(){
+  return S.map(function(sec){
+    var title = mode==="tech" ? sec.pill.tech : sec.lay.title;
+    var kick  = mode==="tech" ? sec.tech.title : sec.lay.kicker;
+    var bd = mode==="tech" ? BADGE_TXT[sec.tech.badge] : null;
+    return "<button type='button' class='thumb' data-go='"+sec.id+"'"+
+      " style='--ptint:"+(PARAM_TINT[sec.id]||"var(--fr)")+"'"+
+      " aria-pressed='"+(active===sec.id)+"'>"+
+      "<span class='ill'>"+
+            (PARAM_PHOTO[sec.id] ? "<img src='"+PARAM_PHOTO[sec.id].u+"' alt='"+esc(PARAM_PHOTO[sec.id].a)+
+             "' loading='lazy' decoding='async' onerror='this.remove()'>" : "")+
+            statHTML(sec)+"</span>"+
+      (bd ? "<span class='badge "+sec.tech.badge+"' title='"+esc(bd[1]+" — "+bd[2])+"'>"+
+            bd[0]+"<span class='sr'>"+esc(bd[1])+"</span></span>" : "")+
+      "<span class='tt'>"+esc(title)+"</span>"+
+      "<span class='tk'>"+esc(kick)+"</span>"+
+      "<span class='foot'><span class='go' aria-hidden='true'>→</span></span>"+
+    "</button>";
+  }).join("");
+}
+
+function render(){
+  document.getElementById("btnLay").setAttribute("aria-pressed", mode==="lay");
+  document.getElementById("btnTech").setAttribute("aria-pressed", mode==="tech");
+  document.getElementById("stripLay").classList.toggle("hidden", mode!=="lay");
+  document.getElementById("stripHcp").classList.toggle("hidden", mode!=="tech");
+  document.getElementById("footLay").classList.toggle("hidden", mode!=="lay");
+  document.getElementById("footTech").classList.toggle("hidden", mode!=="tech");
+  document.getElementById("eyebrow").textContent = mode==="lay"
+    ? "Facerinna · AGM evidence pack" : "Facerinna · HCP detailing material";
+  document.getElementById("mainTitle").textContent = mode==="lay"
+    ? "How Facerinna ranks on published results" : "Instrumental Efficacy Benchmark";
+  document.getElementById("mainSub").innerHTML = mode==="lay"
+    ? "Every Facerinna test result set beside the published figures from Competitor A, Competitor B (Competitor B group), Competitor C, Competitor D and Competitor E."
+    : "Every measured parameter in the Facerinna test-report file set against the published clinical figures for the matching Competitor A reference product, plus Competitor B (Competitor B group), Competitor C, Competitor D and Competitor E where a number exists.";
+  document.getElementById("heroSay").textContent = mode==="lay"
+    ? "Two more sit level with the best competitor. Dark spots is the one we trail, and that chart shows it."
+    : "In 5 of those 7, no competitor publishes a mean % at all, so the lead rests on disclosure as much as size. Check each bar against its comparability badge.";
+  document.getElementById("toolNote").textContent = mode==="lay"
+    ? "Plain language, no jargon" : "Instruments, n, timepoints, p-values, badges and sources";
+
+  /* pills */
+  document.getElementById("pills").innerHTML = S.map(function(s){
+    return "<a href='#"+s.id+"' data-go='"+s.id+"'"+(active===s.id?" aria-current='true'":"")+">"+
+      esc(mode==="tech"?s.pill.tech:s.pill.lay)+"</a>";
+  }).join("") + (mode==="tech"
+    ? "<a href='#evidence-map'>Evidence map</a><a href='#wider'>Wider field</a><a href='#scorecard'>Scorecard</a><a href='#glossary'>Glossary</a><a href='#caveats'>Caveats</a><a href='#refs'>References</a>"
+    : "");
+
+  /* thumbnails and the open parameter */
+  document.getElementById("thumbs").innerHTML = thumbsHTML();
+  var open = showAll ? S : (active ? S.filter(function(x){ return x.id===active; }) : []);
+  var dbar = document.getElementById("detailbar");
+  dbar.classList.toggle("hidden", !open.length);
+  if(open.length){
+    var i0 = active ? S.findIndex(function(x){ return x.id===active; }) : -1;
+    document.getElementById("detailWhere").textContent = showAll
+      ? "Every parameter, " + S.length + " in order"
+      : "Parameter " + (i0+1) + " of " + S.length;
+    document.getElementById("btnPrev").disabled = showAll || i0 <= 0;
+    document.getElementById("btnNext").disabled = showAll || i0 >= S.length-1;
+    document.getElementById("btnAll").textContent = showAll ? "Back to thumbnails" : "Show every parameter";
+  }
+
+  document.getElementById("sections").innerHTML = open.map(function(sec){
+    var t = mode==="tech" ? sec.tech : null;
+    var head = mode==="tech"
+      ? "<div><h2>"+sec.tech.title+"</h2><p class='h2sub'>"+sec.tech.sub+"</p></div>"+
+        (function(){ var bd=BADGE_TXT[sec.tech.badge];
+          return "<span class='badge "+sec.tech.badge+"' title='"+esc(bd[2])+"'><span aria-hidden='true'>"+bd[0]+"</span>"+bd[1]+"</span>"; })()
+      : "<div><h2>"+esc(sec.lay.title)+"</h2><p class='h2sub'>"+esc(sec.lay.kicker)+"</p></div>";
+
+    var charts = sec.charts.filter(function(c){ return !c.only || c.only===mode; }).map(function(ch,j){
+      var note = ch.note ? (ch.note[mode]||ch.note.both||"") : "";
+      return "<div class='chart'>"+
+        (ch.title?"<p class='chart-title'>"+esc(ch.title)+"</p>":"")+
+        (j===0 && mode==="lay" ? "<p class='chart-note'>"+sec.lay.sub+"</p>" : (note?"<p class='chart-note'>"+note+"</p>":""))+
+        barHTML(sec,ch)+ legendHTML(sec,ch)+
+        "<button type='button' class='tbtn' data-tbl='"+sec.id+"-"+j+"' aria-expanded='false'>Show data table</button>"+
+        "<div class='tblwrap-outer hidden' id='tbl-"+sec.id+"-"+j+"'>"+tableHTML(sec,ch)+"</div>"+
+      "</div>";
+    }).join("");
+
+    var panels = mode==="tech"
+      ? "<div class='panels'><div class='panel'><h3>Reading</h3><p>"+t.reading+"</p></div>"+
+        "<div class='panel'><h3>Watch-outs</h3><p>"+t.watch+"</p></div></div>"+
+        "<div class='srcline'>"+t.src+"</div>"
+      : "<div class='panels'><div class='panel'><h3>TL;DR</h3><ul>"+
+        sec.lay.tldr.map(function(p){ return "<li>"+esc(p)+"</li>"; }).join("")+
+        "</ul></div></div>";
+
+    return "<section class='card' id='"+sec.id+"'><div class='card-head'>"+head+"</div>"+charts+panels+"</section>";
+  }).join("");
+
+  document.getElementById("techExtras").innerHTML = mode==="tech" ? techExtras() : "";
+  wire();
+  armReveal();
+  if(showAll) armSpy();
+}
+
+
+/* Evidence-coverage matrix — drawn from the same WIDER_ROWS cells the table
+   below prints, by reading the leading disclosure glyph of each cell. The
+   point of the picture is the column shape, not the individual dot: one
+   brand publishes a mean % on every parameter and the rest do not. */
+var COV_BRANDS = ["Facerinna","Competitor A","Competitor B","Competitor C","Competitor D","Competitor E"];
+function covMatrix(){
+  var head = "<div class='h l'>Parameter</div>" + COV_BRANDS.map(function(b){
+    return "<div class='h'>"+esc(b)+"</div>"; }).join("");
+  var body = WIDER_ROWS.map(function(r){
+    var cells = r.slice(1).map(function(c,ci){
+      var g = c.trim().charAt(0);
+      var kind = g==="\u25CF" ? "full" : (g==="\u25D0" ? "part" : "none");
+      var word = kind==="full" ? "publishes a mean %"
+               : kind==="part" ? "significance or % of subjects only"
+               : "nothing published";
+      var comp = (kind==="full" && ci>0) ? " comp" : "";
+      return "<div class='c' tabindex='0' role='img'"+
+             " aria-label='"+esc(r[0]+" — "+COV_BRANDS[ci]+": "+word)+"'"+
+             " data-tip=\""+esc(COV_BRANDS[ci])+"\" data-tip2=\""+esc(r[0]+" — "+word)+"\""+
+             " data-tipv=\""+(kind==="full"?"Quantified":kind==="part"?"Partial":"Silent")+"\">"+
+             "<i class='"+kind+comp+"'></i></div>";
+    }).join("");
+    return "<div class='p'>"+r[0]+"</div>"+cells;
+  }).join("");
+  return "<div class='cov'><div class='covgrid'>"+head+body+"</div></div>"+
+    "<div class='covkey'>"+
+      "<span><i style='background:var(--fr)'></i>Mean % published (Facerinna)</span>"+
+      "<span><i style='background:var(--wider)'></i>Mean % published (competitor)</span>"+
+      "<span><i style='background:linear-gradient(90deg,var(--wider) 50%,transparent 50%);box-shadow:inset 0 0 0 1.5px var(--wider)'></i>Significance or % of subjects only</span>"+
+      "<span><i style='box-shadow:inset 0 0 0 1.5px var(--grid)'></i>Nothing found in the public record</span>"+
+    "</div>";
+}
+
+function techExtras(){
+  var wf = covMatrix() +
+    "<p class='chart-note' style='margin:18px 0 6px'>The table below carries every cell in full. The grid above is the same data, read by column.</p>" +
+    "<div class='tblwrap'><table><thead><tr><th>Parameter</th><th>Facerinna</th><th>Competitor A</th><th>Competitor B (Competitor B group)</th><th>Competitor C (Competitor C group)</th><th>Competitor D (Competitor D group)</th><th>Competitor E (Ego)</th></tr></thead><tbody>"+
+    WIDER_ROWS.map(function(r){ return "<tr>"+r.map(function(c,i){ return (i===0?"<td><b>"+c+"</b></td>":"<td>"+c+"</td>"); }).join("")+"</tr>"; }).join("")+
+    "</tbody></table></div><p class='chart-note' style='margin-top:10px'>● mean % published · ◐ significance or %-of-subjects only · ○ nothing found in the public record.</p>";
+
+  var sc = "<div class='tblwrap'><table><thead><tr><th>Parameter</th><th>Facerinna best (report)</th><th>Strongest public competitor figure</th><th>Position</th></tr></thead><tbody>"+
+    SCORECARD.map(function(r){ return "<tr><td><b>"+r[0]+"</b></td><td>"+r[1]+"</td><td>"+r[2]+"</td><td>"+r[3]+"</td></tr>"; }).join("")+
+    "</tbody></table></div><p class='chart-note' style='margin-top:10px'>'Ahead' means the headline number is larger, not that superiority is demonstrated — no Facerinna study included a competitor comparator arm. 'Facerinna quantified' = Facerinna discloses a mean % that no competitor discloses for that endpoint.</p>";
+
+  var gl = "<div class='tblwrap'><table><thead><tr><th>Parameter</th><th>Instrument / method</th><th>Unit &amp; direction</th><th>What it means clinically</th></tr></thead><tbody>"+
+    GLOSSARY.map(function(r){ return "<tr><td><b>"+r[0]+"</b></td><td>"+r[1]+"</td><td>"+r[2]+"</td><td>"+r[3]+"</td></tr>"; }).join("")+
+    "</tbody></table></div>";
+
+  var em = "<div class='tblwrap'><table><thead><tr><th>Parameter</th><th>Facerinna SKU (report no.)</th><th>Competitor A reference (source)</th><th>Badge</th></tr></thead><tbody>"+
+   [["Skin sensitivity (lactic-acid sting)","Ceramide B5 Balancing Moisturizer (E202501296) + 5 others","Competitor A sensitive-skin cream (Kerob 2023, CCID, n=107)","DIRECT"],
+    ["Acne lesions / blemishes","2% Salicylic Acid Acne Serum (YDJC20250815003H04; E202501287)","Competitor A acne gel −72.6% lesions 12 wk (Han 2026, n=151) + brand gradings","DIRECT"],
+    ["Post-acne marks &amp; redness","2% SA Serum, SA Moisturizer (E202501289)","Competitor A acne gel −44% PIH; Competitor A acne serum −49% marks (brand clinical)","PARTIAL"],
+    ["Pigmentation / brightening","10% Niacinamide 3% TXA Serum (E202501288); Niacinamide Sunscreen (E202501295)","Competitor A brightening serum Serum / Double Dose (brand clinical n=73–85; Passeron 2025 vs HQ 4%)","PARTIAL"],
+    ["Barrier — TEWL","Retinol Serum, SA Moisturizer, Ceramide B5 (Baohua)","Competitor A sensitive-skin cream; Competitor A body range AP+M vs urea 10% (Prakoeswa 2025)","NO Competitor A %"],
+    ["Hydration — Corneometer","Ceramide B5, Niacinamide Serum, 5% B5 Bright Barrier (Baohua, Intertek)","Competitor A sensitive-skin cream (97% improved); Competitor A body range (De Decker 2022, 4 h)","NO Competitor A %"],
+    ["Sebum","Ceramide B5, Niacinamide Serum, SA Toner (Baohua)","Competitor A acne gel clinician sebum score −35% (Han 2026); Competitor A mattifier no %","PARTIAL"],
+    ["Wrinkles / firmness","Retinol Anti Aging Serum (E202501286; King Test GZ25012301500002E)","Competitor A retinol serum (consumer %); Retinol 0.2%/LR2412 = tretinoin (Bouloc 2015)","NO Competitor A %"],
+    ["Soothing / redness","5% B5 Centella Gel Cream (E202600150); 5% B5 Intensive (E202600409a)","Competitor A soothing balm (Szczech 2024, 84–90% improved)","PARTIAL"],
+    ["In vitro barrier genes","Facerinna B5 (INBIOSIS-UKM INB/FITO/2026/08)","Competitor D — Competitor D group stablemate, same run, same model","DIRECT"],
+    ["Sun protection (SPF)","Niacinamide Sunscreen (SKINPROOF SPF.PDD.R.590); Physical (GXYZ2606090009EN)","Competitor A sunscreen — label SPF50+ only","PARTIAL"]
+   ].map(function(r){ return "<tr><td><b>"+r[0]+"</b></td><td>"+r[1]+"</td><td>"+r[2]+"</td><td>"+r[3]+"</td></tr>"; }).join("")+
+   "</tbody></table></div>";
+
+  var cav = "<div class='panels'>"+
+    "<div class='panel'><h3>Design gap</h3><p>Facerinna: single-arm, open-label, n ≈ 30, Chinese contract labs, 28 days. Competitor A: RCTs, n = 60–120, vehicle or active comparators, peer-reviewed (JoCD, CCID, Dermatol Ther). <b>A bigger % from a single-arm study does not beat a smaller % from an RCT</b> — say so on the slide. Matrix data-quality flags carried over: Baohua D7/D14 header error (E202501348), Youzhi D7/D14 survey mismatch, Intertek duplicated baselines, King Test vs Baohua wrinkle spread.</p></div>"+
+    "<div class='panel'><h3>Claims discipline (MY)</h3><p>This is HCP detailing material. None of the Competitor A comparisons may migrate to consumer copy — comparative advertising against a named brand triggers the NPRA Cosmetic Advertisement rules and Guidelines Annex I Part 10. Keep report-original endpoint wording: 'reduces lesions 73.7%' is a report figure; 'treats acne' is a medicinal claim, and the DRGD cross-check applies to the 2% SA line. Every % on a consumer piece still needs the n / age / duration / population disclaimer.</p></div>"+
+    "<div class='panel'><h3>Commercial angle</h3><p>Facerinna owns the disclosed instrumental number in 5 of 11 parameters where Competitor A publishes only 'significant'. That is the HCP pitch: <b>we show you the Tewameter reading; they show you a p-value.</b> The UKM in-vitro + in-use B5 file is the fastest route to a citable paper — the Competitor D head-to-head is the story.</p></div>"+
+    "<div class='panel'><h3>Next study</h3><p>One small IRB-approved split-face vs Competitor A acne gel on the 2% SA serum (n ≈ 30, 4 wk, lesion count). Han 2026 now gives both the benchmark (−72.6%) and the sample-size anchor. A 12-week pigmentation arm on the 10% Niacinamide 3% TXA serum would close the only parameter where the competitor evidence is genuinely stronger.</p></div>"+
+    "</div>";
+
+  var refs = "<p><b>Facerinna (primary data).</b> Guangdong Baohua Testing Center — E202501348, E202501278, E202501288, E202501296, E202501297, E202501350, E202501286, E202501279, E202501349, E202501289, E202501298, E202501287, E202501295, E202600150, E202600151, E202600409a. Guangdong Youzhi — YDJC20250815003H04, YDJC20250818010H04, GXYZ2606090009EN. Guangzhou King Test — GZ25012301500002E. Intertek — SZPJ50019-01. SKINPROOF — SPF.PDD.R.590. INBIOSIS-UKM — INB/FITO/2026/08, INB/FITO/2026/04.</p>"+
+   "<p><b>Competitor A.</b> Kerob D, et al. Clin Cosmet Investig Dermatol 2023;16:1861, doi:10.2147/CCID.S418483 · Prakoeswa CRS, et al. J Cosmet Dermatol 2025;24:e70051, doi:10.1111/jocd.70051 · Passeron T, et al. Dermatol Ther (Heidelb) 2025;15:2379–90, doi:10.1007/s13555-025-01473-4 · Bouloc A, et al. J Cosmet Dermatol 2015;14:40–6, doi:10.1111/jocd.12131 · De Decker I, et al. Burns 2022, doi:10.1016/j.burns.2022.04.025 · Szczech J, et al. Forum Dermatologicum 2024;10(4) · Han JH, et al. J Cosmet Dermatol 2026;25:e70831, doi:10.1111/jocd.70831 · Zhang X, et al. J Cosmet Dermatol 2024. Brand clinical data: laroche-posay.us / .com / lorealdermatologicalbeauty.com, accessed 2 Sep 2026.</p>"+
+   "<p><b>Competitor C.</b> Lima PB, et al. JEADV 2021 (n=50) · Lekhavat C, et al. Dermatol Ther (Heidelb) 2026, NCT03926845 (n=200) · Schuster B, et al. Int J Cosmet Sci 2026 (n=629) · int.eucerin.com DermoPure Clinical &amp; UreaRepair (Weber 2012 JCAD).<br>"+
+   "<b>Competitor E / Ego.</b> Spada F, Barnes TM, Greive KA. Clin Cosmet Investig Dermatol 2018;11:491, doi:10.2147/CCID.S177697 — note Spada is an Ego employee.<br>"+
+   "<b>Competitor D.</b> Draelos ZD, et al. J Drugs Dermatol 2023;22:554, doi:10.36849/JDD.7142 · Tempark T, et al. J Cosmet Dermatol 2024 (n=40) · cerave.com 28-day challenge (n=49 split-leg).<br>"+
+   "<b>Competitor B / Competitor B group.</b> Competitor B group press release 9 Jul 2024 · cetaphil.com Competitor B acne regimen 12-wk regimen study.</p>";
+
+  function box(id,title,body){
+    return "<details class='big' id='"+id+"'><summary>"+title+"</summary><div class='body'>"+body+"</div></details>";
+  }
+  return box("evidence-map","Evidence map — what is being compared",em)+
+         box("wider","Wider field — Competitor B group, Competitor C, Competitor D, Competitor E",wf)+
+         box("scorecard","Scorecard — where Facerinna stands",sc)+
+         box("glossary","Parameter glossary — instrument, unit, direction",gl)+
+         box("caveats","Caveats, claims discipline and the commercial angle",cav)+
+         box("refs","References",refs);
+}
+
+/* ---- interaction ---- */
+function showTip(el,e){
+  var n=el.getAttribute("data-tip"), n2=el.getAttribute("data-tip2"), v=el.getAttribute("data-tipv");
+  if(!n2) return;
+  tip.innerHTML="<b>"+v+"</b>"+esc(n2)+"<em>"+esc(n)+"</em>";
+  tip.style.opacity="1";
+  var r=el.getBoundingClientRect();
+  var x=(e&&e.clientX!=null? e.clientX+14 : r.left+16), y=(e&&e.clientY!=null? e.clientY+16 : r.top-8);
+  var w=tip.offsetWidth,h=tip.offsetHeight;
+  if(x+w>window.innerWidth-10) x=window.innerWidth-w-10;
+  if(y+h>window.innerHeight-10) y=y-h-28;
+  if(y<8) y=8;
+  tip.style.left=x+"px"; tip.style.top=y+"px";
+}
+function hideTip(){ tip.style.opacity="0"; }
+
+function wire(){
+  var app=document.getElementById("app");
+  app.querySelectorAll("[data-tip2]").forEach(function(el){
+    el.addEventListener("mousemove",function(e){showTip(el,e);});
+    el.addEventListener("mouseleave",hideTip);
+    el.addEventListener("focus",function(){showTip(el,null);});
+    el.addEventListener("blur",hideTip);
+  });
+  app.querySelectorAll("[data-go]").forEach(function(el){
+    el.addEventListener("click", function(e){
+      e.preventDefault();
+      openParam(el.getAttribute("data-go"));
+    });
+  });
+  app.querySelectorAll(".tbtn").forEach(function(b){
+    b.addEventListener("click",function(){
+      var box=document.getElementById("tbl-"+b.getAttribute("data-tbl"));
+      var open=box.classList.toggle("hidden")===false;
+      b.setAttribute("aria-expanded",open);
+      b.textContent = open ? "Hide data table" : "Show data table";
+    });
+  });
+}
+
+/* Charts hold their bars at zero until scrolled into view, then grow them with
+   a per-row stagger. The collapse only applies once this class is on, so if
+   the script never runs the bars are simply drawn at full width. */
+var io = null;
+function armReveal(){
+  var app = document.getElementById("app");
+  app.classList.add("reveal-ready");
+  if(io) io.disconnect();
+  io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){ e.target.classList.add("seen"); io.unobserve(e.target); }
+    });
+  }, {rootMargin:"0px 0px -12% 0px", threshold:0.12});
+  app.querySelectorAll(".chart").forEach(function(c){ io.observe(c); });
+}
+
+/* Scroll-spy: the pill for the section currently crossing the reading line is
+   marked aria-current, so the nav says where you are, not just where you can go. */
+var spy = null;
+function armSpy(){
+  var pills = Array.prototype.slice.call(document.querySelectorAll("#pills a"));
+  if(!pills.length) return;
+  var byId = {};
+  pills.forEach(function(a){ byId[a.getAttribute("href").slice(1)] = a; });
+  if(spy) spy.disconnect();
+  var visible = {};
+  spy = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ visible[e.target.id] = e.isIntersecting ? e.intersectionRatio : 0; });
+    var best = null, bestV = 0;
+    Object.keys(visible).forEach(function(k){ if(visible[k] > bestV){ bestV = visible[k]; best = k; } });
+    pills.forEach(function(a){ a.removeAttribute("aria-current"); });
+    if(best && byId[best]) byId[best].setAttribute("aria-current","true");
+  }, {rootMargin:"-96px 0px -55% 0px", threshold:[0,.25,.5,.75,1]});
+  Object.keys(byId).forEach(function(id){
+    var el = document.getElementById(id); if(el) spy.observe(el);
+  });
+}
+
+function armProgress(){
+  var bar = document.getElementById("progress");
+  var tick = function(){
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + "%";
+  };
+  window.addEventListener("scroll", tick, {passive:true});
+  window.addEventListener("resize", tick);
+  tick();
+}
+
+document.addEventListener("keydown", function(e){
+  if(e.metaKey || e.ctrlKey || e.altKey) return;
+  var t = e.target;
+  if(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+  var k = e.key.toLowerCase();
+  if(k === "l"){ setMode("lay"); }
+  else if(k === "t"){ setMode("tech"); }
+  else if(k === "f"){
+    var next = filter === "all" ? "fr" : "all";
+    document.querySelector('.fbtn[data-f="' + next + '"]').click();
+  }
+  else if(e.key === "Escape" && (active || showAll)){ closeParam(); }
+  else if(active && e.key === "ArrowRight"){ step(1); }
+  else if(active && e.key === "ArrowLeft"){ step(-1); }
+});
+
+function openParam(id){
+  active = id; showAll = false;
+  if(history.replaceState) history.replaceState(null,"","#"+id);
+  render();
+  var el = document.getElementById(id);
+  if(el) el.scrollIntoView({block:"start"});
+  var h = el && el.querySelector("h2");
+  if(h){ h.setAttribute("tabindex","-1"); h.focus({preventScroll:true}); }
+}
+function step(d){
+  var i = S.findIndex(function(x){ return x.id===active; });
+  var n = S[i+d];
+  if(n) openParam(n.id);
+}
+function closeParam(){
+  active = null; showAll = false;
+  if(history.replaceState) history.replaceState(null,"",location.pathname+location.search);
+  render();
+  document.getElementById("thumbs").scrollIntoView({block:"start"});
+}
+document.getElementById("btnPrev").addEventListener("click",function(){ step(-1); });
+document.getElementById("btnNext").addEventListener("click",function(){ step(1); });
+document.getElementById("btnClose").addEventListener("click", closeParam);
+document.getElementById("btnAll").addEventListener("click", function(){
+  if(showAll){ closeParam(); return; }
+  showAll = true; active = null; render();
+  document.getElementById("sections").scrollIntoView({block:"start"});
+});
+
+function setMode(m){ mode=m; try{localStorage.setItem("fr-bench-mode",m);}catch(e){} render(); }
+document.getElementById("btnLay").addEventListener("click",function(){setMode("lay");});
+document.getElementById("btnTech").addEventListener("click",function(){setMode("tech");});
+document.querySelectorAll(".fbtn").forEach(function(b){
+  b.addEventListener("click",function(){
+    filter=b.getAttribute("data-f");
+    document.querySelectorAll(".fbtn").forEach(function(o){o.setAttribute("aria-pressed", o===b);});
+    render();
+  });
+});
+
+var fromHash = location.hash.slice(1);
+if(fromHash && S.some(function(x){ return x.id===fromHash; })) active = fromHash;
+render();
+armProgress();
+
+/* Print has no thumbnails to click, so it always gets the full set. */
+function forPrint(on){
+  if(on && !showAll){ forPrint.was = {a:active, all:showAll}; showAll = true; active = null; render(); }
+  else if(!on && forPrint.was){ showAll = forPrint.was.all; active = forPrint.was.a; forPrint.was = null; render(); }
+}
+window.addEventListener("beforeprint", function(){ forPrint(true); });
+window.addEventListener("afterprint", function(){ forPrint(false); });
+})();
+</script>
+</body>
+</html>
