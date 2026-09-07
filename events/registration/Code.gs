@@ -81,6 +81,22 @@ function setup() {
     sheet.setFrozenRows(1);
   }
 
+  /* A phone number is a label, not a quantity. Left alone, Sheets reads
+     "0185708401" as the number 185708401 and the leading zero is gone for
+     good -- you cannot ring the person back. Pinning the column to plain text
+     stops the conversion for every row that follows. Timestamps get an
+     explicit format too, so "Ticket sent" shows the time rather than only the
+     date it happened to fall on. */
+  var head = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  var colOf = function (h) { return head.indexOf(h) + 1; };
+  var rows = Math.max(1, sheet.getMaxRows() - 1);
+  var phoneAt = colOf(CONFIG.FIELDS.phone);
+  if (phoneAt > 0) sheet.getRange(2, phoneAt, rows, 1).setNumberFormat('@');
+  ['Timestamp', CONFIG.OUT.sentAt, CONFIG.OUT.checkedIn].forEach(function (h) {
+    var c = colOf(h);
+    if (c > 0) sheet.getRange(2, c, rows, 1).setNumberFormat('yyyy-mm-dd hh:mm');
+  });
+
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'onFormSubmitHandler') ScriptApp.deleteTrigger(t);
   });
@@ -158,6 +174,12 @@ function onFormSubmitHandler(e) {
 
     var code = String(values[ticketCol] || '').trim() || makeCode();
     sheet.getRange(row, ticketCol + 1).setValue(code);
+
+    var pCol = col(CONFIG.FIELDS.phone);
+    if (pCol !== null) {
+      var raw = String(values[pCol] == null ? '' : values[pCol]);
+      sheet.getRange(row, pCol + 1).setNumberFormat('@').setValue(raw);
+    }
 
     sendTicket({
       to:    email,
@@ -323,6 +345,15 @@ function doPost(e) {
       sheet.appendRow(row);
       var written = sheet.getLastRow();
 
+      /* Belt as well as braces. The column format above covers rows added
+         later, but a sheet set up before that change, or a column somebody
+         reformatted, would still swallow the leading zero. Writing the cell
+         as text here does not depend on either. */
+      var phoneCol = at(CONFIG.FIELDS.phone);
+      if (phoneCol > -1) {
+        sheet.getRange(written, phoneCol + 1).setNumberFormat('@').setValue(phone);
+      }
+
       /* The ticket code goes back either way. If the email fails the visitor
          still has something to show at the door, and the sheet records that
          the email did not go. */
@@ -420,6 +451,37 @@ function escapeHtml(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/**
+ * Run once if any phone was written before the column was pinned to text.
+ * A Malaysian mobile stored as a number lost its leading zero, so this puts
+ * it back: 9 or 10 digits starting 1 is a mobile missing its 0. Anything it
+ * is not sure about it leaves alone and reports, rather than guessing.
+ */
+function repairPhones() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var head = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  var c = head.indexOf(CONFIG.FIELDS.phone);
+  if (c === -1) return 'No phone column.';
+  var last = sheet.getLastRow();
+  if (last < 2) return 'Nothing to repair.';
+
+  var fixed = 0, left = [];
+  var cells = sheet.getRange(2, c + 1, last - 1, 1);
+  cells.setNumberFormat('@');
+  var vals = cells.getValues();
+  for (var i = 0; i < vals.length; i++) {
+    var v = vals[i][0];
+    if (typeof v !== 'number') continue;
+    var d = String(v);
+    if (/^1\d{8,9}$/.test(d)) { vals[i][0] = '0' + d; fixed++; }   /* lost its 0 */
+    else if (/^60\d{9,10}$/.test(d)) { vals[i][0] = '+' + d; fixed++; } /* lost its + */
+    else { vals[i][0] = d; left.push('row ' + (i + 2) + ': ' + d); }
+  }
+  cells.setValues(vals);
+  return 'Repaired ' + fixed + '.' +
+         (left.length ? ' Left as-is, please check: ' + left.join('; ') : '');
 }
 
 /** Sends one ticket to yourself so you can see it before the event does. */

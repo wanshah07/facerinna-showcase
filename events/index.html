@@ -286,6 +286,13 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .rmodal-box{position:relative;width:100%;max-width:720px;height:min(88vh,880px);
   background:var(--surface);border-radius:18px;box-shadow:var(--shadow-lg,0 26px 60px rgba(23,50,79,.3));
   display:flex;flex-direction:column;overflow:hidden}
+/* An embedded Google Form has no height we can read across origins, so that
+   mode keeps the tall fixed box. Our own form is three fields and a button:
+   sizing it to its content stops the panel opening as a mostly empty column
+   with the button stranded at the bottom of the screen. */
+.rmodal.own .rmodal-box{height:auto;max-height:88vh}
+.rmodal.own .msf{height:auto}
+.rmodal.own .msf-foot{margin-top:0}
 .rmodal-head{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;
   border-bottom:1px solid var(--line)}
 .rmodal-head h3{margin:0;font-family:'Fraunces',Georgia,serif;font-size:1.02rem;
@@ -314,13 +321,18 @@ body{margin:0;background:var(--bg);color:var(--ink);
 @media(max-width:560px){
   .rmodal{padding:0}
   .rmodal-box{max-width:none;height:100%;border-radius:0}
+  /* Our own form sits as a sheet against the bottom, where a thumb is,
+     rather than a full-screen page with one field at the top. */
+  .rmodal.own{align-items:flex-end}
+  .rmodal.own .rmodal-box{height:auto;max-height:92vh;
+    border-radius:18px 18px 0 0}
 }
 body.rmodal-on{overflow:hidden}
 
 /* ---- the multi-step form ---------------------------------------------
    Three questions, one at a time. A booth visitor with a phone in one hand
    answers three short things faster than they read one long form. */
-.msf{padding:26px 22px 24px;display:flex;flex-direction:column;height:100%;
+.msf{padding:24px 22px 22px;display:flex;flex-direction:column;height:100%;
   overflow-y:auto;-webkit-overflow-scrolling:touch}
 .msf-dots{display:flex;align-items:center;justify-content:center;gap:11px;margin-bottom:26px}
 .msf-dot{display:flex;align-items:center;justify-content:center;width:34px;height:34px;
@@ -331,6 +343,10 @@ body.rmodal-on{overflow:hidden}
 .msf-dot.now{background:var(--brand-deep);color:#fff;
   box-shadow:0 0 0 5px color-mix(in srgb,var(--brand) 20%,transparent)}
 .msf-dot:disabled{cursor:not-allowed}
+/* The tick inside a completed step had no rule of its own, so it rendered as
+   a solid black fill instead of a stroked mark in the step's own colour. */
+.msf-dot svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:3;
+  stroke-linecap:round;stroke-linejoin:round}
 .msf-link{position:relative;height:2px;width:42px;background:var(--line);overflow:hidden}
 .msf-link i{position:absolute;inset:0;background:var(--brand);transform-origin:left;
   transform:scaleX(0);transition:transform .55s cubic-bezier(.22,1,.36,1)}
@@ -363,7 +379,7 @@ body.rmodal-on{overflow:hidden}
 .msf-consent input{width:17px;height:17px;flex:0 0 auto;margin-top:2px;height:17px}
 .msf-consent a{color:var(--brand-deep)}
 
-.msf-foot{margin-top:auto;padding-top:22px}
+.msf-foot{margin-top:auto;padding-top:20px}
 .msf-go{width:100%;height:48px;border:0;border-radius:12px;font:inherit;font-size:.95rem;
   font-weight:600;color:#fff;cursor:pointer;display:inline-flex;align-items:center;
   justify-content:center;gap:8px;
@@ -377,7 +393,7 @@ body.rmodal-on{overflow:hidden}
 
 /* done */
 .msf-done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;gap:14px;padding:20px 0;
+  text-align:center;gap:14px;padding:26px 0 18px;
   animation:msfIn .6s cubic-bezier(.22,1,.36,1) both}
 .msf-tick{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;
   background:color-mix(in srgb,#0f9d58 14%,transparent);border:2px solid color-mix(in srgb,#0f9d58 35%,transparent)}
@@ -1144,7 +1160,12 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
       .then(function(r){ return r.json(); })
       .then(function(res){
         if(!res || res.ok!==true) throw new Error((res && res.error) || "rejected");
-        state.done=true; state.code=res.code||""; state.busy=false; render();
+        /* The script returns the existing code when this email is already
+           registered for this event. Saying "you are registered" as though a
+           new ticket had just been issued would send somebody hunting for an
+           email that is not coming. */
+        state.done=true; state.code=res.code||""; state.dup=res.duplicate===true;
+        state.busy=false; render();
       })
       .catch(function(err){
         state.busy=false;
@@ -1155,12 +1176,17 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
   }
 
   function renderDone(){
+    var first=state.data.name.trim().split(/\s+/)[0];
+    var line = state.dup
+      ? esc(first)+', you already have a ticket for this one. It was sent to '
+        + esc(state.data.email)+' when you registered. Show it at the door.'
+      : esc(first)+', your ticket is on its way to '
+        + esc(state.data.email)+'. Show it at the door.';
     mount.innerHTML =
       '<div class="msf-done">'
     +   '<div class="msf-tick">'+svgTick()+'</div>'
-    +   '<h4>You are registered</h4>'
-    +   '<p>'+esc(state.data.name.split(" ")[0])+', your ticket is on its way to '
-    +     esc(state.data.email)+'. Show it at the door.</p>'
+    +   '<h4>'+(state.dup ? "Already registered" : "You are registered")+'</h4>'
+    +   '<p>'+line+'</p>'
     +   (state.code ? '<div class="msf-code"><span>Ticket code</span><b>'
         + esc(state.code)+'</b></div>' : '')
     + '</div>';
@@ -1180,6 +1206,7 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
 
     if(REGISTER_ENDPOINT){
       /* Our own form, posting to our own script. */
+      box.classList.add("own");
       sub.textContent = "Three quick questions. Your ticket arrives by email.";
       frame.hidden=true; wait.hidden=true; mount.hidden=false;
       state={ step:0, data:{}, error:"", busy:false, done:false, consent:false, event:name||"" };
@@ -1187,6 +1214,7 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
     } else {
       /* Not deployed yet -- fall back to the Google Form rather than showing
          a form whose Complete button has nowhere to send anything. */
+      box.classList.remove("own");
       sub.textContent = "The form is hosted by Google.";
       mount.hidden=true; frame.hidden=false; wait.hidden=false;
       wait.innerHTML="Opening the form&hellip;";
