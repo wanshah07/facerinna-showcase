@@ -1047,6 +1047,8 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .qr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,340px));gap:24px;justify-content:center}
 .qr-card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:26px;text-align:center;box-shadow:var(--shadow-md)}
 .qr-card h4{margin:16px 0 6px;font-size:1.05rem;font-family:'Inter';font-weight:700}
+.qr-link{display:inline-block;padding:8px 2px;font-weight:700;color:var(--brand-deep);text-decoration:none;border-bottom:1px solid currentColor}
+.qr-link:hover,.qr-link:focus-visible{color:var(--navy)}
 .qr-card p{margin:0;font-size:.84rem;color:var(--ink-2);line-height:1.5}
 .qr-slot{width:210px;height:210px;margin:0 auto;border-radius:16px;display:grid;place-items:center;background:#fff;
   border:1px solid var(--line);overflow:hidden}
@@ -2006,7 +2008,12 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
       <div class="qr-card">
         <div class="qr-slot" id="qrReg"><img src="data:image/png;base64,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" alt="Clinic registration QR code"></div>
         <h4>Registration</h4>
-        <p>Register here</p>
+        <!-- The same form the QR beside it encodes, taken by decoding that QR
+             rather than copied from anywhere: the two cannot point at different
+             places. On a phone the QR is useless — you are already holding the
+             screen — so the words have to be the way in. -->
+        <p><a class="qr-link" href="https://docs.google.com/forms/d/e/1FAIpQLSew0h9ZESmDLy7uWTP3snK9qpZsU0TtdLvz0cb--WGYHU8r8w/viewform"
+              target="_blank" rel="noopener">Register here &#8599;</a></p>
       </div>
       <div class="qr-card">
         <div class="qr-slot"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASIAAAEiCAAAAAB41YBqAAAC4UlEQVR42u3dUWrDMBAEUKnk/ldWL2CMtjuRk/Lms60d89DC1DjyXEPu84MAESJEiBAhQiSIECFChAgRIkSCCBGis3ld/XBGTp25Kz43z/e+a7aKDBoiRIgQIUIkiDrtutOQZ7n5rnJDvm/cmWu2igwaIkSIECFCJIjS7brekDvZvTu9jl6zVYQIESJEiBAhEkTpdp3J1X3qegeu92yrCBEiRIgQCSJEiP5Lu16bPbvezK0ig4YIESJBhAgRom9s1+nvKN6f+erO9ipfy7KKDBoiRIgQCSJEiD6oXWfuEl815Bn+u/Q1W0WIECFChAgRIkGUaddPvWFm9wmSdfSarSJEiBAhQoQIkSDazEx/a3D3/vMqH9Hp6J3dQ6wig4YIESJEiBAJok67HuV+OsoNufO56WauXRs0RIgQIUIkiBC9r13X34+4ysf+4VI3e/HuVe2ezyoyaIgQIUKECJEg6rTrTlNd4bOcfW5EuzZoiBAhQoQIkSBq5HXfqUe50d7voNfpyuknPqwig4YIESJEiAQRohPtejQ6cOfe9e4Ru59W/z/AKjJoiBAhQoQIkSBqZHa6baeZp9+8WP82peeuDRoiRIgQIRJEiMJpvQm9/sx2/XydnUeumnT9PweryKAhQoQIESJEguhEu77vwKt8xIx87ig3aU+GGDREiBAhQiSIEGVq8Yn3MnZ2+Dvxd1aRQUOECBEiRIIIUSTbe4bUc79nyP0RZ5u0HfkMGiJEiBAhEkSI3teuR6SppjMfulKrCBEiRIgQIUIkiDLt+n3dNtPMO0csq8igIUKECBEiQYTooXadSWd/6s5nXP3WjnwGDREiRIgQCSJE392urzp1eh++sXk+O/IZNESIECFCJIgQPdWu089+1O8wZ95sYxUZNESIECFCJIgQPdWuM09tdPb96LyJpn4FVpFBQ4QIESJEiARRp/guBlYRIkSIECFCJIgQIUKECBEiRIIIESJEn5VfREB8WtqvvcAAAAAASUVORK5CYII=" alt="More info QR code"></div>
@@ -5220,7 +5227,6 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
      scroll or tap sends it away early. */
   const section=document.getElementById('game');
   if(section){
-    const anyScores=()=>GAMES.some(g=>board(g.id).length);
     /* How much of the screen the games are filling. Asked directly rather than
        left to an observer alone: in the deck the slide is scaled and scrolled
        programmatically, and an observer that misses one of those crossings
@@ -5258,7 +5264,14 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
       }
       if(!armed || pending) return;
       if(modal.classList.contains('open')) return;
-      if(!anyScores()) return;
+      /* An empty board opens too. It used to refuse, which is why the board
+         looked broken on a freshly moved domain: localStorage is bound to an
+         origin, so my.facerinna.com started with nothing, and a guard meant to
+         avoid showing an empty panel instead showed nothing at all with no way
+         to tell that apart from a fault. The empty state was already written
+         and reads as an invitation — "the board fills itself as people play,
+         start one of the five" — which is the right thing for a booth stand
+         before anyone has played. */
       /* No cooldown: every arrival at the games shows the board, however many
          times you come back. `armed` only clears once the section has actually
          left the screen, so one arrival still opens it once. */
