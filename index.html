@@ -42,21 +42,21 @@
   --radius:20px; --maxw:1180px;
 }
 *{box-sizing:border-box}
-/* Scrolling settles a section at a time, and anchor jumps clear the sticky
-   header. Deliberately `proximity`, not `mandatory`: The Range runs five
-   screens on desktop and nine on mobile, and mandatory snapping would jump
-   straight over its middle to the next section. */
-html{scroll-behavior:smooth;scroll-snap-type:y proximity;scroll-padding-top:72px}
-body > section{scroll-snap-align:start}
-/* Not on a phone. A flick there carries momentum, and the section snap cuts it
-   short — the page stops at a boundary instead of where the thumb sent it, and
-   every section becomes a wall. Slide-by-slide is what the deck is for; on a
-   phone this is a page and it should scroll like one. The deck's own snap is
-   scoped to body.slides and is more specific, so it still works if it is on. */
-@media(max-width:900px){
-  html{scroll-snap-type:none}
-  body > section{scroll-snap-align:none}
-}
+/* The page does not snap. That was already true on a phone, and the reason
+   given there holds everywhere: a flick carries momentum and a section snap
+   cuts it short, so the page stops at a boundary instead of where it was sent
+   and every section becomes a wall. It was only ever half an argument that
+   the same thing is fine with a mouse.
+
+   It matters more now that a section can be taller than the screen — the
+   clinic brochure is, at any real desktop width — because proximity snapping
+   fights a reader working down a long section instead of past it.
+
+   Slide-by-slide is what the deck is for, and the deck keeps it: body.slides
+   sets `scroll-snap-type: y mandatory` on itself and `scroll-snap-align` on
+   each slide, neither of which is inherited from here. Smooth behaviour stays
+   so anchor jumps glide, and the padding still clears the sticky header. */
+html{scroll-behavior:smooth;scroll-padding-top:72px}
 body{margin:0;background:var(--bg);color:var(--ink);
   font-family:'Inter',system-ui,-apple-system,sans-serif;
   line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -1085,6 +1085,16 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .flyer-frame{position:relative;margin-inline:auto;border-radius:14px;overflow:hidden;
   border:1px solid var(--line);box-shadow:var(--shadow-sm);background:#fff;
   width:100%;max-width:min(96vh, calc((100vh - var(--flyer-oh)) * 1.413))}
+/* Off the deck, none of that applies. A scrolling page has no one screen to
+   fit into, so sizing the sheet by viewport height was deck thinking in the
+   wrong place — and it cost the brochure most of its width: 608px inside a
+   1132px card at 1440, 473px at 1280, both SMALLER than the same sheet gets
+   on the slide, which actually does have to fit. This is a dense gatefold
+   whose benefit list and fine print are the point, so it takes the width it
+   is given and the section is simply taller. A phone was already doing this,
+   because min(96vh, …) resolves past 100% on a narrow screen; this is the
+   desktop catching up rather than a new idea. */
+body:not(.slides) .flyer-frame{max-width:100%}
 /* the folded sheet shown whole — height:auto on its own 1.413 ratio, so all
    three panels are on screen rather than a crop of the first one */
 .flyer-thumb{width:100%;height:auto;display:block;cursor:zoom-in;
