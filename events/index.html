@@ -11,12 +11,24 @@
 
     show  event  brand  start_date  end_date  time  location
     highlight  highlight_time  details  image_url  action_label  action_url
+    start_time  attendees
+
+  THUMBNAILS
+  ----------
+  image_url takes either a full https URL or a path relative to this page.
+  Put a file in events/img/ and write "img/pdm-agm.jpg" in the cell. A row
+  with no image gets the brand gradient instead, which is a deliberate look
+  rather than a broken one. See img/README.md.
+
+  start_time is optional, 24h HH:MM, and only drives the countdown. The `time`
+  column stays display text ("8.00 am - 5.30 pm"); parsing that would guess.
+  attendees is optional and only renders when the column carries a value.
 
   Dates are YYYY-MM-DD. Leave both blank for an event whose dates are not
-  settled — it renders under "Dates to be confirmed" rather than vanishing.
+  settled: it renders under "Dates not fixed yet" rather than vanishing.
   Set show to FALSE to hide a row without deleting it.
 
-  The sheet must be shared as "Anyone with the link — VIEWER". Its id appears
+  Share the sheet as "Anyone with the link, VIEWER". Its id appears
   in this page's source, as it must for a browser to fetch it, so the sheet
   must never be shared as Editor.
 
@@ -121,6 +133,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
   .card:hover{transform:none}
 }
 .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.banner{isolation:isolate}
 .card.past{opacity:.72}
 .card.past:hover{opacity:1}
 
@@ -154,11 +167,38 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .banner.ph .mark{font-family:'Fraunces',Georgia,serif;font-weight:600;color:#fff;
   font-size:clamp(1rem,3.4vw,1.4rem);letter-spacing:.2em;text-transform:uppercase;
   opacity:.92;text-align:center;padding:0 18px;line-height:1.4}
-.banner .tag{position:absolute;top:12px;left:12px;padding:5px 11px;border-radius:999px;
+.banner .tag{position:absolute;top:12px;left:12px;z-index:2;padding:5px 11px;border-radius:999px;
   font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
   background:rgba(255,255,255,.92);color:var(--navy)}
 .banner .tag.live{background:#1baf7a;color:#fff}
 .banner .tag.soon{background:var(--gold);color:#241a00}
+/* Sits top-right so it never collides with the status tag on the left. */
+.banner .urgent{position:absolute;top:12px;right:12px;z-index:2;padding:5px 11px;
+  border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.05em;
+  background:#d03b3b;color:#fff}
+/* A photo darkens towards the bottom so a caption over it stays readable, and
+   so a bright thumbnail does not fight the white card under it. Only over a
+   real photo: the gradient placeholder is already dark. */
+.banner:not(.ph)::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to top,rgba(0,0,0,.42),transparent 55%)}
+
+/* ---- countdown ---- */
+.cd{margin-top:16px}
+.cd-lab{display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:600;
+  color:var(--ink-2);margin-bottom:9px}
+.cd-lab svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;color:var(--brand-deep)}
+.cd-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cd-cell{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;
+  padding:9px 4px;text-align:center}
+.cd-cell b{display:block;font-size:1.08rem;font-weight:700;line-height:1.2;
+  font-variant-numeric:tabular-nums}
+.cd-cell i{display:block;font-style:normal;font-size:.64rem;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+/* Only the seconds pulse. Four pulsing cells reads as a broken screen. */
+.cd-cell.sec b{animation:beat 1s ease-in-out infinite}
+@keyframes beat{0%,100%{opacity:1}50%{opacity:.55}}
+@media(prefers-reduced-motion:reduce){.cd-cell.sec b{animation:none}}
 
 .meta{display:flex;flex-direction:column;gap:9px;font-size:.88rem;color:var(--ink-2);
   line-height:1.5}
@@ -217,9 +257,9 @@ footer{margin:56px 0 0;padding:22px 0 40px;border-top:1px solid var(--line);
 
 <main class="wrap">
   <section class="intro">
-    <h2>Where to find Facerinna</h2>
-    <p>Congresses, campus talks and retail pop-ups. This board reads a live
-       schedule, so it is current as of the moment you loaded it.</p>
+    <h2>Where to find us</h2>
+    <p>Congress booths, campus talks, mall pop-ups. These dates come off our
+       working schedule, so they change when the schedule does.</p>
   </section>
 
   <div id="out">
@@ -355,6 +395,18 @@ function parseDate(s){
 }
 function midnight(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
 
+/* The countdown needs a moment, not a day. The `time` column is display text
+   ("8.00 am - 5.30 pm") and parsing it would guess; an optional start_time
+   column in 24h HH:MM is read instead. With no start_time the count runs to
+   midnight at the start of the day, which is the honest reading of a row that
+   only gives a date. */
+function startMoment(d, hhmm){
+  var m=/^(\d{1,2}):(\d{2})$/.exec(String(hhmm||"").trim());
+  var t=new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  if(m) t.setHours(Math.min(23,+m[1]), Math.min(59,+m[2]), 0, 0);
+  return t;
+}
+
 function statusOf(a,b,today){
   if(!a) return {key:"tbc", label:"", cls:""};
   var end = b || a;
@@ -386,9 +438,11 @@ function esc(s){ return String(s==null?"":s)
 
 var PIN='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>';
 var CLK='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+var CAL='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+var PPL='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>';
 
 function dateBlock(a,b){
-  if(!a) return '<p class="tbc">Dates<br>to be<br>confirmed</p>';
+  if(!a) return '<p class="tbc">Date<br>not<br>fixed</p>';
   var same = !b || a.getTime()===b.getTime();
   var h = '<p class="dow">'+esc(DOW[a.getDay()].toUpperCase())+'</p>'
         + '<p class="dm"><span class="mon">'+MON[a.getMonth()]+'</span>'+a.getDate()+'</p>';
@@ -411,9 +465,31 @@ function card(e, today, i){
     : '<span class="mark">'+esc(e.brand || "Facerinna")+'</span>';
   var tag = st.label ? '<span class="tag '+st.cls+'">'+esc(st.label)+'</span>' : '';
 
+  /* Countdown, for an event that has not started. The target rides on the
+     card as a timestamp so one interval can drive every card on the page
+     rather than each card owning a timer. */
+  var cd='', target=0;
+  if(a && st.key==="upcoming"){
+    target = +startMoment(a, e.start_time);
+    cd = '<div class="cd" data-target="'+target+'">'
+       + '<div class="cd-lab">'+CAL+'<span>Starts in</span></div>'
+       + '<div class="cd-grid">'
+       +   '<div class="cd-cell"><b data-u="d">--</b><i>Days</i></div>'
+       +   '<div class="cd-cell"><b data-u="h">--</b><i>Hrs</i></div>'
+       +   '<div class="cd-cell"><b data-u="m">--</b><i>Min</i></div>'
+       +   '<div class="cd-cell sec"><b data-u="s">--</b><i>Sec</i></div>'
+       + '</div></div>';
+  }
+  /* Under a day out, and the card says so where the eye lands first. */
+  var urgent = (target && target - Date.now() > 0 && target - Date.now() < 86400000)
+    ? '<span class="urgent">Starts soon</span>' : '';
+
   var meta='';
   if(e.location) meta += '<div class="row">'+PIN+'<span>'+esc(e.location)+'</span></div>';
   if(e.time)     meta += '<div class="row">'+CLK+'<span>'+esc(e.time)+'</span></div>';
+  /* Only shown when the sheet carries the column. An attendee count is not
+     something to invent for a card that a clinic partner will read. */
+  if(e.attendees) meta += '<div class="row">'+PPL+'<span>'+esc(e.attendees)+' attending</span></div>';
 
   var spot='';
   if(e.highlight){
@@ -433,8 +509,9 @@ function card(e, today, i){
     +   '</div>'
     +   '<div class="datebox">'+dateBlock(a,b)+'</div>'
     + '</div>'
-    + '<div class="banner'+(img?'':' ph')+'">'+art+tag+'</div>'
+    + '<div class="banner'+(img?'':' ph')+'">'+art+tag+urgent+'</div>'
     + (meta ? '<div class="meta">'+meta+'</div>' : '')
+    + cd
     + spot
     + (e.details ? '<p class="details">'+esc(e.details)+'</p>' : '')
     + (act ? '<div class="act">'+act+'</div>' : '')
@@ -450,8 +527,8 @@ function render(list){
   var groups=[
     {key:"now",  title:"Happening now", items:[]},
     {key:"next", title:"Coming up",     items:[]},
-    {key:"tbc",  title:"Dates to be confirmed", items:[]},
-    {key:"past", title:"Been and gone", items:[]}
+    {key:"tbc",  title:"Dates not fixed yet", items:[]},
+    {key:"past", title:"Finished", items:[]}
   ];
   rows.forEach(function(e){
     var a=parseDate(e.start_date), b=parseDate(e.end_date);
@@ -475,8 +552,9 @@ function render(list){
           + g.items.map(function(e){ return card(e,today,n++); }).join("")
           + '</div>';
   });
-  if(!html) html = '<div class="note">No events are listed at the moment.</div>';
+  if(!html) html = '<div class="note">Nothing listed yet.</div>';
   document.getElementById("out").innerHTML = html;
+  tickCountdowns();          /* fill the cells before the first tick lands */
 }
 
 function setFeed(cls, txt){
@@ -489,9 +567,9 @@ function stamp(src){
   var t=new Date();
   var pad=function(v){ return v<10?"0"+v:""+v; };
   document.getElementById("stamp").textContent =
-    "Schedule read from the live sheet at "+pad(t.getHours())+":"+pad(t.getMinutes())+
-    " on "+t.getDate()+" "+MON[t.getMonth()]+" "+t.getFullYear()+
-    (src==="fallback" ? " — sheet unreachable, showing the built-in copy." : ".");
+    "Checked "+pad(t.getHours())+":"+pad(t.getMinutes())+
+    ", "+t.getDate()+" "+MON[t.getMonth()]+" "+t.getFullYear()+
+    (src==="fallback" ? ". We could not reach the schedule, so these are the dates saved in the page." : ".");
 }
 
 function load(){
@@ -514,13 +592,35 @@ function load(){
       var out=document.getElementById("out");
       var n=document.createElement("div");
       n.className="note";
-      n.innerHTML='<b>Showing the built-in copy.</b> The live schedule could not be '
-        + 'reached ('+esc(err && err.message ? err.message : "unknown")+'). '
-        + 'The sheet must be shared as <b>Anyone with the link &mdash; Viewer</b> for this '
-        + 'page to read it.';
+      n.innerHTML='<b>These are saved dates.</b> We could not reach the live schedule '
+        + '('+esc(err && err.message ? err.message : "no reason given")+'). '
+        + 'Share the sheet as <b>Anyone with the link, Viewer</b> and this page will read it.';
       out.appendChild(n);
     });
 }
+
+/* One timer for the whole page. Cards are re-rendered on every load, so this
+   reads the DOM each tick rather than holding references that go stale. */
+var lastAuto = 0;
+function tickCountdowns(){
+  var now=Date.now(), stale=false;
+  var els=document.querySelectorAll(".cd");
+  for(var i=0;i<els.length;i++){
+    var el=els[i], left=Math.max(0, Math.floor((+el.dataset.target - now)/1000));
+    if(left===0){ stale=true; }
+    var d=Math.floor(left/86400), h=Math.floor((left%86400)/3600),
+        m=Math.floor((left%3600)/60), sec=left%60;
+    var put=function(u,v){ var b=el.querySelector('[data-u="'+u+'"]');
+      var t=(v<10?"0":"")+v; if(b && b.textContent!==t) b.textContent=t; };
+    put("d",d); put("h",h); put("m",m); put("s",sec);
+  }
+  /* A countdown that hits zero means the card belongs in another group now,
+     so re-read rather than leave a "Starts in 00:00:00:00" on the screen.
+     Rate-limited: if that re-read fails and the card comes back still at
+     zero, an unguarded call here would hit the network every second. */
+  if(stale && Date.now() - lastAuto > 30000){ lastAuto = Date.now(); load(); }
+}
+setInterval(tickCountdowns, 1000);
 
 document.getElementById("refresh").addEventListener("click", load);
 load();
