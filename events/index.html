@@ -263,6 +263,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
 
 /* A real call to action, not a text link, when the row carries a URL. */
 .act .cta{display:block;width:100%;padding:0 18px;height:44px;line-height:44px;
+  border:0;font-family:inherit;cursor:pointer;
   border-radius:12px;text-align:center;font-weight:600;font-size:.92rem;color:#fff;
   background:linear-gradient(120deg,var(--brand),var(--brand-deep));
   box-shadow:0 8px 20px rgba(46,124,190,.30);text-decoration:none;
@@ -272,6 +273,42 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .act .cta:active{transform:scale(.98)}
 .act .cta:focus-visible{outline:2px solid var(--brand-deep);outline-offset:3px}
 .act{display:block}
+
+/* ---- registration modal ----------------------------------------------
+   A row with no action_url opens the form here instead of sending the
+   visitor away. On a booth screen that matters: a new tab is a tab someone
+   has to close before the next person can use the stand. */
+.rmodal{position:fixed;inset:0;z-index:50;display:none;align-items:center;
+  justify-content:center;padding:24px}
+.rmodal.open{display:flex}
+.rmodal-scrim{position:absolute;inset:0;background:rgba(11,26,38,.55);
+  backdrop-filter:blur(3px)}
+.rmodal-box{position:relative;width:100%;max-width:720px;height:min(88vh,880px);
+  background:var(--surface);border-radius:18px;box-shadow:var(--shadow-lg,0 26px 60px rgba(23,50,79,.3));
+  display:flex;flex-direction:column;overflow:hidden}
+.rmodal-head{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;
+  border-bottom:1px solid var(--line)}
+.rmodal-head h3{margin:0;font-family:'Fraunces',Georgia,serif;font-size:1.02rem;
+  font-weight:600;line-height:1.35;min-width:0;overflow-wrap:anywhere}
+.rmodal-head p{margin:3px 0 0;font-size:.8rem;color:var(--muted)}
+.rmodal-x{flex:0 0 auto;margin-left:auto;width:36px;height:36px;border-radius:50%;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+  font-size:1.05rem;line-height:1;cursor:pointer;transition:.2s}
+.rmodal-x:hover{background:var(--surface-2);color:var(--ink)}
+.rmodal-x:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.rmodal-body{flex:1 1 auto;min-height:0;position:relative;background:var(--surface-2)}
+.rmodal-body iframe{width:100%;height:100%;border:0;display:block}
+/* Shown behind the iframe, so a form that is slow or blocked does not leave
+   a blank white panel with no explanation. */
+.rmodal-wait{position:absolute;inset:0;display:grid;place-items:center;
+  padding:26px;text-align:center;font-size:.86rem;color:var(--ink-2);line-height:1.6}
+.rmodal-wait a{color:var(--brand-deep);font-weight:600}
+.rmodal-body iframe{position:relative;z-index:1;background:transparent}
+@media(max-width:560px){
+  .rmodal{padding:0}
+  .rmodal-box{max-width:none;height:100%;border-radius:0}
+}
+body.rmodal-on{overflow:hidden}
 
 .meta{display:flex;flex-direction:column;gap:9px;font-size:.88rem;color:var(--ink-2);
   line-height:1.5}
@@ -331,8 +368,7 @@ footer{margin:56px 0 0;padding:22px 0 40px;border-top:1px solid var(--line);
 <main class="wrap">
   <section class="intro">
     <h2>Where to find us</h2>
-    <p>Congress booths, campus talks, mall pop-ups. These dates come off our
-       working schedule, so they change when the schedule does.</p>
+    <p>Mall pop-ups, conferences, webinars and professional programmes.</p>
   </section>
 
   <div id="out">
@@ -346,6 +382,23 @@ footer{margin:56px 0 0;padding:22px 0 40px;border-top:1px solid var(--line);
   </footer>
 </main>
 
+<div class="rmodal" id="rmodal" role="dialog" aria-modal="true" aria-labelledby="rmTitle" hidden>
+  <div class="rmodal-scrim" data-close></div>
+  <div class="rmodal-box">
+    <div class="rmodal-head">
+      <div>
+        <h3 id="rmTitle">Register</h3>
+        <p id="rmSub"></p>
+      </div>
+      <button class="rmodal-x" id="rmX" type="button" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="rmodal-body">
+      <div class="rmodal-wait" id="rmWait">Opening the form&hellip;</div>
+      <iframe id="rmFrame" title="Registration form" src="about:blank"></iframe>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
 "use strict";
@@ -353,6 +406,12 @@ footer{margin:56px 0 0;padding:22px 0 40px;border-top:1px solid var(--line);
 /* The sheet, read live. gid 0 is the first tab. */
 var SHEET_ID = "1fZ5fj_1q1ABjXSEkGjnj8A8_55nnTq_nq4rgO7LZ5K8";
 var GID = "0";
+
+/* The booth's own registration form. A row can override it with a form_url
+   cell -- paste a "Get pre-filled link" from the form and the event arrives
+   already filled in, which is the difference between one form and five. */
+var DEFAULT_FORM =
+  "https://docs.google.com/forms/d/e/1FAIpQLSew0h9ZESmDLy7uWTP3snK9qpZsU0TtdLvz0cb--WGYHU8r8w/viewform";
 
 /* Baked-in copy of the same rows. Shown only when the sheet cannot be read,
    and labelled as such — a booth screen should never be blank, but it should
@@ -647,11 +706,22 @@ function card(e, today, i){
      blank, and it changes once the event is running. A row with no URL keeps
      the plain text line -- a button that goes nowhere is worse on a booth
      screen than no button at all. */
-  var fallbackLabel = (st.key==="live") ? "Join us" : "Reserve your spot";
-  var act = link
-    ? '<a class="cta" href="'+esc(link)+'" target="_blank" rel="noopener">'
-      + esc(e.action_label || fallbackLabel)+'</a>'
-    : (e.action_label ? '<span>'+esc(e.action_label)+'</span>' : '');
+  var act;
+  if(link){
+    /* An explicit action_url still wins: some events are somebody else's
+       registration, and a race entry does not belong in our form. */
+    act = '<a class="cta" href="'+esc(link)+'" target="_blank" rel="noopener">'
+        + esc(e.action_label || "Find out more")+'</a>';
+  } else {
+    /* This button opens OUR registration form, so it has to say so.
+       action_label was written for a link -- "Visit the booth" on a button
+       that opens a form is a small lie, and the visitor finds out only after
+       clicking. form_label is the cell to set for per-event wording. */
+    var form = safeUrl(e.form_url) || DEFAULT_FORM;
+    var label = e.form_label || (st.key==="live" ? "Join us" : "Register here");
+    act = '<button class="cta" type="button" data-form="'+esc(form)+'" data-event="'
+        + esc(e.event)+'">'+esc(label)+'</button>';
+  }
 
   return '<article class="card'+(st.key==="past"?" past":"")+'" style="animation-delay:'+(i*60)+'ms">'
     + '<div class="card-head">'
@@ -847,6 +917,69 @@ var HUE_BASE = 185, HUE_SPREAD = 55;
   addEventListener("scroll", function(){
     if(lit && !queued){ queued = true; requestAnimationFrame(paint); }
   }, {passive:true});
+})();
+
+/* ---- registration modal ---------------------------------------------
+   Google Forms embeds through an iframe with ?embedded=true. Nothing is
+   posted by this page: the form is Google's, so the submission, the
+   validation and the response row are all theirs. This page only frames it.
+   No name, phone or email passes through here or is stored here. */
+(function(){
+  var box=document.getElementById("rmodal"), frame=document.getElementById("rmFrame"),
+      wait=document.getElementById("rmWait"), title=document.getElementById("rmTitle"),
+      sub=document.getElementById("rmSub"), x=document.getElementById("rmX");
+  var lastFocus=null, waitT=null;
+
+  function embedUrl(u){
+    /* Forms refuse to frame without this, and a stray existing query must be
+       kept rather than clobbered -- a pre-filled link is all query string. */
+    if(/[?&]embedded=true\b/.test(u)) return u;
+    return u + (u.indexOf("?")>=0 ? "&" : "?") + "embedded=true";
+  }
+
+  function open(url, name){
+    lastFocus=document.activeElement;
+    title.textContent = name ? "Register: "+name : "Register";
+    sub.textContent = "The form is hosted by Google. Your details go to Facerinna, not to this page.";
+    wait.innerHTML = "Opening the form&hellip;";
+    wait.style.display="";
+    frame.src = embedUrl(url);
+    box.hidden=false; box.classList.add("open");
+    document.body.classList.add("rmodal-on");
+    x.focus();
+    /* A form that never loads -- no signal, a blocked domain, a form since
+       closed -- would otherwise leave a blank panel. Offer the real link. */
+    clearTimeout(waitT);
+    waitT=setTimeout(function(){
+      wait.innerHTML = 'Still loading. If nothing appears, '
+        + '<a href="'+url.replace(/"/g,"&quot;")+'" target="_blank" rel="noopener">'
+        + 'open the form in a new tab</a>.';
+    }, 6000);
+  }
+
+  function close(){
+    clearTimeout(waitT);
+    box.classList.remove("open"); box.hidden=true;
+    document.body.classList.remove("rmodal-on");
+    frame.src="about:blank";          /* stop the form running behind the page */
+    if(lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  frame.addEventListener("load", function(){
+    if(frame.src && frame.src!=="about:blank"){ clearTimeout(waitT); wait.style.display="none"; }
+  });
+
+  /* Delegated: the cards are replaced on every load, so a listener bound to a
+     button would be lost on the next refresh. */
+  document.addEventListener("click", function(ev){
+    var btn=ev.target.closest && ev.target.closest(".cta[data-form]");
+    if(btn){ ev.preventDefault(); open(btn.dataset.form, btn.dataset.event); return; }
+    if(ev.target.closest && ev.target.closest("[data-close]")) close();
+  });
+  x.addEventListener("click", close);
+  addEventListener("keydown", function(ev){
+    if(ev.key==="Escape" && box.classList.contains("open")) close();
+  });
 })();
 
 document.getElementById("refresh").addEventListener("click", load);

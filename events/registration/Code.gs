@@ -1,0 +1,308 @@
+/**
+ * FACERINNA — event registration tickets
+ * ======================================
+ * Bound to the Google Sheet that collects a Google Form's responses. On each
+ * submission it issues a ticket code, draws a QR for it, and emails the
+ * registrant. Scanning that QR at the door marks them present.
+ *
+ * WHAT LEAVES GOOGLE
+ * The QR image is drawn by quickchart.io, and the ONLY thing sent there is the
+ * opaque ticket code (FCR-7K2M-9XQ4). No name, phone or email is ever sent to
+ * it. If you would rather nothing at all left Google, set QR_PROVIDER to
+ * "none" and the email goes out with the code in text; the door can type it
+ * into the check-in sheet instead of scanning.
+ *
+ * QUOTA
+ * A free gmail.com account sends 100 emails a day; a Workspace account sends
+ * 1500. Check MailApp.getRemainingDailyQuota() if you expect a rush.
+ *
+ * SET UP: see README.md next to this file.
+ */
+
+// ---------------------------------------------------------------- settings
+
+var CONFIG = {
+  /* Shown as the sender name. The address is whichever account owns this
+     script -- Apps Script cannot send as somebody else without a Workspace
+     delegation, so install this under the mailbox you want on the ticket. */
+  FROM_NAME: 'Facerinna Events',
+
+  /* Answered by the reply-to on the ticket. Leave blank to use the owner. */
+  REPLY_TO: '',
+
+  SUBJECT: 'Your ticket — {{event}}',
+
+  /* Column headers in the response sheet. Left side is what this script
+     needs; right side is the exact question text from your form. Change the
+     right side to match your form, not the left. */
+  FIELDS: {
+    name:  'Name',
+    email: 'Email',
+    phone: 'Phone',
+    event: 'Which event are you attending?'
+  },
+
+  /* Columns this script writes back. They are created if missing. */
+  OUT: {
+    ticket:   'Ticket code',
+    sentAt:   'Ticket sent',
+    checkedIn:'Checked in'
+  },
+
+  QR_PROVIDER: 'quickchart',   // 'quickchart' | 'none'
+  QR_SIZE: 320,
+
+  /* Prefix on every code, so a scanned string is obviously ours. */
+  CODE_PREFIX: 'FCR'
+};
+
+// ------------------------------------------------------------------ set up
+
+/**
+ * Run once, by hand, from the Apps Script editor. Installs the trigger and
+ * adds the output columns. Safe to run again: it removes its own duplicate
+ * triggers first, so a second run does not double-send every ticket.
+ */
+function setup() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheets()[0];
+
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'onFormSubmitHandler') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('onFormSubmitHandler').forSpreadsheet(ss).onFormSubmit().create();
+
+  var headers = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn()))
+                     .getValues()[0].map(String);
+  Object.keys(CONFIG.OUT).forEach(function (k) {
+    if (headers.indexOf(CONFIG.OUT[k]) === -1) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue(CONFIG.OUT[k]);
+      headers.push(CONFIG.OUT[k]);
+    }
+  });
+
+  var missing = [];
+  Object.keys(CONFIG.FIELDS).forEach(function (k) {
+    if (headers.indexOf(CONFIG.FIELDS[k]) === -1) missing.push(CONFIG.FIELDS[k]);
+  });
+
+  var msg = 'Trigger installed. Output columns ready.';
+  if (missing.length) {
+    /* Loud on purpose. A mismatched header is the failure that looks like
+       nothing is wrong until the first ticket goes out addressed to nobody. */
+    msg += '\n\nNOT FOUND in this sheet: ' + missing.join(', ') +
+           '\nEdit CONFIG.FIELDS so the right-hand side matches your form ' +
+           'questions exactly, then run setup() again.';
+  }
+  SpreadsheetApp.getUi().alert(msg);
+}
+
+// ---------------------------------------------------------------- the work
+
+function onFormSubmitHandler(e) {
+  var lock = LockService.getScriptLock();
+  /* Two submissions landing together would otherwise both read the same last
+     row and one ticket would overwrite the other. */
+  try { lock.waitLock(30000); } catch (err) { return; }
+
+  try {
+    var sheet = e.range.getSheet();
+    var row = e.range.getRow();
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+    var values = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+    var col = function (header) {
+      var i = headers.indexOf(header);
+      return i === -1 ? null : i;
+    };
+    var get = function (key) {
+      var i = col(CONFIG.FIELDS[key]);
+      return i === null ? '' : String(values[i] || '').trim();
+    };
+
+    var ticketCol = col(CONFIG.OUT.ticket);
+    var sentCol   = col(CONFIG.OUT.sentAt);
+    if (ticketCol === null || sentCol === null) {
+      throw new Error('Output columns missing. Run setup() first.');
+    }
+
+    /* Already handled. A re-run of the trigger, or a manual replay, must not
+       send a second ticket to someone who has one. */
+    if (String(values[sentCol] || '').trim()) return;
+
+    var email = get('email');
+    if (!isEmail(email)) {
+      sheet.getRange(row, sentCol + 1).setValue('NOT SENT: no valid email');
+      return;
+    }
+
+    var code = String(values[ticketCol] || '').trim() || makeCode();
+    sheet.getRange(row, ticketCol + 1).setValue(code);
+
+    sendTicket({
+      to:    email,
+      name:  get('name') || 'there',
+      event: get('event') || 'Facerinna event',
+      code:  code
+    });
+
+    sheet.getRange(row, sentCol + 1).setValue(new Date());
+  } catch (err) {
+    /* Never swallow it. A ticket that silently fails to send is a person
+       turned away at the door. */
+    console.error(err);
+    try {
+      MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
+        'Facerinna ticket script failed',
+        'Row ' + (e && e.range ? e.range.getRow() : '?') + '\n\n' + err.stack);
+    } catch (ignored) {}
+    throw err;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function sendTicket(t) {
+  var qr = null;
+  if (CONFIG.QR_PROVIDER === 'quickchart') {
+    qr = fetchQr(t.code);
+  }
+
+  var subject = CONFIG.SUBJECT.replace('{{event}}', t.event);
+  var html = ticketHtml(t, !!qr);
+
+  var options = {
+    name: CONFIG.FROM_NAME,
+    htmlBody: html
+  };
+  if (CONFIG.REPLY_TO) options.replyTo = CONFIG.REPLY_TO;
+  if (qr) options.inlineImages = { ticketqr: qr };
+
+  MailApp.sendEmail(t.to, subject, plainText(t), options);
+}
+
+/**
+ * Only the ticket code is sent to the QR service. Returns null rather than
+ * throwing: a QR service having a bad day must not stop the ticket, because
+ * the code in the email body is enough to check someone in.
+ */
+function fetchQr(code) {
+  try {
+    var url = 'https://quickchart.io/qr'
+            + '?text=' + encodeURIComponent(code)
+            + '&size=' + CONFIG.QR_SIZE
+            + '&margin=2&ecLevel=M&format=png';
+    var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) return null;
+    return res.getBlob().setName('ticket.png');
+  } catch (err) {
+    console.warn('QR unavailable: ' + err);
+    return null;
+  }
+}
+
+function ticketHtml(t, hasQr) {
+  var qrBlock = hasQr
+    ? '<img src="cid:ticketqr" alt="Ticket QR code" width="200" height="200" ' +
+      'style="display:block;margin:0 auto 14px">'
+    : '';
+  return [
+    '<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;',
+    'max-width:520px;margin:0 auto;color:#1D344E;line-height:1.6">',
+      '<p style="font-size:1.05rem;margin:0 0 4px">Hi ', escapeHtml(t.name), ',</p>',
+      '<p style="margin:0 0 22px">You are registered for <b>', escapeHtml(t.event), '</b>. ',
+      'Show this at the door.</p>',
+      '<div style="border:1px solid #D9E5F1;border-radius:14px;padding:22px;text-align:center;',
+      'background:#F7FAFD">',
+        qrBlock,
+        '<div style="font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;',
+        'color:#8299AD">Ticket code</div>',
+        '<div style="font-size:1.5rem;font-weight:700;letter-spacing:.06em;margin-top:4px">',
+        escapeHtml(t.code), '</div>',
+      '</div>',
+      '<p style="margin:22px 0 0;font-size:.86rem;color:#52697F">',
+      'Cannot see the code? Reply to this email and we will look you up by name.</p>',
+      '<p style="margin:18px 0 0;font-size:.76rem;color:#8299AD">',
+      'Facerinna &middot; sent because you registered for this event.</p>',
+    '</div>'
+  ].join('');
+}
+
+function plainText(t) {
+  return 'Hi ' + t.name + ',\n\n' +
+         'You are registered for ' + t.event + '.\n\n' +
+         'Ticket code: ' + t.code + '\n\n' +
+         'Show this at the door.\n\nFacerinna';
+}
+
+// ------------------------------------------------------------- check-in
+
+/**
+ * Call with a scanned code to mark someone present. Returns a short result
+ * you can show on the scanning device.
+ *
+ * Deliberately refuses a second check-in rather than silently allowing it:
+ * a code being presented twice is the thing the door needs to know about.
+ */
+function checkIn(code) {
+  code = String(code || '').trim().toUpperCase();
+  if (!code) return { ok: false, message: 'No code' };
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  var ticketCol = headers.indexOf(CONFIG.OUT.ticket);
+  var inCol     = headers.indexOf(CONFIG.OUT.checkedIn);
+  var nameCol   = headers.indexOf(CONFIG.FIELDS.name);
+  if (ticketCol === -1 || inCol === -1) return { ok: false, message: 'Run setup() first' };
+
+  var last = sheet.getLastRow();
+  if (last < 2) return { ok: false, message: 'No registrations yet' };
+
+  var rows = sheet.getRange(2, 1, last - 1, sheet.getLastColumn()).getValues();
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][ticketCol] || '').trim().toUpperCase() !== code) continue;
+    var who = nameCol === -1 ? '' : String(rows[i][nameCol] || '');
+    if (String(rows[i][inCol] || '').trim()) {
+      return { ok: false, message: 'Already checked in', name: who, at: rows[i][inCol] };
+    }
+    sheet.getRange(i + 2, inCol + 1).setValue(new Date());
+    return { ok: true, message: 'Welcome', name: who };
+  }
+  return { ok: false, message: 'Code not found' };
+}
+
+// ------------------------------------------------------------------ bits
+
+/**
+ * Two groups of four from an alphabet with no O/0 or I/1, because these get
+ * read aloud and typed in by hand at a busy door.
+ */
+function makeCode() {
+  var abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var out = '';
+  for (var i = 0; i < 8; i++) {
+    if (i === 4) out += '-';
+    out += abc.charAt(Math.floor(Math.random() * abc.length));
+  }
+  return CONFIG.CODE_PREFIX + '-' + out;
+}
+
+function isEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v || '').trim());
+}
+
+function escapeHtml(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Sends one ticket to yourself so you can see it before the event does. */
+function sendTestTicket() {
+  sendTicket({
+    to: Session.getEffectiveUser().getEmail(),
+    name: 'Test',
+    event: 'PDM AGM',
+    code: makeCode()
+  });
+}
