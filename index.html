@@ -89,6 +89,7 @@ body.slides .slide-fit .wrap{max-width:calc(var(--maxw) / min(1, var(--k,1)))}
 .nav-in .tv-btn{top:13px}
 .nav-in .burger{top:9px}
 @media(max-width:1060px){.nav-in .tv-btn{right:70px}}
+}
 
 /* ── COLLAPSING NAV ───────────────────────────────────────────────────
    The animated-nav component's behaviour, applied to the header this page
@@ -167,7 +168,7 @@ body.space-theme .nav-pill-icon span{background:#F1F5FB}
    puts the pair on the same visual rhythm as the links, and the rule makes
    them read as one lockup rather than two logos that happen to be adjacent. */
 .nav-lockup{display:flex;align-items:center;gap:13px;flex:0 0 auto}
-.brand{flex:0 0 auto;padding-right:0;position:relative}
+.brand{flex:0 0 auto;padding-right:0;padding-block:9px;position:relative}
 .brand{display:flex;align-items:center;text-decoration:none}
 .logo-img{height:32px;width:auto;display:block}
 /* the partner lockup that sits beside the brand: a caption stacked over the
@@ -198,6 +199,31 @@ body.space-theme .nav-trust-logo{background:rgba(255,255,255,.94);border-radius:
   .brand{padding-right:12px}.nav-in{gap:10px}.tv-btn{margin-left:6px}
   .nav-trust{padding-left:9px}.nav-lockup{gap:9px}.nav-trust-logo{height:16px}
   .nav-trust-note{font-size:.48rem;letter-spacing:.12em}}
+/* Centring the lockup measures it alone, so as the screen narrows it walks
+   right underneath the TV button and the burger — 2px of overlap at 441,
+   37px at 320. Aligning the row left instead spends the space the centring
+   was wasting; the collapsed pill keeps its own centring because
+   body.nav-collapsed .nav-in outranks a media query. These must sit after
+   the 1240px block: equal specificity, so source order decides. */
+@media(max-width:480px){.nav-in{justify-content:flex-start;padding-right:104px}}
+/* Left-alignment alone runs out below ~356px, so the lockup itself tightens.
+   The partner mark is capped by width rather than height because it is a
+   wordmark five times wider than it is tall. */
+@media(max-width:380px){
+  .nav-lockup{gap:8px}
+  .logo-img{height:22px}
+  .nav-trust{padding-left:8px}
+  .nav-trust-logo{height:14px;max-width:70px;object-fit:contain}
+  .nav-trust-note{font-size:.44rem;letter-spacing:.08em}
+}
+/* 320px is the last 4px short. The partner mark is not dropped — the brand
+   strip carries no alt text, so the nav may be the only place it is
+   credited — it is just tightened again for the smallest phones only. */
+@media(max-width:336px){
+  .nav-lockup{gap:5px}
+  .nav-trust{padding-left:5px}
+  .nav-trust-logo{max-width:64px}
+}
 .tv-btn{margin-left:10px;width:38px;height:38px;flex:0 0 auto;border-radius:10px;border:1px solid var(--line);
   background:var(--surface);color:var(--brand-deep);font-size:1.05rem;line-height:1;cursor:pointer;transition:.2s}
 .tv-btn:hover{background:var(--brand-soft);transform:scale(1.06)}
@@ -716,6 +742,10 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 @media(max-width:700px){.shelf-bg{top:10px;left:10px}
   .shelf-bg button{min-width:0;padding:0 10px;height:36px;font-size:.72rem}}
 @media(max-width:700px){.shelf-stage{height:70vh;min-height:420px}.shelf-nav{width:40px;height:40px;font-size:1.25rem}}
+/* 40 + 240 + 40 plus two 18px gaps does not fit a 320px phone, and the 18px
+   it overran was enough to make the whole document scroll sideways. The
+   label has no need of a floor once there is no room for one. */
+@media(max-width:380px){.shelf-controls{gap:10px}.shelf-label{min-width:0;flex:1 1 auto}}
 /* one line, scrolling sideways rather than wrapping to a second row */
 .range-filters{display:flex;gap:9px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
   margin-bottom:38px;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -1592,7 +1622,7 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
 .footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:34px}
 .footer .brand{color:#fff}
 .footer h4{font-family:'Inter';font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--brand);margin:0 0 14px}
-.footer a{color:#BCD2E6;text-decoration:none;font-size:.9rem;display:block;margin-bottom:9px;transition:.2s}
+.footer a{color:#BCD2E6;text-decoration:none;font-size:.9rem;display:block;padding:6px 0;margin-bottom:3px;transition:.2s}
 .footer a:hover{color:#fff}
 .footer .fine{border-top:1px solid rgba(255,255,255,.12);margin-top:34px;padding-top:20px;font-size:.78rem;color:#8FA9C0;
   display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
