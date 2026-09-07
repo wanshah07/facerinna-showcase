@@ -316,6 +316,17 @@ body.slides > section,body.slides > footer{
    its hero art is meant to reach the edges. */
 body.slides > section:not(#top),body.slides > footer{padding-left:92px;padding-right:92px}
 body.slides .slide-fit{width:calc(100% / var(--k,1));transform:scale(var(--k,1));transform-origin:0 0}
+/* The wrapper is created once and never removed, on the claim that it is
+   layout-neutral while --k is 1. That is true inside a block parent and FALSE
+   inside a flex one. #top is a flex column whose stage shrinks to fit the
+   section; wrapping its children makes them one flex item, the stage then
+   takes its full calc() height inside it, and the hero grew 979px inside an
+   836px section -- the marquee band landing on the range heading below. That
+   is what leaving full screen looked like. display:contents removes the
+   wrapper from layout entirely, so the children are flex items of the section
+   again, which is the neutrality the comment assumed. The two selectors are
+   mutually exclusive, so source order cannot decide this one. */
+body:not(.slides) .slide-fit{display:contents}
 /* the shelf is 100vh in normal flow, which would overflow its own slide */
 body.slides .shelf-stage{height:calc(100vh - var(--slide-top) - 290px);min-height:220px;max-height:none}
 body.slides-v{height:100vh;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;scroll-behavior:smooth}
@@ -1728,6 +1739,9 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
       <a href="#gallery" class="nav-lk">Gallery</a>
       <a href="#clinic" class="nav-lk">Clinic Activation</a>
       <a href="#qrcore" class="nav-lk">QR Code</a>
+      <!-- A page of its own, not a section: nav-ext keeps it out of the
+           scrollspy, which matches on "#"+id and would only ever clear it. -->
+      <a href="events/" class="nav-ext">Events</a>
       <a href="#game" class="nav-cta">Play &amp; Win</a>
     </nav>
     <button class="tv-btn" id="tvBtn" type="button" aria-label="Full screen TV mode" title="Full screen (TV mode)">⛶</button>
