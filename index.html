@@ -5777,9 +5777,10 @@ function launchConfetti(){
     name:'Clinic Partnership Brochure',
     read:'brochure',
     url:'clinic-partnership-brochure.pdf',
-    sheets:[BASE+'bro-sheet-out.webp', BASE+'bro-sheet-in.webp'].map(docAsset),
-    panels:[BASE+'bro-out-1.webp', BASE+'bro-out-2.webp', BASE+'bro-out-3.webp',
-            BASE+'bro-in-1.webp',  BASE+'bro-in-2.webp',  BASE+'bro-in-3.webp'].map(docAsset)
+    /* One sheet now, not two. The second face of the old print was a product
+       catalogue carrying retail prices, and this is a public page. */
+    sheets:[BASE+'bro-sheet-out.webp'].map(docAsset),
+    panels:[BASE+'bro-out-1.webp', BASE+'bro-out-2.webp', BASE+'bro-out-3.webp'].map(docAsset)
   };
   var thumb=document.getElementById('flyerThumb');
   var view=document.getElementById('flyerView');
