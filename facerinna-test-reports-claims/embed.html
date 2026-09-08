@@ -1193,7 +1193,7 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
     <div class="fine">
       <span>© 2026 FACERINNA® · Internal Regulatory Affairs reference. Not for external distribution.</span>
       <span id="footerSync">Loading data…</span>
-      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-08 · 8239b87</span>
+      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-08 · 66338e7</span>
 
     </div>
   </div>
@@ -1295,11 +1295,56 @@ async function sbSendMagicLink(email){
   const r = await fetch(SUPABASE_URL+'/auth/v1/otp?redirect_to='+encodeURIComponent(back), {
     method:'POST',
     headers:{'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-    /* no sign-up: an address that is not already a user gets nothing, so the
-       form cannot be used to create accounts on the project. */
-    body: JSON.stringify({email:email, create_user:false, redirect_to:back})
+    /* Sign-up is allowed, and the allow-list is what decides access.
+
+       This was create_user:false, on the reasoning that refusing accounts to
+       strangers is safer. It bought nothing and cost the whole flow:
+
+       - A stranger who signs up gets a session and sees NOTHING. `authenticated`
+         is granted SELECT on four tables and every one of them is gated by
+         is_allowed_viewer(); it holds no write grant anywhere, and `anon` has no
+         SELECT at all. RLS is the boundary, not whether an account exists.
+       - It made allowed_viewers a half-truth. A row there is meant to be the
+         whole of someone's access; with create_user:false it granted nothing
+         until somebody was also invited by hand, so every viewer needed two
+         actions in two places and a missed one failed with a bare 422.
+       - It leaked MORE than it protected: 422 for an unknown address against
+         200 for a known one tells anyone who asks which addresses have accounts
+         here. Allowing sign-up makes the answer uniform.
+
+       What it does require is discipline in the database: anything added to the
+       `public` schema later needs RLS and no blanket grant to `authenticated`,
+       or someone who signed up reaches it. */
+    body: JSON.stringify({email:email, create_user:true, redirect_to:back})
   });
-  if(!r.ok) throw new Error('could not send the link ('+r.status+')');
+  if(!r.ok){
+    /* GoTrue puts the reason in the body; the status alone does not carry it.
+       A bare "(422)" sent me looking in the wrong place once already -- at
+       least three different conditions return 422 here and they need three
+       different actions, so show what the server actually said. */
+    var code='', msg='';
+    try{ var j = await r.json();
+         code = j.error_code || j.code || '';
+         msg  = j.msg || j.message || j.error_description || ''; }catch(e){}
+    var plain = {
+      /* Reachable now only if email sign-in is switched off at the project, or
+         the Email provider is disabled entirely -- not by an unknown address,
+         since sign-up is allowed. */
+      otp_disabled:
+        'email sign-in is switched off for this project. Tell Wan.',
+      /* The default Supabase mail service only delivers to members of the
+         Supabase organisation. Anyone else needs custom SMTP. */
+      email_address_not_authorized:
+        'the project is still on Supabase\'s built-in mail service, which only '
+        + 'delivers to your Supabase organisation. Sending to this address '
+        + 'needs a custom SMTP provider.',
+      validation_failed: 'that does not look like a valid email address.',
+      over_email_send_rate_limit: 'too many requests. Try again in a few minutes.',
+      over_request_rate_limit: 'too many requests. Try again in a few minutes.'
+    }[code];
+    throw new Error(plain || (msg ? msg + ' (' + r.status + ')'
+                                  : 'could not send the link (' + r.status + ')'));
+  }
 }
 
 async function sbSelect(table){
