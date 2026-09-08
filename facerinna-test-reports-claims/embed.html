@@ -112,8 +112,8 @@
 /* ============================================================
    FACERINNA — Test Reports & Claims Vault (v3)
    Theme matches the official FACERINNA showcase (facerinna-agm.html).
-
-   ) — tabs are auto-detected by
+   Live data: FACERINNA_Test_Report_Claims_Matrix (Google Sheet
+   15eD6XtMVN1BRm41cD9wm33QMwW16R5sS) — tabs are auto-detected by
    header row, so gid order never breaks the page.
    ============================================================ */
 
@@ -1193,14 +1193,24 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
     <div class="fine">
       <span>© 2026 FACERINNA® · Internal Regulatory Affairs reference. Not for external distribution.</span>
       <span id="footerSync">Loading data…</span>
-      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-08 · 62aff89</span>
+      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-08 · e1dda09</span>
 
     </div>
   </div>
 </footer>
 
 <script>
-/* The workbook transport is stripped from this copy. */
+/* ============================================================
+   LIVE DATA — FACERINNA_Test_Report_Claims_Matrix
+   Sheet: https://docs.google.com/spreadsheets/d/15eD6XtMVN1BRm41cD9wm33QMwW16R5sS/edit
+   CSV endpoints (verified live, HTTP 200 text/csv, anonymous — 22 Aug 2026):
+     Test Reports & Claims    → …/export?format=csv&gid=378921450
+     Generic Claims by Series → …/export?format=csv&gid=610219740
+     SKU Index                → …/export?format=csv&gid=1440505952
+   Each fetched CSV is still identified by its header row (not by
+   gid order), so tab reordering in the sheet never breaks the page.
+   Data auto-refreshes every 3 minutes while the page is open.
+   ============================================================ */
 /* Two independent switches, both set by build-public.js:
      PUBLIC_BUILD — hide links to internal source documents (report PDFs,
        claims artwork). Safe to use with live data.
@@ -1209,14 +1219,14 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
        recovered by reading it. Costs live sync. */
 const PUBLIC_BUILD = true;
 const OFFLINE_DATA = false;
-const SHEET_ID = "";
-const SHEET_EDIT_URL = `${SHEET_ID}/edit`;
+const SHEET_ID = "15eD6XtMVN1BRm41cD9wm33QMwW16R5sS";
+const SHEET_EDIT_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
 /* every source has two Google CSV endpoints:
    url — /export?format=csv (redirects to googleusercontent, CORS ok)
    alt — /gviz/tq?tqx=out:csv (served directly, no redirect) — used
    automatically whenever the primary endpoint fails in this browser */
-const csvUrl  = (id,gid) => `${id}/export?format=csv&gid=${gid}`;
-const gvizUrl = (id,gid) => `${id}/gviz/tq?tqx=out:csv&gid=${gid}`;
+const csvUrl  = (id,gid) => `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+const gvizUrl = (id,gid) => `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}`;
 const CSV_SOURCES = [
   {label:"Test Reports & Claims",    id:SHEET_ID, gid:"378921450",  url:csvUrl(SHEET_ID,"378921450"),  alt:gvizUrl(SHEET_ID,"378921450")},
   {label:"Generic Claims by Series", id:SHEET_ID, gid:"610219740",  url:csvUrl(SHEET_ID,"610219740"),  alt:gvizUrl(SHEET_ID,"610219740")},
@@ -1225,7 +1235,7 @@ const CSV_SOURCES = [
 /* product thumbnails + per-product source links come from the dashboard's
    FACERINNA product sheet (native Google Sheet, columns: Image URL,
    Product Name, SKU Code, Test Report URL, Claims URL) */
-const THUMB_SHEET_ID = "";
+const THUMB_SHEET_ID = "1F1zDeTnSrfZ7j7bIu7FfiHRW0eoXu3_n4NjFAmnWBfE";
 const THUMB_SOURCE = {label:"Product Images", id:THUMB_SHEET_ID, gid:"524451717",
   url:csvUrl(THUMB_SHEET_ID,"524451717"), alt:gvizUrl(THUMB_SHEET_ID,"524451717")};
 const REFRESH_MS = 3 * 60 * 1000;   // auto-refresh every 3 minutes
@@ -1249,8 +1259,35 @@ const REFRESH_MS = 3 * 60 * 1000;   // auto-refresh every 3 minutes
    decorative. The build empties those arrays as soon as SUPABASE_URL is set,
    and refuses to publish if any survive -- that guard is the half that
    actually closes it. */
-const SUPABASE_URL      = "https://dqwuhhhfwdnrvnfrrhre.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxd3VoaGhmd2RucnZuZnJyaHJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NTMwNTYsImV4cCI6MjEwMzUyOTA1Nn0.gB5nkh1D-qIBNm-Xe0ivm0wfbEHf_4KVyS2D6Tn83IQ";
+/* OFF at Wan's request. The vault reads the workbooks and this page is open to
+   anyone holding its address, which is where it stood before the lock existed.
+
+   Everything behind these two lines is still in place and still proved: the
+   schema, all 152 rows, the allow-list, the RLS policies, the build guards and
+   the sign-in card. Nothing was dismantled to turn it off, and nothing needs
+   rebuilding to turn it back on -- put these two values into the constants
+   below and the next publish is locked again. They are written without the
+   `const ... = "..."` around them on purpose: vaultLocked() in build-public.js
+   reads this file to decide whether the vault is on, and a comment carrying
+   that exact shape is indistinguishable from the real thing. It matched this
+   comment on the first attempt and built a locked copy from an unlocked page.
+
+     SUPABASE_URL       https://dqwuhhhfwdnrvnfrrhre.supabase.co
+     SUPABASE_ANON_KEY  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
+                        YmFzZSIsInJlZiI6ImRxd3VoaGhmd2RucnZuZnJyaHJlIiwicm9sZ
+                        SI6ImFub24iLCJpYXQiOjE3ODc5NTMwNTYsImV4cCI6MjEwMzUyOT
+                        A1Nn0.gB5nkh1D-qIBNm-Xe0ivm0wfbEHf_4KVyS2D6Tn83IQ
+                        (one line, no spaces -- wrapped here only to fit)
+
+   Before doing that, sort custom SMTP: on the built-in mail service Supabase
+   only delivers to members of the Supabase organisation, so anyone else asking
+   for a sign-in link gets 422 and no email. That is what stopped it this time.
+
+   The anon key sits here in the clear because it is not a secret -- it names
+   the project and is what every Supabase browser client ships. The service
+   role key must NEVER appear in this file; it bypasses RLS. */
+const SUPABASE_URL      = "";
+const SUPABASE_ANON_KEY = "";
 const VAULT_LOCKED = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 const SB_SESSION_KEY = 'fx.vault.session';
@@ -1461,7 +1498,7 @@ function fetchJsonpRows(id, gid, timeoutMs){
     window[cb] = payload =>{ if(settled) return; settled = true; cleanup();
       try{ resolve(gvizToRows(payload)); }catch(e){ reject(e); } };
     s.onerror = ()=>{ if(!settled){ settled=true; cleanup(); reject(new Error('script blocked')); } };
-    s.src = `${id}/gviz/tq`
+    s.src = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq`
           + `?tqx=out:json;responseHandler:${cb}&gid=${gid}&cacheBust=${Date.now()}`;
     document.head.appendChild(s);
   });
