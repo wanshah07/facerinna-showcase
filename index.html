@@ -3534,6 +3534,19 @@ const GALLERY_DOCS = [
      to the window's edge comes out tiny and the spread collapses — which is
      exactly what the fan did in horizontal full screen, 203px of card on card
      at 1920. Off the screen, the last answer stands. */
+  /* Two different questions used to be one function. Measuring this fan needs
+     only a box with a size. The rest -- is it horizontally centred, is 80% of
+     it seen -- is the deck asking "is this the slide on screen", which matters
+     when slides sit side by side and one is still sliding into place. Off the
+     deck those same tests only mean "the visitor has not scrolled down here
+     yet", and refusing to measure then is what let the fan deal itself
+     un-fitted: leaving the deck runs render(), calibrate() bailed, and the
+     outer card landed 98px past the right edge of a 320px phone. */
+  function measurable(){
+    const r=layout.getBoundingClientRect();
+    return !!(r.width && r.height);
+  }
+
   function onScreen(){
     const r=layout.getBoundingClientRect();
     if(!r.width || !r.height) return false;
@@ -3545,7 +3558,11 @@ const GALLERY_DOCS = [
   }
 
   function calibrate(){
-    if(!cards.length || !onScreen()) return;
+    if(!cards.length || !measurable()) return;
+    /* In the deck the stricter test still applies: a slide that is not the
+       one on screen is scaled and mid-transition, and measuring it reads a
+       geometry that is about to change. */
+    if(document.body.classList.contains('slides') && !onScreen()) return;
     const held=hovered;
     hovered=null;
     layout.classList.add('measuring');
@@ -3682,6 +3699,16 @@ const GALLERY_DOCS = [
   addEventListener('resize', function(){
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(function(){ calibrate(); }, 120);
+  });
+
+  /* Leaving the deck re-lays this fan out without changing the window, so no
+     resize fires and nothing re-fits it. With calibrate() able to measure off
+     screen the fix is simply to run it, once the deck has stopped moving --
+     it re-fits at 180ms and again at 600ms after this event, and measuring
+     between those two reads a geometry that is still settling. */
+  addEventListener('facerinna:tvchange', function(){
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(function(){ calibrate(); }, 700);
   });
 
   // The fan deals itself in when it first comes into view, not on load —
