@@ -477,6 +477,8 @@ footer{margin:56px 0 0;padding:22px 0 40px;border-top:1px solid var(--line);
   .feed{margin-left:0;width:100%}
 }
 </style>
+<!-- The banner images come from Drive; open that connection early. -->
+<link rel="preconnect" href="https://drive.google.com">
 </head>
 <body>
 
@@ -556,7 +558,7 @@ var FALLBACK = [
   time:"8.00 am - 5.30 pm",location:"PWCC Penang",
   highlight:"Exclusive sharing with Dr. Peter",highlight_time:"1.15 pm - 2.00 pm",
   details:"Persatuan Dermatologi Malaysia Annual General Meeting. Topic to be confirmed.",
-  image_url:"",action_label:"Visit the booth",action_url:""},
+  image_url:"https://drive.google.com/file/d/1VK7_LaA4u5sLdjzPR9wnF5cVehnHuOwu/view",action_label:"Visit the booth",action_url:""},
  {show:"TRUE",event:"Career Growth - UKM",brand:"Facerinna",start_date:"2026-10-06",end_date:"2026-10-06",
   time:"9.00 am - 4.00 pm",location:"UKM",
   highlight:"World Pharmacist Day 2026 Celebration",highlight_time:"",
@@ -570,7 +572,7 @@ var FALLBACK = [
   start_date:"2026-12-01",end_date:"2026-12-06",time:"10.00 am - 10.00 pm",
   location:"One Utama (Infront Royal Selangor, Level Ground Floor, West Wing near ALDO)",
   highlight:"Grand Opening 2 December",highlight_time:"1.00 pm - 4.00 pm",
-  details:"",image_url:"",action_label:"Find out more",action_url:""},
+  details:"",image_url:"https://drive.google.com/file/d/1o3HxepMpffI19tTNcHtBbQWcLm0kd7TN/view",action_label:"Find out more",action_url:""},
  {show:"TRUE",event:"Suunto Half Marathon 2026",brand:"Suunto",start_date:"",end_date:"",
   time:"",location:"The Starling Mall, Petaling Jaya",
   highlight:"Race categories 21KM + 10KM",highlight_time:"",
@@ -766,7 +768,15 @@ function safeUrl(u){
 function driveImage(u){
   var m = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^#]*&)?id=|thumbnail\?(?:[^#]*&)?id=)([\w-]{20,})/)
        || u.match(/drive\.google\.com\/[^\s]*[?&]id=([\w-]{20,})/);
-  return m ? "https://drive.google.com/thumbnail?id="+m[1]+"&sz=w1600" : u;
+  /* Ask for what the screen can actually show. The banner is at most 476 CSS
+     px wide (measured across 320..1920), so 952 device px on the DPR-2 phones
+     most of this traffic is. A flat w1600 asked Drive for 2.8x the pixels of a
+     DPR-2 card and then waited for them -- and that wait is the gap where the
+     card sits on its gradient. Clamped at 1600 so a DPR-3 phone still gets a
+     sharp one. */
+  var want = (typeof devicePixelRatio==='number' && devicePixelRatio>2) ? 1600
+           : (typeof devicePixelRatio==='number' && devicePixelRatio>1) ? 1024 : 800;
+  return m ? "https://drive.google.com/thumbnail?id="+m[1]+"&sz=w"+want : u;
 }
 /* Rewrite first, then validate: a javascript: value never matches the Drive
    pattern, so it reaches safeUrl unchanged and is dropped there. */
