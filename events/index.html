@@ -190,23 +190,22 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .card.past{opacity:.72}
 .card.past:hover{opacity:1}
 
-.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
-/* min-width:0 on the text side: a flex item defaults to min-width:auto and
-   would refuse to shrink below its longest word, pushing the date block off
-   a narrow phone. The same fault cost a 320px overflow on the vault page. */
-.card-head .lede{flex:1 1 auto;min-width:0}
+/* The head is a plain block now that the date has moved into the meta list.
+   .lede carried min-width:0 to stop it shoving the date block off a narrow
+   phone; with nothing beside it that rule does nothing at all, and what
+   actually keeps a long unbroken event name inside the card is the
+   overflow-wrap below. */
 .card-head h4{margin:0;font-size:1.12rem;font-weight:700;line-height:1.3;
   font-family:'Fraunces',Georgia,serif;overflow-wrap:anywhere}
 .card-head .brandline{margin:5px 0 0;font-size:.82rem;color:var(--ink-2);line-height:1.45}
 
-.datebox{flex:0 0 auto;text-align:right;min-width:0}
-.datebox .dow{margin:0;font-size:.66rem;font-weight:700;letter-spacing:.16em;color:var(--muted)}
-.datebox .dm{margin:2px 0 0;font-size:clamp(1.5rem,4.6vw,2rem);font-weight:700;line-height:1.05;
-  white-space:nowrap;font-family:'Fraunces',Georgia,serif}
-.datebox .dm .mon{font-size:.62em;margin-right:.34em;color:var(--ink-2);letter-spacing:.02em}
-.datebox .thru{margin:2px 0 0;font-size:.7rem;color:var(--muted);white-space:nowrap}
-.datebox .tbc{margin:0;font-size:.72rem;font-weight:600;color:var(--muted);
-  letter-spacing:.06em;text-transform:uppercase;line-height:1.4;text-align:right}
+/* The date is a meta row now, so it wants the weight of a fact rather than
+   the weight of a headline: same size as the venue above it, ink rather than
+   the muted grey the other rows use, so the eye still stops on it. The old
+   .datebox rules went with the block -- nothing renders that class any
+   more, and leaving dead selectors behind is how a stylesheet stops being
+   readable. */
+.meta .row.when span{color:var(--ink);font-weight:600}
 
 .banner{margin:18px 0;aspect-ratio:16/9;width:100%;border-radius:12px;overflow:hidden;
   position:relative;background:linear-gradient(130deg,var(--brand-soft),var(--surface-2))}
@@ -727,6 +726,24 @@ function safeUrl(u){
   }catch(e){ return ""; }
 }
 
+/* A Google Drive "share" link is a viewer PAGE, not an image. Pasting one
+   into image_url hands <img> an HTML document, the load fails, and the card
+   falls back to the brand gradient -- which is exactly what happened to the
+   PDM AGM and Guardian rows, and it looks like the page ignoring the cell
+   rather than the link being the wrong kind. The file id is right there in
+   the link and Drive serves the file itself from /thumbnail, so read the id
+   out and ask for that instead. The file still has to be shared "Anyone with
+   the link"; a private file returns a sign-in page and the gradient is back.
+   Anything that is not a Drive link passes through untouched. */
+function driveImage(u){
+  var m = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^#]*&)?id=|thumbnail\?(?:[^#]*&)?id=)([\w-]{20,})/)
+       || u.match(/drive\.google\.com\/[^\s]*[?&]id=([\w-]{20,})/);
+  return m ? "https://drive.google.com/thumbnail?id="+m[1]+"&sz=w1600" : u;
+}
+/* Rewrite first, then validate: a javascript: value never matches the Drive
+   pattern, so it reaches safeUrl unchanged and is dropped there. */
+function imageUrl(u){ return safeUrl(driveImage(String(u==null?"":u).trim())); }
+
 function esc(s){ return String(s==null?"":s)
   .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
   .replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
@@ -736,25 +753,27 @@ var CLK='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="
 var CAL='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
 var PPL='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>';
 
-function dateBlock(a,b){
-  if(!a) return '<p class="tbc">Date<br>not<br>fixed</p>';
-  var same = !b || a.getTime()===b.getTime();
-  var h = '<p class="dow">'+esc(DOW[a.getDay()].toUpperCase())+'</p>'
-        + '<p class="dm"><span class="mon">'+MON[a.getMonth()]+'</span>'+a.getDate()+'</p>';
-  if(!same){
-    var thru = (a.getMonth()===b.getMonth())
-      ? "through "+b.getDate()+" "+MON[b.getMonth()]
-      : "through "+b.getDate()+" "+MON[b.getMonth()];
-    h += '<p class="thru">'+esc(thru)+'</p>';
-  }
-  return h;
+/* The date used to sit top-right of the card, opposite the title, as a big
+   stacked block. It reads better as the first fact under the venue: a card is
+   scanned "what / where / when", and the head is left with one job. Same
+   information, one line, in the same icon list as the venue and the hours --
+   the big numerals were competing with the event name for the top of the
+   card. */
+function dateLine(a,b){
+  if(!a) return 'Date not fixed';
+  var one = DOW[a.getDay()]+', '+a.getDate()+' '+MON[a.getMonth()];
+  if(!b || a.getTime()===b.getTime()) return one;
+  /* Same month or not, the end still carries its month: "10 - 13 Sep" saves
+     three characters and costs the reader a guess on a range that crosses
+     one. */
+  return one+' \u2013 '+b.getDate()+' '+MON[b.getMonth()];
 }
 
 function card(e, today, i){
   var a=parseDate(e.start_date), b=parseDate(e.end_date);
   if(a && b && b < a) b = a;              /* a typo in the sheet must not invert a range */
   var st=statusOf(a,b,today);
-  var img = safeUrl(e.image_url), link = safeUrl(e.action_url);
+  var img = imageUrl(e.image_url), link = safeUrl(e.action_url);
   var art = img
     ? '<img src="'+esc(img)+'" alt="'+esc(e.event)+'" loading="lazy" data-brand="'
       + esc(e.brand || "Facerinna")+'">'
@@ -788,6 +807,7 @@ function card(e, today, i){
 
   var meta='';
   if(e.location) meta += '<div class="row">'+PIN+'<span>'+esc(e.location)+'</span></div>';
+  meta += '<div class="row when">'+CAL+'<span>'+esc(dateLine(a,b))+'</span></div>';
   if(e.time)     meta += '<div class="row">'+CLK+'<span>'+esc(e.time)+'</span></div>';
   /* Only shown when the sheet carries the column. An attendee count is not
      something to invent for a card that a clinic partner will read. */
@@ -836,7 +856,6 @@ function card(e, today, i){
     +   '<div class="lede"><h4>'+esc(e.event)+'</h4>'
     +     (e.brand ? '<p class="brandline">'+esc(e.brand)+'</p>' : '')
     +   '</div>'
-    +   '<div class="datebox">'+dateBlock(a,b)+'</div>'
     + '</div>'
     + '<div class="banner'+(img?'':' ph')+'">'+art+tag+urgent+'</div>'
     + (meta ? '<div class="meta">'+meta+'</div>' : '')
