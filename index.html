@@ -5268,19 +5268,29 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     GAMES.forEach(function(g){
       const rows=bests(g.id);
       leaders.push({game:g, top:rows[0]||null});
+      /* `at` is WHEN this person finished assembling their total: the latest
+         of the runs that count for them. Two people level on points are
+         separated by who got there first, which is the same rule each game's
+         own board already uses on a tied score — a board that breaks ties one
+         way in the top half and another way in the bottom is a board nobody
+         can argue with at the counter.
+
+         A row with no usable timestamp goes to Infinity rather than 0, so a
+         missing value loses a tie instead of quietly winning every one. */
+      const when=r=>(typeof r.t==='number' && isFinite(r.t) && r.t>0) ? r.t : Infinity;
       rows.slice(0,TOP).forEach(function(r,i){
-        const p=people.get(r.n)||{n:r.n, pts:0, played:0, best:{}};
-        p.pts+=TOP-i; p.played++; p.best[g.id]=r.s;
+        const p=people.get(r.n)||{n:r.n, pts:0, played:0, best:{}, at:0};
+        p.pts+=TOP-i; p.played++; p.best[g.id]=r.s; p.at=Math.max(p.at, when(r));
         people.set(r.n,p);
       });
       /* played but outside the top five still counts as played */
       rows.slice(TOP).forEach(function(r){
-        const p=people.get(r.n)||{n:r.n, pts:0, played:0, best:{}};
-        p.played++; p.best[g.id]=r.s;
+        const p=people.get(r.n)||{n:r.n, pts:0, played:0, best:{}, at:0};
+        p.played++; p.best[g.id]=r.s; p.at=Math.max(p.at, when(r));
         people.set(r.n,p);
       });
     });
-    const list=[...people.values()].sort((a,b)=>b.pts-a.pts||b.played-a.played);
+    const list=[...people.values()].sort((a,b)=>b.pts-a.pts||b.played-a.played||a.at-b.at);
     return {list, leaders};
   }
 
@@ -5306,13 +5316,24 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
       'Top spot in a game is worth 5, fifth is worth 1.';
 
     let html='<div class="rank-sub">Overall</div>';
-    list.slice(0,TOP).forEach(function(p,i){
+    const shown=list.slice(0,TOP);
+    shown.forEach(function(p,i){
       html+='<div class="rank-row'+(i===0?' lead':(i%2?' alt':''))+'">'+
         '<span class="rp">'+(i+1)+'</span>'+
         '<span class="rn">'+esc(p.n)+'</span>'+
         '<span class="rg">'+p.played+' of '+GAMES.length+'</span>'+
         '<span class="rv">'+p.pts+' pts</span></div>';
     });
+    /* Only when there IS one. A tie broken silently reads as arbitrary to
+       somebody standing at the counter looking at two identical scores, and
+       the answer to "why is that one above me" should be on the board rather
+       than needing a person to explain it. */
+    const tied=shown.some(function(p,i){
+      const q=shown[i-1];
+      return q && q.pts===p.pts && q.played===p.played;
+    });
+    if(tied) html+='<p class="rank-note">Level on points and games? Whoever '+
+      'got there first is placed higher.</p>';
 
     html+='<div class="rank-sub">Holding each game</div>';
     leaders.forEach(function(l){
