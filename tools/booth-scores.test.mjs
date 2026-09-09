@@ -116,6 +116,23 @@ mod.hideAllSoFar();
 check('board empties',                   get({game:'match-lab'}).rows.length === 0);
 check('rows still in the sheet',         sheet.rows.length === before);
 
+console.log('\ntimestamps survive the round trip');
+/* The booth board breaks a tie on points with whoever got there first, and it
+   reads that time out of these rows. If doGet ever dropped `t` the tie would
+   quietly go back to being arbitrary while every page-side test still passed,
+   because those supply their own timestamps. */
+{
+  cacheStore.clear(); sheet.rows.length = 1;              // headers only
+  post({game:'deep-lab', name:'Early', score:10});
+  const rows = get({game:'deep-lab'}).rows;
+  check('rows come back with a timestamp',
+        rows.length === 1 && typeof rows[0].t === 'number' && rows[0].t > 0);
+  cacheStore.clear();                                 // and from a cold cache too
+  const cold = get({game:'deep-lab'}).rows;
+  check('still there when read from the sheet',
+        cold.length === 1 && typeof cold[0].t === 'number' && cold[0].t > 0);
+}
+
 console.log('\nthe rule matches the page');
 /* the page's own bests(), copied out of index.html */
 function pageBests(rows){
