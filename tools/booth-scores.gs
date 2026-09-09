@@ -149,43 +149,106 @@ function doGet(e) {
     var p   = (e && e.parameter) || {};
     var top = Math.min(parseInt(p.top, 10) || 5, 50);
 
+    var b = boards_();
+
     if (p.all) {
       var all = {};
-      var rows = readAll_();
-      for (var id in GAMES) all[id] = bests_(rows[id] || []).slice(0, top);
+      for (var id in GAMES) all[id] = (b[id] ? b[id].rows : []).slice(0, top);
       return json_({ ok: true, games: all, at: Date.now() });
     }
 
-    var id = String(p.game || '');
-    if (!GAMES[id]) return json_({ ok: false, error: 'unknown game' });
-    var one = bests_((readAll_()[id]) || []);
-    return json_({ ok: true, game: id, rows: one.slice(0, top), players: one.length, at: Date.now() });
+    var one = String(p.game || '');
+    if (!GAMES[one]) return json_({ ok: false, error: 'unknown game' });
+    var g = b[one] || { rows: [], n: 0 };
+    return json_({ ok: true, game: one, rows: g.rows.slice(0, top), players: g.n, at: Date.now() });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
   }
 }
 
 /* Every visible row, bucketed by game. One read of the whole sheet, because
-   getValues() once is far cheaper than five filtered reads. */
+   getValues() once is far cheaper than five filtered reads.
+
+   Columns 2..7 only (ts, game, name, score, device, hidden). The user-agent
+   column is the widest thing in the sheet and nothing here reads it. */
 function readAll_() {
   var sh = tab_();
   var last = sh.getLastRow();
   var out = {};
   if (last < 2) return out;
 
-  var vals = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  var vals = sh.getRange(2, 2, last - 1, 6).getValues();   /* ts .. hidden */
   for (var i = 0; i < vals.length; i++) {
     var r = vals[i];
-    if (r[6] === true || String(r[6]).toUpperCase() === 'TRUE') continue;  /* hidden */
-    var id = String(r[2]);
+    if (r[5] === true || String(r[5]).toUpperCase() === 'TRUE') continue;  /* hidden */
+    var id = String(r[1]);
     if (!GAMES[id]) continue;
     (out[id] = out[id] || []).push({
-      n: String(r[3]),
-      s: Number(r[4]),
-      t: Number(r[1]) || 0
+      n: String(r[2]),
+      s: Number(r[3]),
+      t: Number(r[0]) || 0
     });
   }
   return out;
+}
+
+/* ---------------------------------------------------------------- caching */
+
+/* The board, worked out once and kept for a few seconds.
+ *
+ * Every read used to walk the whole sheet, and so did every write, because a
+ * post reported back the poster's new rank. That is O(rows) per request on a
+ * table that only grows: fine at ten runs, and the slowest thing at the booth
+ * by mid-afternoon, which is exactly when people are queuing to play.
+ *
+ * The cached shape is the FINISHED board -- five short lists -- not the raw
+ * rows, so it stays a few KB however long the day gets.
+ *
+ * A post updates this in place rather than dropping it, so the next reader is
+ * served from memory and still sees the run that just happened. The TTL is the
+ * backstop for the one thing that does not come through here: an organiser
+ * ticking `hidden` in the sheet by hand, which shows up within CACHE_SECS.
+ */
+var CACHE_SECS = 20;
+var CACHE_KEY  = 'boards.v1';
+
+function boards_() {
+  var c = CacheService.getScriptCache();
+  var hit = c.get(CACHE_KEY);
+  if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+  var raw = readAll_(), out = {};
+  for (var id in GAMES) {
+    var b = bests_(raw[id] || []);
+    out[id] = { rows: b.slice(0, 50), n: b.length };
+  }
+  c.put(CACHE_KEY, JSON.stringify(out), CACHE_SECS);
+  return out;
+}
+
+function putBoards_(b) {
+  try { CacheService.getScriptCache().put(CACHE_KEY, JSON.stringify(b), CACHE_SECS); }
+  catch (e) {}
+}
+function dropBoards_() {
+  try { CacheService.getScriptCache().remove(CACHE_KEY); } catch (e) {}
+}
+
+/* Fold one finished run into an already-computed board, the same way bests_
+   would have: one row per person, their best, ties to the earlier run. Saves
+   the whole-sheet read on the path that people are actually waiting on. */
+function merge_(board, name, score, ts) {
+  var rows = (board.rows || []).slice();
+  var key = name.toLowerCase(), found = false;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].n).toLowerCase() === key) {
+      found = true;
+      if (score > rows[i].s) rows[i] = { n: name, s: score, t: ts };
+      break;
+    }
+  }
+  if (!found) rows.push({ n: name, s: score, t: ts });
+  rows.sort(function (a, b) { return b.s - a.s || a.t - b.t; });
+  return { rows: rows.slice(0, 50), n: found ? board.n : (board.n || 0) + 1 };
 }
 
 /* One row per person, their best run — the same rule the page already applies,
@@ -237,10 +300,10 @@ function doPost(e) {
     /* Two people finishing at the same instant both read the same last row and
        one write lands on top of the other. The lock is the whole reason the
        board can be trusted at a busy booth. */
+    var now = new Date();
     var lock = LockService.getScriptLock();
     lock.waitLock(20000);
     try {
-      var now = new Date();
       tab_().appendRow([
         now,
         now.getTime(),
@@ -256,12 +319,21 @@ function doPost(e) {
       lock.releaseLock();
     }
 
-    var rows = bests_((readAll_()[id]) || []);
-    var rank = null, best = null;
+    /* Folded into the cached board rather than re-derived from the sheet. The
+       poster is waiting on this reply with a result screen already up, and
+       walking every row written today to tell them they came third is the one
+       piece of work here that gets slower the better the day goes. */
+    var all = boards_();
+    all[id] = merge_(all[id] || { rows: [], n: 0 }, name, score, now.getTime());
+    putBoards_(all);
+
+    var rows = all[id].rows, rank = null, best = null;
     for (var i = 0; i < rows.length; i++) {
-      if (rows[i].n.toLowerCase() === name.toLowerCase()) { rank = i + 1; best = rows[i].s; break; }
+      if (String(rows[i].n).toLowerCase() === name.toLowerCase()) {
+        rank = i + 1; best = rows[i].s; break;
+      }
     }
-    return json_({ ok: true, rank: rank, best: best, players: rows.length, rows: rows.slice(0, 5) });
+    return json_({ ok: true, rank: rank, best: best, players: all[id].n, rows: rows.slice(0, 5) });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
   }
@@ -289,6 +361,9 @@ function hideAllSoFar() {
   var last = sh.getLastRow();
   if (last < 2) return 'Nothing to hide.';
   sh.getRange(2, 7, last - 1, 1).setValue(true);
+  /* Without this the board keeps serving the old names for up to CACHE_SECS,
+     which is the whole point of clearing it that nobody would believe. */
+  dropBoards_();
   return 'Hid ' + (last - 1) + ' row(s). The board is now empty; the runs are still here.';
 }
 

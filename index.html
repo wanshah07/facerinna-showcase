@@ -5220,18 +5220,25 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   /* top=50, not 5. Places are only awarded down to fifth, but "played 3 of 5"
      counts everyone, and asking for five rows would quietly undercount anybody
      who played and finished sixth. */
+  let SHARED_AT=0, SHARED_BUSY=false;
   function fetchShared(){
+    /* The board is fetched on load and again when it opens, and it opens
+       itself as soon as the games section settles — which on a booth screen is
+       a couple of seconds later. Without this that is two requests for the
+       same rows, each able to pay its own Apps Script cold start. */
+    if(SHARED_BUSY || (SHARED && Date.now()-SHARED_AT < 5000)) return;
+    SHARED_BUSY=true;
     let gone=false;
-    const stop=setTimeout(function(){ gone=true; }, 8000);
+    const stop=setTimeout(function(){ gone=true; SHARED_BUSY=false; }, 8000);
     fetch(BOOTH_SCORES+'?all=1&top=50')
       .then(r=>r.json())
       .then(function(res){
-        clearTimeout(stop);
+        clearTimeout(stop); SHARED_BUSY=false;
         if(gone || !res || res.ok!==true || !res.games) return;
-        SHARED=res.games;
+        SHARED=res.games; SHARED_AT=Date.now();
         if(modal.classList.contains('open')) fill();
       })
-      .catch(function(){ clearTimeout(stop); });
+      .catch(function(){ clearTimeout(stop); SHARED_BUSY=false; });
   }
 
   /* One row per person, their best run — the same rule the games' own popup

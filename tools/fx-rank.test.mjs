@@ -134,15 +134,29 @@ console.log('\na refused score is dropped, not retried forever');
   await s.ctx.close();
 }
 
-console.log('\nopening the board asks for a fresh one');
+console.log('\nopening the board: fresh rows are reused, stale ones re-asked');
 {
   const s = await session('ok','Ana',{name:'Ana'});
-  await s.pg.waitForTimeout(400);
-  const before = s.gets.length;
+  await s.pg.waitForTimeout(400);          // load-time refresh has landed
+  const afterLoad = s.gets.length;
+  check('it asked once on load', afterLoad > 0);
+  check('and asked for this game', s.gets[afterLoad-1].includes('game=match-lab'));
+
+  /* Opening it seconds later must NOT re-ask: the rows on screen are from a
+     moment ago, and a second Apps Script hit can pay its own cold start while
+     the player is looking at the screen. */
   await s.pg.click('.fxr-show');
   await s.pg.waitForTimeout(500);
-  check('a GET on open', s.gets.length > before);
-  check('asks for this game', s.gets[s.gets.length-1].includes('game=match-lab'));
+  check('opening straight after does not re-ask', s.gets.length === afterLoad);
+
+  /* Once they are stale it asks again, or the board would freeze at whatever
+     it happened to see first. */
+  await s.pg.evaluate(()=>{ window.__fxrAge = true; });
+  await s.pg.waitForTimeout(4200);
+  await s.pg.click('.fxr-x');
+  await s.pg.click('.fxr-show');
+  await s.pg.waitForTimeout(600);
+  check('opening once they are stale does re-ask', s.gets.length > afterLoad);
   await s.ctx.close();
 }
 
