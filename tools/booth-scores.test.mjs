@@ -32,9 +32,14 @@ const locks = { held:0 };
 const LockService = { getScriptLock: () => ({
   waitLock(){ locks.held++; }, releaseLock(){ locks.held--; } }) };
 const cacheStore = new Map();
+/* remove() included deliberately. The first version of this stub had only
+   get/put, so dropBoards_() threw, its try/catch swallowed it, and the board
+   went on serving rows that had just been hidden -- which is exactly the
+   failure the cache can cause and exactly what "board empties" is for. */
 const CacheService = { getScriptCache: () => ({
   get: k => cacheStore.get(k) ?? null,
-  put: (k,v) => cacheStore.set(k,v) }) };
+  put: (k,v) => cacheStore.set(k,v),
+  remove: k => cacheStore.delete(k) }) };
 const ContentService = { MimeType:{JSON:'json'},
   createTextOutput: s => ({ setMimeType: () => s }) };
 const Logger = { log(){} };
@@ -91,6 +96,19 @@ check('one row per person',              one.rows.filter(x=>x.n==='Ahmad').lengt
 const all = get({all:'1', top:5});
 check('all=1 covers all five games',     Object.keys(all.games).length === 5);
 check('unknown game on read',            get({game:'nope'}).error === 'unknown game');
+
+console.log('\nthe cache: fast, but never stale enough to lie');
+{
+  const before = sheet.rows.length;
+  get({game:'match-lab'});                       // warm it
+  const r1 = get({game:'match-lab'});            // should not touch the sheet
+  check('a second read is served without a sheet write', sheet.rows.length === before);
+  const p = post({game:'match-lab', name:'Fresh', score:10000});
+  check('a post still lands in the sheet',       sheet.rows.length === before + 1);
+  check('and shows up immediately, not in 20s',
+        get({game:'match-lab'}).rows.some(r => r.n === 'Fresh'));
+  check('rank came back without re-reading everything', p.rank === 1);
+}
 
 console.log('\nhidden rows leave the board but stay in the sheet');
 const before = sheet.rows.length;

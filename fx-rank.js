@@ -36,6 +36,7 @@
   var NET_MS = 8000;      /* nothing waits on Google longer than this */
 
   var shared = null;      /* rows from the endpoint, or null while we have none */
+  var sharedAt = 0;       /* when they arrived, so we do not re-ask immediately */
   var sending = false;
 
   /* Every read and write is wrapped: private windows and locked-down browsers
@@ -113,17 +114,23 @@
         return flush();
       }
       write(QUEUE_KEY, JSON.stringify(q.slice(1)));
-      if (next.game === CFG.id && res.rows) { shared = res.rows; fill(); }
+      if (next.game === CFG.id && res.rows) { shared = res.rows; sharedAt = Date.now(); fill(); }
       return flush();
     }).catch(function () { sending = false; });
   }
 
   /* Pull the current board. Failure is silent on purpose: the popup already
      has the local one drawn and a red error over a game is noise. */
-  function refresh() {
+  function refresh(force) {
+    /* A run that just ended already got the board back on the post's own
+       reply. Opening the popup a moment later used to fire a second request
+       for rows we were holding -- two Apps Script hits for one event, each
+       able to pay its own cold start, at the exact moment the player is
+       looking at the screen. */
+    if (!force && shared && Date.now() - sharedAt < 4000) return Promise.resolve();
     return net(ENDPOINT + '?game=' + encodeURIComponent(CFG.id) + '&top=' + TOP)
       .then(function (res) {
-        if (res && res.ok && res.rows) { shared = res.rows; fill(); }
+        if (res && res.ok && res.rows) { shared = res.rows; sharedAt = Date.now(); fill(); }
       })
       .catch(function () {});
   }
@@ -132,7 +139,7 @@
     var payload = { game: CFG.id, name: player || 'Player', score: score, device: deviceId() };
     return post(payload).then(function (res) {
       if (res && res.ok === true) {
-        if (res.rows) { shared = res.rows; fill(); }
+        if (res.rows) { shared = res.rows; sharedAt = Date.now(); fill(); }
         return flush();
       }
       /* ok:false is the script refusing this run -- out of range, rate
