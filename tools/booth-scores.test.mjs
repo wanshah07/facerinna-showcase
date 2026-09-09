@@ -19,11 +19,21 @@ const SpreadsheetApp = {
   openById: id => { opened.push(id); return book; },
 };
 const api = {
-  getLastRow: () => sheet.rows.length + 1,
+  /* rows[] holds the header row too, exactly as a real sheet does, so
+     getLastRow is the array length and getRange(2,...) starts at rows[1].
+     This used to return length+1 with no header in the array, which made
+     setUp's `getLastRow() === 0` check never fire and left the two stubs in
+     this repo modelling the same API two different ways. */
+  getLastRow: () => sheet.rows.length,
   appendRow: r => sheet.rows.push(r),
   getRange: (r,c,nr,nc) => ({
-    getValues: () => sheet.rows.slice(r-2, r-2+nr).map(x => x.slice(c-1, c-1+nc)),
-    setValue: v => { for (let i=r-2;i<r-2+nr;i++) sheet.rows[i][c-1]=v; },
+    /* r is a 1-based SHEET row against a 0-based array: getRange(2,...) starts
+       at rows[1]. This used to slice from r-2, taking the header and dropping
+       the last data row, and passed anyway because readAll_ discards any row
+       whose game id it does not recognise. A stub that is wrong in a direction
+       the code tolerates is a test of nothing. */
+    getValues: () => sheet.rows.slice(r-1, r-1+nr).map(x => x.slice(c-1, c-1+nc)),
+    setValue: v => { for (let i=r-1;i<r-1+nr;i++) sheet.rows[i][c-1]=v; },
     setFontWeight(){ return this; },
   }),
   setFrozenRows(){}, setColumnWidth(){}, hideColumns(){},
