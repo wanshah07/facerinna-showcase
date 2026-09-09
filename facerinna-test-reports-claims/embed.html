@@ -112,8 +112,8 @@
 /* ============================================================
    FACERINNA — Test Reports & Claims Vault (v3)
    Theme matches the official FACERINNA showcase (facerinna-agm.html).
-   Live data: FACERINNA_Test_Report_Claims_Matrix (Google Sheet
-   15eD6XtMVN1BRm41cD9wm33QMwW16R5sS) — tabs are auto-detected by
+
+   ) — tabs are auto-detected by
    header row, so gid order never breaks the page.
    ============================================================ */
 
@@ -1193,24 +1193,14 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
     <div class="fine">
       <span>© 2026 FACERINNA® · Internal Regulatory Affairs reference. Not for external distribution.</span>
       <span id="footerSync">Loading data…</span>
-      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-08 · e1dda09</span>
+      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-09 · 98414d8</span>
 
     </div>
   </div>
 </footer>
 
 <script>
-/* ============================================================
-   LIVE DATA — FACERINNA_Test_Report_Claims_Matrix
-   Sheet: https://docs.google.com/spreadsheets/d/15eD6XtMVN1BRm41cD9wm33QMwW16R5sS/edit
-   CSV endpoints (verified live, HTTP 200 text/csv, anonymous — 22 Aug 2026):
-     Test Reports & Claims    → …/export?format=csv&gid=378921450
-     Generic Claims by Series → …/export?format=csv&gid=610219740
-     SKU Index                → …/export?format=csv&gid=1440505952
-   Each fetched CSV is still identified by its header row (not by
-   gid order), so tab reordering in the sheet never breaks the page.
-   Data auto-refreshes every 3 minutes while the page is open.
-   ============================================================ */
+/* The workbook transport is stripped from this copy. */
 /* Two independent switches, both set by build-public.js:
      PUBLIC_BUILD — hide links to internal source documents (report PDFs,
        claims artwork). Safe to use with live data.
@@ -1219,14 +1209,14 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
        recovered by reading it. Costs live sync. */
 const PUBLIC_BUILD = true;
 const OFFLINE_DATA = false;
-const SHEET_ID = "15eD6XtMVN1BRm41cD9wm33QMwW16R5sS";
-const SHEET_EDIT_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
+const SHEET_ID = "";
+const SHEET_EDIT_URL = `${SHEET_ID}/edit`;
 /* every source has two Google CSV endpoints:
    url — /export?format=csv (redirects to googleusercontent, CORS ok)
    alt — /gviz/tq?tqx=out:csv (served directly, no redirect) — used
    automatically whenever the primary endpoint fails in this browser */
-const csvUrl  = (id,gid) => `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
-const gvizUrl = (id,gid) => `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}`;
+const csvUrl  = (id,gid) => `${id}/export?format=csv&gid=${gid}`;
+const gvizUrl = (id,gid) => `${id}/gviz/tq?tqx=out:csv&gid=${gid}`;
 const CSV_SOURCES = [
   {label:"Test Reports & Claims",    id:SHEET_ID, gid:"378921450",  url:csvUrl(SHEET_ID,"378921450"),  alt:gvizUrl(SHEET_ID,"378921450")},
   {label:"Generic Claims by Series", id:SHEET_ID, gid:"610219740",  url:csvUrl(SHEET_ID,"610219740"),  alt:gvizUrl(SHEET_ID,"610219740")},
@@ -1235,173 +1225,84 @@ const CSV_SOURCES = [
 /* product thumbnails + per-product source links come from the dashboard's
    FACERINNA product sheet (native Google Sheet, columns: Image URL,
    Product Name, SKU Code, Test Report URL, Claims URL) */
-const THUMB_SHEET_ID = "1F1zDeTnSrfZ7j7bIu7FfiHRW0eoXu3_n4NjFAmnWBfE";
+const THUMB_SHEET_ID = "";
 const THUMB_SOURCE = {label:"Product Images", id:THUMB_SHEET_ID, gid:"524451717",
   url:csvUrl(THUMB_SHEET_ID,"524451717"), alt:gvizUrl(THUMB_SHEET_ID,"524451717")};
 const REFRESH_MS = 3 * 60 * 1000;   // auto-refresh every 3 minutes
 
 /* ===================== THE VAULT LOCK ==============================
-   Set SUPABASE_URL and SUPABASE_ANON_KEY and this page stops reading the
-   Google workbooks and starts reading Postgres behind row-level security,
-   for a signed-in viewer whose email is on the allow-list. Leave them empty
-   and nothing below runs: the page behaves exactly as it did.
+   Set VAULT_ENDPOINT and this page stops reading the Google workbooks and
+   starts asking an Apps Script for its rows, which hands them over only for a
+   token it recognises. Leave it empty and nothing below runs: the page behaves
+   exactly as it did.
 
-   The anon key belongs in this file. It is not a secret -- it only says
-   which project to talk to, and it is what every Supabase browser client
-   ships. What protects the rows is RLS: no policy is written for `anon`, so
-   the anon key on its own selects nothing. See supabase/verify.sql, which
-   proves that against the real database rather than asserting it here.
+   HOW SOMEBODY GETS IN
+     They ask on this page -> a pending row appears in the sheet -> Wan types
+     `approved` in a cell -> they are mailed a link carrying a token -> the
+     token buys the rows. Revoking is typing anything else in that cell.
 
-   The service role key must NEVER appear in this file. It bypasses RLS.
+   WHY NOT SUPABASE, WHICH THIS REPLACES
+     Only one thing killed that attempt, and it was mail: its built-in sender
+     delivers to members of the Supabase organisation and nobody else, so a
+     dermatologist at an AGM could never receive a link. Apps Script sends from
+     Wan's own Gmail with no such restriction. Everything else about the two is
+     a wash; that one difference decided it.
+
+   The endpoint address belongs in this file. It is not a secret -- it is the
+   door, not the key, and it hands out nothing without a token. What must never
+   appear here is a token: those are per person, mailed, and revocable.
 
    One thing this does not do on its own: while build-public.js still bakes
-   SNAP_* into the published copy, every row is in the file and the lock is
-   decorative. The build empties those arrays as soon as SUPABASE_URL is set,
-   and refuses to publish if any survive -- that guard is the half that
-   actually closes it. */
-/* OFF at Wan's request. The vault reads the workbooks and this page is open to
-   anyone holding its address, which is where it stood before the lock existed.
+   SNAP_* and the workbook ids into the published copy, every row is in the
+   file and the lock is decorative. The build empties those arrays and strips
+   the ids as soon as VAULT_ENDPOINT is set, and refuses to publish if any
+   survive -- that guard is the half that actually closes it. */
+const VAULT_ENDPOINT = "https://script.google.com/macros/s/AKfycbxSfLoqRohdEn2R4gLeiaaWjyvKg78ktp0u_uNG7vLTE_-hf5TRKJ2utDmxWTo2iRduQg/exec";
+const VAULT_LOCKED = !!VAULT_ENDPOINT;
 
-   Everything behind these two lines is still in place and still proved: the
-   schema, all 152 rows, the allow-list, the RLS policies, the build guards and
-   the sign-in card. Nothing was dismantled to turn it off, and nothing needs
-   rebuilding to turn it back on -- put these two values into the constants
-   below and the next publish is locked again. They are written without the
-   `const ... = "..."` around them on purpose: vaultLocked() in build-public.js
-   reads this file to decide whether the vault is on, and a comment carrying
-   that exact shape is indistinguishable from the real thing. It matched this
-   comment on the first attempt and built a locked copy from an unlocked page.
+const VA_TOKEN_KEY = 'fx.vault.token';
+function vaToken(){ try{ return localStorage.getItem(VA_TOKEN_KEY) || ''; }catch(e){ return ''; } }
+function vaStore(t){ try{ localStorage.setItem(VA_TOKEN_KEY, t); }catch(e){} }
+function vaClear(){ try{ localStorage.removeItem(VA_TOKEN_KEY); }catch(e){} }
 
-     SUPABASE_URL       https://dqwuhhhfwdnrvnfrrhre.supabase.co
-     SUPABASE_ANON_KEY  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
-                        YmFzZSIsInJlZiI6ImRxd3VoaGhmd2RucnZuZnJyaHJlIiwicm9sZ
-                        SI6ImFub24iLCJpYXQiOjE3ODc5NTMwNTYsImV4cCI6MjEwMzUyOT
-                        A1Nn0.gB5nkh1D-qIBNm-Xe0ivm0wfbEHf_4KVyS2D6Tn83IQ
-                        (one line, no spaces -- wrapped here only to fit)
-
-   Before doing that, sort custom SMTP: on the built-in mail service Supabase
-   only delivers to members of the Supabase organisation, so anyone else asking
-   for a sign-in link gets 422 and no email. That is what stopped it this time.
-
-   The anon key sits here in the clear because it is not a secret -- it names
-   the project and is what every Supabase browser client ships. The service
-   role key must NEVER appear in this file; it bypasses RLS. */
-const SUPABASE_URL      = "";
-const SUPABASE_ANON_KEY = "";
-const VAULT_LOCKED = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
-
-const SB_SESSION_KEY = 'fx.vault.session';
-function sbSession(){
-  try{ const r=localStorage.getItem(SB_SESSION_KEY); if(!r) return null;
-       const s=JSON.parse(r);
-       /* a token past its expiry is worse than none: it makes the page look
-          signed in and then every request 401s. */
-       return (s && s.access_token && s.expires_at > Date.now()/1000) ? s : null;
-  }catch(e){ return null; }
-}
-function sbStore(s){ try{ localStorage.setItem(SB_SESSION_KEY, JSON.stringify(s)); }catch(e){} }
-function sbClear(){ try{ localStorage.removeItem(SB_SESSION_KEY); }catch(e){} }
-
-/* Supabase returns the session in the URL fragment after a magic link. Read it
-   once, then strip it: a fragment holding an access token should not survive
-   in the address bar, the back button or a screenshot at a booth. */
-function sbAdoptFragment(){
-  if(!location.hash || location.hash.indexOf('access_token=')<0) return false;
+/* The approval mail links to this page with #vault=<token>. Read it once, then
+   strip it: a fragment holding a key should not survive in the address bar,
+   the back button, or a screenshot taken over somebody's shoulder at a booth. */
+function vaAdoptFragment(){
+  if(!location.hash || location.hash.indexOf('vault=')<0) return false;
   const q=new URLSearchParams(location.hash.slice(1));
-  const tok=q.get('access_token');
+  const tok=(q.get('vault')||'').trim();
   if(!tok) return false;
-  sbStore({access_token:tok, refresh_token:q.get('refresh_token')||'',
-           expires_at: Math.floor(Date.now()/1000) + (parseInt(q.get('expires_in'),10)||3600)});
+  vaStore(tok);
   history.replaceState(null,'',location.pathname+location.search);
   return true;
 }
 
-async function sbSendMagicLink(email){
-  /* Where the link must land: this page, wherever it is being served from.
-     It has to be on the project's redirect allow-list or GoTrue refuses it.
+/* NO Content-Type header, deliberately. fetch then sends text/plain, which is
+   a "simple" request and skips the CORS preflight. Set application/json and
+   the browser sends OPTIONS first, Apps Script does not answer OPTIONS, and
+   every call fails with a CORS error that names nothing useful.
 
-     This is sent BOTH as a query parameter and in the body on purpose. An
-     earlier version passed it as options:{email_redirect_to:...}, which is the
-     shape supabase-js takes -- and `options` is a client-library construct the
-     REST endpoint knows nothing about, so the redirect was silently dropped.
-     GoTrue then falls back to the project's Site URL, which on a new project
-     is http://localhost:3000: the link arrives, the viewer clicks it, and it
-     sends them to their own machine. Belt and braces here costs one query
-     string and removes the guess about which form the server reads. */
-  const back = location.origin + location.pathname;
-  const r = await fetch(SUPABASE_URL+'/auth/v1/otp?redirect_to='+encodeURIComponent(back), {
-    method:'POST',
-    headers:{'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-    /* Sign-up is allowed, and the allow-list is what decides access.
-
-       This was create_user:false, on the reasoning that refusing accounts to
-       strangers is safer. It bought nothing and cost the whole flow:
-
-       - A stranger who signs up gets a session and sees NOTHING. `authenticated`
-         is granted SELECT on four tables and every one of them is gated by
-         is_allowed_viewer(); it holds no write grant anywhere, and `anon` has no
-         SELECT at all. RLS is the boundary, not whether an account exists.
-       - It made allowed_viewers a half-truth. A row there is meant to be the
-         whole of someone's access; with create_user:false it granted nothing
-         until somebody was also invited by hand, so every viewer needed two
-         actions in two places and a missed one failed with a bare 422.
-       - It leaked MORE than it protected: 422 for an unknown address against
-         200 for a known one tells anyone who asks which addresses have accounts
-         here. Allowing sign-up makes the answer uniform.
-
-       What it does require is discipline in the database: anything added to the
-       `public` schema later needs RLS and no blanket grant to `authenticated`,
-       or someone who signed up reaches it. */
-    body: JSON.stringify({email:email, create_user:true, redirect_to:back})
-  });
-  if(!r.ok){
-    /* GoTrue puts the reason in the body; the status alone does not carry it.
-       A bare "(422)" sent me looking in the wrong place once already -- at
-       least three different conditions return 422 here and they need three
-       different actions, so show what the server actually said. */
-    var code='', msg='';
-    try{ var j = await r.json();
-         code = j.error_code || j.code || '';
-         msg  = j.msg || j.message || j.error_description || ''; }catch(e){}
-    var plain = {
-      /* Reachable now only if email sign-in is switched off at the project, or
-         the Email provider is disabled entirely -- not by an unknown address,
-         since sign-up is allowed. */
-      otp_disabled:
-        'email sign-in is switched off for this project. Tell Wan.',
-      /* The default Supabase mail service only delivers to members of the
-         Supabase organisation. Anyone else needs custom SMTP. */
-      email_address_not_authorized:
-        'the project is still on Supabase\'s built-in mail service, which only '
-        + 'delivers to your Supabase organisation. Sending to this address '
-        + 'needs a custom SMTP provider.',
-      validation_failed: 'that does not look like a valid email address.',
-      over_email_send_rate_limit: 'too many requests. Try again in a few minutes.',
-      over_request_rate_limit: 'too many requests. Try again in a few minutes.'
-    }[code];
-    throw new Error(plain || (msg ? msg + ' (' + r.status + ')'
-                                  : 'could not send the link (' + r.status + ')'));
-  }
+   fetch() has no timeout of its own either, so a request Google accepts and
+   never answers would leave the gate saying "Sending…" for as long as the tab
+   is open. */
+async function vaPost(body, timeoutMs){
+  const ac = typeof AbortController!=='undefined' ? new AbortController() : null;
+  const timer = ac ? setTimeout(()=>ac.abort(), timeoutMs || 20000) : null;
+  try{
+    const opts={method:'POST', body:JSON.stringify(body)};
+    if(ac) opts.signal=ac.signal;
+    const r=await fetch(VAULT_ENDPOINT, opts);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return await r.json();
+  }catch(e){
+    throw (e && e.name==='AbortError') ? new Error('timed out') : e;
+  }finally{ if(timer) clearTimeout(timer); }
 }
 
-async function sbSelect(table){
-  const s=sbSession();
-  if(!s) throw Object.assign(new Error('not signed in'), {code:'nosession'});
-  const r = await fetch(SUPABASE_URL+'/rest/v1/'+table+'?select=*', {
-    headers:{'apikey':SUPABASE_ANON_KEY, 'Authorization':'Bearer '+s.access_token}
-  });
-  if(r.status===401 || r.status===403){ sbClear(); throw Object.assign(new Error('session rejected'), {code:'nosession'}); }
-  if(!r.ok) throw new Error(table+': '+r.status);
-  return r.json();
-}
-
-/* The database is snake_case, which is right for Postgres; the rest of this
-   page already speaks the camelCase shape its CSV parsers produce. One
-   mapping here keeps both correct instead of bending either. */
-const CAMEL = k => k.replace(/_([a-z])/g, (_,c)=>c.toUpperCase());
-const rowsToCamel = rows => rows.map(r => {
-  const o={}; for(const k in r) o[CAMEL(k)] = r[k]; return o;
-});
+const vaRequest = d => vaPost({action:'request', name:d.name, email:d.email,
+                               organisation:d.organisation, consent:true});
+const vaFetchData = t => vaPost({action:'data', token:t}, 30000);
 
 
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -1498,7 +1399,7 @@ function fetchJsonpRows(id, gid, timeoutMs){
     window[cb] = payload =>{ if(settled) return; settled = true; cleanup();
       try{ resolve(gvizToRows(payload)); }catch(e){ reject(e); } };
     s.onerror = ()=>{ if(!settled){ settled=true; cleanup(); reject(new Error('script blocked')); } };
-    s.src = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq`
+    s.src = `${id}/gviz/tq`
           + `?tqx=out:json;responseHandler:${cb}&gid=${gid}&cacheBust=${Date.now()}`;
     document.head.appendChild(s);
   });
@@ -1655,11 +1556,11 @@ function updateSyncUI(){
   document.getElementById('footerSync').textContent = stateLabel;
 }
 
-/* ---------------- the sign-in gate ----------------------------------
+/* ---------------- the access gate -----------------------------------
    Drawn only when the vault is locked. It covers the page rather than
    replacing it, so the shell, the branding and the QR code's destination stay
    exactly as printed -- what changes is that the numbers arrive only for a
-   viewer the allow-list names. */
+   visitor holding a token the workbook has approved. */
 function vaultGate(state, detail){
   let el=document.getElementById('vaultGate');
   if(!el){
@@ -1667,55 +1568,86 @@ function vaultGate(state, detail){
     el.id='vaultGate';
     el.setAttribute('role','dialog');
     el.setAttribute('aria-modal','true');
-    el.setAttribute('aria-label','Sign in to the vault');
-    el.style.cssText='position:fixed;inset:0;z-index:200;display:grid;place-items:center;'
+    el.setAttribute('aria-label','Request access to the vault');
+    el.style.cssText='position:fixed;inset:0;z-index:200;display:grid;place-items:center;overflow:auto;'
       +'background:rgba(10,22,40,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:24px';
+    const inp='width:100%;padding:11px 13px;border:1.5px solid #d5dfea;border-radius:11px;font:inherit;min-width:0';
     el.innerHTML='<div style="background:#fff;border-radius:18px;padding:26px 24px;max-width:392px;width:100%;'
-      +'box-shadow:0 30px 70px rgba(10,22,40,.4);text-align:center">'
+      +'box-shadow:0 30px 70px rgba(10,22,40,.4);text-align:center;margin:auto">'
       +'<div style="font-size:.7rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#6b7f96">Regulatory affairs</div>'
       +'<h3 style="margin:.5rem 0 .3rem;font-family:\'Fraunces\',Georgia,serif;font-size:1.24rem">Test Report &amp; Claims Vault</h3>'
       +'<p id="vgMsg" style="margin:0 0 16px;font-size:.9rem;color:#48607a;line-height:1.5"></p>'
-      +'<form id="vgForm" style="display:grid;gap:9px">'
-      +'<input id="vgEmail" type="email" required autocomplete="email" placeholder="you@company.com" '
-      +'style="width:100%;padding:11px 13px;border:1.5px solid #d5dfea;border-radius:11px;font:inherit;min-width:0">'
+      +'<form id="vgForm" style="display:grid;gap:9px;text-align:left">'
+      +'<input id="vgName" type="text" required autocomplete="name" placeholder="Your name" style="'+inp+'">'
+      +'<input id="vgEmail" type="email" required autocomplete="email" placeholder="you@company.com" style="'+inp+'">'
+      +'<input id="vgOrg" type="text" autocomplete="organization" placeholder="Clinic or company (optional)" style="'+inp+'">'
+      +'<label style="display:flex;gap:8px;align-items:flex-start;font-size:.76rem;color:#5a7290;line-height:1.45;margin:2px 0 4px">'
+      +'<input id="vgConsent" type="checkbox" style="margin-top:2px;flex:none">'
+      +'<span>I agree that FACERINNA may keep my name, email and organisation to '
+      +'decide on and manage this access request.</span></label>'
       +'<button type="submit" style="padding:11px 13px;border:0;border-radius:11px;background:#1b6fb8;color:#fff;'
-      +'font:inherit;font-weight:700;cursor:pointer">Email me a sign-in link</button>'
+      +'font:inherit;font-weight:700;cursor:pointer">Request access</button>'
       +'</form>'
       +'<p id="vgNote" style="margin:14px 0 0;font-size:.76rem;color:#8095ab;line-height:1.5"></p></div>';
     document.body.appendChild(el);
     el.querySelector('#vgForm').addEventListener('submit', async ev=>{
       ev.preventDefault();
+      const name =el.querySelector('#vgName').value.trim();
       const email=el.querySelector('#vgEmail').value.trim();
-      if(!email) return;
+      const org  =el.querySelector('#vgOrg').value.trim();
+      if(!el.querySelector('#vgConsent').checked){
+        vaultGate('error','Please tick the box so we may keep your details to answer the request.');
+        return;
+      }
+      if(!name || !email) return;
       vaultGate('sending');
-      try{ await sbSendMagicLink(email); vaultGate('sent', email); }
-      catch(e){ vaultGate('error', e.message); }
+      try{
+        const res=await vaRequest({name:name, email:email, organisation:org});
+        if(res && res.ok) vaultGate(res.already ? 'already' : 'asked', email);
+        else vaultGate('error', (res && res.error) || 'Could not send that request.');
+      }catch(e){ vaultGate('error', e.message); }
     });
   }
   const msg=el.querySelector('#vgMsg'), note=el.querySelector('#vgNote'), form=el.querySelector('#vgForm');
   const show=(t,n,f)=>{ msg.textContent=t; note.textContent=n; form.style.display=f?'grid':'none'; };
-  if(state==='signin')      show('The report numbers, laboratories and claim text are for named viewers. Sign in to read them.','Access is by invitation. If your address is not on the list the link will not arrive.',true);
-  else if(state==='sending')show('Sending…','',false);
-  else if(state==='sent')   show('Check '+detail+' for a sign-in link.','Open it on this device — the link signs you in where it is opened.',false);
-  else if(state==='denied') show('That address is signed in, but it is not on the vault allow-list.','Ask Wan to add it. Nothing else on this page is affected.',false);
-  else if(state==='error')  show('Could not send the link.',String(detail||''),true);
+
+  /* Every refusal says which one it is. "Still with us", "no longer active"
+     and "expired" send a person to three different places, and a single
+     "denied" sends them to none of them -- they just ask Wan, and he has to
+     open the sheet to find out which it was. */
+  if(state==='ask')          show('The report numbers, laboratories, dates and claim text are for named viewers. Ask for access and we will email you a link.','Requests are answered by FACERINNA Regulatory Affairs. Nothing else on this page is affected.',true);
+  else if(state==='sending') show('Sending…','',false);
+  else if(state==='asked')   show('Thank you — your request is with FACERINNA Regulatory Affairs.','We will email '+detail+' a link once it is approved. You can close this page.',false);
+  else if(state==='already') show('You have already asked for access.','We will email '+detail+' as soon as it is approved. Asking again does not make it faster.',false);
+  else if(state==='pending') show('Your request has not been decided yet.','We will email you a link once it is approved.',false);
+  else if(state==='refused') show('That request was not approved.','If you think that is a mistake, speak to FACERINNA Regulatory Affairs.',false);
+  else if(state==='expired') show('That link has expired.','Links last a limited time. Ask again below and a fresh one will be sent.',true);
+  else if(state==='revoked') show('That link is no longer active.','Access was withdrawn or the request was reopened. Ask again below if you still need it.',true);
+  else if(state==='offline') show('Could not reach the vault just now.','The page is fine; the connection to the report store is not. Try again in a moment.',false);
+  else if(state==='error')   show('Could not send that request.',String(detail||''),true);
   el.style.display='grid';
 }
 function vaultGateHide(){ const el=document.getElementById('vaultGate'); if(el) el.style.display='none'; }
 
-/* Rows out of Postgres, for a signed-in viewer the allow-list names. */
+/* Rows out of the script, for a visitor whose token the workbook honours. */
 async function loadVaultData(){
+  const tok = vaToken();
+  if(!tok){ vaultGate('ask'); return; }
   try{
-    const [rep, ser, sku, th] = await Promise.all(
-      ['reports','series','skus','thumbs'].map(sbSelect));
-    /* Signed in, but RLS handed back nothing: the session is real and the
-       email is not on the list. That is a different message from "sign in",
-       and telling them apart is the whole point of showing either. */
-    if(!rep.length && !ser.length && !sku.length){ vaultGate('denied'); return; }
-    REPORTS = rowsToCamel(rep);
-    SERIES  = rowsToCamel(ser);
-    SKUS    = mergeSkuRows(rowsToCamel(sku));
-    THUMBS  = rowsToCamel(th);
+    const res = await vaFetchData(tok);
+    if(!res || res.ok!==true){
+      /* A token the script will not honour is a token worth forgetting: keep
+         it and every reload retries something already answered, and the gate
+         cannot offer to ask again without contradicting itself. */
+      const why = (res && res.reason) || 'unknown';
+      vaClear();
+      vaultGate(why==='expired' ? 'expired' : why==='revoked' ? 'revoked' : 'ask');
+      return;
+    }
+    REPORTS = res.reports || [];
+    SERIES  = res.series  || [];
+    SKUS    = mergeSkuRows(res.skus || []);
+    THUMBS  = res.thumbs  || [];
     buildImgMap();
     lastDataAt = new Date();
     syncState = 'live';
@@ -1723,8 +1655,10 @@ async function loadVaultData(){
     renderAll(); refreshOpenModal(); updateSyncUI();
     scheduleRefresh();
   }catch(err){
-    if(err.code==='nosession'){ vaultGate('signin'); return; }
-    console.warn('[vault] supabase read failed:', err.message);
+    /* Unreachable is not refused. Clearing the token here would sign somebody
+       out because their train went into a tunnel. */
+    console.warn('[vault] read failed:', err.message);
+    vaultGate('offline');
     syncState='cached'; updateSyncUI();
   }
 }
@@ -1733,8 +1667,7 @@ async function loadLiveData(){
   /* When the vault is locked the workbooks are not consulted at all --
      not as a fallback either, or the lock would have a way round it. */
   if(VAULT_LOCKED){
-    sbAdoptFragment();
-    if(!sbSession()){ vaultGate('signin'); return; }
+    vaAdoptFragment();
     return loadVaultData();
   }
   if(OFFLINE_DATA){                     // data is baked in; never call out
@@ -1952,7 +1885,7 @@ const PRODUCTS = [
 const SNAP_REPORTS = [];
 const SNAP_SERIES = [];
 const SNAP_SKUS = [];
-const SNAPSHOT_DATE = "2026-09-08";
+const SNAPSHOT_DATE = "2026-09-09";
 const SNAP_THUMBS = [];
 
 /* ============================================================
