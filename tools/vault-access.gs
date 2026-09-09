@@ -90,8 +90,16 @@ var FROM_NAME  = 'FACERINNA Regulatory Affairs';
    it to '-' to switch the notice off entirely. */
 var NOTIFY_TO = '';
 
+/* The web app's own /exec address, used to build the Approve and Decline
+   buttons in that notice. Left empty it is asked for at run time, which is
+   right in every normal case; set it by hand only if the buttons ever come
+   out pointing at /dev instead of /exec. */
+var SELF_URL = '';
+
 var REQ_HEADERS = ['asked', 'name', 'email', 'organisation', 'status',
-                   'token', 'expires', 'link sent', 'note'];
+                   'token', 'expires', 'link sent', 'note', 'key'];
+
+var COL_STATUS = 5, COL_TOKEN = 6, COL_KEY = 10;
 
 /* status column values, and what each one means:
      (blank) / pending   asked, not decided        -> no access
@@ -102,14 +110,20 @@ var REQ_HEADERS = ['asked', 'name', 'email', 'organisation', 'status',
 
 function setUp() {
   var sh = reqTab_();
-  if (sh.getLastRow() === 0) {
-    sh.appendRow(REQ_HEADERS);
+  var fresh = sh.getLastRow() === 0;
+  if (fresh) sh.appendRow(REQ_HEADERS);
+  /* Rewritten every run, not only on a fresh tab. A tab set up by an earlier
+     version is missing the columns added since, and a header row that does not
+     match REQ_HEADERS is how a value ends up read from the wrong column. */
+  sh.getRange(1, 1, 1, REQ_HEADERS.length).setValues([REQ_HEADERS]).setFontWeight('bold');
+  if (fresh) {
     sh.setFrozenRows(1);
-    sh.getRange(1, 1, 1, REQ_HEADERS.length).setFontWeight('bold');
     sh.setColumnWidth(1, 150);
     sh.setColumnWidth(3, 220);
-    sh.hideColumns(6);                    /* the token: a key, not a thing to read */
   }
+  /* Both are keys, not things to read. */
+  sh.hideColumns(COL_TOKEN);
+  sh.hideColumns(COL_KEY);
   var quota = MailApp.getRemainingDailyQuota();
   return 'Ready. Tab "' + REQ_TAB + '" has ' + Math.max(0, sh.getLastRow() - 1) +
          ' request(s). Mail quota left today: ' + quota + '.';
@@ -145,13 +159,18 @@ function requestAccess_(b) {
   if (b.consent !== true)
     return json_({ ok: false, error: 'Please agree to the note about your details.' });
 
+  /* The decision key. It is what makes the Approve and Decline buttons in the
+     notice safe to press: unguessable, one per request, and it never leaves
+     your mailbox. Without it those buttons would be a URL anyone could type. */
+  var key = Utilities.getUuid();
+
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
     var sh = reqTab_();
     var found = findRow_(sh, email);
     if (found) return json_({ ok: true, already: true, status: found.status });
-    sh.appendRow([new Date(), name, email, org, 'pending', '', '', '', '']);
+    sh.appendRow([new Date(), name, email, org, 'pending', '', '', '', '', key]);
   } finally {
     lock.releaseLock();
   }
@@ -160,14 +179,15 @@ function requestAccess_(b) {
      mail server having a bad minute must not turn a visitor's accepted
      request into an error on their screen. The row is the record; the notice
      is a convenience. */
-  notifyNewRequest_(name, email, org);
+  notifyNewRequest_(name, email, org, key);
 
   return json_({ ok: true, already: false });
 }
 
 /* Tells you a request has come in, so you do not have to keep the workbook
-   open. Silent on failure by design -- see the call site. */
-function notifyNewRequest_(name, email, org) {
+   open, and lets you decide from the mail itself. Silent on failure by
+   design -- see the call site. */
+function notifyNewRequest_(name, email, org, key) {
   try {
     if (NOTIFY_TO === '-') return;
     var to = NOTIFY_TO || Session.getEffectiveUser().getEmail();
@@ -176,17 +196,52 @@ function notifyNewRequest_(name, email, org) {
       to: to,
       name: FROM_NAME,
       subject: 'Vault access requested: ' + name,
-      htmlBody:
-        '<p><b>' + esc_(name) + '</b> asked to read the FACERINNA test reports.</p>' +
-        '<p>' + esc_(email) + (org ? '<br>' + esc_(org) : '') + '</p>' +
-        '<p>To let them in, set that row\'s <b>status</b> to <b>approved</b> in the ' +
-        '"' + esc_(REQ_TAB) + '" tab. The link is mailed to them on its own.</p>' +
-        '<p><a href="https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit">' +
-        'Open the request list</a></p>'
+      htmlBody: noticeBody_(name, email, org, key)
     });
   } catch (e) {
     Logger.log('notify failed: ' + (e && e.message || e));
   }
+}
+
+function noticeBody_(name, email, org, key) {
+  var body =
+    '<p><b>' + esc_(name) + '</b> asked to read the FACERINNA test reports.</p>' +
+    '<p>' + esc_(email) + (org ? '<br>' + esc_(org) : '') + '</p>';
+
+  /* No buttons rather than broken buttons: if the address cannot be worked
+     out, the mail still says who asked and where the list is. */
+  var self = selfUrl_();
+  if (self && key) {
+    body += '<p>' +
+      btn_(self + '?k=' + encodeURIComponent(key) + '&do=approve', 'Approve', '#1a7f37') +
+      '&nbsp;&nbsp;' +
+      btn_(self + '?k=' + encodeURIComponent(key) + '&do=decline', 'Decline', '#8a1c1c') +
+      '</p>' +
+      '<p style="color:#667;font-size:13px">Each button opens a page that asks ' +
+      'you to confirm. Nothing changes until you press the button on that page, ' +
+      'so a mail scanner following these links decides nothing.</p>';
+  }
+
+  body += '<p style="color:#667;font-size:13px">You can also set the row\'s ' +
+          '<b>status</b> to <b>approved</b> by hand in the "' + esc_(REQ_TAB) +
+          '" tab. Either way the link is mailed to them on its own.</p>' +
+          '<p><a href="https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit">' +
+          'Open the request list</a></p>';
+  return body;
+}
+
+function btn_(href, label, colour) {
+  return '<a href="' + href + '" style="display:inline-block;padding:11px 22px;' +
+         'background:' + colour + ';color:#fff;text-decoration:none;border-radius:6px;' +
+         'font-weight:600;font-family:system-ui,sans-serif">' + label + '</a>';
+}
+
+/* Asked for at run time rather than stored, so a redeployment cannot leave a
+   stale address baked into every future mail. */
+function selfUrl_() {
+  if (SELF_URL) return SELF_URL;
+  try { return ScriptApp.getService().getUrl() || ''; }
+  catch (e) { return ''; }
 }
 
 function findRow_(sh, email) {
@@ -443,11 +498,110 @@ function doPost(e) {
   }
 }
 
-/* Nothing readable without a token, so a GET only ever says the script is
-   alive. Handy for checking a deployment from the address bar without having
-   to run anything. */
-function doGet() {
-  return json_({ ok: true, service: 'facerinna vault access', at: Date.now() });
+/* Two jobs. With ?k= it is the page the Approve and Decline buttons in your
+   notice open. Without it, it only says the script is alive -- handy for
+   checking a deployment from the address bar without running anything.
+
+   It never decides anything by itself. A GET that changed a status would be a
+   loaded gun in an inbox: mail scanners and link-preview services follow URLs
+   in mail without being asked, and one of them following "approve" would mail
+   a stranger a working link. So this only ever draws a page; the decision
+   goes back over google.script.run when you press the button on it. */
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (!p.k) return json_({ ok: true, service: 'facerinna vault access', at: Date.now() });
+
+  var want = String(p.do || '').toLowerCase();
+  if (want !== 'approve' && want !== 'decline') want = 'approve';
+
+  var found = validKey_(p.k) ? findByKey_(reqTab_(), String(p.k)) : null;
+  if (!found) return page_('<h1>That link is not valid</h1>' +
+    '<p>It may have been mistyped, or the row it belonged to was deleted. ' +
+    'Open the request list and decide there.</p>');
+
+  var isApprove = want === 'approve';
+  return page_(
+    '<h1>' + (isApprove ? 'Approve this request?' : 'Decline this request?') + '</h1>' +
+    '<div class="who"><b>' + esc_(found.name) + '</b><br>' + esc_(found.email) +
+      (found.org ? '<br>' + esc_(found.org) : '') + '</div>' +
+    '<p class="now">Currently: <b>' + esc_(found.status || 'pending') + '</b>' +
+      (found.token ? ' &middot; a link has already been sent' : '') + '</p>' +
+    (isApprove
+      ? '<p>Approving mails them a link that works for ' + TOKEN_DAYS + ' days.</p>'
+      : '<p>Declining sends them nothing. If they already hold a link, it stops ' +
+        'working on their next reload.</p>') +
+    '<button id="go" class="' + (isApprove ? 'ok' : 'no') + '">' +
+      (isApprove ? 'Yes, approve' : 'Yes, decline') + '</button>' +
+    '<p id="out" class="out"></p>' +
+    '<script>' +
+    'var b=document.getElementById("go"),o=document.getElementById("out");' +
+    'b.onclick=function(){b.disabled=true;o.textContent="Working\u2026";' +
+    'google.script.run.withSuccessHandler(function(m){o.textContent=m;})' +
+    '.withFailureHandler(function(err){b.disabled=false;' +
+    'o.textContent="Did not go through: "+err.message;})' +
+    '.decideFromPage(' + JSON.stringify(String(p.k)) + ',' + JSON.stringify(want) + ');};' +
+    '<\/script>');
+}
+
+/* Called from the confirmation page above, over google.script.run. Public
+   because that is the only kind of function google.script.run can reach. */
+function decideFromPage(key, decision) {
+  decision = String(decision || '').toLowerCase();
+  if (decision !== 'approve' && decision !== 'decline') return 'Unknown decision.';
+  if (!validKey_(key)) return 'That link is not valid.';
+
+  var sh = reqTab_();
+  var found = findByKey_(sh, String(key));
+  if (!found) return 'That link is not valid.';
+
+  sh.getRange(found.row, COL_STATUS).setValue(decision === 'approve' ? 'approved' : 'declined');
+
+  if (decision === 'decline') {
+    return 'Declined. ' + found.name + ' has been sent nothing' +
+           (found.token ? ', and the link they hold stops working.' : '.');
+  }
+  /* Not left to the five-minute timer: you pressed a button and are watching
+     the page, so the mail should be gone before you look away. */
+  sendApprovals();
+  return 'Approved. A link has been mailed to ' + found.email + '.';
+}
+
+/* Shaped like a UUID or it is not one of ours. Checked before the value is
+   ever put into the page, so a crafted k= cannot carry script with it. */
+function validKey_(k) {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+    .test(String(k || ''));
+}
+
+function findByKey_(sh, key) {
+  var last = sh.getLastRow();
+  if (last < 2) return null;
+  var v = sh.getRange(2, 1, last - 1, REQ_HEADERS.length).getValues();
+  for (var i = 0; i < v.length; i++) {
+    if (String(v[i][COL_KEY - 1] || '').trim() !== key) continue;
+    return { row: i + 2, name: String(v[i][1] || ''), email: String(v[i][2] || ''),
+             org: String(v[i][3] || ''), status: String(v[i][4] || '').trim().toLowerCase(),
+             token: String(v[i][5] || '').trim() };
+  }
+  return null;
+}
+
+function page_(inner) {
+  return HtmlService.createHtmlOutput(
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<style>' +
+    'body{font:16px/1.55 system-ui,-apple-system,sans-serif;margin:0;padding:28px 22px;' +
+    'color:#1a1a1a;background:#f6f7f9}' +
+    'h1{font-size:20px;margin:0 0 16px}' +
+    '.who{background:#fff;border:1px solid #dde;border-radius:8px;padding:14px 16px;margin:0 0 14px}' +
+    '.now{color:#556;font-size:14px}' +
+    'button{font:600 16px system-ui,sans-serif;color:#fff;border:0;border-radius:7px;' +
+    'padding:14px 26px;cursor:pointer;width:100%;max-width:320px}' +
+    'button:disabled{opacity:.5}' +
+    '.ok{background:#1a7f37}.no{background:#8a1c1c}' +
+    '.out{font-weight:600;margin-top:18px}' +
+    '</style>' + inner)
+    .setTitle('FACERINNA vault');
 }
 
 /* ------------------------------------------------------------ maintenance */
