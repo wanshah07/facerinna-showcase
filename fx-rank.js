@@ -20,7 +20,23 @@
 
   var NAME_KEY = 'fx.player';
   var BOARD_KEY = 'fx.rank.' + CFG.id;
+  var QUEUE_KEY = 'fx.rank.queue';
+  var DEVICE_KEY = 'fx.device';
   var TOP = 5;
+
+  /* The shared board. Scores go here as well as to localStorage, so the iPad
+     on the counter and the phone in somebody's hand finally show the same
+     names. tools/booth-scores.gs is what answers.
+
+     localStorage is still written FIRST and still drives the popup on its own.
+     A booth loses its wifi, and a leaderboard that needs the network to draw
+     is a leaderboard that is blank at the worst moment. The network makes the
+     board wider; it is never what makes it work. */
+  var ENDPOINT = 'https://script.google.com/macros/s/AKfycbx4zwbrto2iEUu7T9BMZG7_7VNALN2eNrr_209P9Bll-R1FK6fT0_qg9lJnNyqInJZz/exec';
+  var NET_MS = 8000;      /* nothing waits on Google longer than this */
+
+  var shared = null;      /* rows from the endpoint, or null while we have none */
+  var sending = false;
 
   /* Every read and write is wrapped: private windows and locked-down browsers
      throw on localStorage rather than returning null, and a booth game must
@@ -34,6 +50,104 @@
   }
   function board() {
     try { return JSON.parse(read(BOARD_KEY, '[]')) || []; } catch (e) { return []; }
+  }
+
+  /* ---- talking to the sheet -------------------------------------------- */
+
+  /* Which device a run came from, so an organiser looking at the sheet can
+     tell one iPad's afternoon from another's. Not an identity and not used
+     for ranking — names are what the board is keyed on. */
+  function deviceId() {
+    var d = read(DEVICE_KEY, '');
+    if (!d) {
+      d = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+      write(DEVICE_KEY, d);
+    }
+    return d;
+  }
+
+  /* fetch() has no timeout of its own. Without this a request Google accepts
+     and never answers leaves the popup waiting for as long as the tab is open,
+     which at a booth is the rest of the day. */
+  function net(url, opts) {
+    opts = opts || {};
+    if (typeof AbortController === 'function') {
+      var ac = new AbortController();
+      opts.signal = ac.signal;
+      setTimeout(function () { ac.abort(); }, NET_MS);
+    }
+    return fetch(url, opts).then(function (r) { return r.json(); });
+  }
+
+  /* NO Content-Type header, deliberately. fetch then sends text/plain, which
+     is a "simple" request and skips the CORS preflight. Set application/json
+     and the browser sends OPTIONS first, Apps Script does not answer OPTIONS,
+     and every post fails with a CORS error that names nothing useful. */
+  function post(payload) {
+    return net(ENDPOINT, { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  function queued() {
+    try { return JSON.parse(read(QUEUE_KEY, '[]')) || []; } catch (e) { return []; }
+  }
+  function enqueue(payload) {
+    var q = queued();
+    q.push(payload);
+    write(QUEUE_KEY, JSON.stringify(q.slice(-50)));
+  }
+
+  /* A run that could not be sent is not a run that did not happen. The queue
+     survives a reload and a closed tab, and drains on the next success, the
+     next popup, or the moment the browser says it is back online. */
+  function flush() {
+    var q = queued();
+    if (!q.length || sending) return Promise.resolve();
+    sending = true;
+    var next = q[0];
+    return post(next).then(function (res) {
+      sending = false;
+      if (!res || res.ok !== true) {
+        /* Refused rather than unreachable -- a name the script will never
+           accept would otherwise block everything behind it forever. */
+        write(QUEUE_KEY, JSON.stringify(q.slice(1)));
+        return flush();
+      }
+      write(QUEUE_KEY, JSON.stringify(q.slice(1)));
+      if (next.game === CFG.id && res.rows) { shared = res.rows; fill(); }
+      return flush();
+    }).catch(function () { sending = false; });
+  }
+
+  /* Pull the current board. Failure is silent on purpose: the popup already
+     has the local one drawn and a red error over a game is noise. */
+  function refresh() {
+    return net(ENDPOINT + '?game=' + encodeURIComponent(CFG.id) + '&top=' + TOP)
+      .then(function (res) {
+        if (res && res.ok && res.rows) { shared = res.rows; fill(); }
+      })
+      .catch(function () {});
+  }
+
+  function send(score) {
+    var payload = { game: CFG.id, name: player || 'Player', score: score, device: deviceId() };
+    return post(payload).then(function (res) {
+      if (res && res.ok === true) {
+        if (res.rows) { shared = res.rows; fill(); }
+        return flush();
+      }
+      /* ok:false is the script refusing this run -- out of range, rate
+         limited. Queueing it would only get the same answer later. */
+    }).catch(function () {
+      enqueue(payload);
+      /* Re-draw. The popup went up the moment the game ended, which is before
+         this failure existed, so without this it sits there saying "This
+         device only" and never mentions the score it is holding for later. */
+      fill();
+    });
+  }
+
+  if (typeof addEventListener === 'function') {
+    addEventListener('online', function () { flush(); });
   }
 
   var player = read(NAME_KEY, '');
@@ -231,7 +345,12 @@
     rows.push({ n: player || 'Player', s: score, t: Date.now() });
     rows.sort(function (a, b) { return b.s - a.s || a.t - b.t; });
     write(BOARD_KEY, JSON.stringify(rows.slice(0, 200)));
+    /* Drawn before anything is sent. The popup is up the instant the game
+       ends, on the local board, and widens to the shared one if and when the
+       reply lands -- rather than sitting empty for a second and a half while
+       Apps Script wakes up. */
     render(score, prevBest);
+    send(score);
   }
 
   function bestOf(rows, name) {
@@ -286,6 +405,9 @@
      browser animates it back to full width first. */
   function openPop() {
     fill();
+    /* Asked for after the draw, never before it. Whatever comes back re-fills
+       in place; whatever does not changes nothing that is already on screen. */
+    refresh();
     pop.classList.add('on');
     bar.classList.remove('run');
     void bar.offsetWidth;
@@ -311,10 +433,16 @@
   });
 
   function fill() {
-    var rows = standings();
+    /* The shared board when there is one, this device's when there is not.
+       Which of the two is on screen is always said out loud at the bottom: a
+       visitor comparing themselves against four names needs to know whether
+       that is everybody at the booth or just this iPad. */
+    var live = !!shared;
+    var rows = live ? shared : standings();
+    var me = (player || '').toLowerCase();
     var myPos = null;
     for (var i = 0; i < rows.length; i++) {
-      if (rows[i].n === player) { myPos = i + 1; break; }
+      if (String(rows[i].n).toLowerCase() === me) { myPos = i + 1; break; }
     }
     var html = '<h3>Booth ranking</h3>';
     if (!rows.length) {
@@ -340,6 +468,14 @@
           : 'You scored ' + lastRun.score + ' \u00B7 your best is ' + lastRun.prev + '.') +
         '</p>';
     }
+    /* Never let the board imply more than it is showing. "Everyone at the
+       booth" and "this device" are different claims, and the visitor is the
+       one comparing themselves against it. */
+    var waiting = queued().length;
+    html += '<p class="fxr-note">' + (live
+      ? 'Everyone at the booth.'
+      : 'This device only' + (waiting ? ' \u00B7 ' + waiting + ' score' +
+          (waiting > 1 ? 's' : '') + ' waiting to send' : '') + '.') + '</p>';
     popBody.innerHTML = html;
   }
 
@@ -361,4 +497,10 @@
       wasHidden = isHidden;
     }).observe(resultEl, { attributes: true, attributeFilter: ['class'] });
   }
+
+  /* Anything stranded by a dropped connection last time goes out now, and the
+     board is fetched once so the first popup of a session already shows the
+     room rather than starting from this device and widening a beat later. */
+  flush();
+  refresh();
 })();

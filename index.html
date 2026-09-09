@@ -5209,9 +5209,35 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     }catch(e){ return []; }
   }
 
+  /* The shared board, when the booth endpoint answers. The same rows the
+     games' own popup shows, so a visitor who saw themselves third on the game
+     screen is third here too. Null until it lands, and null for good if the
+     wifi is out — in which case everything below runs on this device's scores
+     exactly as it always did. */
+  const BOOTH_SCORES = 'https://script.google.com/macros/s/AKfycbx4zwbrto2iEUu7T9BMZG7_7VNALN2eNrr_209P9Bll-R1FK6fT0_qg9lJnNyqInJZz/exec';
+  let SHARED = null;
+
+  /* top=50, not 5. Places are only awarded down to fifth, but "played 3 of 5"
+     counts everyone, and asking for five rows would quietly undercount anybody
+     who played and finished sixth. */
+  function fetchShared(){
+    let gone=false;
+    const stop=setTimeout(function(){ gone=true; }, 8000);
+    fetch(BOOTH_SCORES+'?all=1&top=50')
+      .then(r=>r.json())
+      .then(function(res){
+        clearTimeout(stop);
+        if(gone || !res || res.ok!==true || !res.games) return;
+        SHARED=res.games;
+        if(modal.classList.contains('open')) fill();
+      })
+      .catch(function(){ clearTimeout(stop); });
+  }
+
   /* One row per person, their best run — the same rule the games' own popup
      uses, so the two boards never disagree. */
   function bests(id){
+    if(SHARED && SHARED[id]) return SHARED[id];
     const seen=new Set(), out=[];
     /* Filter BEFORE the sort, not inside the loop after it. board() comes
        out of localStorage, so a single null or half-written row reached the
@@ -5256,10 +5282,16 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     const playedAny=leaders.some(l=>l.top);
 
     if(!playedAny){
-      intro.textContent='Nobody has finished a run on this device yet.';
+      intro.textContent = SHARED
+        ? 'Nobody has finished a run at the booth yet.'
+        : 'Nobody has finished a run on this device yet.';
       body.innerHTML='<div class="rank-empty">The board fills itself as people play. '+
-        'Each game writes its scores on the device it is played on, so this is the ' +
-        'ranking for this screen — start one of the five and it will show up here.</div>';
+        (SHARED
+          ? 'Every screen at the booth writes to the same board — start one of the '+
+            'five and it will show up here.'
+          : 'Scores are on the device they were played on for now, so this is the '+
+            'ranking for this screen — start one of the five and it will show up here.')+
+        '</div>';
       return;
     }
 
@@ -5284,8 +5316,10 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
         '</div>';
     });
 
-    html+='<p class="rank-note">Scores are kept on this device. A second screen at the '+
-      'booth builds its own board.</p>';
+    html+='<p class="rank-note">'+(SHARED
+      ? 'Everyone at the booth, on every screen.'
+      : 'This screen only — the shared board could not be reached, so these are '+
+        'the scores played here.')+'</p>';
     body.innerHTML=html;
   }
 
@@ -5297,6 +5331,9 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
      appears while somebody is scrolling must not trap them. */
   function open(self){
     fill();
+    /* After the draw, never before it. What comes back re-fills in place; what
+       does not leaves what is already on screen alone. */
+    fetchShared();
     auto=!!self;
     modal.classList.add('open');
     document.body.style.overflow = auto ? '' : 'hidden';
@@ -5405,6 +5442,11 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
       new IntersectionObserver(ping,{threshold:[0,.2,.55,.9]}).observe(section);
     setInterval(ping, 1200);                            // last resort, costs nothing
     ping();
+
+    /* Once on load, so the first time the board opens by itself it already has
+       the room in it rather than showing this screen's scores and widening a
+       beat later in front of whoever is reading it. */
+    fetchShared();
 
     /* Scrolling, tapping or driving the deck all mean the person wants the page
        back, so any of them sends the board away early. The grace period is the
