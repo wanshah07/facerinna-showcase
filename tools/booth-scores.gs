@@ -12,20 +12,47 @@
  *   admin endpoint would have to carry a secret, and the only place to put a
  *   secret on a static page is in the page, where it is not a secret.
  *
+ * ===================================================================
+ *  NEVER PASTE THIS INTO AN APPS SCRIPT PROJECT THAT ALREADY HAS ONE
+ * ===================================================================
+ *
+ *   A project has exactly one doPost and one doGet. Pasting this beside
+ *   another web app REPLACES them, and re-deploying that deployment takes the
+ *   old one off the air at the URL it has always answered on.
+ *
+ *   That is not hypothetical. This file went into the events REGISTRATION
+ *   project on 9 Sept and broke registration the night before the PDM AGM:
+ *   every submission came back "We could not send that", because this script
+ *   was answering registration posts with {"ok":false,"error":"unknown game"}.
+ *   Recovery was Deploy -> Manage deployments -> pencil -> Version: (the one
+ *   before), Deploy — deployments pin a code snapshot, so rolling the version
+ *   back restores the old behaviour at the same URL.
+ *
+ *   This gets its OWN project. Always.
+ *
  * SET UP  (five minutes, and it must be you — the deployment is tied to your
  *          Google account and cannot be created from outside)
  *
- *   1. Make a new Google Sheet. Name it whatever you like.
- *   2. Extensions -> Apps Script. Delete the stub, paste this whole file.
- *   3. Run -> setUp once. It builds the Scores tab with its headers and frozen
- *      row. Grant the permissions it asks for. You only ever do this once.
- *   4. Deploy -> New deployment -> type Web app.
+ *   1. script.google.com -> New project.  NOT Extensions -> Apps Script from
+ *      a sheet that already has a script on it. A standalone project can open
+ *      any sheet by id, which is how one workbook holds the scores and the
+ *      registrations side by side without the two scripts ever meeting.
+ *   2. Delete the stub, paste this whole file.
+ *   3. Put the workbook's id in SHEET_ID below — the long string between /d/
+ *      and /edit in its address. Leave it blank ONLY if you made this from
+ *      Extensions -> Apps Script on a sheet that has no other script.
+ *   4. Run -> setUp once. It builds the Scores tab with its headers and frozen
+ *      row, beside whatever tabs are already there. Grant the permissions it
+ *      asks for. You only ever do this once.
+ *   5. Deploy -> New deployment -> type Web app.
  *        Execute as:        Me
  *        Who has access:    Anyone            <-- must be Anyone, not "Anyone
  *                                                 with Google account", or a
  *                                                 visitor's browser is asked
  *                                                 to sign in and the post dies
- *   5. Copy the /exec URL. That is what goes into fx-rank.js.
+ *   6. Copy the /exec URL. That is what goes into fx-rank.js. Check it is a
+ *      DIFFERENT string from any URL already in this repository before you
+ *      hand it over — an identical one means step 1 went wrong.
  *
  *   Re-deploy after ANY edit to this file: Deploy -> Manage deployments ->
  *   the pencil -> Version: New version. Editing alone changes nothing that is
@@ -50,10 +77,15 @@
 
 /* ------------------------------------------------------------------ config */
 
-/* Leave blank to use the sheet this script is bound to, which is what you get
-   by creating it from Extensions -> Apps Script. Set an id only if you ever
-   move the script somewhere else. */
-var SHEET_ID = '';
+/* The workbook to write into: the long string between /d/ and /edit in its
+   address. A standalone script has nothing bound to it, so this is how one
+   workbook can hold the scores and the event registrations in separate tabs
+   while their two scripts stay entirely separate projects.
+
+   Blank falls back to the bound sheet, which only works if this project was
+   made from Extensions -> Apps Script on a sheet that had no script already.
+   Read the warning at the top of this file before choosing that. */
+var SHEET_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
 var TAB      = 'Scores';
 
 /* The five games, by the id each game page declares in window.FX_RANK. A post

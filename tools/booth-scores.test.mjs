@@ -7,8 +7,17 @@ import fs from 'fs';
 const src = fs.readFileSync('/workspace/facerinna-showcase/tools/booth-scores.gs','utf8');
 
 const sheet = { rows: [] };
-const SpreadsheetApp = { getActive: () => ({
-  getSheetByName: () => api, insertSheet: () => api }) };
+/* Both paths, because the live config is the standalone one: SHEET_ID set and
+   the workbook opened by id, so the scoreboard can share a workbook with the
+   events registration without the two scripts sharing a project. openById is
+   the branch that actually runs now -- stubbing only getActive made this test
+   pass on a code path production no longer takes. */
+const opened = [];
+const book = { getSheetByName: () => api, insertSheet: () => api };
+const SpreadsheetApp = {
+  getActive: () => book,
+  openById: id => { opened.push(id); return book; },
+};
 const api = {
   getLastRow: () => sheet.rows.length + 1,
   appendRow: r => sheet.rows.push(r),
@@ -42,7 +51,12 @@ const check = (label, cond) => { if(!cond) ok = false;
 
 mod.setUp();
 
-console.log('accepting good runs');
+console.log('the workbook it writes to');
+check('opened by id, not the bound sheet', opened.length > 0);
+check('and it is the id in the config',
+      opened[0] === '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso');
+
+console.log('\naccepting good runs');
 check('first score accepted',            post({game:'match-lab',name:'Ahmad',score:120}).ok === true);
 check('second player accepted',          post({game:'match-lab',name:'Siti', score:300}).ok === true);
 check('same player, better run',         post({game:'match-lab',name:'Ahmad',score:450}).ok === true);
