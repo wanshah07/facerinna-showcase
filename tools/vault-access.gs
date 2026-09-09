@@ -84,6 +84,12 @@ var GIDS = { reports: 378921450, series: 610219740, skus: 1440505952, thumbs: 52
 var TOKEN_DAYS = 14;     /* a link stops working after this long */
 var FROM_NAME  = 'FACERINNA Regulatory Affairs';
 
+/* Who is told when somebody asks. Nobody watches a spreadsheet at a booth, so
+   without this a request can sit unseen all day. Leave it empty and the mail
+   goes to whoever owns the script; set an address to send it elsewhere, or set
+   it to '-' to switch the notice off entirely. */
+var NOTIFY_TO = '';
+
 var REQ_HEADERS = ['asked', 'name', 'email', 'organisation', 'status',
                    'token', 'expires', 'link sent', 'note'];
 
@@ -149,7 +155,38 @@ function requestAccess_(b) {
   } finally {
     lock.releaseLock();
   }
+
+  /* After the row is safely written, and never in a way that can undo it: a
+     mail server having a bad minute must not turn a visitor's accepted
+     request into an error on their screen. The row is the record; the notice
+     is a convenience. */
+  notifyNewRequest_(name, email, org);
+
   return json_({ ok: true, already: false });
+}
+
+/* Tells you a request has come in, so you do not have to keep the workbook
+   open. Silent on failure by design -- see the call site. */
+function notifyNewRequest_(name, email, org) {
+  try {
+    if (NOTIFY_TO === '-') return;
+    var to = NOTIFY_TO || Session.getEffectiveUser().getEmail();
+    if (!to) return;
+    MailApp.sendEmail({
+      to: to,
+      name: FROM_NAME,
+      subject: 'Vault access requested: ' + name,
+      htmlBody:
+        '<p><b>' + esc_(name) + '</b> asked to read the FACERINNA test reports.</p>' +
+        '<p>' + esc_(email) + (org ? '<br>' + esc_(org) : '') + '</p>' +
+        '<p>To let them in, set that row\'s <b>status</b> to <b>approved</b> in the ' +
+        '"' + esc_(REQ_TAB) + '" tab. The link is mailed to them on its own.</p>' +
+        '<p><a href="https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit">' +
+        'Open the request list</a></p>'
+    });
+  } catch (e) {
+    Logger.log('notify failed: ' + (e && e.message || e));
+  }
 }
 
 function findRow_(sh, email) {
@@ -170,13 +207,27 @@ function findRow_(sh, email) {
 
 /* -------------------------------------------------------------- approvals */
 
-/* Run this from the editor after approving a batch, or attach it to a
- * time-driven trigger (Triggers -> Add trigger -> sendApprovals -> Time-driven
- * -> every 5 minutes) and it becomes automatic. Same function either way,
- * which is why it is written to be safe to run at any moment: it only ever
- * acts on rows that are approved AND have no token yet.
+/* Sends a link to every row that is approved and has no token yet. Run it by
+ * hand from the editor if you like, but installTriggers() below means you do
+ * not have to: it fires on the edit that approves a row, and again every five
+ * minutes as a net. Safe to run at any moment, from anywhere, as often as you
+ * like -- an already-tokened row is never touched twice.
  */
 function sendApprovals() {
+  /* Two callers can now land at the same moment: the edit trigger and the
+     timer. Without the lock both would see the same tokenless row and both
+     would mail a link -- two keys to a door meant to have one. tryLock, not
+     waitLock: if another run holds it, that run is already doing this. */
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(3000)) return 'Another run is already sending.';
+  try {
+    return sendApprovals_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function sendApprovals_() {
   var sh = reqTab_();
   var last = sh.getLastRow();
   if (last < 2) return 'No requests yet.';
@@ -423,4 +474,64 @@ function checkWorkbooks() {
             ', skus ' + d.skus.length + ', thumbs ' + d.thumbs.length;
   Logger.log(msg);
   return msg;
+}
+
+/* ------------------------------------------------------------- triggers */
+
+/* Run this ONCE, from the editor. After it, approving somebody is a single
+   cell edit in the workbook and nothing else: no editor, no Run button.
+ *
+ * Two triggers, on purpose:
+ *
+ *   the edit trigger   fires the moment a status cell becomes "approved",
+ *                      so the link goes out in seconds while the person is
+ *                      still standing at the booth.
+ *   the five-minute    a net under it. An edit trigger does not fire for
+ *   timer              every way a cell can change -- a paste over a block,
+ *                      a fill-down, an edit made from the mobile app or
+ *                      while offline and synced later. Any of those would
+ *                      leave somebody approved and never told. The timer
+ *                      catches them, at the cost of a few minutes.
+ *
+ * Both call the same locked sendApprovals, so the overlap is harmless.
+ *
+ * These must be INSTALLABLE triggers. A simple onEdit(e) runs without
+ * authorisation and cannot send mail at all, which would look like the
+ * feature silently not working.
+ */
+function installTriggers() {
+  removeTriggers();
+  ScriptApp.newTrigger('onSheetEdit').forSpreadsheet(SHEET_ID).onEdit().create();
+  ScriptApp.newTrigger('sendApprovals').timeBased().everyMinutes(5).create();
+  return 'Installed. Set a status cell to "approved" and the link goes out by itself.';
+}
+
+/* Re-running installTriggers must not leave two of each: triggers stack
+   silently, and four copies means four runs racing for the same row. */
+function removeTriggers() {
+  var all = ScriptApp.getProjectTriggers(), n = 0;
+  for (var i = 0; i < all.length; i++) {
+    var fn = all[i].getHandlerFunction();
+    if (fn === 'onSheetEdit' || fn === 'sendApprovals') {
+      ScriptApp.deleteTrigger(all[i]);
+      n++;
+    }
+  }
+  return 'Removed ' + n + ' trigger(s).';
+}
+
+/* Fires on every edit anywhere in the workbook, the Scores tab included, so
+   it has to be narrow: the request tab, the status column, and a value that
+   actually says approved. Anything else returns without touching a thing. */
+function onSheetEdit(e) {
+  try {
+    if (!e || !e.range) return;
+    if (e.range.getSheet().getName() !== REQ_TAB) return;
+    if (e.range.getColumn() !== 5) return;                   /* status */
+    if (e.range.getRow() < 2) return;                        /* the header */
+    if (String(e.value || '').trim().toLowerCase() !== 'approved') return;
+    sendApprovals();
+  } catch (err) {
+    Logger.log('onSheetEdit: ' + (err && err.message || err));
+  }
 }

@@ -56,19 +56,49 @@ const SpreadsheetApp = { openById: id => {
     getSheets: () => Object.keys(b.byGid||{}).map(g => mkSheet({gid:Number(g), grid:b.byGid[g]})),
   };
 }};
+const OWNER = 'owner@facerinna.test';
 const mails = [];
-const MailApp = { sendEmail: o => { if(/^bounce@/.test(o.to)) throw new Error('bounced'); mails.push(o); },
+/* Every mail lands in mails[]. The two kinds are told apart by filtering, not
+   by keeping separate lists: a bug that mailed an approval LINK to the owner
+   would vanish into a separate list and show up here. */
+const links   = () => mails.filter(x => x.to !== OWNER);
+const notices = () => mails.filter(x => x.to === OWNER);
+let MAIL_BREAK = null;                 /* an address the mail server refuses */
+const MailApp = { sendEmail: o => {
+                    if(/^bounce@/.test(o.to) || o.to === MAIL_BREAK) throw new Error('bounced');
+                    mails.push(o); },
                   getRemainingDailyQuota: () => 100 };
-const LockService = { getScriptLock: () => ({ waitLock(){}, releaseLock(){} }) };
+let LOCK_FREE = true;
+const LockService = { getScriptLock: () => ({
+  waitLock(){}, releaseLock(){ LOCK_FREE = true; },
+  /* tryLock must be able to say no, or the lock is not under test at all. */
+  tryLock(){ if(!LOCK_FREE) return false; LOCK_FREE = false; return true; } }) };
+
+/* Installable triggers, kept in a list so stacking is visible. */
+const TRIGGERS = [];
+const ScriptApp = {
+  newTrigger: fn => { const t={fn, kind:null};
+    const b = { forSpreadsheet(){ t.kind="edit-book"; return b; },
+                onEdit(){ return b; },
+                timeBased(){ t.kind="timer"; return b; },
+                everyMinutes(n){ t.mins=n; return b; },
+                create(){ TRIGGERS.push(t); return t; } };
+    return b; },
+  getProjectTriggers: () => TRIGGERS.map(t => ({
+    getHandlerFunction: () => t.fn, _t: t })),
+  deleteTrigger: h => { const i = TRIGGERS.indexOf(h._t); if(i>=0) TRIGGERS.splice(i,1); },
+};
 const ContentService = { MimeType:{JSON:'j'}, createTextOutput: s => ({ setMimeType: () => s }) };
 let uuid = 0;
 const Utilities = { getUuid: () => 'tok-' + (++uuid),
                     formatDate: d => d.toISOString().slice(0,10) };
-const Session = { getScriptTimeZone: () => 'UTC' };
+const Session = { getScriptTimeZone: () => 'UTC',
+                  getEffectiveUser: () => ({ getEmail: () => 'owner@facerinna.test' }) };
 const Logger = { log(){} };
 
 const m = eval(`(() => { ${src}
-  return { doPost, doGet, setUp, sendApprovals, preview, checkWorkbooks, readVault_ }; })()`);
+  return { doPost, doGet, setUp, sendApprovals, preview, checkWorkbooks, readVault_,
+           onSheetEdit, installTriggers, removeTriggers }; })()`);
 
 const call = o => JSON.parse(m.doPost({ postData:{ contents: JSON.stringify(o), type:'text/plain' } }));
 let ok = true;
@@ -103,13 +133,13 @@ check('an address nobody knows',call({action:'status',email:'who@nowhere.com'}).
 
 console.log('\napproving in the sheet, then sending');
 statusCell('lim@clinic.my','approved');
-check('nothing sent until sendApprovals runs', mails.length === 0);
+check('nothing sent until sendApprovals runs', links().length === 0);
 const r1 = m.sendApprovals();
-check('one mail went out',      mails.length === 1);
-check('to the right person',    mails[0].to === 'lim@clinic.my');
+check('one mail went out',      links().length === 1);
+check('to the right person',    links()[0].to === 'lim@clinic.my');
 check('the link carries a token in the fragment',
-      /#vault=tok-\d+$/.test(mails[0].htmlBody.match(/href="([^"]+)"/)[1]));
-check('running it again sends nothing more', (m.sendApprovals(), mails.length === 1));
+      /#vault=tok-\d+$/.test(links()[0].htmlBody.match(/href="([^"]+)"/)[1]));
+check('running it again sends nothing more', (m.sendApprovals(), links().length === 1));
 
 const TOKEN = REQ.rows[1][5];
 
@@ -143,9 +173,9 @@ check('a live one still works', call({action:'data',token:TOKEN}).ok === true);
 console.log('\na send that bounces does not mark the row as sent');
 call({action:'request',name:'Bad',email:'bounce@nowhere.com',organisation:'',consent:true});
 statusCell('bounce@nowhere.com','approved');
-const before = mails.length;
+const before = links().length;
 const r2 = m.sendApprovals();
-check('no mail recorded',        mails.length === before);
+check('no mail recorded',        links().length === before);
 check('no token written, so the next run retries',
       String(REQ.rows.find(x=>x[2]==='bounce@nowhere.com')[5] || '') === '');
 check('and it says which address failed', /bounce@nowhere\.com/.test(r2));
@@ -154,6 +184,66 @@ console.log('\nGET tells you the deployment is alive without revealing anything'
 const g = JSON.parse(m.doGet());
 check('ok', g.ok === true);
 check('carries no report data', !JSON.stringify(g).includes('INB/'));
+
+console.log('\nyou are told when somebody asks');
+const nBefore = notices().length;
+call({action:'request',name:'Nurul A',email:'nurul@hosp.my',organisation:'Hosp KL',consent:true});
+check('a notice goes out',        notices().length === nBefore + 1);
+const notice = notices()[notices().length-1];
+check('it names the person',      /Nurul A/.test(notice.htmlBody));
+check('and their address',        /nurul@hosp\.my/.test(notice.htmlBody));
+check('and their organisation',   /Hosp KL/.test(notice.htmlBody));
+check('it links to the workbook', notice.htmlBody.includes('docs.google.com/spreadsheets/d/'));
+check('it carries no token',      !/#vault=/.test(notice.htmlBody));
+check('asking again does not notify again',
+      (call({action:'request',name:'Nurul A',email:'nurul@hosp.my',consent:true}),
+       notices().length === nBefore + 1));
+
+console.log('\na notice that will not send must not lose the request');
+MAIL_BREAK = OWNER;
+const rowsBefore = REQ.rows.length;
+const rq = call({action:'request',name:'Tan',email:'tan@x.my',organisation:'',consent:true});
+MAIL_BREAK = null;
+check('the visitor still gets ok',  rq.ok === true);
+check('and the row is still written', REQ.rows.length === rowsBefore + 1);
+
+console.log('\napproving is one cell: the edit trigger');
+statusCell('tan@x.my','approved');
+const editOn = (sheet,col,row,val) => m.onSheetEdit({ value: val, range: {
+  getSheet: () => ({ getName: () => sheet }), getColumn: () => col, getRow: () => row } });
+let L = links().length;
+editOn('Scores', 5, 4, 'approved');
+check('an edit on another tab does nothing', links().length === L);
+editOn('Vault requests', 4, 4, 'approved');
+check('an edit on another column does nothing', links().length === L);
+editOn('Vault requests', 5, 1, 'approved');
+check('an edit on the header row does nothing', links().length === L);
+editOn('Vault requests', 5, 4, 'pending');
+check('any other status does nothing', links().length === L);
+editOn('Vault requests', 5, 4, ' Approved ');
+check('approving sends the link, spacing and case aside', links().length === L + 1);
+check('it went to the person approved', links()[links().length-1].to === 'tan@x.my');
+check('a malformed event is survived, not thrown',
+      (m.onSheetEdit(undefined), m.onSheetEdit({}), true));
+
+console.log('\ntwo runs at once must not issue two keys');
+call({action:'request',name:'Race',email:'race@x.my',organisation:'',consent:true});
+statusCell('race@x.my','approved');
+const held = LockService.getScriptLock(); held.tryLock(1);   /* another run has it */
+L = links().length;
+const busy = m.sendApprovals();
+check('the second run declines', links().length === L && /already sending/.test(busy));
+held.releaseLock();
+check('and once free the link goes', (m.sendApprovals(), links().length === L + 1));
+
+console.log('\ntriggers install once, not once per run');
+check('two triggers',   (m.installTriggers(), TRIGGERS.length === 2));
+check('one edit, one timer',
+      TRIGGERS.filter(t=>t.kind==='edit-book').length === 1 &&
+      TRIGGERS.filter(t=>t.kind==='timer' && t.mins === 5).length === 1);
+check('installing again does not stack them',
+      (m.installTriggers(), TRIGGERS.length === 2));
+check('and they can be taken away', (m.removeTriggers(), TRIGGERS.length === 0));
 
 console.log(ok ? '\nall good' : '\nSOMETHING IS WRONG');
 process.exit(ok ? 0 : 1);
