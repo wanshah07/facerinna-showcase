@@ -6050,6 +6050,22 @@ if (window.top !== window.self) {
 })();
 </script>
 <script>
+/* A rotation is not one event, and the first one lies. The browser fires
+   resize while it is still moving its own furniture -- the address bar
+   changes height a beat after the turn -- and some Android browsers fire
+   orientationchange without a resize at all. Everything on this page that
+   cares about its size already re-measures on resize, so the cheapest
+   correct thing is to ask them again once the dust has settled. Running
+   three times costs nothing when the first answer was right: each handler
+   simply computes the same numbers again. */
+addEventListener('orientationchange', function(){
+  var again = function(){ dispatchEvent(new Event('resize')); };
+  again();
+  setTimeout(again, 120);
+  setTimeout(again, 400);
+});
+</script>
+<script>
 /* Registered from every page rather than only the home page: a visitor can
    arrive on any of them straight from a QR code, and whichever they land on
    is the one that has to work when the hall wifi does not. Registering more

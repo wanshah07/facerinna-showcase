@@ -1404,10 +1404,27 @@ function tick(){
 }
 tick();
 
-window.addEventListener('resize', function(){
+function fitToWindow(){
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/* A rotation is not one event, and the first one lies.
+   The browser fires resize while it is still moving its own furniture --
+   the address bar changes height a beat after the turn, and some phones
+   report the old width for a frame or two -- so a canvas sized on that
+   first event can end up a landscape shape on a portrait screen and stay
+   that way until something else happens to fire another. Sizing again once
+   things have settled costs nothing when the first answer was right: it
+   sets the same numbers a second time. Some Android browsers also fire
+   orientationchange without a resize at all, which on its own would leave
+   the canvas never resized. */
+window.addEventListener('resize', fitToWindow);
+window.addEventListener('orientationchange', function(){
+  fitToWindow();
+  setTimeout(fitToWindow, 120);
+  setTimeout(fitToWindow, 400);
 });
 
 })();
