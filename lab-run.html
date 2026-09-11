@@ -891,12 +891,17 @@ scene.add(shieldBubble);
 // ---------- state ----------
 var S = {
   running:false, over:false,
-  lane:1, targetX:0, x:0,
+  lane:1, targetX:0, x:0, vx:0,
   y:0, vy:0, grounded:true,
   speed:14, dist:0, score:0, drops:0, bonus:0,
   shield:0, spawnZ:-40, t:0, shake:0, turbo:false
 };
 var GRAVITY = -30, JUMP_V = 10.2;
+/* Hoisted: this list was rebuilt, with three fresh closures, on every frame.
+   Sixty small allocations a second is not a stall by itself, but it is
+   rubbish the collector has to come back for, and the pause when it does is
+   exactly the hitch nobody can reproduce on demand. */
+var KINDS = ['drop','shield','germ'];
 var best = 0;
 
 var el = {
@@ -930,6 +935,17 @@ function move(dir){
   S.lane = n;
   S.targetX = LANES[n];
 }
+/* The finger can leave him anywhere between two lanes, so a release has to
+   decide which one he was heading for. Nearest wins. */
+function snapLane(){
+  var n = 0, best = Infinity;
+  for (var i=0;i<LANES.length;i++){
+    var d = Math.abs(LANES[i] - S.targetX);
+    if (d < best){ best = d; n = i; }
+  }
+  S.lane = n;
+  S.targetX = LANES[n];
+}
 function jump(){
   if (!S.running || !S.grounded) return;
   S.vy = JUMP_V;
@@ -950,14 +966,22 @@ document.addEventListener('keydown', function(e){
    Slide to steer, tap to jump, hold to run. Pointer events rather than
    touch, so a mouse on the booth screen behaves exactly like a finger.
 
-   Steering re-baselines every time it crosses a lane: the runner keeps
-   following the finger across all three lanes in one continuous slide
-   instead of one lane per swipe.
+   Steering is continuous. It used to step a whole lane for every 46px the
+   finger travelled, which is why he read as three fixed positions being
+   hopped between rather than somebody moving: nothing at all happened for
+   45px, then he was somewhere else. Now the finger's distance from where it
+   landed maps straight onto his position across the track, so he sits under
+   it the whole way and stops between lanes if that is where the finger
+   stopped. Releasing settles him on the nearest lane.
 
-   The three readings cannot all be settled on release — turbo has to
-   engage while the finger is still down — so the press resolves on a
-   timer, and any real movement cancels it back to steering. */
-var LANE_STEP = 46;     // px of travel that means "one lane over"
+   Jumping happens on the press, not the release. Waiting for the lift meant
+   the tap was over before he moved -- the single most common way a runner
+   feels heavy -- and a tap held a fraction too long became a hold instead
+   and jumped not at all. Steering also jumps now, which costs nothing here:
+   drops and shields are collected without a height test, and being airborne
+   only ever helps against a germ. */
+var LANE_STEP = 46;     // px of finger travel that spans one lane
+var LANE_SPAN = LANES[1] - LANES[0];   // world units between lanes
 var HOLD_MS   = 260;    // press longer than this, with no travel, is a hold
 var TAP_SLOP  = 14;     // px of wander still counted as a tap
 
@@ -977,8 +1001,10 @@ cv.style.touchAction = 'none';   // we interpret the gesture, not the browser
 
 cv.addEventListener('pointerdown', function(e){
   if (!S.running) return;
-  gest = {x:e.clientX, y:e.clientY, ox:e.clientX, oy:e.clientY, moved:false, held:false};
+  gest = {x:e.clientX, y:e.clientY, ox:e.clientX, oy:e.clientY,
+          baseX:S.targetX, moved:false, held:false};
   try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  jump();                       // on the press. See the note above.
   clearTimeout(holdTimer);
   holdTimer = setTimeout(function(){
     if (gest && !gest.moved){ gest.held = true; beginTurbo(); }
@@ -987,19 +1013,17 @@ cv.addEventListener('pointerdown', function(e){
 
 cv.addEventListener('pointermove', function(e){
   if (!gest) return;
-  var dx = e.clientX - gest.x, dy = e.clientY - gest.y;
+  var dy = e.clientY - gest.y;
   if (!gest.moved && Math.hypot(e.clientX-gest.ox, e.clientY-gest.oy) > TAP_SLOP){
     gest.moved = true;
     clearTimeout(holdTimer);      // it is a slide, not a hold
   }
-  // steer, and rebase so a long slide keeps stepping lane by lane
-  while (Math.abs(dx) >= LANE_STEP){
-    var dir = dx > 0 ? 1 : -1;
-    move(dir);
-    gest.x += dir * LANE_STEP;
-    dx = e.clientX - gest.x;
+  if (gest.moved){
+    // where the finger is, in track units, measured from where it landed
+    var want = gest.baseX + (e.clientX - gest.ox) / LANE_STEP * LANE_SPAN;
+    S.targetX = Math.max(LANES[0], Math.min(LANES[LANES.length-1], want));
   }
-  // a decisive flick upward still jumps
+  // a flick upward jumps again mid-slide
   if (!gest.held && dy < -56 && Math.abs(dy) > Math.abs(e.clientX-gest.ox)){
     jump();
     gest.y = e.clientY;
@@ -1009,8 +1033,7 @@ cv.addEventListener('pointermove', function(e){
 function releaseGesture(e){
   if (!gest) return;
   clearTimeout(holdTimer);
-  var wander = Math.hypot(e.clientX-gest.ox, e.clientY-gest.oy);
-  if (!gest.held && !gest.moved && wander <= TAP_SLOP) jump();
+  if (gest.moved) snapLane();   // settle on whichever lane he was nearest
   endTurbo();
   gest = null;
 }
@@ -1039,7 +1062,7 @@ document.getElementById('againBtn').addEventListener('click', startGame);
 
 // ---------- spawning ----------
 function clearField(){
-  ['drop','shield','germ'].forEach(function(k){
+  KINDS.forEach(function(k){
     POOL[k].forEach(function(m){ release(m); });
   });
 }
@@ -1150,28 +1173,43 @@ var PERF = (function(){
   var cap = Math.min(window.devicePixelRatio || 1,
                      (typeof SMALL !== 'undefined' && SMALL) ? 1.25 : 1.5);
   return {cap: cap, scale: cap, min: Math.min(0.75, cap),
-          acc: 0, frames: 0, cooldown: 0, shadowsOff: false};
+          acc: 0, frames: 0, cooldown: 0, shadowsOff: false,
+          warm: 0, rounds: 0};
 })();
 function perfTick(dtMs){
+  /* The opening frames of a WebGL scene are always slow -- shaders compile,
+     textures upload -- and they say nothing about the device. Judging on them
+     downgraded fast phones for the whole session on the strength of work that
+     happens once. Those frames are now thrown away rather than averaged in. */
+  if (PERF.warm < 20){ PERF.warm++; return; }
+
   PERF.acc += dtMs; PERF.frames++;
   if (PERF.cooldown > 0){ PERF.cooldown--; }
-  if (PERF.frames < 30) return;
+  /* The first few verdicts come after a dozen frames instead of thirty, and
+     wait a third as long before the next. A phone that cannot keep up has to
+     say so quickly: every frame spent working that out is a frame of exactly
+     the stutter this exists to remove, and a booth turn lasts a minute. Once
+     it has found its level the longer window takes over, so it settles
+     instead of hunting. */
+  var quick = PERF.rounds < 3;
+  if (PERF.frames < (quick ? 12 : 30)) return;
   var avg = PERF.acc / PERF.frames;
   PERF.acc = 0; PERF.frames = 0;
   if (PERF.cooldown > 0) return;
+  PERF.rounds++;
 
   if (avg > 22 && PERF.scale > PERF.min){           // under ~45fps
     PERF.scale = Math.max(PERF.min, PERF.scale - 0.25);
     renderer.setPixelRatio(PERF.scale);
-    PERF.cooldown = 60;
+    PERF.cooldown = quick ? 20 : 60;
   } else if (avg > 30 && !PERF.shadowsOff){          // still under ~33fps
     renderer.shadowMap.enabled = false;
     PERF.shadowsOff = true;
-    PERF.cooldown = 90;
+    PERF.cooldown = quick ? 30 : 90;
   } else if (avg < 13 && PERF.scale < PERF.cap){
     PERF.scale = Math.min(PERF.cap, PERF.scale + 0.25);
     renderer.setPixelRatio(PERF.scale);
-    PERF.cooldown = 120;
+    PERF.cooldown = 120;                 // climbing back up is never urgent
   }
 }
 
@@ -1195,8 +1233,13 @@ function tick(){
     S.score = Math.floor(S.dist * 0.6) + S.bonus;
     el.score.textContent = S.score;
 
-    // lane glide
-    S.x += (S.targetX - S.x) * Math.min(1, dt*13);
+    /* Lane glide. While a finger is down he is being dragged, so he follows
+       it almost exactly -- any lag here reads as the controls being loose.
+       Let go, or steer with the keyboard, and he settles more gently. */
+    var prevX = S.x;
+    var follow = (gest && gest.moved) ? 26 : 13;
+    S.x += (S.targetX - S.x) * Math.min(1, dt*follow);
+    S.vx = dt > 0 ? (S.x - prevX) / dt : 0;
 
     // jump
     S.y += S.vy*dt;
@@ -1239,7 +1282,7 @@ function tick(){
   }
 
   // move & test pickups
-  ['drop','shield','germ'].forEach(function(kind){
+  KINDS.forEach(function(kind){
     var arr = POOL[kind];
     for (var j=0;j<arr.length;j++){
       m = arr[j];
@@ -1304,7 +1347,11 @@ function tick(){
 
   // Facing. The lane runs toward -Z, so running forward means turning away
   // from the camera; idling on the menu he turns back to face it.
-  var tilt = S.running ? (S.targetX - S.x) * -0.22 : 0;
+  /* Lean from how fast he is actually moving sideways. It used to come from
+     the gap between where he is and where he is going, which is near zero
+     while he is tracking a finger -- so the harder you steered, the less he
+     leaned. */
+  var tilt = S.running ? Math.max(-0.5, Math.min(0.5, (S.vx || 0) * -0.045)) : 0;
   var faceWant = S.running ? (Math.PI + tilt*0.8) : Math.sin(S.t*0.6)*0.5;
   player.rotation.y += (faceWant - player.rotation.y) * Math.min(1, dt*7);
   // roll is mirrored once he is turned around, so the lean still goes
