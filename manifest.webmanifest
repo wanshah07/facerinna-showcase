@@ -1,0 +1,14 @@
+{
+  "name": "FACERINNA · PDM AGM Showcase",
+  "short_name": "FACERINNA",
+  "description": "The FACERINNA booth showcase: range, evidence, games and clinic registration.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F2F8FD",
+  "theme_color": "#1a2f4a",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
