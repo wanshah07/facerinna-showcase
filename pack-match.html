@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1a2f4a">
 <!-- Brand mark as the tab icon, at the owner's choosing: the wordmark's own
      dot grid, not a simplified stand-in. It is faint at the 16px a tab
      renders — a 12x12 grid cannot survive 16 pixels — and that trade was
@@ -1340,5 +1342,14 @@ window.addEventListener('resize', function(){
      where this game keeps its result screen and its score. -->
 <script>window.FX_RANK={id:'pack-match',name:'Pack Match',result:'#result',score:'#rScore'};</script>
 <script src="fx-rank.js"></script>
+<script>
+/* Registered from every page rather than only the home page: a visitor can
+   arrive on any of them straight from a QR code, and whichever they land on
+   is the one that has to work when the hall wifi does not. Registering more
+   than once is a no-op. Failure is swallowed -- an unsupported browser or a
+   file:// preview should lose the offline copy, not the page. */
+if ('serviceWorker' in navigator)
+  addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+</script>
 </body>
 </html>
