@@ -13,7 +13,7 @@ let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
 const src=fs.readFileSync(FILE,'utf8');
 const marker='(function(){\n"use strict";';
 if(!src.includes(marker)) { console.error('cannot find the game IIFE'); process.exit(2); }
-const html=src.replace(marker, marker+'\nwindow.__peek=function(){return {x:S.x,targetX:S.targetX,lane:S.lane,y:S.y,vy:S.vy,grounded:S.grounded,running:S.running,LANES:LANES};};\nwindow.__set=function(o){for(var k in o) S[k]=o[k];};');
+const html=src.replace(marker, marker+'\nwindow.__peek=function(){return {x:S.x,targetX:S.targetX,lane:S.lane,vx:S.vx,y:S.y,vy:S.vy,grounded:S.grounded,running:S.running,LANES:LANES,step:laneStep()};};\nwindow.__set=function(o){for(var k in o) S[k]=o[k];};');
 
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const c=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
@@ -83,22 +83,59 @@ const arr=await p.evaluate(()=>__peek());
 chk('and he arrives there', Math.abs(arr.x-arr.targetX)<0.25,
     {x:+arr.x.toFixed(2), targetX:arr.targetX});
 
-/* --- a drag that stops between lanes must still settle on one ---
-   The long drag above ends clamped at the edge, which is already a lane, so
-   it cannot tell whether releasing snaps or not. This one stops halfway. */
+/* --- one swipe should be about one lane ---
+   This is the whole complaint. The scale used to be a flat 46px a lane, so a
+   normal thumb swipe crossed the entire two-lane track before you could see
+   him travel -- continuous movement you cannot aim looks exactly like
+   jumping between three places. */
+const step = await p.evaluate(()=>__peek().step);
+chk('a lane costs a real swipe, not a flick', step>=70&&step<=150, step);
 await p.evaluate(()=>__set({x:0,targetX:0,lane:1}));
 await p.mouse.move(195,600); await p.mouse.down();
-await p.mouse.move(195+26,600,{steps:5});
-const held=await p.evaluate(()=>__peek().targetX);
-chk('mid-drag he is between two lanes', LANES.every(L=>Math.abs(L-held)>0.15), +held.toFixed(2));
+await p.mouse.move(195+14,600);                       // past the tap slop
+await p.mouse.move(195+14+Math.round(step),600,{steps:10});
+const oneLane = await p.evaluate(()=>__peek().targetX);
+chk('and moving one lane-worth of finger moves him one lane',
+    Math.abs(oneLane-(LANES[1]+ (LANES[1]-LANES[0])))<0.25, +oneLane.toFixed(2));
+await p.mouse.up(); await p.waitForTimeout(400);
+
+/* --- the slop must not be credited as travel --- */
+await p.evaluate(()=>__set({x:0,targetX:0,lane:1}));
+await p.mouse.move(195,600); await p.mouse.down();
+await p.mouse.move(195+15,600);       // just enough to count as a slide
+const atStart = await p.evaluate(()=>__peek().targetX);
+chk('deciding it is a slide does not itself move him', Math.abs(atStart)<0.08, +atStart.toFixed(3));
+await p.mouse.up(); await p.waitForTimeout(400);
+
+/* --- a release mid-move carries on, it does not get pulled back --- */
+await p.evaluate(()=>__set({x:0,targetX:0,lane:1,vx:0}));
+await p.mouse.move(195,600); await p.mouse.down();
+await p.mouse.move(195+14,600);
+for(let i=1;i<=6;i++) await p.mouse.move(195+14+i*8,600);
+const moving=await p.evaluate(()=>__peek());
+chk('mid-drag he is between two lanes', LANES.every(L=>Math.abs(L-moving.targetX)>0.15),
+    {targetX:+moving.targetX.toFixed(2), vx:+(moving.vx||0).toFixed(2)});
 await p.mouse.up();
 await p.waitForTimeout(60);
-const snapped=await p.evaluate(()=>__peek());
-chk('letting go there settles him on the nearer one',
-    LANES.some(L=>Math.abs(L-snapped.targetX)<1e-6)
-    && Math.abs(snapped.targetX-held)<Math.abs(snapped.targetX-held)+1e-9
-    && snapped.targetX===LANES.reduce((a,b)=>Math.abs(b-held)<Math.abs(a-held)?b:a),
-    {held:+held.toFixed(2), targetX:snapped.targetX, lane:snapped.lane});
+const carried=await p.evaluate(()=>__peek());
+chk('letting go while moving carries him on the way he was going',
+    carried.targetX > moving.targetX && LANES.some(L=>Math.abs(L-carried.targetX)<1e-6),
+    {was:+moving.targetX.toFixed(2), now:carried.targetX});
+
+/* --- a release standing still goes to the nearest, not onward --- */
+await p.evaluate(()=>__set({x:0.6,targetX:0.6,lane:1,vx:0}));
+await p.mouse.move(195,600); await p.mouse.down();
+await p.mouse.move(195+15,600);
+await p.waitForTimeout(900);                    // hold still: sideways speed dies
+const parked=await p.evaluate(()=>__peek());
+chk('holding still, he stops moving sideways', Math.abs(parked.vx||0)<1.2,
+    {vx:+(parked.vx||0).toFixed(3)});
+await p.mouse.up();
+await p.waitForTimeout(60);
+const nearest=await p.evaluate(()=>__peek().targetX);
+chk('and then the nearest lane wins',
+    nearest===LANES.reduce((a,b)=>Math.abs(b-parked.targetX)<Math.abs(a-parked.targetX)?b:a),
+    {from:+parked.targetX.toFixed(2), to:nearest});
 
 /* --- a finger dragged off the end of the track must not take him with it --- */
 await p.evaluate(()=>__set({x:0,targetX:0,lane:1}));
