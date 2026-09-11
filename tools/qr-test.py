@@ -21,6 +21,10 @@ EXPECT = {
     'WhatsApp QR code':   'https://wa.me/message/YKYI736CG4FZH1',
 }
 
+# Codes you can press. "More info" is absent on purpose: it encodes this very
+# page, and a link back to where you already are looks broken.
+TAPPABLE = {'Clinic registration QR code', 'WhatsApp QR code'}
+
 def decode(png: bytes):
     im = Image.open(io.BytesIO(png))
     a = zbar(im)
@@ -52,9 +56,22 @@ for card in cards:
     check(f'{alt}: both decoders agree', url is not None)
     if url is None: continue
     check(f'{alt}: encodes {url}', url == EXPECT.get(alt))
-    hrefs = re.findall(r'href="([^"]+)"', card)
-    if hrefs:
-        check(f'{alt}: the printed link is the same address', hrefs[0] == url)
+    tap  = re.search(r'<a class="qr-tap" href="([^"]+)"', card)
+    link = re.search(r'<a class="qr-link" href="([^"]+)"', card)
+    if alt in TAPPABLE:
+        check(f'{alt}: the code itself is pressable', tap is not None)
+        check(f'{alt}: pressing it goes where scanning it goes',
+              tap is not None and tap.group(1) == url)
+        check(f'{alt}: and it is not a second tab stop for the same place',
+              'tabindex="-1"' in card)
+    else:
+        check(f'{alt}: this one is deliberately not pressable', tap is None)
+    if link:
+        check(f'{alt}: the printed link is the same address', link.group(1) == url)
+    # nothing in the card may point anywhere else
+    others = [h for h in re.findall(r'href="([^"]+)"', card) if h != url]
+    check(f'{alt}: no stray address in the card' + (': ' + others[0] if others else ''),
+          not others)
     check(f'{alt}: a quiet zone is present', size[0] >= 29)
 
 check('no card is missing', seen == set(EXPECT))
