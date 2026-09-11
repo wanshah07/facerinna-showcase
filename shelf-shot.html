@@ -2497,28 +2497,43 @@ var PERF = (function(){
   var cap = Math.min(window.devicePixelRatio || 1,
                      (typeof SMALL !== 'undefined' && SMALL) ? 1.25 : 1.5);
   return {cap: cap, scale: cap, min: Math.min(0.75, cap),
-          acc: 0, frames: 0, cooldown: 0, shadowsOff: false};
+          acc: 0, frames: 0, cooldown: 0, shadowsOff: false,
+          warm: 0, rounds: 0};
 })();
 function perfTick(dtMs){
+  /* The opening frames of a WebGL scene are always slow -- shaders compile,
+     textures upload -- and they say nothing about the device. Judging on them
+     downgraded fast phones for the whole session on the strength of work that
+     happens once. Those frames are now thrown away rather than averaged in. */
+  if (PERF.warm < 20){ PERF.warm++; return; }
+
   PERF.acc += dtMs; PERF.frames++;
   if (PERF.cooldown > 0){ PERF.cooldown--; }
-  if (PERF.frames < 30) return;
+  /* The first few verdicts come after a dozen frames instead of thirty, and
+     wait a third as long before the next. A phone that cannot keep up has to
+     say so quickly: every frame spent working that out is a frame of exactly
+     the stutter this exists to remove, and a booth turn lasts a minute. Once
+     it has found its level the longer window takes over, so it settles
+     instead of hunting. */
+  var quick = PERF.rounds < 3;
+  if (PERF.frames < (quick ? 12 : 30)) return;
   var avg = PERF.acc / PERF.frames;
   PERF.acc = 0; PERF.frames = 0;
   if (PERF.cooldown > 0) return;
+  PERF.rounds++;
 
   if (avg > 22 && PERF.scale > PERF.min){           // under ~45fps
     PERF.scale = Math.max(PERF.min, PERF.scale - 0.25);
     renderer.setPixelRatio(PERF.scale);
-    PERF.cooldown = 60;
+    PERF.cooldown = quick ? 20 : 60;
   } else if (avg > 30 && !PERF.shadowsOff){          // still under ~33fps
     renderer.shadowMap.enabled = false;
     PERF.shadowsOff = true;
-    PERF.cooldown = 90;
+    PERF.cooldown = quick ? 30 : 90;
   } else if (avg < 13 && PERF.scale < PERF.cap){
     PERF.scale = Math.min(PERF.cap, PERF.scale + 0.25);
     renderer.setPixelRatio(PERF.scale);
-    PERF.cooldown = 120;
+    PERF.cooldown = 120;                 // climbing back up is never urgent
   }
 }
 
@@ -2675,10 +2690,27 @@ FXUI.init({
 
 animate();
 
-window.addEventListener('resize', function(){
+function fitToWindow(){
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/* A rotation is not one event, and the first one lies.
+   The browser fires resize while it is still moving its own furniture --
+   the address bar changes height a beat after the turn, and some phones
+   report the old width for a frame or two -- so a canvas sized on that
+   first event can end up a landscape shape on a portrait screen and stay
+   that way until something else happens to fire another. Sizing again once
+   things have settled costs nothing when the first answer was right: it
+   sets the same numbers a second time. Some Android browsers also fire
+   orientationchange without a resize at all, which on its own would leave
+   the canvas never resized. */
+window.addEventListener('resize', fitToWindow);
+window.addEventListener('orientationchange', function(){
+  fitToWindow();
+  setTimeout(fitToWindow, 120);
+  setTimeout(fitToWindow, 400);
 });
 
 })();

@@ -49,7 +49,15 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k !== VERSION) await caches.delete(k);
+    /* Only throw the old copy away once the new one can actually stand on its
+       own. A worker installed on a dead connection caches nothing, and
+       deleting on the way out regardless would take a phone that worked
+       offline and leave it with neither copy -- the failure landing exactly
+       when it is least recoverable. */
+    const cache = await caches.open(VERSION);
+    if (await cache.match('./index.html')) {
+      for (const k of await caches.keys()) if (k !== VERSION) await caches.delete(k);
+    }
     await self.clients.claim();
   })());
 });
@@ -68,7 +76,12 @@ self.addEventListener('fetch', e => {
 
   e.respondWith((async () => {
     const cache = await caches.open(VERSION);
-    const hit = await cache.match(req, {ignoreSearch: true});
+    /* This version's copy first; failing that, any older version's. An update
+       that installs on a dead connection has an empty cache of its own, and
+       looking no further than that would hand the visitor an error page while
+       the copy that worked a minute ago sat untouched one cache over. */
+    const hit = await cache.match(req, {ignoreSearch: true})
+             || await caches.match(req, {ignoreSearch: true});
 
     /* Refresh in the background whether or not we had a hit, so a page served
        from cache is still the current one next time it is opened. */
