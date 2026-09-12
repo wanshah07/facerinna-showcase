@@ -585,14 +585,43 @@ var UNIVERSAL = [
    RENDERER + SCENE
    ============================================================ */
 var app = document.getElementById('app');
-var renderer = new THREE.WebGLRenderer({antialias:true});
+/* Is this a phone?
+ *
+ * Asked by how the thing is pointed at rather than by what its browser calls
+ * itself: no hover and a coarse pointer is a finger, and that is true of every
+ * Android and iPhone and of no laptop. The user-agent is only a fallback for
+ * the handful of browsers that answer that question wrongly.
+ *
+ * It has to be known before the renderer is built, because the most expensive
+ * thing on this page is decided in the constructor and cannot be changed
+ * afterwards. See the two lines below. */
+var MOBILE = (function(){
+  try { if (window.matchMedia &&
+            matchMedia('(hover: none) and (pointer: coarse)').matches) return true; }
+  catch (e) {}
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+})();
+
+var renderer = new THREE.WebGLRenderer({antialias:!MOBILE, powerPreference:'high-performance'});
 var SMALL = Math.min(window.innerWidth, window.innerHeight) < 820;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, SMALL ? 1.25 : 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.94;
-renderer.shadowMap.enabled = true;
+/* Multisampling and shadow maps are the two most expensive things here, and
+   on a phone they buy the least.
+   Antialiasing on a mobile GPU is 4x multisampling over the whole frame, and
+   it is decided in the constructor above -- there is no turning it off once
+   the context exists, which is why MOBILE has to be known before it. Shadow
+   maps mean a second pass over the scene from the light plus soft sampling
+   per fragment; there is already a painted contact shadow under the mascot,
+   so what the real ones add at this size is a soft edge nobody is looking
+   for. Both off on a phone. Edges are a little harder as a result, which is
+   the trade: a game that runs.
+   The resolution is untouched -- this is not a blurrier picture, it is the
+   same picture without the two passes that were costing the most. */
+renderer.shadowMap.enabled = !MOBILE;
 renderer.shadowMap.type = THREE.PCFShadowMap;  // soft PCF samples 4x per fragment
 app.appendChild(renderer.domElement);
 
@@ -1473,7 +1502,8 @@ var PERF = (function(){
   var cap = Math.min(window.devicePixelRatio || 1,
                      (typeof SMALL !== 'undefined' && SMALL) ? 1.25 : 1.5);
   return {cap: cap, scale: cap, min: Math.min(0.75, cap),
-          acc: 0, frames: 0, cooldown: 0, shadowsOff: false,
+          acc: 0, frames: 0, cooldown: 0,
+          shadowsOff: (typeof MOBILE !== 'undefined' && MOBILE),
           warm: 0, rounds: 0};
 })();
 function perfTick(dtMs){

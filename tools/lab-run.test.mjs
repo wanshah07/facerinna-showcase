@@ -21,13 +21,27 @@ const until = async (fn, label) => {
 const src=fs.readFileSync(FILE,'utf8');
 const marker='(function(){\n"use strict";';
 if(!src.includes(marker)) { console.error('cannot find the game IIFE'); process.exit(2); }
-const html=src.replace(marker, marker+'\nwindow.__peek=function(){return {x:S.x,targetX:S.targetX,lane:S.lane,vx:S.vx,y:S.y,vy:S.vy,grounded:S.grounded,running:S.running,LANES:LANES,step:laneStep(),reach:GERM_REACH,span:LANE_SPAN,steerMin:STEER_MIN};};\nwindow.__set=function(o){for(var k in o) S[k]=o[k];};
+/* Read-only handles on the game's own state, plus one practice mode.
+   A backtick template, not a quoted string: the last version of this was
+   joined with \n inside single quotes and grew real newlines when a comment
+   was added to it, which broke the literal. The file then could not compile
+   at all -- and because my own check looked for the word FAIL in the output
+   rather than at the exit code, a test that never ran once reported as
+   passing. Exit codes from here on. */
+const INJECT = `
+window.__peek = function(){ return {
+  x:S.x, targetX:S.targetX, lane:S.lane, vx:S.vx, y:S.y, vy:S.vy,
+  grounded:S.grounded, running:S.running, LANES:LANES,
+  step:laneStep(), reach:GERM_REACH, span:LANE_SPAN, steerMin:STEER_MIN }; };
+window.__set = function(o){ for (var k in o) S[k] = o[k]; };
 /* A practice run: the track stops spawning, so nothing can end the round
    while the controls are being measured. Three of these checks used to fail
    about one run in three -- he had simply been killed by a germ partway
    through, and what failed was the test's assumption that he was still
    playing, not the steering. */
-window.__quiet=function(){ spawnRow=function(){}; clearField(); startGame(); };');
+window.__quiet = function(){ spawnRow = function(){}; clearField(); startGame(); };
+`;
+const html=src.replace(marker, marker + INJECT);
 
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const c=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
