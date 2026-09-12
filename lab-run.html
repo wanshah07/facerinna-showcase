@@ -1012,11 +1012,15 @@ document.addEventListener('keydown', function(e){
  *
  * Tied to the screen instead, so it means the same thing on a phone and on
  * the booth display, and measured per gesture so a rotation cannot leave a
- * stale number behind. On a 390px phone this is about 109px a lane: a
- * deliberate move, and slow enough that half a lane is a place you can
- * choose to be. */
+ * stale number behind.
+ *
+ * 0.34 of the width: about 133px a lane on a 390px phone, and 265px to cross
+ * the whole track -- two thirds of the screen, so a full sweep is a decision
+ * and not something a thumb does on the way to somewhere else. It was 0.28
+ * and read as too sensitive. This is the one number to change if it still
+ * does: up is heavier. */
 function laneStep(){
-  return Math.max(70, Math.min(150, (window.innerWidth || 390) * 0.28));
+  return Math.max(90, Math.min(190, (window.innerWidth || 390) * 0.34));
 }
 var LANE_SPAN = LANES[1] - LANES[0];   // world units between lanes
 var HOLD_MS   = 260;    // press longer than this, with no travel, is a hold
@@ -1073,8 +1077,10 @@ cv.addEventListener('pointermove', function(e){
       gest.ox = e.clientX;
     }
   }
-  if (gest.moved){
-    // where the finger is, in track units, measured from where the slide began
+  if (gest.moved && S.running){
+    /* Only while he is running. Steering a finished round left targetX
+       pointing somewhere he was never going, and the next round started by
+       gliding him out of the middle. */
     var want = gest.baseX + (e.clientX - gest.ox) / gest.step * LANE_SPAN;
     S.targetX = Math.max(LANES[0], Math.min(LANES[LANES.length-1], want));
   }
@@ -1344,6 +1350,7 @@ function tick(){
     for (var j=0;j<arr.length;j++){
       m = arr[j];
       if (!m.userData.active) continue;
+      var z0 = m.position.z;                 // where it was before this frame
       m.position.z += speed*dt;
 
       if (kind === 'drop'){
@@ -1360,9 +1367,26 @@ function tick(){
       if (m.position.z > 8){ release(m); continue; }
 
       if (!S.running) continue;
-      var dz = Math.abs(m.position.z - 0);
+
+      /* Did it pass through him this frame, rather than happen to land on him?
+       *
+       * This used to ask only where the thing ended up: within 0.85 of the
+       * runner, or nothing. Everything here moves toward the camera at up to
+       * 30 a second, and a frame can be 33ms on a phone that is working hard
+       * -- so a germ could sit at 0.9 ahead of him on one frame and 0.6
+       * behind him on the next, never once inside the window, and pass
+       * straight through. Drops went the same way, uncollected.
+       *
+       * The slower the phone, the more it happened: at 60fps the fastest germ
+       * moves 0.78 and just fits inside the window, at 30fps it moves 1.55 and
+       * does not. So the game quietly got easier the worse your phone was,
+       * which for a booth with a leaderboard is the wrong way round.
+       *
+       * Asking whether the span it covered this frame overlaps him has no
+       * such hole, at any frame rate or any speed. */
       var dx = Math.abs(m.position.x - S.x);
-      if (dz < 0.85 && dx < (kind === 'germ' ? GERM_REACH : 0.95)){
+      if (m.position.z >= -0.85 && z0 <= 0.85 &&
+          dx < (kind === 'germ' ? GERM_REACH : 0.95)){
         if (kind === 'germ'){
           if (S.y < 1.15){ release(m); hit(); }
         } else if (kind === 'drop'){

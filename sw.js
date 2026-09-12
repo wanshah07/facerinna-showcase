@@ -10,7 +10,7 @@
  * day to day you should not need to, because every hit is revalidated in the
  * background and the next load carries the update.
  */
-const VERSION = 'facerinna-2026-09-12';
+const VERSION = 'facerinna-2026-09-12b';
 
 /* The pages somebody at the booth might actually open. The large PDFs and the
    14MB original hero are deliberately absent: they would treble the download
