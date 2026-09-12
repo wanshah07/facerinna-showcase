@@ -897,6 +897,14 @@ var S = {
   shield:0, spawnZ:-40, t:0, shake:0, turbo:false
 };
 var GRAVITY = -30, JUMP_V = 10.2;
+
+/* How far to the side a germ can still catch you. Lanes are 2.0 apart, so
+   the midpoint between two is 1.0 from each; at the old 0.95 that midpoint
+   was safe from both, and standing there was a way to run forever. Reaching
+   a little past it means the only safe ground is a lane that has no germ on
+   it -- which is the game. A lane centre is 2.0 from its neighbours, so this
+   never makes a clear lane unsafe. */
+var GERM_REACH = 1.05;
 /* Hoisted: this list was rebuilt, with three fresh closures, on every frame.
    Sixty small allocations a second is not a stall by itself, but it is
    rubbish the collector has to come back for, and the pause when it does is
@@ -935,32 +943,29 @@ function move(dir){
   S.lane = n;
   S.targetX = LANES[n];
 }
-/* The finger can leave him anywhere between two lanes, so a release has to
-   decide which one he was heading for.
+/* Where he is left is where he stays.
  *
- * Nearest alone fought the player: let go mid-move and he could be sent back
- * the way he came, which reads as the game overruling you. Moving at any
- * pace, he carries on to the next lane in that direction instead. Standing
- * still, nearest wins.
+ * Letting go used to move him: nearest lane, or the next one along if he was
+ * travelling. Either way the track had three places in it and the game put
+ * him in one of them at the end of every gesture, which is the thing that
+ * still felt like three lanes however smooth the travel in between was.
  *
- * He does have to end up on a lane. Left anywhere, a player could park him
- * in the 0.1-unit sliver between two and let distance points accumulate with
- * nothing able to touch him -- and distance is most of the score. */
-function snapLane(){
+ * The only reason it was there was that the gap between two lanes used to be
+ * a safe place to hide -- both germs 1.0 away, their reach 0.95 -- so a
+ * player could park in the sliver and let distance points climb untouchable.
+ * GERM_REACH closes that instead, which is a better answer: it makes hiding
+ * impossible rather than making it impossible to stop.
+ *
+ * So this records which lane he is nearest and nothing more. The keyboard
+ * needs it to know what "one lane left" means from here; his position is not
+ * touched. */
+function markLane(){
   var n = 0, best = Infinity;
   for (var i=0;i<LANES.length;i++){
     var d = Math.abs(LANES[i] - S.targetX);
     if (d < best){ best = d; n = i; }
   }
-  var vx = S.vx || 0;
-  if (Math.abs(vx) > 1.2){
-    var dir = vx > 0 ? 1 : -1;
-    /* the next lane that way, if he is not already past it */
-    while (n >= 0 && n < LANES.length && (LANES[n] - S.targetX) * dir < 0) n += dir;
-    n = Math.max(0, Math.min(LANES.length - 1, n));
-  }
   S.lane = n;
-  S.targetX = LANES[n];
 }
 function jump(){
   if (!S.running || !S.grounded) return;
@@ -1015,7 +1020,18 @@ function laneStep(){
 }
 var LANE_SPAN = LANES[1] - LANES[0];   // world units between lanes
 var HOLD_MS   = 260;    // press longer than this, with no travel, is a hold
-var TAP_SLOP  = 14;     // px of wander still counted as a tap
+
+/* Sideways travel that has to happen before this counts as steering.
+ *
+ * It used to be 14px of wander in any direction. A thumb landing on glass
+ * wanders further than that on its way to being still -- so a tap became a
+ * slide, and what you got for tapping was him sliding sideways. The jump
+ * fired too, but the sideways move is what you saw.
+ *
+ * Two conditions now, and both have to hold: the travel is sideways rather
+ * than up or down, and there is a real amount of it. A tap satisfies
+ * neither, so a tap is only ever a jump. */
+var STEER_MIN = 24;
 
 var gest = null, holdTimer = null;
 
@@ -1046,13 +1062,16 @@ cv.addEventListener('pointerdown', function(e){
 cv.addEventListener('pointermove', function(e){
   if (!gest) return;
   var dy = e.clientY - gest.y;
-  if (!gest.moved && Math.hypot(e.clientX-gest.ox, e.clientY-gest.oy) > TAP_SLOP){
-    gest.moved = true;
-    clearTimeout(holdTimer);      // it is a slide, not a hold
-    /* Start counting from here, not from where the finger first landed.
-       Otherwise the slop it took to decide this was a slide is credited as
-       travel, and he lurches before he glides. */
-    gest.ox = e.clientX;
+  if (!gest.moved){
+    var ax = Math.abs(e.clientX - gest.ox), ay = Math.abs(e.clientY - gest.oy);
+    if (ax >= STEER_MIN && ax > ay){
+      gest.moved = true;
+      clearTimeout(holdTimer);      // it is a slide, not a hold
+      /* Start counting from here, not from where the finger first landed.
+         Otherwise the travel it took to decide this was a slide is credited
+         as travel, and he lurches before he glides. */
+      gest.ox = e.clientX;
+    }
   }
   if (gest.moved){
     // where the finger is, in track units, measured from where the slide began
@@ -1069,7 +1088,7 @@ cv.addEventListener('pointermove', function(e){
 function releaseGesture(e){
   if (!gest) return;
   clearTimeout(holdTimer);
-  if (gest.moved) snapLane();   // settle on whichever lane he was nearest
+  if (gest.moved) markLane();   // remember where he is; do not move him
   endTurbo();
   gest = null;
 }
@@ -1343,7 +1362,7 @@ function tick(){
       if (!S.running) continue;
       var dz = Math.abs(m.position.z - 0);
       var dx = Math.abs(m.position.x - S.x);
-      if (dz < 0.85 && dx < 0.95){
+      if (dz < 0.85 && dx < (kind === 'germ' ? GERM_REACH : 0.95)){
         if (kind === 'germ'){
           if (S.y < 1.15){ release(m); hit(); }
         } else if (kind === 'drop'){
