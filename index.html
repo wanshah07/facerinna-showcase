@@ -62,6 +62,15 @@ html{scroll-behavior:smooth;scroll-padding-top:72px}
 body{margin:0;background:var(--bg);color:var(--ink);
   font-family:'Inter',system-ui,-apple-system,sans-serif;
   line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+/* On a phone the page must never scroll sideways, and body alone does not
+   guarantee that: iOS Safari ignores overflow-x on body while html is left
+   free, so one element poking past the edge -- a marquee mid-swing, a card
+   that has not re-measured after a rotation -- gives the whole page a
+   sideways wobble and everything on it looks displaced. clip is preferred
+   over hidden where the browser knows it, because clip does not turn html
+   into a scroll container, so fixed and sticky things keep behaving. */
+html{overflow-x:hidden}
+@supports(overflow-x:clip){html,body{overflow-x:clip}}
 h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif;letter-spacing:-.01em;line-height:1.12;font-weight:600}
 img{max-width:100%;display:block}
 a{color:inherit}
@@ -1562,6 +1571,23 @@ body:not(.slides).mq-near{--fab-bottom:var(--mq-lift,22px)}
 .chat-panel{position:fixed;right:22px;bottom:98px;z-index:95;width:min(370px,calc(100vw - 32px));height:min(540px,calc(100vh - 130px));
   background:var(--surface);border-radius:22px;box-shadow:0 24px 60px rgba(23,50,79,.3);display:none;flex-direction:column;overflow:hidden;
   border:1px solid var(--line)}
+/* 100vh on a phone is the LARGEST the viewport ever gets -- address bar
+   hidden -- and it is what these blocks were sized against. With the bar
+   showing, and for a beat after every rotation, that is taller than what is
+   on screen, so the hero and the shelf ran past the bottom and the section
+   under them started out of reach. svh is the smallest the viewport gets,
+   which is the only size that is never wrong; the chat panel takes dvh so it
+   shrinks with the bar rather than sitting under it. Older browsers keep the
+   vh rules above; these only apply where the unit is understood. */
+@supports(height:100svh){
+  .hero{height:calc(100svh - 64px)}
+  .hero-stage{height:calc(100svh - 64px - 104px)}
+  .shelf-stage{height:100svh}
+  @media(max-width:700px){.shelf-stage{height:70svh}}
+}
+@supports(height:100dvh){
+  .chat-panel{height:min(540px,calc(100dvh - 130px))}
+}
 .chat-panel.open{display:flex;animation:cpop .3s cubic-bezier(.2,.7,.3,1.1)}
 .chat-head{background:linear-gradient(135deg,#3FA6EE,var(--brand-deep));color:#fff;padding:13px 16px;display:flex;gap:11px;align-items:center}
 .chat-head .av{width:42px;height:42px;border-radius:50%;background:#fff;display:grid;place-items:center;flex:0 0 auto}
