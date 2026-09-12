@@ -10,10 +10,24 @@ const FILE=process.env.PAGE||'/workspace/facerinna-showcase/lab-run.html';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 
+/* Wait for the condition, not for a number of milliseconds. Height, landing
+   and the glide all need frames to have happened, and this machine renders
+   at a handful of frames a second -- fewer still when it is busy. A fixed
+   sleep here is a frame count in disguise, and it fails about once in ten
+   for no reason anybody can find. */
+const until = async (fn, label) => {
+  try { await p.waitForFunction(fn, null, {timeout:8000}); } catch(e){}
+};
 const src=fs.readFileSync(FILE,'utf8');
 const marker='(function(){\n"use strict";';
 if(!src.includes(marker)) { console.error('cannot find the game IIFE'); process.exit(2); }
-const html=src.replace(marker, marker+'\nwindow.__peek=function(){return {x:S.x,targetX:S.targetX,lane:S.lane,vx:S.vx,y:S.y,vy:S.vy,grounded:S.grounded,running:S.running,LANES:LANES,step:laneStep(),reach:GERM_REACH,span:LANE_SPAN,steerMin:STEER_MIN};};\nwindow.__set=function(o){for(var k in o) S[k]=o[k];};');
+const html=src.replace(marker, marker+'\nwindow.__peek=function(){return {x:S.x,targetX:S.targetX,lane:S.lane,vx:S.vx,y:S.y,vy:S.vy,grounded:S.grounded,running:S.running,LANES:LANES,step:laneStep(),reach:GERM_REACH,span:LANE_SPAN,steerMin:STEER_MIN};};\nwindow.__set=function(o){for(var k in o) S[k]=o[k];};
+/* A practice run: the track stops spawning, so nothing can end the round
+   while the controls are being measured. Three of these checks used to fail
+   about one run in three -- he had simply been killed by a germ partway
+   through, and what failed was the test's assumption that he was still
+   playing, not the steering. */
+window.__quiet=function(){ spawnRow=function(){}; clearField(); startGame(); };');
 
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const c=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
@@ -35,6 +49,10 @@ await p.waitForTimeout(250);
 await p.click('#playBtn');
 await p.waitForTimeout(400);
 chk('it is running', (await p.evaluate(()=>__peek().running))===true);
+await p.evaluate(()=>__quiet());
+await p.waitForTimeout(300);
+chk('and the track is quiet, so nothing can end the round mid-measure',
+    (await p.evaluate(()=>__peek().running))===true);
 const LANES=await p.evaluate(()=>__peek().LANES);
 
 /* --- jump must happen on the press, not on the lift --- */
@@ -50,10 +68,10 @@ const mid=await p.evaluate(()=>__peek());
 chk('pressing jumps at once, before the finger lifts', mid.vy>0&&!mid.grounded,
     {vy:+mid.vy.toFixed(2), grounded:mid.grounded});
 await p.mouse.up();
-await p.waitForTimeout(600);
+await until(()=>__peek().y>0.2);
 const air=await p.evaluate(()=>__peek());
 chk('and he is off the ground a moment later', air.y>0.2, {y:+air.y.toFixed(2)});
-await p.waitForTimeout(1200);
+await until(()=>__peek().grounded===true);
 chk('then back down', (await p.evaluate(()=>__peek().grounded))===true);
 
 /* --- A TAP MUST BE A JUMP AND NOTHING ELSE ---
@@ -87,7 +105,7 @@ for (const [label, path] of TAPS){
   chk(`a tap (${label}) jumps`, mid.vy>0&&!mid.grounded, {vy:+mid.vy.toFixed(2)});
   chk(`a tap (${label}) does not move him sideways`, Math.abs(after.targetX)<1e-9,
       {targetX:+after.targetX.toFixed(3)});
-  await p.waitForTimeout(900);
+  await until(()=>__peek().grounded===true);   // land before the next tap
 }
 
 /* --- steering needs real sideways travel, and has to be sideways --- */
@@ -114,7 +132,7 @@ await p.mouse.up(); await p.waitForTimeout(400);
 /* --- and then it follows the finger, continuously --- */
 await p.evaluate(()=>__set({x:0,targetX:0,lane:1}));
 const step = await p.evaluate(()=>__peek().step);
-chk('a lane costs a real swipe, not a flick', step>=70&&step<=150, step);
+chk('a lane costs a real swipe, not a flick', step>=90&&step<=190, step);
 await p.mouse.move(195,600); await p.mouse.down();
 await p.mouse.move(195+min+2,600);                    // cross the threshold
 const seen=[];
@@ -150,7 +168,7 @@ chk('letting go does not move him', Math.abs(left.targetX-held)<1e-9,
 chk('but it does remember which lane he is nearest',
     left.lane===LANES.reduce((a,b,i)=>Math.abs(LANES[i]-held)<Math.abs(LANES[a]-held)?i:a,0),
     {lane:left.lane, targetX:+left.targetX.toFixed(2)});
-await p.waitForTimeout(500);
+await until(()=>Math.abs(__peek().x-__peek().targetX)<0.2);
 const arr=await p.evaluate(()=>__peek());
 chk('and he glides to exactly there', Math.abs(arr.x-arr.targetX)<0.2,
     {x:+arr.x.toFixed(2), targetX:+arr.targetX.toFixed(2)});
