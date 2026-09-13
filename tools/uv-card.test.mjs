@@ -204,6 +204,64 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
   await c.close();
 }
 
+/* ------------------------------------------------------------------ back to the four, pick a second */
+{
+  const W=390,H=844;
+  const {c,p,errs}=await open({width:W,height:H});
+  const findIt=async()=>{ const t=await st(p); await p.mouse.move(t.spot.x,t.spot.y); await p.mouse.down();
+    const ok=await until(async()=>(await st(p)).found, 1500); await p.mouse.up();
+    await until(()=>p.evaluate(()=>document.getElementById('reveal').classList.contains('on')), 1500); return ok; };
+  const hud=()=>p.evaluate(()=>({cards:!document.getElementById('cardsBtn').hidden && getComputedStyle(document.getElementById('cardsBtn')).display!=='none',
+    booth:!document.getElementById('boothLink').hidden}));
+  await p.tap('#startBtn'); await until(async()=>(await st(p)).phase==='pick');
+  const dealt=(await st(p)).numbers;
+  let h=await hud(); chk('back: with four cards up, the corner says Booth, not Cards', h.booth && !h.cards, h);
+  await p.tap('.card[data-i="1"]'); await until(async()=>(await st(p)).phase==='search');
+  h=await hud(); chk('back: with one card up, the corner says Cards', h.cards && !h.booth, h);
+  chk('back: found the first number', await findIt());
+  const first=(await st(p)).number;
+  chk('back: the result bar offers Pick another', await p.evaluate(()=>{const b=document.getElementById('pickBtn'); return !b.hidden && getComputedStyle(b).display!=='none';}));
+
+  await p.tap('#cardsBtn');
+  chk('back: Cards brings the four back', await until(async()=>(await st(p)).phase==='pick'));
+  let cs=await cardRects(p);
+  chk('back: all four visible and on screen again', cs.length===4 && cs.every(r=>r.op===1 && r.vis==='visible' && inside(r,W,H)), cs);
+  let s=await st(p);
+  chk('back: same deal, numbers not reshuffled', s.numbers.join()===dealt.join(), {before:dealt, after:s.numbers});
+  const done=await p.evaluate(()=>{const c=document.querySelector('.card[data-i="1"]'); return {done:c.classList.contains('done'), disabled:c.disabled, stamp:c.querySelector('.stamp').textContent, shown:getComputedStyle(c.querySelector('.stamp')).display};});
+  chk('back: the found card comes back stamped with its number and out of play', done.done && done.disabled && done.stamp===first && done.shown!=='none', done);
+  chk('back: the others are still in play', await p.evaluate(()=>[0,2,3].every(i=>{const c=document.querySelector('.card[data-i="'+i+'"]'); return !c.disabled && !c.classList.contains('done');})));
+  chk('back: lens and result are put away', await p.evaluate(()=>getComputedStyle(document.getElementById('lens')).opacity==='0' && !document.getElementById('reveal').classList.contains('on')));
+  h=await hud(); chk('back: the corner is Booth again', h.booth && !h.cards, h);
+
+  await p.tap('.card[data-i="1"]',{force:true}); await sleep(500);   // a disabled button; force past the actionability wait
+  chk('back: tapping the stamped card does nothing', (await st(p)).phase==='pick');
+
+  await p.tap('.card[data-i="2"]'); await until(async()=>(await st(p)).phase==='search');
+  chk('back: a second card can be chosen and hides its own number', (await st(p)).chosen===2 && (await st(p)).number===dealt[2]);
+  await p.tap('#cardsBtn'); await until(async()=>(await st(p)).phase==='pick');
+  chk('back: leaving before finding it does not stamp it', await p.evaluate(()=>{const c=document.querySelector('.card[data-i="2"]'); return !c.disabled && !c.classList.contains('done');}));
+  chk('back: and it is not counted as revealed', Object.keys((await st(p)).revealed).join()==='1');
+
+  /* find the other three, returning through the result bar each time */
+  for(const i of [0,2,3]){
+    await p.tap('.card[data-i="'+i+'"]'); await until(async()=>(await st(p)).phase==='search');
+    chk('back: card '+i+' found', await findIt());
+    const last = i===3;
+    chk('back: Pick another is '+(last?'gone once all four are found':'still offered'), await p.evaluate(()=>{const b=document.getElementById('pickBtn'); return b.hidden || getComputedStyle(b).display==='none';})===last);
+    if(!last){ await p.tap('#pickBtn'); chk('back: Pick another brings the four back', await until(async()=>(await st(p)).phase==='pick')); }
+  }
+  await p.tap('#cardsBtn'); await until(async()=>(await st(p)).phase==='pick');
+  s=await st(p);
+  chk('back: all four stamped', Object.keys(s.revealed).length===4 && await p.evaluate(()=>[...document.querySelectorAll('.card')].every(c=>c.classList.contains('done') && c.disabled)));
+  chk('back: the stamps are the dealt numbers', [0,1,2,3].every(i=>s.revealed[i]===dealt[i]), {revealed:s.revealed, dealt});
+  chk('back: with nothing left to pick, Play again is offered', await p.evaluate(()=>document.getElementById('actions').classList.contains('on')));
+  await p.tap('#againBtn'); await until(async()=>(await st(p)).phase==='pick');
+  chk('back: Play again clears the stamps', await p.evaluate(()=>[...document.querySelectorAll('.card')].every(c=>!c.classList.contains('done') && !c.disabled && c.querySelector('.stamp').textContent==='')) && Object.keys((await st(p)).revealed).length===0);
+  chk('back: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
+  await c.close();
+}
+
 await b.close();
 console.log(bad? '\nSOMETHING IS WRONG' : '\nuv card: deals, picks, slides, reveals');
 process.exit(bad?1:0);
