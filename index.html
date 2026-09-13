@@ -4984,6 +4984,18 @@ document.getElementById('burger').addEventListener('click',()=>document.getEleme
 document.querySelectorAll('.nav-links a').forEach(a=>a.addEventListener('click',()=>document.getElementById('navLinks').classList.remove('open')));
 
 const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.14});
+/* A game's Booth button comes back to #game, not the top. The browser jumps
+   there at load, but the page keeps growing above it for a moment as media
+   and fonts settle, and the section drifts down the screen -- on the booth
+   kiosk by half a screen. Once the load is done and things have stopped
+   moving, land on it again. Same-page hash clicks never come through here. */
+addEventListener('load',()=>{
+  if(!location.hash) return;
+  let el=null; try{ el=document.querySelector(location.hash); }catch(e){}
+  if(!el) return;
+  const again=()=>el.scrollIntoView({behavior:'instant',block:'start'});
+  setTimeout(again,350); setTimeout(again,1200);
+});
 document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 
 function runCounter(el){
@@ -5506,6 +5518,15 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     const deck=()=>document.body.classList.contains('slides');
     const NEED  =()=> deck() ? 0.55 : 0.78;   // how much of the screen counts as arrival
     const SETTLE=()=> deck() ? 250  : 650;    // how long stillness must last first
+    /* Not on the way back from UV Card, though. The board opens on arrival
+       because that is when a new score has landed; UV Card keeps no score,
+       so a visitor pressing its Booth button, brought to the games and then
+       covered by a board about five other games, would only be puzzled.
+       Held off for a minute after such an arrival -- a flag would not do,
+       because the first look at the section, taken before the page has
+       even scrolled to it, reads as "left" and re-arms it -- and after that
+       the board behaves as it always has. */
+    const HOLD_UNTIL = /\buv-card\.html/.test(document.referrer||'') ? Date.now()+60000 : 0;
     let armed=true, pending=null, lastMove=0;
     function consider(){
       const need=NEED();
@@ -5516,6 +5537,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
       }
       if(!armed || pending) return;
       if(modal.classList.contains('open')) return;
+      if(Date.now() < HOLD_UNTIL) return;
       /* An empty board opens too. It used to refuse, which is why the board
          looked broken on a freshly moved domain: localStorage is bound to an
          origin, so my.facerinna.com started with nothing, and a guard meant to
