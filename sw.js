@@ -7,10 +7,16 @@
  * a browser error screen, however self-contained the file behind it is.
  *
  * VERSION is the cache name. Bump it to throw away everything already stored;
- * day to day you should not need to, because every hit is revalidated in the
- * background and the next load carries the update.
+ * day to day you should not need to, because pages are fetched from the
+ * network first and everything else is revalidated in the background.
  */
-const VERSION = 'facerinna-2026-09-13';
+const VERSION = 'facerinna-2026-09-13b';
+
+/* How long a page load waits on the network before falling back to the
+   stored copy. This is time to first byte, not the whole download -- fetch()
+   resolves when the headers arrive -- so on any working connection the fresh
+   copy wins, and only a dead or stalled one costs the wait. */
+const NAV_TIMEOUT = 2000;
 
 /* The pages somebody at the booth might actually open. The large PDFs and the
    14MB original hero are deliberately absent: they would treble the download
@@ -81,19 +87,38 @@ self.addEventListener('fetch', e => {
        that installs on a dead connection has an empty cache of its own, and
        looking no further than that would hand the visitor an error page while
        the copy that worked a minute ago sat untouched one cache over. */
-    const hit = await cache.match(req, {ignoreSearch: true})
-             || await caches.match(req, {ignoreSearch: true});
+    const stored = async () => (await cache.match(req, {ignoreSearch: true}))
+                            || (await caches.match(req, {ignoreSearch: true}));
 
-    /* Refresh in the background whether or not we had a hit, so a page served
-       from cache is still the current one next time it is opened. */
+    /* Always ask the network, and keep what it says for next time. */
     const fresh = fetch(req).then(res => {
       if (res && res.status === 200 && res.type === 'basic') cache.put(req, res.clone());
       return res;
     }).catch(() => null);
 
-    if (hit) return hit;
-    const res = await fresh;
-    if (res) return res;
+    if (req.mode === 'navigate') {
+      /* Pages go network first. Served cache first, a page that was just
+         published only reached the phone on the load AFTER the one that
+         fetched it, and a change confirmed on the server was "not there" on
+         the phone in the hand. Now a working connection shows the current
+         page at once; a dead one falls straight through to the stored copy
+         (a refused connection fails in milliseconds) and a stalled one
+         after NAV_TIMEOUT, with the download left running to refresh the
+         cache for next time. */
+      const net = await Promise.race([fresh,
+        new Promise(r => setTimeout(() => r('slow'), NAV_TIMEOUT))]);
+      if (net && net !== 'slow') return net;
+      const hit = await stored();
+      if (hit) return hit;
+      /* Nothing stored: the network, however slow, is the only hope. */
+      const late = await fresh;
+      if (late) return late;
+    } else {
+      const hit = await stored();
+      if (hit) return hit;
+      const res = await fresh;
+      if (res) return res;
+    }
 
     /* Nothing stored and nothing reachable. Say so, rather than hand back the
        home page -- that would answer a request for one page with a different
