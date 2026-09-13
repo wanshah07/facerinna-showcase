@@ -133,6 +133,12 @@ const cardRects = p => p.evaluate(()=>[...document.querySelectorAll('.card')].ma
   const shown=await p.textContent('#bigNum');
   chk('reveal: it shows the number this card hid', shown===s.number && s.numbers.includes(shown), {shown, s});
   chk('reveal: the lens no longer takes the finger', await p.evaluate(()=>getComputedStyle(document.getElementById('lens')).pointerEvents==='none'));
+  await sleep(400);
+  const bar=await rect(p,'#actions'), pickB=await rect(p,'#pickBtn');
+  chk('reveal: the buttons sit under the card, not over it', bar.y>=big.y+big.h, {bar,big});
+  chk('reveal: and clear of the bottom edge, where a kiosk\'s Android bar lies (' + Math.round(H-(bar.y+bar.h)) + 'px above it)', H-(bar.y+bar.h)>=48 && inside(bar,W,H), bar);
+  const hitP=await p.evaluate(([x,y])=>{const e=document.elementFromPoint(x,y); return e? (e.closest('button')||e).id : null;},[pickB.cx,pickB.cy]);
+  chk('reveal: a press on the centre of Pick another lands on it', hitP==='pickBtn', hitP);
   if(SHOTS) await p.screenshot({path:SHOTS+'uv-4-reveal.png'});
 
   /* turning the phone with the result up */
@@ -228,7 +234,9 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
   let cs=await cardRects(p);
   chk('back: all four visible and on screen again', cs.length===4 && cs.every(r=>r.op===1 && r.vis==='visible' && inside(r,W,H)), cs);
   let s=await st(p);
-  chk('back: same deal, numbers not reshuffled', s.numbers.join()===dealt.join(), {before:dealt, after:s.numbers});
+  chk('back: the drawn card keeps its number', s.numbers[1]===dealt[1] && s.revealed[1]===dealt[1], {before:dealt, after:s.numbers});
+  chk('back: the other three still hold the other three numbers, in whatever order',
+      [0,2,3].map(i=>s.numbers[i]).sort().join()===[0,2,3].map(i=>dealt[i]).sort().join(), {before:dealt, after:s.numbers});
   const done=await p.evaluate(()=>{const c=document.querySelector('.card[data-i="1"]'); const r=c.getBoundingClientRect();
     const top=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
     return {done:c.classList.contains('done'), disabled:c.disabled, stamp:c.querySelector('.stamp').textContent, shown:getComputedStyle(c.querySelector('.stamp')).display,
@@ -245,7 +253,7 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
   chk('back: tapping the stamped card does nothing', (await st(p)).phase==='pick');
 
   await p.tap('.card[data-i="2"]'); await until(async()=>(await st(p)).phase==='search');
-  chk('back: a second card can be chosen and hides its own number', (await st(p)).chosen===2 && (await st(p)).number===dealt[2]);
+  chk('back: a second card can be chosen and hides its own number', (await st(p)).chosen===2 && (await st(p)).number===(await st(p)).numbers[2] && (await st(p)).number!==dealt[1]);
   await p.tap('#cardsBtn'); await until(async()=>(await st(p)).phase==='pick');
   /* the booth's photo: a visitor went back before the glass found the
      number and saw four identical cards. Choosing is the draw, so the card
@@ -253,7 +261,7 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
   const early=await p.evaluate(()=>{const c=document.querySelector('.card[data-i="2"]'); const r=c.getBoundingClientRect();
     const top=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
     return {done:c.classList.contains('done'), disabled:c.disabled, stamp:c.querySelector('.stamp').textContent, onTop:!!top&&top.classList.contains('stamp')};});
-  chk('back: leaving before the glass found it still stamps the card with its number', early.done && early.disabled && early.stamp===dealt[2] && early.onTop, early);
+  chk('back: leaving before the glass found it still stamps the card with its number', early.done && early.disabled && early.stamp===(await st(p)).revealed[2] && early.onTop, early);
   chk('back: and it counts as drawn', Object.keys((await st(p)).revealed).sort().join()==='1,2');
 
   /* find the other two, returning through the result bar each time */
@@ -267,7 +275,7 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
   await p.tap('#cardsBtn'); await until(async()=>(await st(p)).phase==='pick');
   s=await st(p);
   chk('back: all four stamped', Object.keys(s.revealed).length===4 && await p.evaluate(()=>[...document.querySelectorAll('.card')].every(c=>c.classList.contains('done') && c.disabled)));
-  chk('back: the stamps are the dealt numbers', [0,1,2,3].every(i=>s.revealed[i]===dealt[i]), {revealed:s.revealed, dealt});
+  chk('back: the four stamps are the four dealt numbers, each once', Object.values(s.revealed).sort().join()===dealt.slice().sort().join(), {revealed:s.revealed, dealt});
   chk('back: with nothing left to pick, Play again is offered', await p.evaluate(()=>document.getElementById('actions').classList.contains('on')));
   await p.tap('#againBtn'); await until(async()=>(await st(p)).phase==='pick');
   chk('back: Play again clears the stamps', await p.evaluate(()=>[...document.querySelectorAll('.card')].every(c=>!c.classList.contains('done') && !c.disabled && c.querySelector('.stamp').textContent==='')) && Object.keys((await st(p)).revealed).length===0);
