@@ -51,6 +51,7 @@ const cardRects = p => p.evaluate(()=>[...document.querySelectorAll('.card')].ma
 
   await p.tap('#startBtn');
   chk('start: four cards deal in', await until(async()=>(await st(p)).phase==='pick'));
+  await sleep(150);                       // let the last card's slide finish settling before measuring
   let cs=await cardRects(p);
   chk('start: all four show the brochure', cs.length===4 && cs.every(r=>r.img));
   chk('start: all four are fully visible and on screen', cs.every(r=>r.op===1 && r.vis==='visible' && inside(r,W,H)), cs);
@@ -246,14 +247,20 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
   await p.tap('.card[data-i="2"]'); await until(async()=>(await st(p)).phase==='search');
   chk('back: a second card can be chosen and hides its own number', (await st(p)).chosen===2 && (await st(p)).number===dealt[2]);
   await p.tap('#cardsBtn'); await until(async()=>(await st(p)).phase==='pick');
-  chk('back: leaving before finding it does not stamp it', await p.evaluate(()=>{const c=document.querySelector('.card[data-i="2"]'); return !c.disabled && !c.classList.contains('done');}));
-  chk('back: and it is not counted as revealed', Object.keys((await st(p)).revealed).join()==='1');
+  /* the booth's photo: a visitor went back before the glass found the
+     number and saw four identical cards. Choosing is the draw, so the card
+     comes back stamped even then. */
+  const early=await p.evaluate(()=>{const c=document.querySelector('.card[data-i="2"]'); const r=c.getBoundingClientRect();
+    const top=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
+    return {done:c.classList.contains('done'), disabled:c.disabled, stamp:c.querySelector('.stamp').textContent, onTop:!!top&&top.classList.contains('stamp')};});
+  chk('back: leaving before the glass found it still stamps the card with its number', early.done && early.disabled && early.stamp===dealt[2] && early.onTop, early);
+  chk('back: and it counts as drawn', Object.keys((await st(p)).revealed).sort().join()==='1,2');
 
-  /* find the other three, returning through the result bar each time */
-  for(const i of [0,2,3]){
+  /* find the other two, returning through the result bar each time */
+  for(const i of [0,3]){
     await p.tap('.card[data-i="'+i+'"]'); await until(async()=>(await st(p)).phase==='search');
     chk('back: card '+i+' found', await findIt());
-    const last = i===3;
+    const last = i===3;   // the fourth and final card
     chk('back: Pick another is '+(last?'gone once all four are found':'still offered'), await p.evaluate(()=>{const b=document.getElementById('pickBtn'); return b.hidden || getComputedStyle(b).display==='none';})===last);
     if(!last){ await p.tap('#pickBtn'); chk('back: Pick another brings the four back', await until(async()=>(await st(p)).phase==='pick')); }
   }
