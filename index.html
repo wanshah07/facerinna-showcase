@@ -1127,6 +1127,29 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
    because min(96vh, …) resolves past 100% on a narrow screen; this is the
    desktop catching up rather than a new idea. */
 body:not(.slides) .flyer-frame{max-width:100%}
+/* The session poster, laid out like the brochure above it but portrait
+   (960x1200): full width on a phone, capped on a desk so it does not run to
+   1400px tall, and on the slide sized by the height left over the furniture,
+   at its own 0.8 ratio. */
+#talk .sec-head{margin-bottom:20px}
+#talk .sec-head h2{font-size:clamp(1.4rem,2.2vw,1.85rem);margin:.35rem 0 .3rem}
+#talk .sec-head p{font-size:.94rem}
+#talk{--flyer-oh:300px}
+body:not(.slides) #talk .flyer-frame{max-width:min(100%, 620px)}
+body.slides #talk .flyer-frame{max-width:min(100%, calc((100vh - var(--flyer-oh)) * 0.8))}
+@media(min-width:901px){
+  body.slides #talk .flyer-strip{
+    display:grid;align-items:start;
+    grid-template-columns:minmax(0,1fr) minmax(210px,280px);
+    grid-template-rows:auto auto 1fr;
+    grid-template-areas:"frame head" "frame below" "frame note";
+    column-gap:clamp(16px,2vw,28px)}
+  body.slides #talk .flyer-head{grid-area:head;margin:0 0 10px;text-align:left}
+  body.slides #talk .flyer-frame{grid-area:frame;margin-inline:auto}
+  body.slides #talk .flyer-below{grid-area:below;flex-direction:column;align-items:stretch;margin-top:0}
+  body.slides #talk .flyer-note{grid-area:note;margin:12px 0 0;max-width:none;text-align:left}
+  body.slides #talk{--flyer-oh:200px}
+}
 /* the folded sheet shown whole — height:auto on its own 1.413 ratio, so all
    three panels are on screen rather than a crop of the first one */
 .flyer-thumb{width:100%;height:auto;display:block;cursor:zoom-in;
@@ -1777,6 +1800,7 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
       <a href="#gallery" class="nav-lk">Gallery</a>
       <a href="#clinic" class="nav-lk">Clinic Activation</a>
       <a href="#qrcore" class="nav-lk">QR Code</a>
+      <a href="#talk" class="nav-lk">Dr. Peter's Talk</a>
       <!-- A page of its own, not a section: nav-ext keeps it out of the
            scrollspy, which matches on "#"+id and would only ever clear it. -->
       <a href="events/" class="nav-ext">Events</a>
@@ -2099,6 +2123,37 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
   </div>
 </section>
 
+<div class="wrap"><div class="divider-line"></div></div>
+
+<!-- DR. PETER'S SESSION -->
+<section id="talk" class="sec-tight">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">AGM Programme &middot; 13 September 2026</span>
+      <h2>The Role of Dermocosmetic Adjuncts for Acne Vulgaris and Atopic Eczema in Asian Skin</h2>
+      <p>Dr. Peter Ch&rsquo;ng Wee Beng, Consultant Dermatologist &middot; 13.15&ndash;14.00 &middot; Iconic Marjorie Hotel, Penang.</p>
+    </div>
+
+    <div class="flyer-strip reveal">
+      <div class="flyer-head">
+        <span class="eyebrow">Session Poster</span>
+        <h4>Exclusive sharing with Dr. Peter</h4>
+      </div>
+      <div class="flyer-frame">
+        <img class="flyer-thumb" id="talkThumb" data-src="docs/talk-poster-1.webp" alt="Session poster: The Role of Dermocosmetic Adjuncts for Acne Vulgaris and Atopic Eczema in Asian Skin, Dr. Peter Ch'ng Wee Beng, 13 September 2026, 13.15 to 14.00, Iconic Marjorie Hotel, Penang &mdash; tap to open" draggable="false">
+      </div>
+      <div class="flyer-below">
+        <div class="flyer-actions">
+          <button class="btn btn-primary" id="talkView">&#128269; Open the poster</button>
+          <a class="btn btn-ghost" href="dermocosmetic-talk-poster.pdf" target="_blank" rel="noopener" download>&#11015; Download poster</a>
+        </div>
+      </div>
+      <p class="flyer-note">The session poster at print size &mdash; open it to zoom, or take the PDF.</p>
+    </div>
+
+  </div>
+</section>
+
 <!-- INTERACTIVE GAME -->
 <section id="game">
   <div class="wrap">
@@ -2362,6 +2417,7 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
         <a href="#game">Skin IQ Game</a>
         <a href="#clinic">Clinic Activation</a>
         <a href="#qrcore">QR Code</a>
+        <a href="#talk">Dr. Peter's Talk</a>
       </div>
       <div>
         <h4>Booth</h4>
@@ -5007,7 +5063,7 @@ function runCounter(el){
 const cIO=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){runCounter(e.target);cIO.unobserve(e.target);}});},{threshold:.6});
 document.querySelectorAll('[data-count]').forEach(el=>cIO.observe(el));
 
-const secs=['range','heroes','evidence','clinic','qrcore','game'].map(id=>document.getElementById(id));
+const secs=['range','heroes','evidence','clinic','qrcore','talk','game'].map(id=>document.getElementById(id));
 addEventListener('scroll',()=>{
   let cur='';secs.forEach(s=>{if(s&&scrollY>=s.offsetTop-120)cur=s.id;});
   document.querySelectorAll('.nav-lk').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+cur));
@@ -6069,6 +6125,23 @@ function launchConfetti(){
   var view=document.getElementById('flyerView');
   if(thumb && thumb.dataset.src) thumb.src=docAsset(thumb.dataset.src);
   function open(){ if(window.__openBook) window.__openBook(BROCHURE); }
+  if(thumb) thumb.addEventListener('click', open);
+  if(view) view.addEventListener('click', open);
+})();
+
+/* ---- the session poster ---------------------------------------------
+   One page, so it goes to the reader's page mode: no leaves to turn, no
+   sheet-or-panel choice, just the poster at print size with the zoom. */
+(function(){
+  var POSTER={
+    name:'Dr. Peter\u2019s session \u2014 poster',
+    read:'page', pages:1, pagePath:'docs/talk-poster-',
+    url:'dermocosmetic-talk-poster.pdf'
+  };
+  var thumb=document.getElementById('talkThumb');
+  var view=document.getElementById('talkView');
+  if(thumb && thumb.dataset.src) thumb.src=docAsset(thumb.dataset.src);
+  function open(){ if(window.__openBook) window.__openBook(POSTER); }
   if(thumb) thumb.addEventListener('click', open);
   if(view) view.addEventListener('click', open);
 })();
