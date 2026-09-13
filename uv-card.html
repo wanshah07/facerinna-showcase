@@ -90,7 +90,10 @@
   /* a card whose number has been found: back in the row, dimmed, stamped */
   .card.done{cursor:default}
   .card.done img{filter:brightness(.55) saturate(.6)}
-  .stamp{position:absolute;inset:0;display:none;place-items:center;font-weight:900;line-height:1;
+  /* z-index because the dimmed image's filter gives it a stacking context of
+     its own, painted in tree order -- after the stamp, which sits before it
+     in the markup -- and the number vanished under the brochure. */
+  .stamp{position:absolute;inset:0;z-index:1;display:none;place-items:center;font-weight:900;line-height:1;
     color:#F2FF9A;text-shadow:0 0 10px #E9FF6A,0 0 28px rgba(201,255,63,.85);font-size:44px;font-size:clamp(34px,22cqw,90px)}
   .card{container-type:inline-size}
   .card.done .stamp{display:grid}

@@ -228,8 +228,14 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
   chk('back: all four visible and on screen again', cs.length===4 && cs.every(r=>r.op===1 && r.vis==='visible' && inside(r,W,H)), cs);
   let s=await st(p);
   chk('back: same deal, numbers not reshuffled', s.numbers.join()===dealt.join(), {before:dealt, after:s.numbers});
-  const done=await p.evaluate(()=>{const c=document.querySelector('.card[data-i="1"]'); return {done:c.classList.contains('done'), disabled:c.disabled, stamp:c.querySelector('.stamp').textContent, shown:getComputedStyle(c.querySelector('.stamp')).display};});
+  const done=await p.evaluate(()=>{const c=document.querySelector('.card[data-i="1"]'); const r=c.getBoundingClientRect();
+    const top=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
+    return {done:c.classList.contains('done'), disabled:c.disabled, stamp:c.querySelector('.stamp').textContent, shown:getComputedStyle(c.querySelector('.stamp')).display,
+      onTop: !!top && top.classList.contains('stamp')};});
   chk('back: the found card comes back stamped with its number and out of play', done.done && done.disabled && done.stamp===first && done.shown!=='none', done);
+  /* "display: grid" is not the same as visible: the dimmed image once painted
+     over the stamp. What is at the centre of the card has to be the stamp. */
+  chk('back: the stamp is actually on top of the brochure', done.onTop, done);
   chk('back: the others are still in play', await p.evaluate(()=>[0,2,3].every(i=>{const c=document.querySelector('.card[data-i="'+i+'"]'); return !c.disabled && !c.classList.contains('done');})));
   chk('back: lens and result are put away', await p.evaluate(()=>getComputedStyle(document.getElementById('lens')).opacity==='0' && !document.getElementById('reveal').classList.contains('on')));
   h=await hud(); chk('back: the corner is Booth again', h.booth && !h.cards, h);
