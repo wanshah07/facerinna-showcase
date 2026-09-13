@@ -47,6 +47,8 @@ const cardRects = p => p.evaluate(()=>[...document.querySelectorAll('.card')].ma
       await p.evaluate(()=>getComputedStyle(document.getElementById('intro')).opacity==='1'
                          && getComputedStyle(document.getElementById('deck')).visibility==='hidden'));
   chk('loads: nothing is asked of the player but Start (no name gate)', !(await p.$('#fxrName')));
+  chk('loads: both ways back to the booth land on the games, not the top of the page',
+      await p.evaluate(()=>['boothLink','boothBtn'].every(id=>document.getElementById(id).getAttribute('href')==='index.html#game')));
   if(SHOTS) await p.screenshot({path:SHOTS+'uv-1-intro.png'});
 
   await p.tap('#startBtn');
@@ -281,6 +283,43 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
   chk('back: Play again clears the stamps', await p.evaluate(()=>[...document.querySelectorAll('.card')].every(c=>!c.classList.contains('done') && !c.disabled && c.querySelector('.stamp').textContent==='')) && Object.keys((await st(p)).revealed).length===0);
   chk('back: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
   await c.close();
+}
+
+/* ------------------------------------------------------------------ back to the booth
+   Over http, so the home page sees where the visitor came from. */
+{
+  const http=await import('node:http'); const fs=await import('node:fs'); const path=await import('node:path');
+  const ROOT='/workspace/facerinna-showcase', PORT=8125, BASE='http://127.0.0.1:'+PORT;
+  const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript','.webmanifest':'application/manifest+json','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp'};
+  const srv=http.createServer((req,res)=>{ let f=decodeURIComponent(new URL(req.url,BASE).pathname); if(f.endsWith('/')) f+='index.html';
+    const fp=path.join(ROOT,f); if(!fs.existsSync(fp)||!fs.statSync(fp).isFile()){ res.writeHead(404); res.end(); return; }
+    res.writeHead(200,{'Content-Type':TYPES[path.extname(f)]||'application/octet-stream','Cache-Control':'no-store'}); res.end(fs.readFileSync(fp)); });
+  await new Promise(r=>srv.listen(PORT,'127.0.0.1',r));
+  const landed=async(p)=>p.evaluate(()=>{ const g=document.getElementById('game'); const r=g.getBoundingClientRect();
+    const w=document.getElementById('gameGallery').getBoundingClientRect();
+    return {hash:location.hash, gameTop:Math.round(r.top), wheelOn:w.top>=0 && w.bottom<=innerHeight, board:document.getElementById('rankModal').classList.contains('open'), from:document.referrer}; });
+
+  const c=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.goto(BASE+'/uv-card.html',{waitUntil:'load'});
+  await p.tap('#boothLink');
+  await p.waitForURL(/index\.html#game$/,{timeout:15000}).catch(()=>{});
+  await p.waitForLoadState('load'); await sleep(3500);
+  let l=await landed(p);
+  chk('booth: the Booth button lands on the games section', l.hash==='#game' && l.gameTop>=0 && l.gameTop<=120 && l.wheelOn, l);
+  chk('booth: and the leaderboard does not pop up over it (UV Card keeps no score)', !l.board, l);
+  chk('booth: the section stays put a while later', (await sleep(1500), (l=await landed(p)).gameTop>=0 && l.gameTop<=120), l);
+  await c.close();
+
+  /* the board still shows itself on an arrival from anywhere else */
+  const c2=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  const p2=await c2.newPage();
+  await p2.goto(BASE+'/index.html#game',{waitUntil:'load'}); await sleep(3500);
+  l=await landed(p2);
+  chk('booth: arriving at the games any other way still opens the board', l.board, l);
+  await c2.close();
+  await new Promise(r=>srv.close(r));
+  chk('booth: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
 }
 
 await b.close();
