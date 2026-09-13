@@ -112,7 +112,7 @@
   .lens.snap{transition:opacity .35s,transform .16s ease-out}
   .lens.lock{box-shadow:0 0 0 3px rgba(242,255,154,.9),0 0 40px rgba(242,255,154,.7),
       0 18px 40px rgba(0,0,0,.45),inset 0 0 22px rgba(242,255,154,.35)}
-  .lens.done{opacity:.35;pointer-events:none;transition:opacity .5s}
+  .lens.done{opacity:0;pointer-events:none;transition:opacity .5s}
   .peek{position:absolute;inset:0;border-radius:inherit;overflow:hidden;
     background:rgba(60,20,150,.48)}
   .ink{position:absolute;left:0;top:0;width:300px;height:640px;will-change:transform}
@@ -141,7 +141,10 @@
   .badge .big{font-size:clamp(64px,22vw,120px);font-weight:900;line-height:1;color:#F2FF9A;
     text-shadow:0 0 12px #E9FF6A,0 0 36px rgba(201,255,63,.8),0 0 70px rgba(125,249,255,.6)}
   .badge .sub{font-size:12px;font-weight:700;color:#BFD8F5;margin-top:4px}
-  .actions{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));z-index:7;
+  /* Sits in the room under the card, not on the bottom edge of the screen:
+     on the booth kiosk an Android navigation bar lies over that edge, and a
+     button put there was pressed and did nothing. top is set from the card. */
+  .actions{position:fixed;left:0;right:0;top:auto;bottom:calc(14px + env(safe-area-inset-bottom));z-index:7;
     display:flex;justify-content:center;gap:10px;padding:0 14px;opacity:0;pointer-events:none;
     transform:translate3d(0,14px,0);transition:opacity .3s,transform .3s}
   .actions.on{opacity:1;pointer-events:auto;transform:translate3d(0,0,0)}
@@ -259,7 +262,7 @@ function layoutDeck(){
    allows with a margin below for the lens to rest in. */
 function bigRect(){
   var r = S.stageRect || stage.getBoundingClientRect();
-  var room = r.height < 420 ? 64 : 96;
+  var room = r.height < 420 ? 64 : 132;   // the lens rests here, and the buttons after the reveal
   var h = Math.min(r.height - room, (r.width - 32)*RATIO);
   var w = h/RATIO;
   var x = r.left + (r.width - w)/2;
@@ -280,6 +283,9 @@ function applyBig(){
   inkNum.style.left = (S.spot.fx*100)+'%'; inkNum.style.top = (S.spot.fy*100)+'%';
   var L = lensSize(); lens.style.width = L.w+'px'; lens.style.height = L.h+'px';
   reveal.style.left = b.x+'px'; reveal.style.top = b.y+'px'; reveal.style.width = b.w+'px'; reveal.style.height = b.h+'px';
+  var sr = S.stageRect || stage.getBoundingClientRect();
+  actions.style.bottom = 'auto';
+  actions.style.top = Math.min(b.y + b.h + 14, sr.top + sr.height - 62) + 'px';
   clampLens(); paintLens();
 }
 
@@ -437,6 +443,11 @@ function unchoose(){
     o.classList.toggle('done', done); o.disabled=done;
   });
   var left = 4-Object.keys(S.revealed).length;
+  /* The numbers still in play are dealt out again among the cards still in
+     play, so what is left cannot be worked out from what has been seen. */
+  var open_=[], pool=[];
+  cards.forEach(function(o,k){ if(S.revealed[k]===undefined){ open_.push(k); pool.push(S.numbers[k]); } });
+  pool=shuffle(pool); open_.forEach(function(k,j){ S.numbers[k]=pool[j]; });
   setHint(left ? 'Pick another card' : 'All four revealed');
   setTimeout(function(){
     if(S.phase!=='return') return;
