@@ -11,7 +11,7 @@
 import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
 const {chromium}=pkg;
 const DIR='file:///workspace/facerinna-showcase/';
-const PAGES=['index.html','lab-run.html','deep-lab.html','match-lab.html','pack-match.html','shelf-shot.html'];
+const PAGES=['index.html','lab-run.html','deep-lab.html','match-lab.html','pack-match.html','shelf-shot.html','uv-card.html'];
 const PORT={width:390,height:844}, LAND={width:844,height:390};
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
