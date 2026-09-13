@@ -65,7 +65,7 @@ const cache=await p.evaluate(async()=>{const ks=await caches.keys();const c=awai
   return {name:ks[0], urls:(await c.keys()).map(r=>new URL(r.url).pathname)};});
 console.log(`  cache "${cache.name}" holds ${cache.urls.length} entries`);
 for(const need of ['/','/index.html','/deep-lab.html','/lab-run.html','/match-lab.html','/pack-match.html',
-                   '/shelf-shot.html','/fx-rank.js','/events/index.html',
+                   '/shelf-shot.html','/uv-card.html','/fx-rank.js','/events/index.html',
                    '/facerinna-test-reports-claims/index.html','/icon-512.png'])
   chk('cached '+need, cache.urls.includes(need));
 
@@ -77,7 +77,7 @@ const qr=await p.evaluate(()=>({n:document.querySelectorAll('#qrcore .qr-card').
   imgs:[...document.querySelectorAll('#qrcore .qr-slot img')].every(i=>i.naturalWidth>0)}));
 chk('offline: all three QR cards are there', qr.n===3);
 chk('offline: their images render', qr.imgs);
-for(const path of ['/deep-lab.html','/pack-match.html','/shelf-shot.html','/events/index.html',
+for(const path of ['/deep-lab.html','/pack-match.html','/shelf-shot.html','/uv-card.html','/events/index.html',
                    '/facerinna-test-reports-claims/']){
   await p.goto(BASE+path,{waitUntil:'load'}).catch(()=>{});
   const ok=await p.evaluate(()=>document.body&&document.body.scrollHeight>200);

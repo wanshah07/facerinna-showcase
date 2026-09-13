@@ -10,7 +10,7 @@
  * day to day you should not need to, because every hit is revalidated in the
  * background and the next load carries the update.
  */
-const VERSION = 'facerinna-2026-09-12d';
+const VERSION = 'facerinna-2026-09-13';
 
 /* The pages somebody at the booth might actually open. The large PDFs and the
    14MB original hero are deliberately absent: they would treble the download
@@ -24,6 +24,7 @@ const CORE = [
   './match-lab.html',
   './pack-match.html',
   './shelf-shot.html',
+  './uv-card.html',
   './fx-rank.js',
   './events/index.html',
   './facerinna-test-reports-claims/index.html',
