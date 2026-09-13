@@ -309,7 +309,7 @@ function deal(){
     c.style.opacity = '1';
   });
   setHint('Pick a card');
-  setTimeout(function(){ if(S.phase==='deal'){ setPhase('pick'); cards.forEach(function(c){ c.style.transitionDelay=''; }); } }, 70*3+540);
+  setTimeout(function(){ if(S.phase==='deal'){ setPhase('pick'); cards.forEach(function(c){ c.style.transitionDelay=''; }); } }, 70*3+620);   // after the last card's 520ms slide has ended
 }
 
 /* ---- choose ------------------------------------------------------------ */
@@ -406,12 +406,17 @@ function found(){
 /* ---- back to the four ----------------------------------------------------
    The reverse of choose(): the big card shrinks back into its slot in the
    row and the three that left slide back in. Numbers are kept -- this is
-   the same deal, and a card already found comes back dimmed with its number
-   stamped on it, so the next pick is a real second card. */
+   the same deal. The card that was taken out comes back dimmed with its
+   number stamped on it and out of play, whether or not the UV search got as
+   far as finding it: choosing is the draw, the glass is only how it is
+   shown, and a visitor who goes back early still wants to see what they
+   drew before picking a second. */
 function unchoose(){
   if(S.phase!=='search' && S.phase!=='found') return;
   var i=S.chosen, c=cards[i], b=S.big;
   setPhase('return'); grab=null; coverSince=0;
+  S.revealed[i]=S.number;
+  c.querySelector('.stamp').textContent=S.number;
   lens.className='lens'; lens.style.transform='translate3d(-999px,-999px,0)';
   reveal.classList.remove('on'); actions.classList.remove('on');
   layoutDeck();
