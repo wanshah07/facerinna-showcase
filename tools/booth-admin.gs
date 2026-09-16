@@ -175,7 +175,10 @@ var esc_ = function (s) {
   });
 };
 function validKey_(k) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(k || '')); }
-function email_(s) { s = String(s || '').trim().toLowerCase(); return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? s : ''; }
+/* Must start with a letter or a digit: an address is compared by its exact
+   value, so unlike a name it cannot be made safe with a leading apostrophe,
+   and one beginning with = would be a formula in the sheet that holds it. */
+function email_(s) { s = String(s || '').trim().toLowerCase(); return /^[A-Za-z0-9][^\s@]*@[^\s@]+\.[^\s@]+$/.test(s) ? s : ''; }
 
 /* rows of a tab as objects keyed by header, with their 1-based sheet row */
 function rows_(name, headers) {
@@ -513,14 +516,34 @@ function unlock_(b) {
   }
 
   if (!want) return json_({ ok: true, open: true });
-  if (got && got === want) {
-    var out = { ok: true };
+  if (got && got === want) { missCount_(0); var out = { ok: true };
     if (give) out.segment = give;
     return json_(out);
   }
-  Utilities.sleep(600);   /* a guess costs a little time */
+  /* Each wrong one costs longer than the last, and the cost drops to nothing
+     the moment somebody gets it right. Deliberately NOT a lockout: locking
+     the page after N wrong guesses would hand any stranger a way to shut the
+     booth, which is a worse day than the guessing it would prevent. At the
+     cap this is a few hundred tries an hour rather than thousands, so the
+     passcode still has to be long enough to matter -- five or six characters
+     of nothing in particular is not. */
+  var missed = missCount_(1);
+  Utilities.sleep(Math.min(600 * missed, 5000));
   return json_({ ok: false, error: 'wrong passcode' });
 }
+/* Consecutive wrong passcodes. Script properties rather than a sheet: this is
+   written on every guess and a sheet write is far too slow for that. */
+function missCount_(add) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    if (!add) { props.deleteProperty('miss'); return 0; }
+    var n = (parseInt(props.getProperty('miss'), 10) || 0) + 1;
+    if (n > 50) n = 50;
+    props.setProperty('miss', String(n));
+    return n;
+  } catch (e) { return 1; }
+}
+
 function adminGet_(email) {
   var all = settings_(), settings = {};
   Object.keys(SETTING_KEYS).forEach(function (k) { settings[k] = (k in all) ? all[k] : SETTING_KEYS[k]; });

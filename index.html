@@ -6317,8 +6317,41 @@ addEventListener('orientationchange', function(){
    is the one that has to work when the hall wifi does not. Registering more
    than once is a no-op. Failure is swallowed -- an unsupported browser or a
    file:// preview should lose the offline copy, not the page. */
-if ('serviceWorker' in navigator)
-  addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+/* Registering is not enough on a screen that never navigates: the browser
+   only looks for a new worker when a page loads, so a booth display left on
+   since Monday would still be showing Monday's page. It asks every half hour
+   instead, and when the worker says a new version has taken over it reloads
+   -- but only once the screen is idle, or hidden, and nothing is open on top
+   of it. A page that reloaded mid-scroll, mid-game or mid-passcode would look
+   like a fault, and a visitor would be right to think so. */
+if ('serviceWorker' in navigator) addEventListener('load', function(){
+  navigator.serviceWorker.register('/sw.js').then(function(reg){
+    setInterval(function(){ try{ reg.update(); }catch(e){} }, 30*60*1000);
+  }).catch(function(){});
+
+  var touched = Date.now(), going = false;
+  ['pointerdown','keydown','scroll','touchstart','wheel'].forEach(function(ev){
+    addEventListener(ev, function(){ touched = Date.now(); }, {passive:true});
+  });
+  /* How long the screen must go untouched before a reload is allowed. Named
+     so a test can shorten it and exercise this exact code rather than a copy
+     of it; the default is what ships, and a test asserts that too. */
+  var IDLE_MS = 60000;
+  function busy(){
+    if(Date.now() - touched < (window.__fxIdleMs || IDLE_MS)) return true;   /* a hand on it */
+    return !!document.querySelector('#segModal, #boothVeil, .booth-lock, .cmodal.open')
+        || !!document.querySelector('.bookmodal:not([hidden])');
+  }
+  function whenIdle(){
+    if(going) return;
+    if(document.visibilityState === 'hidden' || !busy()){ going = true; location.reload(); return; }
+    setTimeout(whenIdle, 15000);
+  }
+  window.__fxReloadWhenIdle = whenIdle;      /* the test drives this directly */
+  navigator.serviceWorker.addEventListener('message', function(e){
+    if(e.data && e.data.type === 'fx-updated') whenIdle();
+  });
+});
 </script>
 <script>
 /* ---- what the admin sheet says ----------------------------------------
