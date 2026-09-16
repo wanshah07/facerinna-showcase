@@ -523,12 +523,18 @@ function unlock_(b) {
   /* Each wrong one costs longer than the last, and the cost drops to nothing
      the moment somebody gets it right. Deliberately NOT a lockout: locking
      the page after N wrong guesses would hand any stranger a way to shut the
-     booth, which is a worse day than the guessing it would prevent. At the
-     cap this is a few hundred tries an hour rather than thousands, so the
-     passcode still has to be long enough to matter -- five or six characters
-     of nothing in particular is not. */
+     booth, which is a worse day than the guessing it would prevent.
+
+     The cap cuts both ways, so it is a compromise and not a maximum. Every
+     second of it also holds one of the script's simultaneous-execution slots,
+     so a high cap makes it cheaper to starve the script of slots than to
+     guess the passcode -- and a starved script is an admin who cannot sign
+     in. Two seconds is the deal struck: around 1,800 tries an hour on one
+     slot instead of tens of thousands unthrottled. That is slow enough to
+     matter only if the passcode is long enough to matter; five or six
+     characters of nothing in particular is not. */
   var missed = missCount_(1);
-  Utilities.sleep(Math.min(600 * missed, 5000));
+  Utilities.sleep(Math.min(600 * missed, 2000));
   return json_({ ok: false, error: 'wrong passcode' });
 }
 /* Consecutive wrong passcodes. Script properties rather than a sheet: this is

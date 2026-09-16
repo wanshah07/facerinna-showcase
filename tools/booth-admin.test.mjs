@@ -250,11 +250,19 @@ check('empty is the default, not an invented value',
 
 console.log('\nguessing the passcode costs more each time');
 call({action:'admin.settings',token,settings:{passcode:'booth2026',page_mode:'open'}});
+/* from a clean slate, or the count left behind by an earlier check decides
+   where the ramp starts */
+call({action:'unlock',passcode:'booth2026'});
 slept=[];
 for(let i=0;i<4;i++) call({action:'unlock',passcode:'nope'});
-check('each wrong guess waits longer than the last', slept.length===4 && slept.every((v,i)=>i===0||v>slept[i-1]), slept);
-check('...and the wait is capped, so a guesser cannot hold the script open',
-  (slept=[], Array.from({length:12},()=>call({action:'unlock',passcode:'nope'})), Math.max(...slept)<=5000), slept);
+check('each wrong guess waits longer than the last, up to the cap',
+  JSON.stringify(slept)===JSON.stringify([600,1200,1800,2000]), slept);
+/* The cap is low on purpose: a long wait holds a simultaneous-execution slot,
+   so too generous a cap turns the throttle into the cheaper attack. Pinned to
+   the exact number rather than a range -- a cap that quietly drifted upward is
+   the failure this is here to catch. */
+check('...and the wait is capped at two seconds, so a guesser cannot hold a script slot open',
+  (slept=[], Array.from({length:12},()=>call({action:'unlock',passcode:'nope'})), Math.max(...slept)===2000), slept);
 check('a right passcode costs nothing', (slept=[], call({action:'unlock',passcode:'booth2026'}).ok===true && slept.length===0));
 check('...and clears the cost for the next wrong one',
   (slept=[], call({action:'unlock',passcode:'nope'}), slept[0]===600), slept);
