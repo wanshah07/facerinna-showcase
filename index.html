@@ -1779,6 +1779,49 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
   .game-glow,.game-icon-ring,.game-icon-ring::after,.game-icon,.game-start .btn-primary::after{animation:none}
 }
 </style>
+<style>
+/* Booth admin: what the sheet decides. The classes are put on <html> from
+   the cached config before the body is parsed, so a locked or hidden page
+   is never painted for a beat before its veil is; the loader at the end
+   fetches the current config and draws the veil, the extra segments and
+   the welcome strip from it. */
+html.booth-veiled body > :not(#boothVeil){visibility:hidden}
+html.booth-no-welcome .hero-marquee{display:none!important}
+#boothVeil{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:24px;
+  background:radial-gradient(120% 80% at 50% 0%,#1f4c7a,#0b1620 70%);color:#EAF4FF;font-family:'Inter',system-ui,sans-serif;visibility:visible}
+#boothVeil .bv{max-width:420px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:22px;
+  padding:28px 26px;text-align:center;backdrop-filter:blur(6px)}
+#boothVeil .bv-mark{font-weight:900;letter-spacing:.32em;text-transform:uppercase;font-size:12px;color:#BFD8F5;margin-bottom:14px}
+#boothVeil h1{font-size:20px;margin:0 0 8px;color:#fff}
+#boothVeil p{margin:0 0 16px;font-size:14.5px;line-height:1.55;color:#CFE3FF}
+#boothVeil input{width:100%;font:inherit;font-size:17px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.9);color:#0b1620;text-align:center;letter-spacing:.08em}
+#boothVeil button{margin-top:12px;width:100%;font:inherit;font-weight:800;font-size:15px;padding:13px;border:0;border-radius:999px;
+  background:linear-gradient(135deg,#6FDCC6,#3FA6EE);color:#0b1620;cursor:pointer}
+#boothVeil .bv-err{min-height:20px;color:#FFB4B4;font-size:13.5px;margin-top:8px}
+#boothVeil .bv-admin{margin-top:14px;font-size:12.5px;color:#9FB8D6}
+#boothVeil .bv-admin a{color:#BFD8F5}
+.booth-ribbon{position:fixed;left:0;right:0;top:0;z-index:99999;background:#F2FF9A;color:#0b1620;font:700 13px/1.4 'Inter',system-ui,sans-serif;
+  text-align:center;padding:6px 12px}
+body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outranks the brochure's full-width rule */
+.booth-seg .seg-desc{margin:0 0 12px;color:var(--ink-2,#5b6b7f)}
+#segModal{position:fixed;inset:0;z-index:100001;background:rgba(6,16,28,.86);display:grid;grid-template-rows:auto 1fr;padding:12px}
+#segModal .sm-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#fff;padding:4px 6px 10px}
+#segModal .sm-bar b{font-size:15px}
+#segModal .sm-x{appearance:none;border:0;background:rgba(255,255,255,.14);color:#fff;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer}
+#segModal iframe{width:100%;height:100%;border:0;border-radius:12px;background:#fff}
+</style>
+<script>
+(function(){
+  try{
+    var raw=localStorage.getItem('fx.booth.config'); if(!raw) return;
+    var cfg=JSON.parse(raw).cfg||{}, st=cfg.settings||{};
+    var open = sessionStorage.getItem('fx.booth.unlocked')==='1';
+    if((st.page_mode==='locked' && !open) || st.page_mode==='hidden') document.documentElement.classList.add('booth-veiled');
+    if(st.welcome==='hide') document.documentElement.classList.add('booth-no-welcome');
+  }catch(e){}
+})();
+</script>
 </head>
 <body>
 
@@ -2424,6 +2467,7 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
         <a href="#game">Play &amp; win a sample</a>
         <a href="https://my.facerinna.com/facerinna-test-reports-claims/"
            target="_blank" rel="noopener">Report data authentication ↗</a>
+        <a href="admin.html" rel="nofollow">Admin</a>
         <a href="#top">Back to top ↑</a>
       </div>
     </div>
@@ -6221,6 +6265,137 @@ addEventListener('orientationchange', function(){
    file:// preview should lose the offline copy, not the page. */
 if ('serviceWorker' in navigator)
   addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+</script>
+<script>
+/* ---- what the admin sheet says ----------------------------------------
+   Fetched on every load, network first with a short wait, and kept in
+   localStorage so a phone with no signal shows what it last saw. Three
+   things come out of it: the veil (locked or hidden), the welcome strip,
+   and any extra segments, drawn after the section the admin chose. With no
+   script address set, none of this runs and the page is exactly the file.
+   Tests point BOOTH_ADMIN_API at a local server through window.__BOOTH_API. */
+(function(){
+  var API = window.__BOOTH_API || '';
+  var CACHE='fx.booth.config', UNLOCKED='fx.booth.unlocked', ADMIN='fx.admin.token';
+  if(!API) return;
+  var html=document.documentElement;
+
+  function post(body, ms){
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var t = ctl && setTimeout(function(){ ctl.abort(); }, ms||2500);
+    return fetch(API, { method:'POST', body:JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
+      .then(function(r){ return r.json(); }).finally(function(){ if(t) clearTimeout(t); });
+  }
+  function cached(){ try{ var raw=localStorage.getItem(CACHE); return raw ? JSON.parse(raw).cfg : null; }catch(e){ return null; } }
+  function remember(cfg){ try{ localStorage.setItem(CACHE, JSON.stringify({ at:Date.now(), cfg:cfg })); }catch(e){} }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+  /* ---- the veil ---- */
+  var veil=null;
+  function unveil(){ if(veil && veil.parentNode) veil.parentNode.removeChild(veil); veil=null; html.classList.remove('booth-veiled'); document.body.style.overflow=''; }
+  function drawVeil(st){
+    unveil();
+    var locked = st.page_mode==='locked';
+    veil=document.createElement('div'); veil.id='boothVeil'; veil.setAttribute('role','dialog'); veil.setAttribute('aria-modal','true');
+    veil.innerHTML='<div class="bv"><div class="bv-mark">Facerinna</div>'+
+      '<h1>'+(locked ? 'This page is locked' : 'Not open right now')+'</h1>'+
+      '<p>'+esc(locked ? st.lock_message : st.hidden_message)+'</p>'+
+      (locked ? '<form id="boothUnlock"><input type="password" id="boothPass" autocomplete="off" placeholder="Passcode" aria-label="Passcode">'+
+                '<button type="submit">Open the page</button><div class="bv-err" id="boothErr"></div></form>' : '')+
+      '<div class="bv-admin"><a href="admin.html">Admin sign-in</a></div></div>';
+    document.body.appendChild(veil);
+    html.classList.add('booth-veiled'); document.body.style.overflow='hidden';
+    if(locked){
+      var form=veil.querySelector('#boothUnlock'), input=veil.querySelector('#boothPass'), err=veil.querySelector('#boothErr'), btn=form.querySelector('button');
+      form.addEventListener('submit', function(e){
+        e.preventDefault(); btn.disabled=true; err.textContent='';
+        post({ action:'unlock', passcode:input.value }, 8000).then(function(j){
+          if(j && j.ok){ try{ sessionStorage.setItem(UNLOCKED,'1'); }catch(x){} unveil(); }
+          else { err.textContent = (j && j.error) || 'Wrong passcode'; input.select(); }
+        }).catch(function(){ err.textContent='No connection. Try again.'; })
+          .finally(function(){ btn.disabled=false; });
+      });
+      setTimeout(function(){ try{ input.focus(); }catch(e){} }, 50);
+    }
+  }
+  function ribbon(text){
+    var r=document.getElementById('boothRibbon');
+    if(!text){ if(r) r.remove(); return; }
+    if(!r){ r=document.createElement('div'); r.id='boothRibbon'; r.className='booth-ribbon'; document.body.appendChild(r); }
+    r.textContent=text;
+  }
+
+  /* ---- the segments ---- */
+  var modal=null;
+  function closeModal(){ if(modal){ modal.remove(); modal=null; document.body.style.overflow=''; } }
+  function openEmbed(seg){
+    closeModal();
+    modal=document.createElement('div'); modal.id='segModal'; modal.setAttribute('role','dialog'); modal.setAttribute('aria-modal','true');
+    modal.innerHTML='<div class="sm-bar"><b>'+esc(seg.title)+'</b><button class="sm-x" type="button" aria-label="Close">&#10005;</button></div>'+
+      '<iframe src="'+esc(seg.embed_url)+'" allow="autoplay; fullscreen" allowfullscreen loading="eager" referrerpolicy="no-referrer"></iframe>';
+    modal.querySelector('.sm-x').addEventListener('click', closeModal);
+    document.body.appendChild(modal); document.body.style.overflow='hidden';
+  }
+  addEventListener('keydown', function(e){ if(e.key==='Escape' && modal) closeModal(); });
+  function drawSegments(list){
+    Array.prototype.forEach.call(document.querySelectorAll('.booth-seg, .booth-seg-divider'), function(el){ el.remove(); });
+    (list||[]).forEach(function(seg){
+      if(!seg || !seg.title) return;
+      var anchor = seg.after && seg.after!=='end' ? document.getElementById(seg.after) : null;
+      var sec=document.createElement('section'); sec.className='sec-tight booth-seg'; sec.id='seg-'+String(seg.id).replace(/[^a-z0-9-]/gi,'');
+      var thumb = seg.thumbnail_url ? '<div class="flyer-frame"><img class="flyer-thumb" src="'+esc(seg.thumbnail_url)+'" alt="'+esc(seg.title)+'" loading="lazy" draggable="false"></div>' : '';
+      var actions = (seg.embed_url ? '<button class="btn btn-primary seg-open" type="button">&#9654; Open</button>' : '') +
+                    (seg.link_url ? '<a class="btn '+(seg.embed_url?'btn-ghost':'btn-primary')+'" href="'+esc(seg.link_url)+'" target="_blank" rel="noopener">'+esc(seg.link_label||'Open link')+' &#8599;</a>' : '');
+      sec.innerHTML='<div class="wrap"><div class="sec-head reveal in">'+
+        (seg.eyebrow ? '<span class="eyebrow">'+esc(seg.eyebrow)+'</span>' : '')+
+        '<h2>'+esc(seg.title)+'</h2>'+(seg.description ? '<p>'+esc(seg.description)+'</p>' : '')+'</div>'+
+        (thumb || actions ? '<div class="flyer-strip reveal in">'+thumb+(actions ? '<div class="flyer-below"><div class="flyer-actions">'+actions+'</div></div>' : '')+'</div>' : '')+
+        '</div>';
+      var div=document.createElement('div'); div.className='wrap booth-seg-divider'; div.innerHTML='<div class="divider-line"></div>';
+      var ref = anchor ? anchor.nextSibling : document.querySelector('body > footer');
+      var parent = anchor ? anchor.parentNode : document.body;
+      parent.insertBefore(div, ref); parent.insertBefore(sec, div.nextSibling);
+      if(seg.embed_url){
+        var go=function(){ openEmbed(seg); };
+        var b=sec.querySelector('.seg-open'); if(b) b.addEventListener('click', go);
+        var im=sec.querySelector('.flyer-thumb'); if(im){ im.style.cursor='zoom-in'; im.addEventListener('click', go); }
+      }
+    });
+  }
+
+  /* ---- apply ---- */
+  var lastKey=null;
+  function apply(cfg, isAdmin){
+    if(!cfg || !cfg.settings) return;
+    var key=JSON.stringify(cfg); if(key===lastKey) return; lastKey=key;
+    var st=cfg.settings;
+    html.classList.toggle('booth-no-welcome', st.welcome==='hide');
+    var unlocked=false; try{ unlocked = sessionStorage.getItem(UNLOCKED)==='1'; }catch(e){}
+    if(st.page_mode==='hidden' || (st.page_mode==='locked' && !unlocked)){
+      if(isAdmin){ unveil(); ribbon('Admin preview: the page is '+st.page_mode+' for visitors.'); }
+      else { ribbon(''); drawVeil(st); }
+    } else { unveil(); ribbon(''); }
+    drawSegments(cfg.segments);
+  }
+  window.__boothApply = apply;   /* the tests, and nothing else */
+
+  function isAdminSession(){
+    var t=null; try{ t=localStorage.getItem(ADMIN); }catch(e){}
+    if(!t) return Promise.resolve(false);
+    return post({ action:'whoami', token:t }, 4000).then(function(j){ return !!(j && j.ok); }).catch(function(){ return false; });
+  }
+
+  function go(){
+    var seen=cached();
+    isAdminSession().then(function(admin){
+      if(seen) apply(seen, admin);
+      return post({ action:'config' }, 2500).then(function(j){
+        if(j && j.ok && j.settings){ remember(j); apply(j, admin); }
+      }).catch(function(){ /* offline: the cached copy stands */ });
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', go); else go();
+})();
 </script>
 </body>
 </html>

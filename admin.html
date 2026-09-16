@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1a2f4a">
+<link rel="icon" href="icon-192.png">
+<title>FACERINNA Booth — Admin</title>
+<style>
+  /* The booth's admin. One page, no framework: a sign-in by e-mail link,
+     then three tabs -- Settings, Segments, Admins -- drawn like the training
+     dashboard the owner already uses: white cards on a pale ground, pill
+     tabs, a form on the left and the list on the right. */
+  :root{--ink:#1a2f4a;--ink2:#5b6b7f;--line:#e3e8ef;--bg:#f5f7fb;--card:#fff;--brand:#0A5480;--brand2:#2f7bd1;
+    --ok:#1f9d61;--bad:#d64545;--soft:#eaf3fc;--radius:14px}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  a{color:var(--brand)}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px clamp(14px,4vw,40px);
+    background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  .brand{font-weight:900;letter-spacing:.24em;text-transform:uppercase;font-size:13px;color:var(--brand)}
+  .brand small{display:block;letter-spacing:.08em;font-weight:600;color:var(--ink2);text-transform:none;font-size:12px}
+  .who{font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .wrap{max-width:1080px;margin:0 auto;padding:clamp(16px,3vw,32px) clamp(14px,4vw,40px) 60px}
+  h1{font-size:clamp(22px,3vw,30px);margin:6px 0 16px;letter-spacing:-.01em}
+  h2{font-size:17px;margin:0 0 12px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .tab{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:9px;padding:8px 14px;
+    font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+  .tab[aria-selected="true"]{background:var(--brand2);border-color:var(--brand2);color:#fff}
+  .grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:18px;align-items:start}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:0 1px 2px rgba(20,40,80,.04)}
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin:10px 0 4px}
+  input[type=text],input[type=email],input[type=url],input[type=password],textarea,select{
+    width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
+  textarea{min-height:84px;resize:vertical}
+  input:focus,textarea:focus,select:focus{outline:2px solid #bcd6f5;border-color:var(--brand2)}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .btn{appearance:none;border:0;border-radius:9px;padding:10px 16px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;
+    background:var(--brand2);color:#fff}
+  .btn.ghost{background:transparent;color:var(--brand);box-shadow:inset 0 0 0 1px var(--line)}
+  .btn.danger{background:transparent;color:var(--bad);box-shadow:inset 0 0 0 1px #f2c7c7}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn.sm{padding:6px 10px;font-size:12.5px}
+  .note{font-size:13px;color:var(--ink2)}
+  .radio{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .radio label{display:flex;gap:10px;align-items:flex-start;margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
+    font-size:14px;font-weight:600;color:var(--ink);cursor:pointer}
+  .radio label span{font-weight:500;color:var(--ink2);display:block;font-size:12.5px}
+  .radio input{margin-top:3px}
+  .check{display:flex;gap:10px;align-items:center;font-size:14px;font-weight:600;margin-top:12px}
+  .list{display:flex;flex-direction:column;gap:10px}
+  .item{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;display:grid;
+    grid-template-columns:64px minmax(0,1fr) auto;gap:14px;align-items:center}
+  .item .thumb{width:64px;height:48px;border-radius:8px;object-fit:cover;background:var(--soft);border:1px solid var(--line)}
+  .item .t{font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.01em}
+  .item .m{font-size:12.5px;color:var(--ink2);margin-top:3px}
+  .item .m b{color:var(--ok)} .item .m i{color:var(--ink2);font-style:normal}
+  .item.hidden .t{opacity:.55}
+  .icons{display:flex;gap:4px}
+  .ic{appearance:none;border:0;background:transparent;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:16px;color:var(--ink2)}
+  .ic:hover{background:var(--soft);color:var(--ink)}
+  .empty{padding:22px;text-align:center;color:var(--ink2);border:1px dashed var(--line);border-radius:var(--radius)}
+  .banner{background:#fff6e5;border:1px solid #f3d9a4;color:#6b4d00;border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;font-size:13.5px}
+  .login{max-width:440px;margin:6vh auto 0}
+  .login .card{padding:26px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;
+    padding:10px 16px;border-radius:999px;font-size:13.5px;opacity:0;transition:.25s;pointer-events:none;max-width:90vw}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.bad{background:var(--bad)}
+  [hidden]{display:none!important}
+  .preview{margin-top:8px;max-height:140px;border-radius:8px;border:1px solid var(--line);display:none}
+  .preview.on{display:block}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;background:var(--soft);color:var(--brand)}
+  .pill.off{background:#f3f4f7;color:var(--ink2)}
+  code{background:var(--soft);padding:1px 6px;border-radius:6px;font-size:12.5px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">FACERINNA <small>Booth admin</small></div>
+  <div class="who" id="who" hidden><span id="whoEmail"></span><a class="btn ghost sm" href="index.html" target="_blank" rel="noopener">View page ↗</a><button class="btn ghost sm" id="signOut" type="button">Sign out</button></div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="notConfigured" hidden>
+    This admin page is not connected yet. Deploy <code>tools/booth-admin.gs</code> as a web app and put its /exec address into
+    <code>admin.html</code> and <code>index.html</code>. Until then nothing here can be saved.
+  </div>
+
+  <!-- sign in -->
+  <section class="login" id="viewLogin" hidden>
+    <div class="card">
+      <h1>Sign in</h1>
+      <p class="note">Only addresses listed in the <b>Admins</b> tab of the booth sheet can sign in. Enter yours and a link will be mailed to you. No password.</p>
+      <form id="loginForm">
+        <label for="loginEmail">Your e-mail</label>
+        <input type="email" id="loginEmail" autocomplete="email" required placeholder="you@facerinna.com">
+        <div class="row" style="margin-top:14px"><button class="btn" id="loginBtn" type="submit">Send me a sign-in link</button></div>
+        <p class="note" id="loginErr" style="color:var(--bad)" hidden></p>
+      </form>
+      <div id="sentNote" hidden>
+        <p><b>Check your inbox.</b> If that address is an admin, a sign-in link is on its way. It works once, for 20 minutes.</p>
+        <p class="note">Nothing arrived? Check spam, or the address is not in the Admins tab.</p>
+        <button class="btn ghost sm" id="sendAgain" type="button">Use another address</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- the admin -->
+  <section id="app" hidden>
+    <h1>Admin Dashboard</h1>
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tabSettings" role="tab" aria-selected="true" data-view="settings" type="button">⚙ Settings</button>
+      <button class="tab" id="tabSegments" role="tab" aria-selected="false" data-view="segments" type="button">▦ Segments</button>
+      <button class="tab" id="tabAdmins" role="tab" aria-selected="false" data-view="admins" type="button">👤 Admins</button>
+    </div>
+
+    <!-- settings -->
+    <div id="viewSettings" class="grid">
+      <div class="card">
+        <h2>The page</h2>
+        <div class="radio">
+          <label><input type="radio" name="mode" id="modeOpen" value="open"><div>Open<span>Anyone can see the booth page.</span></div></label>
+          <label><input type="radio" name="mode" id="modeLocked" value="locked"><div>Locked<span>A passcode screen covers the page. Give the passcode to whoever should see it.</span></div></label>
+          <label><input type="radio" name="mode" id="modeHidden" value="hidden"><div>Hidden<span>A notice covers the page; nobody gets in.</span></div></label>
+        </div>
+        <label for="passcode">Passcode (for Locked)</label>
+        <div class="row"><input type="password" id="passcode" autocomplete="off" style="flex:1" placeholder="e.g. booth2026"><button class="btn ghost sm" type="button" id="showPass">Show</button></div>
+        <label for="lockMessage">Locked message</label>
+        <textarea id="lockMessage"></textarea>
+        <label for="hiddenMessage">Hidden message</label>
+        <textarea id="hiddenMessage"></textarea>
+        <h2 style="margin-top:20px">Welcome strip</h2>
+        <label class="check"><input type="checkbox" id="welcome"> Show “WELCOME TO FACERINNA BOOTH” under the hero</label>
+        <div class="row" style="margin-top:18px"><button class="btn" id="saveSettings" type="button">Save settings</button><span class="note" id="settingsState"></span></div>
+      </div>
+      <div class="card">
+        <h2>What this does</h2>
+        <p class="note"><b>Locked</b> and <b>Hidden</b> draw a screen over the booth page; they do not take the file off the server, so treat them as a closed door, not a safe. The reports vault is gated by its own script and is not affected.</p>
+        <p class="note">Changes reach the page on its next load. A phone that is offline keeps showing what it last saw.</p>
+        <p class="note">Games, the events page and the vault are not covered by the lock; only the booth home page is.</p>
+      </div>
+    </div>
+
+    <!-- segments -->
+    <div id="viewSegments" class="grid" hidden>
+      <div class="card">
+        <h2 id="segFormTitle">＋ Add segment</h2>
+        <form id="segForm">
+          <input type="hidden" id="segId">
+          <label for="segTitle">Title</label>
+          <input type="text" id="segTitle" required maxlength="160" placeholder="e.g. Skin IQ in 60 seconds">
+          <label for="segEyebrow">Eyebrow (small label above the title)</label>
+          <input type="text" id="segEyebrow" maxlength="80" placeholder="e.g. Watch">
+          <label for="segDesc">Short description</label>
+          <textarea id="segDesc" maxlength="600"></textarea>
+          <label for="segAfter">Place it after</label>
+          <select id="segAfter"></select>
+          <label for="segThumb">Thumbnail image URL (https)</label>
+          <input type="url" id="segThumb" placeholder="https://…/image.jpg">
+          <img class="preview" id="segThumbPreview" alt="">
+          <label for="segEmbed">Embed URL (Canva, YouTube, Google Slides… opens in a viewer)</label>
+          <input type="url" id="segEmbed" placeholder="https://www.canva.com/design/…/view?embed">
+          <label for="segLink">Link URL (a button under the thumbnail)</label>
+          <input type="url" id="segLink" placeholder="https://…">
+          <label for="segLinkLabel">Link label</label>
+          <input type="text" id="segLinkLabel" maxlength="40" placeholder="e.g. Register">
+          <label class="check"><input type="checkbox" id="segVisible" checked> Visible on the page</label>
+          <div class="row" style="margin-top:16px">
+            <button class="btn" id="segSave" type="submit">Save segment</button>
+            <button class="btn ghost" id="segCancel" type="button" hidden>Cancel</button>
+          </div>
+        </form>
+      </div>
+      <div>
+        <div class="list" id="segList"></div>
+      </div>
+    </div>
+
+    <!-- admins -->
+    <div id="viewAdmins" class="grid" hidden>
+      <div class="card">
+        <h2>Who can sign in</h2>
+        <div class="list" id="adminList"></div>
+      </div>
+      <div class="card">
+        <h2>Adding or removing an admin</h2>
+        <p class="note">Open the booth Google Sheet, tab <b>Admins</b>. One row per person: <code>email</code>, <code>active</code> (yes or no), <code>name</code>. Set active to <b>no</b> and every session that address holds stops working on its next call. That is the only place this list is edited, on purpose: a page that could add admins to itself would be one stolen session away from adding a stranger.</p>
+        <p class="note" id="quota"></p>
+      </div>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+/* Filled in once the fourth Apps Script project is deployed. Tests point it
+   at a local server through window.__BOOTH_API. */
+var ADMIN_API = window.__BOOTH_API || '';
+var KEY = 'fx.admin.token';
+var $ = function(id){ return document.getElementById(id); };
+var state = { token:null, email:'', data:null, editing:null };
+
+function toast(msg, bad){ var t=$('toast'); t.textContent=msg; t.className='toast on'+(bad?' bad':''); clearTimeout(toast._t); toast._t=setTimeout(function(){ t.className='toast'; }, 2600); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function show(id, on){ $(id).hidden = !on; }
+
+/* Plain text body on purpose: no Content-Type header means no preflight,
+   which Apps Script cannot answer. */
+function api(action, body){
+  if(!ADMIN_API) return Promise.reject(new Error('not connected'));
+  var payload = Object.assign({}, body||{}, { action:action });
+  if(state.token && !('token' in payload)) payload.token = state.token;
+  var ctl = ('AbortController' in window) ? new AbortController() : null;
+  var timer = ctl && setTimeout(function(){ ctl.abort(); }, 20000);
+  return fetch(ADMIN_API, { method:'POST', body:JSON.stringify(payload), signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if(!j || j.ok!==true) throw new Error((j && j.error) || 'no answer'); return j; })
+    .finally(function(){ if(timer) clearTimeout(timer); });
+}
+
+/* ---- sign in ---------------------------------------------------------- */
+function toLogin(){ show('viewLogin', true); show('app', false); show('who', false); show('sentNote', false); show('loginForm', true); }
+$('loginForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var email = $('loginEmail').value.trim();
+  $('loginBtn').disabled = true; show('loginErr', false);
+  api('login', { email:email }).then(function(){
+    show('loginForm', false); show('sentNote', true);
+  }).catch(function(err){
+    $('loginErr').textContent = err.message === 'not connected' ? 'This page is not connected to the script yet.' : err.message;
+    show('loginErr', true);
+  }).finally(function(){ $('loginBtn').disabled = false; });
+});
+$('sendAgain').addEventListener('click', function(){ show('sentNote', false); show('loginForm', true); });
+$('signOut').addEventListener('click', function(){
+  var t = state.token;
+  state.token = null; try{ localStorage.removeItem(KEY); }catch(e){}
+  if(t) api('logout', { token:t }).catch(function(){});
+  toLogin();
+});
+
+/* ---- the app ---------------------------------------------------------- */
+function enter(token, email){
+  state.token = token; state.email = email;
+  try{ localStorage.setItem(KEY, token); }catch(e){}
+  show('viewLogin', false); show('app', true); show('who', true);
+  $('whoEmail').textContent = email;
+  return refresh();
+}
+function refresh(){
+  return api('admin.get').then(function(d){
+    state.data = d; state.email = d.email; $('whoEmail').textContent = d.email;
+    fillSettings(d.settings); fillSections(d.sections); renderSegments(d.segments); renderAdmins(d.admins, d.quota);
+  }).catch(function(err){
+    if(/signed out|no longer/.test(err.message)){ toast('Signed out: '+err.message, true); state.token=null; try{ localStorage.removeItem(KEY); }catch(e){} toLogin(); }
+    else toast('Could not load: '+err.message, true);
+  });
+}
+
+/* tabs */
+document.querySelectorAll('.tab').forEach(function(b){
+  b.addEventListener('click', function(){
+    document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', String(x===b)); });
+    ['settings','segments','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), v===b.dataset.view); });
+  });
+});
+
+/* settings */
+function fillSettings(s){
+  var mode = s.page_mode==='locked' ? 'modeLocked' : s.page_mode==='hidden' ? 'modeHidden' : 'modeOpen';
+  $(mode).checked = true;
+  $('passcode').value = s.passcode || '';
+  $('lockMessage').value = s.lock_message || '';
+  $('hiddenMessage').value = s.hidden_message || '';
+  $('welcome').checked = !/^(hide|no|false|0)$/i.test(String(s.welcome||'show'));
+  $('settingsState').textContent = '';
+}
+$('showPass').addEventListener('click', function(){ var p=$('passcode'); p.type = p.type==='password' ? 'text' : 'password'; this.textContent = p.type==='password' ? 'Show' : 'Hide'; });
+$('saveSettings').addEventListener('click', function(){
+  var mode = document.querySelector('input[name=mode]:checked'); mode = mode ? mode.value : 'open';
+  var settings = { page_mode:mode, passcode:$('passcode').value, lock_message:$('lockMessage').value,
+                   hidden_message:$('hiddenMessage').value, welcome: $('welcome').checked ? 'show' : 'hide' };
+  if(mode==='locked' && !settings.passcode.trim()){ toast('Set a passcode before locking the page', true); $('passcode').focus(); return; }
+  $('saveSettings').disabled = true; $('settingsState').textContent = 'Saving…';
+  api('admin.settings', { settings:settings }).then(function(r){
+    fillSettings(r.settings); $('settingsState').textContent = 'Saved. The page picks it up on its next load.'; toast('Settings saved');
+  }).catch(function(err){ $('settingsState').textContent = ''; toast(err.message, true); })
+    .finally(function(){ $('saveSettings').disabled = false; });
+});
+
+/* segments */
+function fillSections(list){
+  var sel = $('segAfter'); var cur = sel.value; sel.innerHTML = '';
+  (list||[]).forEach(function(s){ var o=document.createElement('option'); o.value=s[0]; o.textContent=s[1]; sel.appendChild(o); });
+  sel.value = cur || 'end';
+}
+function sectionName(id){ var f=(state.data&&state.data.sections||[]).filter(function(s){ return s[0]===id; })[0]; return f ? f[1] : id; }
+function renderSegments(list){
+  var box = $('segList'); box.innerHTML = '';
+  if(!list || !list.length){ box.innerHTML = '<div class="empty">No segments yet. Add one on the left; it appears on the booth page on its next load.</div>'; return; }
+  list.forEach(function(s, i){
+    var el = document.createElement('div'); el.className = 'item'+(s.visible?'':' hidden'); el.dataset.id = s.id;
+    el.innerHTML =
+      (s.thumbnail_url ? '<img class="thumb" src="'+esc(s.thumbnail_url)+'" alt="">' : '<div class="thumb"></div>') +
+      '<div><div class="t">'+esc(s.title)+'</div><div class="m">After '+esc(sectionName(s.after))+' · '+
+        (s.embed_url ? 'Embed · ' : '') + (s.link_url ? 'Link · ' : '') +
+        (s.visible ? '<b>Show</b>' : '<i>Hidden</i>')+'</div></div>' +
+      '<div class="icons">'+
+        '<button class="ic" type="button" data-act="up" title="Move up" '+(i===0?'disabled':'')+'>↑</button>'+
+        '<button class="ic" type="button" data-act="down" title="Move down" '+(i===list.length-1?'disabled':'')+'>↓</button>'+
+        '<button class="ic" type="button" data-act="edit" title="Edit">✎</button>'+
+        '<button class="ic" type="button" data-act="del" title="Delete">🗑</button></div>';
+    box.appendChild(el);
+  });
+}
+$('segList').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-act]'); if(!b) return;
+  var id = b.closest('.item').dataset.id;
+  var list = state.data.segments, seg = list.filter(function(s){ return s.id===id; })[0];
+  if(!seg) return;
+  if(b.dataset.act==='edit'){ startEdit(seg); return; }
+  if(b.dataset.act==='del'){
+    if(!confirm('Delete “'+seg.title+'”? It leaves the page on its next load.')) return;
+    api('admin.segment.delete', { id:id }).then(function(r){ state.data.segments = r.segments; renderSegments(r.segments); toast('Deleted'); if(state.editing===id) resetForm(); })
+      .catch(function(err){ toast(err.message, true); });
+    return;
+  }
+  var ids = list.map(function(s){ return s.id; }); var at = ids.indexOf(id);
+  var to = b.dataset.act==='up' ? at-1 : at+1; if(to<0 || to>=ids.length) return;
+  ids.splice(at,1); ids.splice(to,0,id);
+  api('admin.segment.order', { ids:ids }).then(function(r){ state.data.segments = r.segments; renderSegments(r.segments); })
+    .catch(function(err){ toast(err.message, true); });
+});
+function startEdit(seg){
+  state.editing = seg.id; $('segId').value = seg.id; $('segFormTitle').textContent = '✎ Edit segment';
+  $('segTitle').value = seg.title||''; $('segEyebrow').value = seg.eyebrow||''; $('segDesc').value = seg.description||'';
+  $('segAfter').value = seg.after||'end'; $('segThumb').value = seg.thumbnail_url||''; $('segEmbed').value = seg.embed_url||'';
+  $('segLink').value = seg.link_url||''; $('segLinkLabel').value = seg.link_label||''; $('segVisible').checked = !!seg.visible;
+  preview(); show('segCancel', true); $('segTitle').focus();
+}
+function resetForm(){ state.editing = null; $('segForm').reset(); $('segId').value=''; $('segVisible').checked = true; $('segFormTitle').textContent = '＋ Add segment'; show('segCancel', false); preview(); if(!$('segAfter').value) $('segAfter').value='end'; }
+$('segCancel').addEventListener('click', resetForm);
+function preview(){ var u=$('segThumb').value.trim(); var img=$('segThumbPreview'); if(/^https:\/\//.test(u)){ img.src=u; img.classList.add('on'); } else { img.removeAttribute('src'); img.classList.remove('on'); } }
+$('segThumb').addEventListener('input', preview);
+$('segForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var seg = { id:$('segId').value||'', title:$('segTitle').value, eyebrow:$('segEyebrow').value, description:$('segDesc').value,
+    after:$('segAfter').value, thumbnail_url:$('segThumb').value, embed_url:$('segEmbed').value, link_url:$('segLink').value,
+    link_label:$('segLinkLabel').value, visible: $('segVisible').checked };
+  $('segSave').disabled = true;
+  api('admin.segment.save', { segment:seg }).then(function(r){
+    state.data.segments = r.segments; renderSegments(r.segments); toast(seg.id ? 'Segment updated' : 'Segment added'); resetForm();
+  }).catch(function(err){ toast(err.message, true); }).finally(function(){ $('segSave').disabled = false; });
+});
+
+/* admins */
+function renderAdmins(list, quota){
+  var box=$('adminList'); box.innerHTML='';
+  (list||[]).forEach(function(a){
+    var el=document.createElement('div'); el.className='item'; el.style.gridTemplateColumns='minmax(0,1fr) auto';
+    el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(a.email)+'</div><div class="m">'+esc(a.name||'')+'</div></div>'+
+      '<span class="pill'+(a.active?'':' off')+'">'+(a.active?'active':'inactive')+'</span>';
+    box.appendChild(el);
+  });
+  $('quota').textContent = quota ? 'Sign-in mails left today: '+quota+'.' : '';
+}
+
+/* ---- start ------------------------------------------------------------ */
+function start(){
+  if(!ADMIN_API){ show('notConfigured', true); toLogin(); return; }
+  var m = /[#&]k=([0-9a-f-]{36})/i.exec(location.hash||'');
+  if(m){
+    history.replaceState(null, '', location.pathname);
+    api('exchange', { key:m[1] }).then(function(r){ return enter(r.token, r.email).then(function(){ toast('Signed in as '+r.email); }); })
+      .catch(function(err){ toLogin(); $('loginErr').textContent = err.message; show('loginErr', true); });
+    return;
+  }
+  var t=null; try{ t = localStorage.getItem(KEY); }catch(e){}
+  if(t){
+    state.token = t;
+    api('whoami').then(function(r){ return enter(t, r.email); })
+      .catch(function(){ state.token=null; try{ localStorage.removeItem(KEY); }catch(e){} toLogin(); });
+  } else toLogin();
+}
+start();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator)
+  addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+</script>
+</body>
+</html>
