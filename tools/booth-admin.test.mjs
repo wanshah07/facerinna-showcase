@@ -52,7 +52,7 @@ class FakeDate extends RealDate {
 const Date_ = FakeDate;
 
 const m = eval(`(() => { const Date = Date_; ${src}
-  return { doPost, doGet, setUp, preview }; })()`);
+  return { doPost, doGet, setUp, preview, SETTING_KEYS }; })()`);
 
 const call = o => JSON.parse(m.doPost({ postData:{ contents: JSON.stringify(o), type:'text/plain' } }));
 const get  = p => JSON.parse(m.doGet({ parameter: p||{} }));
@@ -64,8 +64,9 @@ console.log('set up');
 m.setUp();
 check('four tabs exist', ['Admins','Settings','Segments','Admin sessions'].every(t=>tabs[t]));
 check('the owner is the first admin', tabs['Admins'].rows[1] && tabs['Admins'].rows[1][0]===OWNER && tabs['Admins'].rows[1][1]==='yes');
-check('every setting has a row', tabs['Settings'].rows.length===6);
-check('setUp twice adds nothing', (m.setUp(), tabs['Admins'].rows.length===2 && tabs['Settings'].rows.length===6));
+const NSET = Object.keys(m.SETTING_KEYS).length;     /* asked, not hard-coded, so it cannot go stale */
+check('every setting has a row', tabs['Settings'].rows.length===NSET+1);
+check('setUp twice adds nothing', (m.setUp(), tabs['Admins'].rows.length===2 && tabs['Settings'].rows.length===NSET+1));
 
 console.log('\nthe public config');
 let cfg=call({action:'config'});
@@ -118,6 +119,10 @@ console.log('\nsettings');
 r=call({action:'admin.settings',token,settings:{page_mode:'locked'}});
 check('locking without a passcode is refused', r.ok===false && /passcode/.test(r.error));
 check('...and the page stays open', call({action:'config'}).settings.page_mode==='open');
+/* the sheet, not only the public view: the public view coerces a locked page
+   with no passcode back to open, which once hid a refusal that had already
+   written 'locked' into the sheet */
+check('...and nothing was written before the refusal', call({action:'admin.get',token}).settings.page_mode==='open');
 r=call({action:'admin.settings',token,settings:{passcode:'booth2026',page_mode:'locked',lock_message:'Ask the team',welcome:'hide',bogus:'x'}});
 check('with a passcode the page locks', r.ok && r.public.page_mode==='locked');
 cfg=call({action:'config'});
@@ -159,10 +164,87 @@ check('deleting removes it', r.ok && r.segments.length===1 && call({action:'conf
 check('deleting twice says so', call({action:'admin.segment.delete',token,id:id1}).ok===false);
 check('titles are cut, not refused', call({action:'admin.segment.save',token,segment:{title:'x'.repeat(500)}}).ok===true && call({action:'admin.get',token}).segments.every(s=>s.title.length<=160));
 
+console.log('\nsections of the page');
+check('setUp gave every section a row, all showing',
+  tabs['Sections'].rows.length===9 && call({action:'admin.get',token}).section_rows.every(x=>x.mode==='show'));
+check('the section rows are in the order of the page, not the sheet',
+  call({action:'admin.get',token}).section_rows.map(x=>x.id).join()==='range,heroes,evidence,gallery,clinic,qrcore,talk,game');
+check('a page with nothing changed sends no section states', call({action:'config'}).section_states.length===0);
+check('an unknown section is refused', call({action:'admin.section.set',token,id:'nope',mode:'hidden'}).ok===false);
+check('a stranger cannot change one', call({action:'admin.section.set',id:'qrcore',mode:'hidden'}).ok===false);
+
+r=call({action:'admin.section.set',token,id:'qrcore',mode:'hidden'});
+cfg=call({action:'config'});
+check('hiding the QR section reaches the page', r.ok && cfg.section_states.length===1
+  && cfg.section_states[0].id==='qrcore' && cfg.section_states[0].mode==='hidden' && cfg.section_states[0].label==='QR Code');
+check('...and the other seven are left alone', call({action:'admin.get',token}).section_rows.filter(x=>x.mode==='show').length===7);
+
+/* the site passcode is 'booth2026' by now, set earlier */
+r=call({action:'admin.section.set',token,id:'game',mode:'locked',message:'Ask at the counter'});
+check('a section locks on the site passcode when given none of its own', r.ok);
+cfg=call({action:'config'});
+const gameState=cfg.section_states.filter(x=>x.id==='game')[0];
+check('the page is told it is locked, and the message, but never a passcode',
+  gameState && gameState.mode==='locked' && gameState.message==='Ask at the counter'
+  && !('passcode' in gameState) && !JSON.stringify(cfg).includes('booth2026'), gameState);
+check('the site passcode opens it', call({action:'unlock',section:'game',passcode:'booth2026'}).ok===true);
+check('a wrong one does not', call({action:'unlock',section:'game',passcode:'nope'}).ok===false);
+check('a section that is not locked opens without asking', call({action:'unlock',section:'range'}).open===true);
+check('an unknown section is not a way in', call({action:'unlock',section:'nope',passcode:'booth2026'}).ok===false);
+
+r=call({action:'admin.section.set',token,id:'talk',mode:'locked',passcode:'derma'});
+check('a section can carry its own passcode', r.ok && call({action:'unlock',section:'talk',passcode:'derma'}).ok===true);
+check('...and then the site one does not open it', call({action:'unlock',section:'talk',passcode:'booth2026'}).ok===false);
+check('...while the site passcode still opens the one that leans on it', call({action:'unlock',section:'game',passcode:'booth2026'}).ok===true);
+check('its own passcode never goes out', !JSON.stringify(call({action:'config'})).includes('derma'));
+
+r=call({action:'admin.settings',token,settings:{passcode:''}});
+check('clearing the site passcode while a section leans on it is refused, by name',
+  r.ok===false && /Games/.test(r.error||''), r);
+check('...and the passcode is still in the sheet, not cleared before the refusal',
+  call({action:'admin.get',token}).settings.passcode==='booth2026');
+check('...so the lock still asks', call({action:'unlock',section:'game',passcode:'nope'}).ok===false
+  && call({action:'unlock',section:'game',passcode:'booth2026'}).ok===true);
+call({action:'admin.section.set',token,id:'game',mode:'show'});
+call({action:'admin.section.set',token,id:'qrcore',mode:'show'});
+call({action:'admin.section.set',token,id:'talk',mode:'show'});
+check('putting them back clears the page states', call({action:'config'}).section_states.length===0);
+
+console.log('\na locked segment withholds its content, not just covers it');
+r=call({action:'admin.segment.save',token,segment:{title:'Members video',after:'game',mode:'locked',
+  thumbnail_url:'https://img.example/a.jpg',embed_url:'https://embed.example/secret',link_url:'https://example.com/secret',link_label:'Watch'}});
+const lockedSeg=r.id;
+cfg=call({action:'config'});
+const sent=cfg.segments.filter(x=>x.id===lockedSeg)[0];
+check('the page gets its title and thumbnail', sent && sent.title==='Members video' && sent.thumbnail_url==='https://img.example/a.jpg');
+check('...and is told it is locked', sent && sent.locked===true);
+check('...but the embed and the link are not in the config at all',
+  !('embed_url' in sent) && !('link_url' in sent) && !JSON.stringify(cfg).includes('embed.example/secret'), sent);
+r=call({action:'unlock',segment:lockedSeg,passcode:'booth2026'});
+check('the passcode is what fetches them', r.ok===true && r.segment.embed_url==='https://embed.example/secret' && r.segment.link_label==='Watch', r);
+check('a wrong passcode fetches nothing', call({action:'unlock',segment:lockedSeg,passcode:'nope'}).ok===false);
+check('an unknown segment is not a way in', call({action:'unlock',segment:'seg-nope',passcode:'booth2026'}).ok===false);
+check('clearing the site passcode while a segment is locked is refused',
+  call({action:'admin.settings',token,settings:{passcode:''}}).ok===false);
+call({action:'admin.segment.save',token,segment:{id:lockedSeg,title:'Members video',mode:'hidden'}});
+check('hidden again, the page is not even told it exists', !call({action:'config'}).segments.some(x=>x.id===lockedSeg));
+check('the admin still sees it, with its mode', call({action:'admin.get',token}).segments.some(x=>x.id===lockedSeg && x.mode==='hidden'));
+
+console.log('\nthe privacy notice details');
+r=call({action:'admin.settings',token,settings:{privacy_entity:'FACERINNA Sdn. Bhd.',privacy_email:'privacy@facerinna.test',
+  privacy_address:'12 Jalan Contoh, Penang',privacy_retention:'24 months'}});
+cfg=call({action:'config'});
+check('they are public, because a notice with no entity is not a notice',
+  r.ok && cfg.settings.privacy_entity==='FACERINNA Sdn. Bhd.' && cfg.settings.privacy_email==='privacy@facerinna.test'
+  && cfg.settings.privacy_retention==='24 months', cfg.settings);
+check('the passcode is still not', !('passcode' in cfg.settings));
+check('empty is the default, not an invented value',
+  call({action:'admin.settings',token,settings:{privacy_entity:''}}).ok && call({action:'config'}).settings.privacy_entity==='');
+
 console.log('\nbad input');
 check('bad json is an answer, not a crash', JSON.parse(m.doPost({postData:{contents:'{nope'}})).ok===false);
 check('an unknown action', call({action:'dance'}).ok===false);
 check('no action at all', call({}).ok===false);
 
-console.log(ok? '\nadmin: sign in by link, settings, segments' : '\nSOMETHING IS WRONG');
+console.log(ok? '\nadmin: sign in, settings, sections, segments, privacy' : '\nSOMETHING IS WRONG');
 process.exit(ok?0:1);

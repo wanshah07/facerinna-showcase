@@ -1810,6 +1810,23 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
 #segModal .sm-bar b{font-size:15px}
 #segModal .sm-x{appearance:none;border:0;background:rgba(255,255,255,.14);color:#fff;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer}
 #segModal iframe{width:100%;height:100%;border:0;border-radius:12px;background:#fff}
+/* A hidden section, its divider and its links in the nav and the footer. */
+.booth-sec-hidden,.booth-link-hidden{display:none!important}
+/* A locked one keeps its place on the page and shows a card instead of its
+   contents. The contents are still in the published file -- this is a closed
+   door, not a safe. */
+.booth-sec-locked > *:not(.booth-lock){display:none!important}
+.booth-lock .bl{max-width:440px;margin:0 auto;text-align:center;background:var(--surface,#fff);
+  border:1px solid var(--line,#e3e8ef);border-radius:22px;padding:28px 24px;box-shadow:var(--shadow-md,0 8px 30px rgba(20,40,80,.08))}
+.booth-lock .bl-i{font-size:26px;line-height:1}
+.booth-lock h3{margin:10px 0 6px;font-size:1.15rem}
+.booth-lock p{margin:0 0 16px;font-size:.92rem;color:var(--ink-2,#5b6b7f)}
+.booth-lock form{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.booth-lock input{font:inherit;font-size:16px;padding:11px 14px;border-radius:12px;border:1px solid var(--line,#e3e8ef);
+  text-align:center;letter-spacing:.06em;min-width:0;flex:1 1 160px;max-width:220px}
+.booth-lock button{font:inherit;font-weight:800;font-size:14px;padding:11px 20px;border:0;border-radius:999px;
+  background:var(--brand,#0A5480);color:#fff;cursor:pointer}
+.booth-lock .bl-err{min-height:18px;margin-top:8px;font-size:.85rem;color:#c0392b}
 </style>
 <script>
 (function(){
@@ -2467,6 +2484,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
         <a href="#game">Play &amp; win a sample</a>
         <a href="https://my.facerinna.com/facerinna-test-reports-claims/"
            target="_blank" rel="noopener">Report data authentication ↗</a>
+        <a href="privacy.html">Privacy notice</a>
         <a href="admin.html" rel="nofollow">Admin</a>
         <a href="#top">Back to top ↑</a>
       </div>
@@ -6289,6 +6307,9 @@ if ('serviceWorker' in navigator)
     return fetch(API, { method:'POST', body:JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
       .then(function(r){ return r.json(); }).finally(function(){ if(t) clearTimeout(t); });
   }
+  var SECKEY='fx.booth.sec.';
+  function secOpen(id){ try{ return sessionStorage.getItem(SECKEY+id)==='1'; }catch(e){ return false; } }
+  function secOpened(id){ try{ sessionStorage.setItem(SECKEY+id,'1'); }catch(e){} }
   function cached(){ try{ var raw=localStorage.getItem(CACHE); return raw ? JSON.parse(raw).cfg : null; }catch(e){ return null; } }
   function remember(cfg){ try{ localStorage.setItem(CACHE, JSON.stringify({ at:Date.now(), cfg:cfg })); }catch(e){} }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -6328,6 +6349,64 @@ if ('serviceWorker' in navigator)
     r.textContent=text;
   }
 
+  /* ---- one section of the page: shown, locked or hidden ----------------
+     Nothing is removed from the document, only classed, so a config that
+     changes while the page is open (or an unlock) puts it back without a
+     reload. */
+  function lockCard(st, onOpen){
+    var box=document.createElement('div'); box.className='wrap booth-lock';
+    box.innerHTML='<div class="bl"><div class="bl-i">&#128274;</div><h3>'+esc(st.label||'Locked')+'</h3>'+
+      '<p>'+esc(st.message || 'Enter the passcode from the FACERINNA team to open this section.')+'</p>'+
+      '<form><input type="password" autocomplete="off" placeholder="Passcode" aria-label="Passcode for '+esc(st.label||'this section')+'">'+
+      '<button type="submit">Open</button></form><div class="bl-err"></div></div>';
+    var form=box.querySelector('form'), input=box.querySelector('input'), err=box.querySelector('.bl-err'), btn=box.querySelector('button');
+    form.addEventListener('submit', function(e){
+      e.preventDefault(); btn.disabled=true; err.textContent='';
+      onOpen(input.value).then(function(j){
+        if(j && j.ok) return;                       /* the caller puts it back */
+        err.textContent=(j && j.error) || 'Wrong passcode'; input.select();
+      }).catch(function(){ err.textContent='No connection. Try again.'; })
+        .finally(function(){ btn.disabled=false; });
+    });
+    return box;
+  }
+  function linksTo(id){ return [].slice.call(document.querySelectorAll('a[href="#'+id+'"]')); }
+  function clearSections(){
+    ['booth-sec-hidden','booth-sec-locked','booth-link-hidden'].forEach(function(c){
+      Array.prototype.forEach.call(document.querySelectorAll('.'+c), function(el){ el.classList.remove(c); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.booth-lock'), function(el){ el.remove(); });
+  }
+  function openSection(el, st){
+    secOpened(st.id);
+    el.classList.remove('booth-sec-locked');
+    Array.prototype.forEach.call(el.querySelectorAll('.booth-lock'), function(x){ x.remove(); });
+    dispatchEvent(new Event('resize'));      /* whatever was hidden can measure itself now */
+  }
+  function applySections(list, isAdmin){
+    clearSections();
+    if(isAdmin) return;                      /* an admin sees the page whole; the ribbon says so */
+    (list||[]).forEach(function(st){
+      var el=document.getElementById(st.id); if(!el) return;
+      if(st.mode==='hidden'){
+        el.classList.add('booth-sec-hidden');
+        var nx=el.nextElementSibling;        /* the divider under it belongs to it */
+        if(nx && nx.querySelector && nx.querySelector('.divider-line')) nx.classList.add('booth-sec-hidden');
+        linksTo(st.id).forEach(function(a){ a.classList.add('booth-link-hidden'); });
+        return;
+      }
+      if(st.mode==='locked' && !secOpen(st.id)){
+        el.classList.add('booth-sec-locked');
+        el.appendChild(lockCard(st, function(pass){
+          return post({ action:'unlock', section:st.id, passcode:pass }, 8000).then(function(j){
+            if(j && j.ok) openSection(el, st);
+            return j;
+          });
+        }));
+      }
+    });
+  }
+
   /* ---- the segments ---- */
   var modal=null;
   function closeModal(){ if(modal){ modal.remove(); modal=null; document.body.style.overflow=''; } }
@@ -6340,9 +6419,11 @@ if ('serviceWorker' in navigator)
     document.body.appendChild(modal); document.body.style.overflow='hidden';
   }
   addEventListener('keydown', function(e){ if(e.key==='Escape' && modal) closeModal(); });
+  var segList=[];
   function drawSegments(list){
+    segList = list || [];
     Array.prototype.forEach.call(document.querySelectorAll('.booth-seg, .booth-seg-divider'), function(el){ el.remove(); });
-    (list||[]).forEach(function(seg){
+    segList.forEach(function(seg){
       if(!seg || !seg.title) return;
       var anchor = seg.after && seg.after!=='end' ? document.getElementById(seg.after) : null;
       var sec=document.createElement('section'); sec.className='sec-tight booth-seg'; sec.id='seg-'+String(seg.id).replace(/[^a-z0-9-]/gi,'');
@@ -6358,6 +6439,23 @@ if ('serviceWorker' in navigator)
       var ref = anchor ? anchor.nextSibling : document.querySelector('body > footer');
       var parent = anchor ? anchor.parentNode : document.body;
       parent.insertBefore(div, ref); parent.insertBefore(sec, div.nextSibling);
+      if(seg.locked){
+        /* The script sent this one without its embed and its link, so there
+           is nothing here to uncover by reading the page: the passcode is
+           what fetches them. */
+        sec.querySelector('.wrap').appendChild(lockCard(
+          { id:seg.id, label:seg.title, message:'Enter the passcode from the FACERINNA team to open this.' },
+          function(pass){
+            return post({ action:'unlock', segment:seg.id, passcode:pass }, 8000).then(function(j){
+              if(j && j.ok && j.segment){
+                seg.embed_url=j.segment.embed_url; seg.link_url=j.segment.link_url;
+                seg.link_label=j.segment.link_label; seg.locked=false;
+                drawSegments(segList);
+              }
+              return j;
+            });
+          }));
+      }
       if(seg.embed_url){
         var go=function(){ openEmbed(seg); };
         var b=sec.querySelector('.seg-open'); if(b) b.addEventListener('click', go);
@@ -6374,10 +6472,15 @@ if ('serviceWorker' in navigator)
     var st=cfg.settings;
     html.classList.toggle('booth-no-welcome', st.welcome==='hide');
     var unlocked=false; try{ unlocked = sessionStorage.getItem(UNLOCKED)==='1'; }catch(e){}
+    var states = cfg.section_states || [];
     if(st.page_mode==='hidden' || (st.page_mode==='locked' && !unlocked)){
       if(isAdmin){ unveil(); ribbon('Admin preview: the page is '+st.page_mode+' for visitors.'); }
       else { ribbon(''); drawVeil(st); }
+    } else if(isAdmin && states.length){
+      unveil();
+      ribbon('Admin preview: ' + states.map(function(x){ return x.label+' is '+x.mode; }).join(', ') + ' for visitors.');
     } else { unveil(); ribbon(''); }
+    applySections(states, isAdmin);
     drawSegments(cfg.segments);
   }
   window.__boothApply = apply;   /* the tests, and nothing else */
