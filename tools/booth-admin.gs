@@ -27,7 +27,12 @@
  *      1. events registration   AKfycbzYlL4-6rWb...
  *      2. booth scores          AKfycbx4zwbrto2iEUu...
  *      3. vault access          AKfycbxSfLoqRohd...
- *      4. booth admin           <- this one, and it must be a NEW project
+ *      4. booth admin           AKfycbyXD0qJ_a...   <- this one
+ *
+ *   Deployed 16 Sept 2026; that /exec address is in admin.html and
+ *   index.html. Re-deploying as a NEW DEPLOYMENT (rather than a new version
+ *   of the existing one) mints a different address and both pages would
+ *   still be pointing at this one.
  *
  *   A project has exactly one doPost. Pasting this into any of the three
  *   above replaces theirs and takes that feature off the air.

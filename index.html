@@ -6273,9 +6273,12 @@ if ('serviceWorker' in navigator)
    things come out of it: the veil (locked or hidden), the welcome strip,
    and any extra segments, drawn after the section the admin chose. With no
    script address set, none of this runs and the page is exactly the file.
-   Tests point BOOTH_ADMIN_API at a local server through window.__BOOTH_API. */
+   A test points this at its own server by setting window.__BOOTH_API first
+   -- including to '' to check the page with no script at all, which is why
+   this is a typeof test and not `||`. */
 (function(){
-  var API = window.__BOOTH_API || '';
+  var API = (typeof window.__BOOTH_API === 'string') ? window.__BOOTH_API
+    : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
   var CACHE='fx.booth.config', UNLOCKED='fx.booth.unlocked', ADMIN='fx.admin.token';
   if(!API) return;
   var html=document.documentElement;

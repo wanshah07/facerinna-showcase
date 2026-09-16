@@ -200,9 +200,12 @@
 <script>
 (function(){
 "use strict";
-/* Filled in once the fourth Apps Script project is deployed. Tests point it
-   at a local server through window.__BOOTH_API. */
-var ADMIN_API = window.__BOOTH_API || '';
+/* The fourth Apps Script project, deployed 16 Sept 2026. A test points this
+   at its own server by setting window.__BOOTH_API first -- including to ''
+   to check what the page does with no script at all, which is why this is a
+   typeof test and not `||`. */
+var ADMIN_API = (typeof window.__BOOTH_API === 'string') ? window.__BOOTH_API
+  : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
 var KEY = 'fx.admin.token';
 var $ = function(id){ return document.getElementById(id); };
 var state = { token:null, email:'', data:null, editing:null };

@@ -163,6 +163,13 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
 
   await p.check('#modeLocked'); await p.fill('#lockMessage','Members only tonight'); await p.uncheck('#welcome'); await p.click('#saveSettings');
   chk('admin: saving posts the settings', await until(()=>Promise.resolve(S.settings.page_mode==='locked' && S.settings.lock_message==='Members only tonight' && S.settings.welcome==='hide')), S.settings);
+  /* The server having the value is not the page having finished: the answer
+     comes back and re-fills the form from it. Type into the form before that
+     lands and the next thing typed is quietly overwritten -- which is what
+     made this flaky once in four. #settingsState is set immediately after the
+     re-fill, so it is the honest "done". */
+  chk('admin: ...and the form settles before anything else is typed',
+      await until(()=>p.evaluate(()=>/Saved/.test(document.getElementById('settingsState').textContent))));
   await p.check('#modeLocked'); await p.fill('#passcode',''); await p.click('#saveSettings'); await sleep(300);
   chk('admin: locking with an empty passcode is refused on the page', await p.evaluate(()=>/passcode/i.test(document.getElementById('toast').textContent)) && S.passcode==='booth2026');
 
@@ -193,9 +200,13 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   await c.close();
 }
 
-/* --------------------------------------------- with no script address at all */
+/* ------------------------------------- with the script address blanked out
+   Both pages now carry the real deployed address, so "unwired" has to be
+   asked for: the guard that keeps the page working with no script behind it
+   is still worth holding on to. */
 {
   const c=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  await c.addInitScript(()=>{ window.__BOOTH_API=''; });
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   const n0=S.posted.length;
   await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1200);
