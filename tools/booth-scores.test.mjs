@@ -174,5 +174,15 @@ const cased = [{n:'ahmad', s:10, t:1}, {n:'Ahmad', s:20, t:2}];
 check('script folds Ahmad/ahmad into one', mod.bests_(cased.slice()).length === 1);
 check('page would keep them separate',     pageBests(cased.slice()).length === 2);
 
+console.log('\nwhat a player types cannot become a formula in the workbook');
+post({game:'match-lab', name:'=1+1', score:5, device:'=HYPERLINK("https://evil.test","x")'});
+const fRow = sheet.rows.find(r => String(r[3]).indexOf('1+1') >= 0);
+check('a leaderboard name that starts with = is stored as text',
+  fRow && String(fRow[3]).charAt(0) === "'", fRow && fRow[3]);
+check('...and so is the device it came from', fRow && String(fRow[5]).charAt(0) === "'", fRow && fRow[5]);
+/* the sheet is replaced part-way through this file, so the ordinary name to
+   compare against is the one still in it, not one from the top of the run */
+check('an ordinary name is untouched', sheet.rows.some(r => String(r[3]) === 'Early'), sheet.rows.slice(1).map(r=>r[3]));
+
 console.log(ok ? '\nall good' : '\nSOMETHING IS WRONG');
 process.exit(ok ? 0 : 1);

@@ -10,7 +10,7 @@
  * day to day you should not need to, because pages are fetched from the
  * network first and everything else is revalidated in the background.
  */
-const VERSION = 'facerinna-2026-09-16d';
+const VERSION = 'facerinna-2026-09-17';
 
 /* How long a page load waits on the network before falling back to the
    stored copy. This is time to first byte, not the whole download -- fetch()
@@ -69,6 +69,15 @@ self.addEventListener('activate', e => {
       for (const k of await caches.keys()) if (k !== VERSION) await caches.delete(k);
     }
     await self.clients.claim();
+
+    /* Tell whatever is already open. A booth screen is left running for days
+       and never navigates, so without this the only way to the new version is
+       someone reloading by hand -- which is exactly the "clear your cache"
+       advice this is meant to make unnecessary. The page decides WHEN to act
+       on it; reloading under somebody's finger would read as a crash. */
+    for (const c of await self.clients.matchAll({ type: 'window' })) {
+      try { c.postMessage({ type: 'fx-updated', version: VERSION }); } catch (e) {}
+    }
   })());
 });
 

