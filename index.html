@@ -121,7 +121,21 @@ body.slides .slide-fit .wrap{max-width:calc(var(--maxw) / min(1, var(--k,1)))}
    pushes the centred group clear of it. Only where the links are in the bar:
    below 1060 they are behind the burger. */
 @media(min-width:1460px){ .nav-in{padding-right:70px} }
-.nav-lk.nav-admin{display:inline-flex;align-items:center;gap:7px;font-size:15px}
+/* 22px, not the 15px it started at. The other items in this bar are words at
+   13.76px, and a gear glyph at that scale reads far smaller than a letter
+   does -- it sat in the row looking like a stray mark rather than one of the
+   items. line-height:1 keeps the taller glyph inside the same 38px row the
+   words occupy, so the bar's baseline does not move. Under 1460 the rule
+   below hands it back to the dropdown's own size, where it is an icon beside
+   the word "Admin" and does not need to carry the meaning alone. */
+/* The side padding comes down from the 14px a word gets to 10px, because a
+   22px glyph in 14px padding is a 48px item where the 15px one was 41px --
+   and at 1460, the width at which the bar still holds every link, that extra
+   7px is the whole of the slack: the gear landed on the full-screen button.
+   At 10px it is 40px wide, so the bar's geometry is what it was before the
+   glyph grew, and the clearance the corner had is the clearance it keeps. */
+.nav-lk.nav-admin{display:inline-flex;align-items:center;gap:7px;font-size:22px;line-height:1;
+  padding-left:10px;padding-right:10px}
 .nav-lk.nav-admin .nav-admin-t{display:none}
 @media(max-width:1459px){
   .nav-lk.nav-admin{font-size:inherit}
