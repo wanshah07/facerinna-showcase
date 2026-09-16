@@ -106,7 +106,24 @@ body.slides .slide-fit .wrap{max-width:calc(var(--maxw) / min(1, var(--k,1)))}
 .nav-in .tv-btn,.nav-in .burger{position:absolute;right:24px;margin:0}
 .nav-in .tv-btn{top:13px}
 .nav-in .burger{top:9px}
-@media(max-width:1060px){.nav-in .tv-btn{right:70px}}
+@media(max-width:1459px){.nav-in .tv-btn{right:70px}}
+/* The gear rides with the links rather than being pinned to the corner: the
+   corner is taken at every width -- by the Play & Win badge and the
+   full-screen button on a desk, by the partner lockup on a phone -- and an
+   absolutely placed icon there sits on top of them. In the bar it is the icon
+   alone; in the dropdown a phone gets, it carries its word too. */
+/* The bar centres brand + links over its whole width while the full-screen
+   button is pinned to the corner, so a long enough row of links runs under
+   it -- it already did, before the gear was added. Reserving the corner
+   pushes the centred group clear of it. Only where the links are in the bar:
+   below 1060 they are behind the burger. */
+@media(min-width:1460px){ .nav-in{padding-right:70px} }
+.nav-lk.nav-admin{display:inline-flex;align-items:center;gap:7px;font-size:15px}
+.nav-lk.nav-admin .nav-admin-t{display:none}
+@media(max-width:1459px){
+  .nav-lk.nav-admin{font-size:inherit}
+  .nav-lk.nav-admin .nav-admin-t{display:inline}
+}
 }
 
 /* ── COLLAPSING NAV ───────────────────────────────────────────────────
@@ -1759,10 +1776,18 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
   #heroProducts{grid-template-columns:1fr}
   .footer-grid{grid-template-columns:1fr 1fr}
 }
-/* The links hand over to the burger at 1060, not 900: with eight of them plus
-   both certification marks and the CTA, the row runs out of width first —
-   below this it would push the TV button off the right edge. */
-@media(max-width:1060px){
+/* The links hand over to the burger at 1460.
+   It was 1060, and that was too low by about four hundred pixels: measured on
+   the published page, the row of links ended at x=1238 in a 1280 window while
+   the full-screen button starts at x=1218, and at 1061 the brand lockup was
+   pushed to x=-23, off the left edge. The bar centres brand and links over its
+   whole width while that button is pinned to the corner, so once the row is
+   wide enough it simply runs underneath it -- which it already did, before the
+   admin gear was added; the gear made it about forty pixels worse.
+   The row needs 1376px for itself plus 70 for the corner, so 1460 is where it
+   actually fits. Below that the burger holds the links, which is the honest
+   answer when the content does not fit: a menu, not an overlap. */
+@media(max-width:1459px){
   .nav-links{display:none;position:absolute;top:64px;left:0;right:0;background:var(--surface);flex-direction:column;
     padding:14px;gap:4px;box-shadow:var(--shadow-md);border-bottom:1px solid var(--line)}
   .nav-links.open{display:flex}
@@ -1865,6 +1890,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
            scrollspy, which matches on "#"+id and would only ever clear it. -->
       <a href="events/" class="nav-ext">Events</a>
       <a href="#game" class="nav-cta">Play &amp; Win</a>
+      <a href="admin.html" class="nav-lk nav-admin" id="adminBtn" rel="nofollow" aria-label="Booth admin" title="Booth admin">⚙<span class="nav-admin-t">Admin</span></a>
     </nav>
     <button class="tv-btn" id="tvBtn" type="button" aria-label="Full screen TV mode" title="Full screen (TV mode)">⛶</button>
     <button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
@@ -2485,7 +2511,6 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
         <a href="https://my.facerinna.com/facerinna-test-reports-claims/"
            target="_blank" rel="noopener">Report data authentication ↗</a>
         <a href="privacy.html">Privacy notice</a>
-        <a href="admin.html" rel="nofollow">Admin</a>
         <a href="#top">Back to top ↑</a>
       </div>
     </div>
@@ -5647,6 +5672,17 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     const HOLD_UNTIL = /\buv-card\.html/.test(document.referrer||'') ? Date.now()+60000 : 0;
     let armed=true, pending=null, lastMove=0;
     function consider(){
+      /* Locked or hidden, the games are not on offer, so neither is the board
+         that ranks them -- and the board is a sibling of the section, so
+         nothing that hides the section hides it. The Play buttons and the
+         ranking button are inside the section and go with it; this is the one
+         piece that has to be told. */
+      if(section.classList.contains('booth-sec-locked') || getComputedStyle(section).display==='none'){
+        if(modal.classList.contains('open')) close();
+        armed=true;
+        if(pending){ clearTimeout(pending); pending=null; }
+        return;
+      }
       const need=NEED();
       if(share() < need){                              // left, so it may fire again
         armed=true;
@@ -6390,6 +6426,7 @@ if ('serviceWorker' in navigator)
       var el=document.getElementById(st.id); if(!el) return;
       if(st.mode==='hidden'){
         el.classList.add('booth-sec-hidden');
+        setTimeout(function(){ dispatchEvent(new Event('resize')); }, 0);
         var nx=el.nextElementSibling;        /* the divider under it belongs to it */
         if(nx && nx.querySelector && nx.querySelector('.divider-line')) nx.classList.add('booth-sec-hidden');
         linksTo(st.id).forEach(function(a){ a.classList.add('booth-link-hidden'); });
@@ -6397,6 +6434,9 @@ if ('serviceWorker' in navigator)
       }
       if(st.mode==='locked' && !secOpen(st.id)){
         el.classList.add('booth-sec-locked');
+        /* whatever watches the page for a section coming into view gets to
+           look again now, while this one is on its way out of sight */
+        setTimeout(function(){ dispatchEvent(new Event('resize')); }, 0);
         el.appendChild(lockCard(st, function(pass){
           return post({ action:'unlock', section:st.id, passcode:pass }, 8000).then(function(j){
             if(j && j.ok) openSection(el, st);

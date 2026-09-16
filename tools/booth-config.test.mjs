@@ -135,7 +135,9 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   await p.click('#segModal .sm-x'); await sleep(200);
   chk('open: and it closes', await p.evaluate(()=>!document.getElementById('segModal')));
   chk('open: the config is remembered for offline', await p.evaluate(()=>{ try{ return !!JSON.parse(localStorage.getItem('fx.booth.config')).cfg.settings; }catch(e){ return false; } }));
-  chk('open: the footer links to the admin', await p.evaluate(()=>!!document.querySelector('footer a[href="admin.html"]')));
+  /* the way into the admin moved from the footer to a gear in the header */
+  chk('open: the header gear is the way into the admin', await p.evaluate(()=>
+    !!document.querySelector('header.nav a#adminBtn[href="admin.html"]') && !document.querySelector('footer a[href="admin.html"]')));
   chk('open: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
 
   /* the same visitor, the page now locked */
@@ -420,6 +422,135 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   const c=await ctx(); const p=await c.newPage();
   await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(600);
   chk('the footer links to the privacy notice', await p.evaluate(()=>!!document.querySelector('footer a[href="privacy.html"]')));
+  await c.close();
+}
+
+/* ------------------------------ the way into the admin, and the board */
+{
+  const c=await ctx(); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  S.settings.page_mode='open'; S.segments=[]; S.sectionRows.forEach(x=>{ x.mode='show'; x.passcode=''; });
+  /* Not "is it left of the full-screen button" -- the first cut passed that
+     while sitting on top of the Play & Win badge and, on a phone, the partner
+     lockup. Ask the real question: does it overlap ANYTHING else up there. */
+  const gear = p => p.evaluate(()=>{
+    const a=document.getElementById('adminBtn'); if(!a) return null;
+    const r=a.getBoundingClientRect();
+    const hits=[];
+    document.querySelectorAll('header.nav a, header.nav button, header.nav img').forEach(function(el){
+      if(el===a || a.contains(el) || el.contains(a)) return;
+      const s=getComputedStyle(el); if(s.display==='none'||s.visibility==='hidden') return;
+      const b=el.getBoundingClientRect(); if(!b.width||!b.height) return;
+      if(r.left<b.right && b.left<r.right && r.top<b.bottom && b.top<r.bottom)
+        hits.push((el.id||el.className||el.tagName)+'');
+    });
+    return { href:a.getAttribute('href'), inNav:!!a.closest('.nav-links'),
+             shown:getComputedStyle(a).display!=='none' && r.width>0,
+             onScreen:r.left>=-1 && r.right<=innerWidth+1, hits:hits,
+             footer:!!document.querySelector('footer a[href="admin.html"]') };
+  });
+
+  /* on a desk the bar shows it; on a phone the bar hands its links to the
+     burger, and the gear goes with them */
+  let g;
+  /* 1460 is the tightest the bar ever is: the width at which the links stop
+     handing over to the burger, so every link is in it with nothing to spare */
+  for(const w of [1460, 1560, 1800]){
+    await p.setViewportSize({width:w,height:844});
+    await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(900);
+    g=await gear(p);
+    chk(`${w}: a gear in the header goes to the admin`, g && g.href==='admin.html' && g.shown && g.inNav, g);
+    chk(`${w}: it is on top of nothing else in the header`, g.hits.length===0, g.hits);
+    chk(`${w}: and stays on the screen`, g.onScreen, g);
+  }
+  /* in the bar it is the icon alone; the word only appears in the dropdown */
+  await p.setViewportSize({width:1560,height:844});
+  await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(900);
+  g=await gear(p);
+  chk('1560: it is the icon alone, no word', await p.evaluate(()=>
+    getComputedStyle(document.querySelector('#adminBtn .nav-admin-t')).display==='none'));
+  chk('1560: the footer no longer carries a second one', g.footer===false);
+
+  /* Narrower than that -- a phone, and a 1280 laptop too, now that the
+     breakpoint sits where the row actually fits -- the links are behind the
+     burger and the gear goes with them. */
+  for(const w of [390, 1280]){
+    await p.setViewportSize({width:w,height:844});
+    await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(900);
+    chk(`${w}: the links are behind the burger, the gear with them`, await p.evaluate(()=>
+      getComputedStyle(document.querySelector('.nav-links')).display==='none'));
+    await p.click('#burger'); await sleep(400);
+    g=await gear(p);
+    chk(`${w}: opening the menu shows it`, g && g.shown && g.onScreen, g);
+    chk(`${w}: it is on top of nothing else`, g.hits.length===0, g.hits);
+    chk(`${w}: and it says Admin there, where an icon alone would not do`, await p.evaluate(()=>
+      getComputedStyle(document.querySelector('#adminBtn .nav-admin-t')).display!=='none'
+      && /Admin/.test(document.getElementById('adminBtn').innerText)));
+  }
+  /* the row that used to run under the corner button does not any more */
+  for(const w of [1061, 1280, 1460, 1560]){
+    await p.setViewportSize({width:w,height:844});
+    await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(700);
+    const clash=await p.evaluate(()=>{
+      const bad=[]; const els=[...document.querySelectorAll('header.nav a, header.nav button, header.nav img')]
+        .filter(e=>{ const s=getComputedStyle(e); const b=e.getBoundingClientRect();
+          return s.display!=='none' && s.visibility!=='hidden' && b.width>0 && b.height>0; });
+      for(let i=0;i<els.length;i++) for(let j=i+1;j<els.length;j++){
+        const a=els[i], b=els[j]; if(a.contains(b)||b.contains(a)) continue;
+        const x=a.getBoundingClientRect(), y=b.getBoundingClientRect();
+        if(x.left<y.right && y.left<x.right && x.top<y.bottom && y.top<x.bottom)
+          bad.push((a.id||a.className)+' / '+(b.id||b.className));
+      }
+      const lockup=document.querySelector('.nav-lockup').getBoundingClientRect();
+      return { bad, lockupOnScreen: lockup.left>=-1 };
+    });
+    chk(`${w}: nothing in the header sits on anything else`, clash.bad.length===0, clash.bad);
+    chk(`${w}: and the brand is not pushed off the left edge`, clash.lockupOnScreen, clash);
+  }
+  await p.click('#adminBtn');
+  await p.waitForURL(/admin\.html$/,{timeout:10000}).catch(()=>{});
+  chk('the gear opens the admin in the same tab', /admin\.html$/.test(p.url()) && c.pages().length===1, p.url());
+  chk('...with a way back for anyone who tapped it by mistake',
+      await p.evaluate(()=>!!document.querySelector('#viewLogin a[href="index.html"]')));
+  chk('no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
+  await c.close();
+}
+
+/* --------------------------- the ranking board goes with the games ----
+   The board is a sibling of the games section, so nothing that hides the
+   section hides it. The control matters as much as the check: if arriving
+   at an open games section did not open the board, "it did not open" would
+   pass for the wrong reason. */
+{
+  const c=await ctx(); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  const board = p => p.evaluate(()=>document.getElementById('rankModal').classList.contains('open'));
+  const arrive = async p => { await p.evaluate(()=>{ document.documentElement.style.scrollBehavior='auto';
+    document.getElementById('game').scrollIntoView({block:'start'}); }); };
+
+  S.sectionRows.find(x=>x.id==='game').mode='show';
+  await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1200);
+  await arrive(p);
+  chk('board: arriving at the games opens the ranking by itself', await until(()=>board(p), 6000));
+
+  S.sectionRows.find(x=>x.id==='game').mode='locked';
+  await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1400);
+  await arrive(p); await sleep(3000);
+  chk('board: with the games locked it stays shut', (await board(p))===false);
+  chk('board: and the ranking button went with the section',
+      await p.evaluate(()=>{ const b=document.getElementById('rankBtn');
+        return !b || !b.getBoundingClientRect().width; }));
+
+  /* it must also close one that was already open when the lock arrives */
+  S.sectionRows.find(x=>x.id==='game').mode='show';
+  await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1200);
+  await arrive(p);
+  await until(()=>board(p), 6000);
+  S.sectionRows.find(x=>x.id==='game').mode='locked';
+  await p.evaluate(()=>{ window.__boothApply({settings:{page_mode:'open',welcome:'show'}, segments:[],
+    section_states:[{id:'game',label:'Games',mode:'locked',message:''}]}, false); });
+  chk('board: a lock arriving while it is open shuts it', await until(async()=>(await board(p))===false, 4000));
+
+  S.sectionRows.find(x=>x.id==='game').mode='show';
+  chk('board: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
   await c.close();
 }
 
