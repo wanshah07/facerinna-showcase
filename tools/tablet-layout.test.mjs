@@ -137,6 +137,92 @@ for(const [tag,w,h] of VIEWS){
   await c.close();
 }
 
+/* ------------------------------------------- 2b. the artwork is not cropped */
+/* A narrow screen gives the stage the key visual's 5:4 and the images
+   object-fit. When that was written slide 01 was the only slide there and it
+   IS 5:4, so cover cropped nothing. Slides 02-05 came later at 1600x683 and
+   cover cut 47% of their width off: on a phone their type read "FAC... CE...
+   BA... SE...". Cropping is not overflow and no overflow test could see it,
+   so it is stated here directly: whatever the fit, the whole picture is on
+   screen. */
+console.log('\nthe banner artwork, whole');
+for(const [tag,w,h] of VIEWS){
+  const {c,p,errs}=await open_('index.html',w,h);
+  await p.waitForTimeout(1500);
+  const n=await p.evaluate(()=>document.querySelectorAll('#heroShow .slide').length);
+  for(let i=0;i<n;i++){
+    if(i){ await p.click('#heroNext'); await p.waitForTimeout(900); }
+    const r=await p.evaluate(()=>{
+      const a=document.querySelector('#heroShow .slide.active');
+      const img=a.querySelector('img');
+      if(!img) return {skip:true, why:a.className};
+      const b=img.getBoundingClientRect();
+      return {fit:getComputedStyle(img).objectFit, src:img.getAttribute('src').split('/').pop(),
+        natAR:img.naturalWidth/img.naturalHeight, boxAR:b.width/b.height,
+        loaded:img.naturalWidth>0};
+    });
+    if(r.skip) continue;
+    /* a cover fit only crops when the two ratios differ; equal ratios are the
+       same picture either way, which is exactly slide 01's case */
+    const whole = r.fit==='contain' || r.fit==='scale-down' || Math.abs(r.natAR-r.boxAR)<0.02;
+    chk(`${tag}: slide ${i+1} (${r.src}) shows the whole artwork, not a crop`, r.loaded && whole,
+        {fit:r.fit, artwork:+r.natAR.toFixed(2), frame:+r.boxAR.toFixed(2)});
+  }
+  chk(`${tag}: no page errors`, errs.length===0, errs[0]);
+  await c.close();
+}
+
+/* --------------------------------------------- 2c. the document gallery */
+/* The fan spreads by a multiplier of 0.28 under 480px, so on a phone six A4
+   cards land nearly on one spot: every caption but the middle one covered,
+   the outer cards under the corner buttons. It never overflowed -- the fan
+   has its own fit pass -- it was just unreadable, which is a thing only a
+   check like this one can say. Under 640px the cards are dealt as a grid. */
+console.log('\nthe document gallery, on a phone and on a tablet');
+for(const [tag,w,h] of VIEWS){
+  const {c,p,errs}=await open_('index.html',w,h);
+  await p.evaluate(()=>document.getElementById('fanLayout').scrollIntoView({block:'center'}));
+  await p.waitForTimeout(1600);
+  const r=await p.evaluate(()=>{
+    const L=document.getElementById('fanLayout');
+    const R=e=>{const b=e.getBoundingClientRect();
+      return {x:Math.round(b.x),y:Math.round(b.y),w:Math.round(b.width),h:Math.round(b.height),
+              r:Math.round(b.right),b:Math.round(b.bottom)};};
+    const cards=[...L.querySelectorAll('.fan-card')].filter(e=>e.getAttribute('aria-hidden')!=='true');
+    return {list:L.classList.contains('fan-list'), display:getComputedStyle(L).display,
+      cols:getComputedStyle(L).gridTemplateColumns, W:innerWidth,
+      cards:cards.map(e=>({box:R(e),
+        img:e.querySelector('img')?R(e.querySelector('img')):null,
+        cap:e.querySelector('.fan-cap b')?R(e.querySelector('.fan-cap b')):null}))};
+  });
+  const phone = w<=640;
+  chk(`${tag}: ${phone?'the cards are dealt as a grid':'the fan is still a fan'}`,
+      r.list===phone, {list:r.list, display:r.display, cols:r.cols});
+  if(phone){
+    chk(`${tag}: two columns of them`, /^\s*\d+(\.\d+)?px \d+(\.\d+)?px\s*$/.test(r.cols), r.cols);
+    /* what put six covers on top of each other the first time this was
+       written: the card was made position:static, and every absolutely
+       positioned thing inside it -- the cover, the caption, the PDF badge --
+       re-anchored to the layout box and filled the whole grid */
+    const strays=r.cards.filter(c=>c.img && (c.img.x<c.box.x-1||c.img.r>c.box.r+1||c.img.y<c.box.y-1||c.img.b>c.box.b+1));
+    chk(`${tag}: every cover stays inside its own card`, strays.length===0, strays.slice(0,2));
+    const capOut=r.cards.filter(c=>c.cap && (c.cap.x<c.box.x-1||c.cap.r>c.box.r+1));
+    chk(`${tag}: every caption stays on its own card`, capOut.length===0, capOut.slice(0,2));
+    let over=[];
+    for(let i=0;i<r.cards.length;i++) for(let j=i+1;j<r.cards.length;j++){
+      const a=r.cards[i].box, b2=r.cards[j].box;
+      const ox=Math.min(a.r,b2.r)-Math.max(a.x,b2.x), oy=Math.min(a.b,b2.b)-Math.max(a.y,b2.y);
+      if(ox>1&&oy>1) over.push([i,j,Math.round(ox),Math.round(oy)]);
+    }
+    chk(`${tag}: no card covers another`, over.length===0, over.slice(0,3));
+    chk(`${tag}: every card is on the screen`,
+        r.cards.every(c=>c.box.x>=-1 && c.box.r<=r.W+1), r.cards.map(c=>c.box.x+'..'+c.box.r));
+    chk(`${tag}: all of them are showing at once`, r.cards.length>=6, r.cards.length);
+  }
+  chk(`${tag}: no page errors`, errs.length===0, errs[0]);
+  await c.close();
+}
+
 /* ---------------------------------------------------- 3. the admin ribbon */
 /* Fixed to the top of the screen, at z-index 99999, directly over a header
    that is sticky at the same top:0 -- so until --rb it painted over the

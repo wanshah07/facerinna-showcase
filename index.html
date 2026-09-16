@@ -1308,6 +1308,32 @@ body.space-theme .fan-dots span.on{background:rgba(255,255,255,.82)}
 body.space-theme .fan-card{border-color:rgba(255,255,255,.18);
   box-shadow:0 18px 44px rgba(0,0,0,.55)}
 @media(hover:hover){.fan-card:hover{box-shadow:0 26px 56px rgba(16,32,52,.34)}}
+/* THE FAN ON A PHONE.
+   The fan spreads by a multiplier that is 0.28 under 480px, so on a 390px
+   screen seven A4 cards land almost on the same spot: every caption but the
+   middle one is covered by the next card, the outer two sit under the chat
+   button and the halal mark, and the whole thing reads as a pile rather than
+   a hand. Nothing overflowed -- the fit pass sees to that, which is why every
+   overflow test passed on this section -- it was simply unreadable.
+
+   Under 640px the same cards are dealt as a plain two-column grid: all seven
+   visible at once, every caption legible, nothing overlapping, nothing behind
+   a corner button and no gesture to discover. The fan is a pointer-and-room
+   flourish; a phone has neither. */
+.fan-layout.fan-list{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;
+  height:auto;perspective:none;align-items:start}
+/* the inline transform, opacity and z-index are written by the fan's own
+   placer, so the grid has to outrank them */
+/* relative, NOT static: the image, the caption and the PDF badge inside a
+   card are all position:absolute, so a static card hands them to the next
+   positioned ancestor -- .fan-layout -- and all six images stack up covering
+   the whole grid instead of sitting one to a card. */
+.fan-list .fan-card{position:relative;left:auto;top:auto;width:auto;margin:0;
+  transform:none!important;opacity:1!important;transition:none;will-change:auto;
+  box-shadow:0 8px 20px rgba(16,32,52,.18)}
+.fan-list .fan-cap{padding:10px 11px 9px}
+.fan-list .fan-cap b{font-size:.8rem}
+.fan-list .fan-cap i{font-size:.6rem}
 @media(prefers-reduced-motion:reduce){.fan-card{transition:opacity .2s ease}}
 /* While the fan is being measured it is placed twice in one task; a live
    transition would hand back the pose it is animating away from, not the one
@@ -1768,7 +1794,16 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
   body.slides #top .hero-frame{height:100%;display:flex}
   body.slides #top .hero-kv-img{height:100%;width:100%;object-fit:cover}
   .hero-frame{height:100%;width:100%;display:block}
-  .hero-kv-img{width:100%;height:100%;object-fit:cover;-webkit-mask-image:none;mask-image:none}
+  /* contain, not cover. The stage takes the key visual's 5:4 on a narrow
+     screen, and when this rule was written slide 01 was the only slide there
+     -- hero-banner.jpg is 2200x1760, which IS 5:4, so cover cropped nothing
+     and "fills the width edge to edge" was true. Slides 02-05 arrived later
+     as finished artwork at 1600x683, and cover cut 47% of their width away:
+     on a phone the type on them read "FAC... DERM... CE... BA... SE...".
+     Contain shows the whole artwork; slide 01 still fills the box exactly,
+     because its own ratio is the box's, and the wider slides letterbox onto
+     the hero's background rather than losing half their message. */
+  .hero-kv-img{width:100%;height:100%;object-fit:contain;-webkit-mask-image:none;mask-image:none}
   /* stacked instead of side by side: art in the upper two-thirds, type below */
   .slide-kv{position:absolute;inset:0 0 38% 0;width:auto;padding:5% 8%}
   /* the right inset keeps the caption clear of the counter */
@@ -3627,6 +3662,13 @@ const GALLERY_DOCS = [
   const layout=document.getElementById('fanLayout');
   if(!layout || typeof GALLERY_DOCS==='undefined' || !GALLERY_DOCS.length) return;
 
+  /* A phone gets the cards as a grid instead of a fan -- see .fan-list.
+     Everything below still runs: the cards, the flipbook, the paging state.
+     Only the placing is skipped, so turning a tablet sideways across the
+     breakpoint puts the fan back with nothing to rebuild. */
+  const LISTQ=matchMedia('(max-width:640px)');
+  const listing=()=>LISTQ.matches;
+
   const MAX_VISIBLE=7, HALF=3;
   const FAN_POSITIONS=[
     {rot:-21, scale:0.7756, x:-30, y:7.3, zIndex:1},
@@ -3792,6 +3834,8 @@ const GALLERY_DOCS = [
   }
 
   function calibrate(){
+    /* nothing to fit: the grid places itself */
+    if(listing()){ render(null); return; }
     if(!cards.length || !measurable()) return;
     /* In the deck the stricter test still applies: a slide that is not the
        one on screen is scaled and mid-transition, and measuring it reads a
@@ -3846,6 +3890,22 @@ const GALLERY_DOCS = [
   }
 
   function render(direction){
+    if(listing()){
+      layout.classList.add('fan-list');
+      layout.style.removeProperty('--fan-shift');
+      cards.forEach(function(el){
+        /* hand every card back to the stylesheet */
+        el.style.transform=''; el.style.opacity=''; el.style.zIndex='';
+        el.style.transition=''; el.style.transitionDelay='';
+        el.removeAttribute('aria-hidden'); el.removeAttribute('tabindex');
+      });
+      if(ctl) ctl.hidden=true;                       /* all of them are on screen */
+      if(dots.length) dots.forEach(d=>d.classList.remove('on'));
+      prevVisible=new Set(cards.map((_,i)=>i));
+      return;
+    }
+    layout.classList.remove('fan-list');
+    if(ctl && needsPaging) ctl.hidden=false;
     const map=visibleMap(centerIndex);
     const mult=responsiveMultiplier(innerWidth)*spreadFit;
     const hMult=heightMultiplier(innerWidth);
@@ -3934,6 +3994,9 @@ const GALLERY_DOCS = [
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(function(){ calibrate(); }, 120);
   });
+  /* crossing the breakpoint is not always a resize the fan would otherwise
+     act on, and going back to the fan needs a fit it never had */
+  LISTQ.addEventListener('change', function(){ calibrate(); });
 
   /* Leaving the deck re-lays this fan out without changing the window, so no
      resize fires and nothing re-fits it. With calibrate() able to measure off
