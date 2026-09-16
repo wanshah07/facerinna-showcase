@@ -1,4 +1,4 @@
-/* What a phone and a TABLET actually get, on every page.
+/* What a phone, a TABLET and a DESK actually get, on every page.
 
    mobile-test.mjs measures one page at five phone widths; rotation.test.mjs
    turns seven pages on their side at one size. Between them sat the gap this
@@ -26,6 +26,10 @@ const PAGES=['index.html','admin.html','privacy.html','uv-card.html','lab-run.ht
    cover an iPad, an iPad Pro and the common Android tablets */
 const VIEWS=[['phone 390',390,844],['tablet 768',768,1024],
              ['tablet 1024 landscape',1024,768],['tablet 1180 landscape',1180,820]];
+/* and a desk: a laptop, the width where the bar stops handing its links to
+   the burger, a common monitor, and one wide enough that nothing binds */
+const DESKS=[['laptop 1280',1280,800],['bar-full 1460',1460,900],
+             ['monitor 1920',1920,1080],['wide 2560',2560,1440]];
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 
@@ -71,6 +75,94 @@ for(const page of PAGES){
     chk(`${page} @ ${tag}: no page errors`, errs.length===0, errs[0]);
     await c.close();
   }
+}
+
+/* ------------------------------------------------- 1b. the same, on a desk */
+console.log('\nevery page, on a desk');
+for(const page of PAGES){
+  for(const [tag,w,h] of DESKS){
+    const c=await b.newContext({viewport:{width:w,height:h}});
+    const p=await c.newPage();
+    const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+    await p.route('**/*', r=>{const u=r.request().url();
+      return (u.startsWith('file://')||u.startsWith('data:')||u.startsWith('blob:'))?r.continue():r.abort();});
+    await p.goto(DIR+page,{waitUntil:'load',timeout:25000});
+    await p.evaluate(async()=>{ for(let y=0;y<document.body.scrollHeight;y+=800){
+      window.scrollTo(0,y); await new Promise(r=>setTimeout(r,20)); } window.scrollTo(0,0); });
+    await p.waitForTimeout(800);
+    const r=await p.evaluate(()=>{
+      const W=innerWidth, out=[];
+      const clipped=el=>{ for(let a=el.parentElement;a;a=a.parentElement){ const o=getComputedStyle(a).overflowX;
+        if(o==='hidden'||o==='clip'||o==='auto'||o==='scroll') return true; } return false; };
+      for(const el of document.querySelectorAll('body *')){
+        const s=getComputedStyle(el);
+        if(s.display==='none'||s.visibility==='hidden'||s.position==='fixed') continue;
+        const b=el.getBoundingClientRect(); if(!b.width&&!b.height) continue;
+        if((b.right>W+1||b.left<-1)&&!clipped(el))
+          out.push(el.tagName.toLowerCase()+(el.id?'#'+el.id:'')+'.'+String(el.className||'').trim().split(/\s+/)[0]);
+      }
+      /* an <img> that finished loading with no pixels is a path that is wrong,
+         and on a desk it is the first thing a visitor sees */
+      const broken=[...document.querySelectorAll('img')]
+        .filter(i=>i.complete && i.naturalWidth===0 && i.getAttribute('src'))
+        .map(i=>i.getAttribute('src').slice(0,44));
+      return {sw:document.documentElement.scrollWidth, W,
+              out:[...new Set(out)].slice(0,4), broken:[...new Set(broken)].slice(0,3)};
+    });
+    chk(`${page} @ ${tag}: no sideways scroll`, r.sw<=r.W+1, {scrollWidth:r.sw,width:r.W});
+    chk(`${page} @ ${tag}: nothing sticking out`, r.out.length===0, r.out);
+    chk(`${page} @ ${tag}: no broken image`, r.broken.length===0, r.broken);
+    chk(`${page} @ ${tag}: no page errors`, errs.length===0, errs[0]);
+    await c.close();
+  }
+}
+
+/* ------------------------------------------- 1c. the header on a desk */
+/* The bar centres brand and links over its whole width while the full-screen
+   button is pinned to the corner, so the row can run under it -- it has done
+   twice, once when the gear was added and again when the gear was made big
+   enough to read. Ask the real question at every desk width: is anything up
+   there on top of anything else. */
+console.log('\nthe header, item by item');
+for(const [tag,w,h] of DESKS){
+  const c=await b.newContext({viewport:{width:w,height:h}});
+  const p=await c.newPage();
+  await p.route('**/*', r=>{const u=r.request().url();
+    return (u.startsWith('file://')||u.startsWith('data:')||u.startsWith('blob:'))?r.continue():r.abort();});
+  await p.goto(DIR+'index.html',{waitUntil:'load'});
+  await p.waitForTimeout(900);
+  const r=await p.evaluate(()=>{
+    const vis=e=>{const s=getComputedStyle(e);return s.display!=='none'&&s.visibility!=='hidden'
+      && e.getBoundingClientRect().width>0;};
+    const items=[...document.querySelectorAll('header.nav a,header.nav button,header.nav img')].filter(vis);
+    const pairs=[];
+    for(let i=0;i<items.length;i++) for(let j=i+1;j<items.length;j++){
+      if(items[i].contains(items[j])||items[j].contains(items[i])) continue;
+      const a=items[i].getBoundingClientRect(), b=items[j].getBoundingClientRect();
+      if(a.left<b.right && b.left<a.right && a.top<b.bottom && b.top<a.bottom)
+        pairs.push((items[i].id||items[i].className).slice(0,18)+' / '+(items[j].id||items[j].className).slice(0,18));
+    }
+    const gear=document.getElementById('adminBtn');
+    const word=[...document.querySelectorAll('.nav-links a')].find(a=>vis(a)&&!a.id);
+    const G=gear?gear.getBoundingClientRect():null, Wd=word?word.getBoundingClientRect():null;
+    return {pairs:[...new Set(pairs)], inBar:!!(gear&&gear.closest('.nav-links')&&vis(gear)),
+      gearFs:gear?parseFloat(getComputedStyle(gear).fontSize):null,
+      wordFs:word?parseFloat(getComputedStyle(word).fontSize):null,
+      gearH:G?Math.round(G.height):null, wordH:Wd?Math.round(Wd.height):null,
+      gearOn:G?(G.left>=-1&&G.right<=innerWidth+1):null};
+  });
+  chk(`${tag}: nothing in the header sits on anything else`, r.pairs.length===0, r.pairs);
+  if(r.inBar){
+    /* the gear is a glyph among words: at the words' own size it reads as a
+       stray mark rather than an item, so it is deliberately larger -- and
+       that size is what put it on the corner button, so it is pinned here */
+    chk(`${tag}: the gear is set larger than the words beside it`,
+        r.gearFs>=20 && r.gearFs>r.wordFs, {gear:r.gearFs, word:r.wordFs});
+    chk(`${tag}: ...but sits in the same row, not taller than it`,
+        Math.abs(r.gearH-r.wordH)<=2, {gear:r.gearH, word:r.wordH});
+    chk(`${tag}: and stays on the screen`, r.gearOn===true, r);
+  }
+  await c.close();
 }
 
 /* ------------------------------------------------------- 2. the slideshow */
@@ -302,5 +394,6 @@ for(const [tag,w,h] of [VIEWS[1],VIEWS[2]]){
 }
 
 await b.close();
-console.log(bad? '\nSOMETHING IS WRONG' : '\nphone and tablet: every page fits, the slideshow drives, the ribbon keeps off the header');
+console.log(bad? '\nSOMETHING IS WRONG'
+  : '\nphone, tablet and desk: every page fits, the header keeps off itself, the slideshow drives, the ribbon keeps off the header');
 process.exit(bad?1:0);
