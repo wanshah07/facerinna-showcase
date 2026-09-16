@@ -19,26 +19,57 @@ const S={
   settings:{page_mode:'open', lock_message:'Ask the team for the passcode', hidden_message:'Back on Monday', welcome:'show'},
   passcode:'booth2026',
   segments:[], sections:[['range','The Range'],['qrcore','QR Code'],['talk',"Dr. Peter's Talk"],['game','Games'],['end','End of page']],
+  sectionRows:[['range','The Range'],['qrcore','QR Code'],['talk',"Dr. Peter's Talk"],['game','Games']]
+    .map(([id,label])=>({id,label,mode:'show',passcode:'',message:''})),
   admins:[{email:'wan@facerinna.test',active:true,name:'Wan'}],
   tokens:{'11111111-1111-4111-8111-111111111111':'wan@facerinna.test'},
   links:{'22222222-2222-4222-8222-222222222222':'wan@facerinna.test'},
   down:false, posted:[], mails:[]
 };
-const pub=()=>({ok:true, settings:{...S.settings}, segments:S.segments.filter(s=>s.visible), sections:S.sections, at:Date.now()});
+const segMode = s => s.mode || (s.visible===false ? 'hidden' : 'show');
+/* what the real script sends: hidden segments not at all, locked ones without
+   the embed and the link */
+const pubSegs = () => S.segments.filter(s=>segMode(s)!=='hidden').map(s=>{
+  const o={id:s.id, after:s.after, eyebrow:s.eyebrow, title:s.title, description:s.description, thumbnail_url:s.thumbnail_url};
+  if(segMode(s)==='locked'){ o.locked=true; return o; }
+  return {...o, embed_url:s.embed_url, link_url:s.link_url, link_label:s.link_label};
+});
+const pub=()=>({ok:true, settings:{...S.settings}, segments:pubSegs(), sections:S.sections,
+  section_states:S.sectionRows.filter(x=>x.mode!=='show').map(({id,label,mode,message})=>({id,label,mode,message})),
+  at:Date.now()});
 function handle(b){
   S.posted.push(b);
   const auth=()=>S.tokens[b.token];
   switch(b.action){
     case 'config': return pub();
-    case 'unlock': return b.passcode===S.passcode ? {ok:true} : {ok:false,error:'wrong passcode'};
+    case 'unlock': {
+      if(b.section){ const x=S.sectionRows.find(r=>r.id===b.section);
+        if(!x) return {ok:false,error:'no such section'};
+        if(x.mode!=='locked') return {ok:true,open:true};
+        return b.passcode===(x.passcode||S.passcode) ? {ok:true} : {ok:false,error:'wrong passcode'}; }
+      if(b.segment){ const x=S.segments.find(r=>r.id===b.segment);
+        if(!x) return {ok:false,error:'no such segment'};
+        if(segMode(x)!=='locked') return {ok:true,open:true};
+        return b.passcode===S.passcode
+          ? {ok:true, segment:{embed_url:x.embed_url, link_url:x.link_url, link_label:x.link_label}}
+          : {ok:false,error:'wrong passcode'}; }
+      return b.passcode===S.passcode ? {ok:true} : {ok:false,error:'wrong passcode'};
+    }
     case 'login': if(S.admins.some(a=>a.email===String(b.email).toLowerCase())) S.mails.push(b.email); return {ok:true,sent:true};
     case 'exchange': { const e=S.links[b.key]; if(!e) return {ok:false,error:'that link is not valid'}; delete S.links[b.key];
       const t='33333333-3333-4333-8333-333333333333'; S.tokens[t]=e; return {ok:true,token:t,email:e}; }
     case 'whoami': return auth() ? {ok:true,email:auth()} : {ok:false,error:'signed out'};
     case 'logout': delete S.tokens[b.token]; return {ok:true};
-    case 'admin.get': return auth() ? {ok:true,email:auth(),settings:{...S.settings,passcode:S.passcode},segments:S.segments,admins:S.admins,sections:S.sections,quota:97} : {ok:false,error:'signed out'};
+    case 'admin.get': return auth() ? {ok:true,email:auth(),settings:{...S.settings,passcode:S.passcode},segments:S.segments,
+      admins:S.admins,sections:S.sections,section_rows:S.sectionRows,quota:97} : {ok:false,error:'signed out'};
+    case 'admin.section.set': { if(!auth()) return {ok:false,error:'signed out'};
+      const x=S.sectionRows.find(r=>r.id===b.id); if(!x) return {ok:false,error:'no such section'};
+      x.mode=b.mode; x.passcode=b.passcode||''; x.message=b.message||'';
+      return {ok:true, sections:S.sectionRows}; }
     case 'admin.settings': if(!auth()) return {ok:false,error:'signed out'};
-      for(const k of ['page_mode','lock_message','hidden_message','welcome']) if(k in b.settings) S.settings[k]=b.settings[k];
+      for(const k of ['page_mode','lock_message','hidden_message','welcome',
+                      'privacy_entity','privacy_email','privacy_address','privacy_retention'])
+        if(k in b.settings) S.settings[k]=b.settings[k];
       if('passcode' in b.settings) S.passcode=b.settings.passcode;
       return {ok:true,settings:{...S.settings,passcode:S.passcode},public:S.settings};
     case 'admin.segment.save': if(!auth()) return {ok:false,error:'signed out'};
@@ -71,6 +102,14 @@ const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-
 async function ctx(){ const c=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   await c.addInitScript(api=>{ window.__BOOTH_API=api; }, API);
   return c; }
+/* A save is finished when the page says so. Waiting on the server alone lets
+   the answer land later and re-render the form underneath whatever is typed
+   next -- which is how the settings test went flaky once already. */
+async function saved(p, click){
+  await p.evaluate(()=>{ document.getElementById('toast').textContent=''; });
+  await click();
+  return until(()=>p.evaluate(()=>document.getElementById('toast').textContent.trim().length>0));
+}
 const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil'); if(!v) return null; const r=v.getBoundingClientRect();
   return {text:v.innerText, input:!!v.querySelector('#boothPass'), covers:r.width>=innerWidth-1 && r.height>=innerHeight-1, hiddenBody:getComputedStyle(document.querySelector('.hero')).visibility==='hidden'}; });
 
@@ -180,7 +219,7 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   await p.fill('#segThumb','https://img.example/reg.jpg'); await p.fill('#segEmbed','https://www.youtube.com/embed/xyz'); await p.click('#segSave');
   chk('admin: adding a segment posts it and it appears in the list', await until(()=>Promise.resolve(S.segments.length===3)) && await until(()=>p.evaluate(()=>document.querySelectorAll('#segList .item').length===3)));
   const saved=S.segments[2];
-  chk('admin: with what was typed', saved.title==='Registration video' && saved.after==='talk' && saved.embed_url==='https://www.youtube.com/embed/xyz' && saved.visible===true, saved);
+  chk('admin: with what was typed', saved.title==='Registration video' && saved.after==='talk' && saved.embed_url==='https://www.youtube.com/embed/xyz' && saved.mode==='show', saved);
   chk('admin: the form is cleared for the next one', await p.evaluate(()=>document.getElementById('segTitle').value===''));
   await p.click('#segList .item:nth-child(3) button[data-act="up"]');
   chk('admin: the arrows reorder', await until(()=>Promise.resolve(S.posted.some(x=>x.action==='admin.segment.order') && S.segments[1].id===saved.id)));
@@ -217,6 +256,173 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   await c.close();
 }
 
+/* ----------------------------------------------- one section at a time */
+{
+  const c=await ctx(); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  S.settings.page_mode='open'; S.settings.welcome='show'; S.segments=[];
+  const sec = id => S.sectionRows.find(x=>x.id===id);
+  const look = (p,id) => p.evaluate(i=>{
+    const el=document.getElementById(i);
+    const div=el && el.nextElementSibling;
+    return { shown: !!el && getComputedStyle(el).display!=='none',
+             divider: !!(div && div.querySelector && div.querySelector('.divider-line')) ? getComputedStyle(div).display!=='none' : null,
+             navLinks: [...document.querySelectorAll('a[href="#'+i+'"]')].filter(a=>getComputedStyle(a).display!=='none').length,
+             lock: !!(el && el.querySelector('.booth-lock')),
+             lockText: el && el.querySelector('.booth-lock') ? el.querySelector('.booth-lock').innerText : '',
+             contents: !!(el && [...el.children].some(ch=>!ch.classList.contains('booth-lock') && getComputedStyle(ch).display!=='none')) };
+  }, id);
+
+  sec('qrcore').mode='hidden';
+  await p.goto(BASE+'/index.html',{waitUntil:'load'});
+  await until(async()=>!(await look(p,'qrcore')).shown);
+  let v=await look(p,'qrcore');
+  chk('section: hiding the QR code takes the section off the page', !v.shown, v);
+  chk('section: ...its divider with it', v.divider===false, v);
+  chk('section: ...and every link in the menu and the footer that pointed at it', v.navLinks===0, v);
+  chk('section: the ones left alone are untouched', (await look(p,'game')).shown && (await look(p,'talk')).shown);
+
+  sec('qrcore').mode='show'; sec('game').mode='locked'; sec('game').message='Ask at the counter';
+  await p.goto(BASE+'/index.html',{waitUntil:'load'});
+  await until(async()=>(await look(p,'game')).lock);
+  v=await look(p,'game');
+  chk('section: a locked one shows a card in its place', v.lock && /Ask at the counter/.test(v.lockText), v);
+  chk('section: ...with its own name on it', /Games/.test(v.lockText), v);
+  chk('section: ...and its contents are not on the page', !v.contents, v);
+  chk('section: ...while the QR code came back', (await look(p,'qrcore')).shown);
+  await p.evaluate(()=>document.getElementById('game').scrollIntoView());
+  await p.fill('#game .booth-lock input','nope'); await p.click('#game .booth-lock button'); await sleep(500);
+  v=await look(p,'game');
+  chk('section: a wrong passcode says so and stays shut', v.lock && /wrong passcode/i.test(v.lockText), v);
+  await p.fill('#game .booth-lock input','booth2026'); await p.click('#game .booth-lock button');
+  chk('section: the right one opens it', await until(async()=>{ const x=await look(p,'game'); return !x.lock && x.contents; }));
+  await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1400);
+  chk('section: and it stays open for the rest of the visit', (await look(p,'game')).contents);
+
+  /* a section with its own passcode does not open on the site one */
+  sec('talk').mode='locked'; sec('talk').passcode='derma';
+  await p.evaluate(()=>sessionStorage.clear());
+  await p.goto(BASE+'/index.html',{waitUntil:'load'});
+  await until(async()=>(await look(p,'talk')).lock);
+  await p.evaluate(()=>document.getElementById('talk').scrollIntoView());
+  await p.fill('#talk .booth-lock input','booth2026'); await p.click('#talk .booth-lock button'); await sleep(500);
+  chk('section: its own passcode is the only one that opens it', (await look(p,'talk')).lock);
+  await p.fill('#talk .booth-lock input','derma'); await p.click('#talk .booth-lock button');
+  chk('section: ...and it does', await until(async()=>!(await look(p,'talk')).lock));
+  chk('section: the other lock is its own affair', (await look(p,'game')).lock===true);
+
+  /* an admin sees the page whole */
+  await p.evaluate(()=>localStorage.setItem('fx.admin.token','11111111-1111-4111-8111-111111111111'));
+  await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1600);
+  chk('section: a signed-in admin sees them all, with a ribbon naming what a visitor would not see',
+      (await look(p,'game')).contents && (await look(p,'qrcore')).shown
+      && await p.evaluate(()=>/Games is locked/.test((document.getElementById('boothRibbon')||{}).textContent||'')));
+  await p.evaluate(()=>localStorage.removeItem('fx.admin.token'));
+  sec('game').mode='show'; sec('talk').mode='show'; sec('talk').passcode='';
+  chk('section: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
+  await c.close();
+}
+
+/* ------------------------------------------- a locked segment holds back */
+{
+  const c=await ctx(); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  S.segments=[{id:'seg-locked-1',after:'game',title:'Members video',description:'For clinic partners.',
+    thumbnail_url:BASE+'/docs/talk-poster-1.webp',embed_url:BASE+'/uv-card.html?members=only',
+    link_url:'https://example.com/secret',link_label:'Watch',mode:'locked'}];
+  await p.goto(BASE+'/index.html',{waitUntil:'load'});
+  await until(()=>p.evaluate(()=>!!document.querySelector('.booth-seg .booth-lock')));
+  let seg=await p.evaluate(()=>{ const s=document.querySelector('.booth-seg');
+    return { title:s.querySelector('h2').textContent, lock:!!s.querySelector('.booth-lock'),
+             openBtn:!!s.querySelector('.seg-open'), links:s.querySelectorAll('a.btn').length,
+             html:document.documentElement.innerHTML }; });
+  chk('segment: a locked one still shows its title', seg.title==='Members video');
+  chk('segment: with a passcode card and no way in', seg.lock && !seg.openBtn && seg.links===0, {lock:seg.lock,openBtn:seg.openBtn,links:seg.links});
+  /* the page links to uv-card.html on its own account, so the query string is
+     what tells this segment's embed apart from the game in the gallery */
+  chk('segment: its embed and its link are nowhere in the page, not merely covered',
+      !seg.html.includes('example.com/secret') && !seg.html.includes('members=only'));
+  await p.evaluate(()=>document.querySelector('.booth-seg').scrollIntoView());
+  await p.fill('.booth-seg .booth-lock input','nope'); await p.click('.booth-seg .booth-lock button'); await sleep(500);
+  chk('segment: a wrong passcode brings nothing back',
+      await p.evaluate(()=>!!document.querySelector('.booth-seg .booth-lock') && !document.documentElement.innerHTML.includes('example.com/secret')));
+  await p.fill('.booth-seg .booth-lock input','booth2026'); await p.click('.booth-seg .booth-lock button');
+  chk('segment: the right one fetches the content and draws it',
+      await until(()=>p.evaluate(()=>{ const s=document.querySelector('.booth-seg');
+        return !!s && !s.querySelector('.booth-lock') && !!s.querySelector('.seg-open') && s.querySelectorAll('a.btn').length===1; })));
+  await p.click('.booth-seg .seg-open'); await sleep(600);
+  chk('segment: and it opens in the viewer like any other',
+      await p.evaluate(()=>{ const m=document.getElementById('segModal'); return !!m && /uv-card\.html\?members=only$/.test(m.querySelector('iframe').getAttribute('src')); }));
+  chk('segment: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
+  S.segments=[];
+  await c.close();
+}
+
+/* ------------------------------------------- the admin's sections tab */
+{
+  const c=await ctx(); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await c.addInitScript(()=>{ localStorage.setItem('fx.admin.token','11111111-1111-4111-8111-111111111111'); });
+  await p.goto(BASE+'/admin.html',{waitUntil:'load'});
+  await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));
+  chk('admin: the View page button stays in this tab', await p.evaluate(()=>{
+    const a=document.querySelector('.who a[href="index.html"]'); return !!a && !a.target; }));
+  await p.click('#tabSections');
+  chk('admin: every section of the page is listed, in the page order', await p.evaluate(()=>
+    [...document.querySelectorAll('#secList .item')].map(x=>x.dataset.id).join()==='range,qrcore,talk,game'));
+  chk('admin: the passcode and message only show once a section is locked', await p.evaluate(()=>
+    getComputedStyle(document.querySelector('#secList .item .secpass')).display==='none'));
+  await p.selectOption('#secList .item[data-id="qrcore"] .secmode','locked');
+  chk('admin: choosing Locked reveals them', await p.evaluate(()=>
+    getComputedStyle(document.querySelector('#secList .item[data-id="qrcore"] .secpass')).display!=='none'));
+  await p.fill('#secList .item[data-id="qrcore"] .secmsg','Opens at 2pm');
+  await saved(p, ()=>p.click('#secList .item[data-id="qrcore"] .secsave'));
+  chk('admin: saving posts it', S.sectionRows.find(x=>x.id==='qrcore').mode==='locked'
+    && S.sectionRows.find(x=>x.id==='qrcore').message==='Opens at 2pm', S.sectionRows[1]);
+  await p.selectOption('#secList .item[data-id="qrcore"] .secmode','show');
+  await saved(p, ()=>p.click('#secList .item[data-id="qrcore"] .secsave'));
+  chk('admin: and back to Show', S.sectionRows.find(x=>x.id==='qrcore').mode==='show', S.sectionRows[1]);
+
+  await p.click('#tabSegments');
+  chk('admin: a segment has the same three states', await p.evaluate(()=>
+    [...document.querySelectorAll('#segMode option')].map(o=>o.value).join()==='show,locked,hidden'));
+  await p.click('#tabSettings');
+  chk('admin: the privacy fields are on the settings tab', await p.evaluate(()=>
+    ['privEntity','privEmail','privAddress','privRetention'].every(i=>!!document.getElementById(i))));
+  await p.fill('#privEntity','FACERINNA Sdn. Bhd.'); await p.fill('#privEmail','privacy@facerinna.test');
+  await p.fill('#privAddress','12 Jalan Contoh'); await p.fill('#privRetention','24 months');
+  await saved(p, ()=>p.click('#saveSettings'));
+  chk('admin: saving posts them', S.settings.privacy_entity==='FACERINNA Sdn. Bhd.' && S.settings.privacy_retention==='24 months', S.settings);
+  chk('admin: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
+  await c.close();
+}
+
+/* ------------------------------------------------------ the privacy page */
+{
+  const c=await ctx(); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.goto(BASE+'/privacy.html',{waitUntil:'load'}); await sleep(1200);
+  let t=await p.evaluate(()=>document.body.innerText);
+  chk('privacy: it names the entity, the address and the contact from the admin',
+      /FACERINNA Sdn\. Bhd\./.test(t) && /12 Jalan Contoh/.test(t) && /privacy@facerinna\.test/.test(t), t.slice(0,200));
+  chk('privacy: and the retention period', /24 months/.test(t));
+  chk('privacy: it says what each form collects', /phone number/i.test(t) && /organisation/i.test(t) && /user-agent/i.test(t));
+  chk('privacy: it names the rights and the Act', /Personal Data Protection Act 2010/.test(t) && /delete it/.test(t));
+  chk('privacy: it is reachable while the page itself is locked', await p.evaluate(()=>!document.getElementById('boothVeil')));
+
+  /* nothing filled in yet: it must say so rather than read as though nothing applied */
+  S.settings.privacy_entity=''; S.settings.privacy_email=''; S.settings.privacy_address=''; S.settings.privacy_retention='';
+  await p.evaluate(()=>localStorage.removeItem('fx.booth.config'));
+  await p.goto(BASE+'/privacy.html',{waitUntil:'load'}); await sleep(1200);
+  t=await p.evaluate(()=>document.body.innerText);
+  chk('privacy: an unfilled detail says so in its own place', (t.match(/Not yet stated/g)||[]).length>=4, (t.match(/Not yet stated/g)||[]).length);
+  chk('privacy: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
+  await c.close();
+}
+
+{
+  const c=await ctx(); const p=await c.newPage();
+  await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(600);
+  chk('the footer links to the privacy notice', await p.evaluate(()=>!!document.querySelector('footer a[href="privacy.html"]')));
+  await c.close();
+}
+
 await b.close(); await new Promise(r=>srv.close(r));
-console.log(bad? '\nSOMETHING IS WRONG' : '\nthe sheet runs the page; the admin runs the sheet');
+console.log(bad? '\nSOMETHING IS WRONG' : '\nthe sheet runs the page, section by section');
 process.exit(bad?1:0);

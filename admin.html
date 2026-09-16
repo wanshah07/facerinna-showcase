@@ -77,12 +77,18 @@
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;background:var(--soft);color:var(--brand)}
   .pill.off{background:#f3f4f7;color:var(--ink2)}
   code{background:var(--soft);padding:1px 6px;border-radius:6px;font-size:12.5px}
+  .secctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  .secctl select{width:auto;min-width:118px}
+  .secctl input{width:auto;flex:1 1 170px;min-width:0}
+  .secctl .lockonly{display:none}
+  .item.is-locked .secctl .lockonly{display:block}
+  .item.is-hidden .t{opacity:.55;text-decoration:line-through}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="brand">FACERINNA <small>Booth admin</small></div>
-  <div class="who" id="who" hidden><span id="whoEmail"></span><a class="btn ghost sm" href="index.html" target="_blank" rel="noopener">View page ↗</a><button class="btn ghost sm" id="signOut" type="button">Sign out</button></div>
+  <div class="who" id="who" hidden><span id="whoEmail"></span><a class="btn ghost sm" href="index.html">View page</a><button class="btn ghost sm" id="signOut" type="button">Sign out</button></div>
 </header>
 
 <main class="wrap">
@@ -115,6 +121,7 @@
     <h1>Admin Dashboard</h1>
     <div class="tabs" role="tablist">
       <button class="tab" id="tabSettings" role="tab" aria-selected="true" data-view="settings" type="button">⚙ Settings</button>
+      <button class="tab" id="tabSections" role="tab" aria-selected="false" data-view="sections" type="button">▤ Sections</button>
       <button class="tab" id="tabSegments" role="tab" aria-selected="false" data-view="segments" type="button">▦ Segments</button>
       <button class="tab" id="tabAdmins" role="tab" aria-selected="false" data-view="admins" type="button">👤 Admins</button>
     </div>
@@ -138,12 +145,35 @@
         <label class="check"><input type="checkbox" id="welcome"> Show “WELCOME TO FACERINNA BOOTH” under the hero</label>
         <div class="row" style="margin-top:18px"><button class="btn" id="saveSettings" type="button">Save settings</button><span class="note" id="settingsState"></span></div>
       </div>
+      <div class="card" style="margin-bottom:18px">
+        <h2>Privacy notice</h2>
+        <p class="note">These four fill in the privacy page at <a href="privacy.html">/privacy.html</a>. Until they are filled the page says so in place of each one, rather than inventing an answer.</p>
+        <label for="privEntity">Legal entity (the company named in the notice)</label>
+        <input type="text" id="privEntity" placeholder="e.g. FACERINNA Sdn. Bhd. (1234567-A)">
+        <label for="privEmail">Contact e-mail for access or deletion requests</label>
+        <input type="email" id="privEmail" placeholder="e.g. privacy@facerinna.com">
+        <label for="privAddress">Registered address</label>
+        <textarea id="privAddress" style="min-height:64px"></textarea>
+        <label for="privRetention">How long the data is kept</label>
+        <input type="text" id="privRetention" placeholder="e.g. 24 months after the event">
+      </div>
       <div class="card">
         <h2>What this does</h2>
         <p class="note"><b>Locked</b> and <b>Hidden</b> draw a screen over the booth page; they do not take the file off the server, so treat them as a closed door, not a safe. The reports vault is gated by its own script and is not affected.</p>
         <p class="note">Changes reach the page on its next load. A phone that is offline keeps showing what it last saw.</p>
         <p class="note">Games, the events page and the vault are not covered by the lock; only the booth home page is.</p>
       </div>
+    </div>
+
+    <!-- sections -->
+    <div id="viewSections" class="grid" hidden>
+      <div class="card">
+        <h2>Each part of the page</h2>
+        <p class="note"><b>Show</b> is the ordinary state. <b>Locked</b> draws a passcode card in that section's place. <b>Hidden</b> takes the section, its divider and its menu links off the page.</p>
+        <p class="note">A locked section opens with its own passcode if you give it one, otherwise with the site passcode from the Settings tab. Leave the passcode empty to use the site one.</p>
+        <p class="note">As with the whole-page lock, a locked section's own markup is still in the published file, so this is a closed door and not a safe. Use it to keep a part of the booth back until you want it seen.</p>
+      </div>
+      <div><div class="list" id="secList"></div></div>
     </div>
 
     <!-- segments -->
@@ -169,7 +199,12 @@
           <input type="url" id="segLink" placeholder="https://…">
           <label for="segLinkLabel">Link label</label>
           <input type="text" id="segLinkLabel" maxlength="40" placeholder="e.g. Register">
-          <label class="check"><input type="checkbox" id="segVisible" checked> Visible on the page</label>
+          <label for="segMode">On the page</label>
+          <select id="segMode">
+            <option value="show">Show</option>
+            <option value="locked">Locked &mdash; passcode before the embed and the link</option>
+            <option value="hidden">Hidden</option>
+          </select>
           <div class="row" style="margin-top:16px">
             <button class="btn" id="segSave" type="submit">Save segment</button>
             <button class="btn ghost" id="segCancel" type="button" hidden>Cancel</button>
@@ -260,7 +295,8 @@ function enter(token, email){
 function refresh(){
   return api('admin.get').then(function(d){
     state.data = d; state.email = d.email; $('whoEmail').textContent = d.email;
-    fillSettings(d.settings); fillSections(d.sections); renderSegments(d.segments); renderAdmins(d.admins, d.quota);
+    fillSettings(d.settings); fillSections(d.sections); renderSections(d.section_rows);
+    renderSegments(d.segments); renderAdmins(d.admins, d.quota);
   }).catch(function(err){
     if(/signed out|no longer/.test(err.message)){ toast('Signed out: '+err.message, true); state.token=null; try{ localStorage.removeItem(KEY); }catch(e){} toLogin(); }
     else toast('Could not load: '+err.message, true);
@@ -271,8 +307,43 @@ function refresh(){
 document.querySelectorAll('.tab').forEach(function(b){
   b.addEventListener('click', function(){
     document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', String(x===b)); });
-    ['settings','segments','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), v===b.dataset.view); });
+    ['settings','sections','segments','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), v===b.dataset.view); });
   });
+});
+
+/* sections */
+function renderSections(rows){
+  var box=$('secList'); box.innerHTML='';
+  (rows||[]).forEach(function(r){
+    var el=document.createElement('div'); el.className='item is-'+r.mode; el.dataset.id=r.id;
+    el.style.gridTemplateColumns='minmax(0,1fr)';
+    el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(r.label)+'</div>'+
+      '<div class="secctl">'+
+        '<select class="secmode" aria-label="State of '+esc(r.label)+'">'+
+          ['show','locked','hidden'].map(function(m){ return '<option value="'+m+'"'+(r.mode===m?' selected':'')+'>'+
+            (m==='show'?'Show':m==='locked'?'Locked':'Hidden')+'</option>'; }).join('')+
+        '</select>'+
+        '<input class="secpass lockonly" type="text" autocomplete="off" placeholder="Passcode (blank = site passcode)" value="'+esc(r.passcode||'')+'">'+
+        '<input class="secmsg lockonly" type="text" placeholder="Message on the lock card" value="'+esc(r.message||'')+'">'+
+        '<button class="btn sm secsave" type="button">Save</button>'+
+      '</div></div>';
+    box.appendChild(el);
+  });
+}
+$('secList').addEventListener('change', function(e){
+  if(!e.target.classList.contains('secmode')) return;
+  var item=e.target.closest('.item');
+  item.className='item is-'+e.target.value;
+});
+$('secList').addEventListener('click', function(e){
+  var b=e.target.closest('.secsave'); if(!b) return;
+  var item=b.closest('.item');
+  b.disabled=true;
+  api('admin.section.set', { id:item.dataset.id, mode:item.querySelector('.secmode').value,
+      passcode:item.querySelector('.secpass').value, message:item.querySelector('.secmsg').value })
+    .then(function(r){ state.data.section_rows=r.sections; renderSections(r.sections); toast('Saved. The page picks it up on its next load.'); })
+    .catch(function(err){ toast(err.message, true); })
+    .finally(function(){ b.disabled=false; });
 });
 
 /* settings */
@@ -283,13 +354,19 @@ function fillSettings(s){
   $('lockMessage').value = s.lock_message || '';
   $('hiddenMessage').value = s.hidden_message || '';
   $('welcome').checked = !/^(hide|no|false|0)$/i.test(String(s.welcome||'show'));
+  $('privEntity').value = s.privacy_entity || '';
+  $('privEmail').value = s.privacy_email || '';
+  $('privAddress').value = s.privacy_address || '';
+  $('privRetention').value = s.privacy_retention || '';
   $('settingsState').textContent = '';
 }
 $('showPass').addEventListener('click', function(){ var p=$('passcode'); p.type = p.type==='password' ? 'text' : 'password'; this.textContent = p.type==='password' ? 'Show' : 'Hide'; });
 $('saveSettings').addEventListener('click', function(){
   var mode = document.querySelector('input[name=mode]:checked'); mode = mode ? mode.value : 'open';
   var settings = { page_mode:mode, passcode:$('passcode').value, lock_message:$('lockMessage').value,
-                   hidden_message:$('hiddenMessage').value, welcome: $('welcome').checked ? 'show' : 'hide' };
+                   hidden_message:$('hiddenMessage').value, welcome: $('welcome').checked ? 'show' : 'hide',
+                   privacy_entity:$('privEntity').value, privacy_email:$('privEmail').value,
+                   privacy_address:$('privAddress').value, privacy_retention:$('privRetention').value };
   if(mode==='locked' && !settings.passcode.trim()){ toast('Set a passcode before locking the page', true); $('passcode').focus(); return; }
   $('saveSettings').disabled = true; $('settingsState').textContent = 'Saving…';
   api('admin.settings', { settings:settings }).then(function(r){
@@ -309,12 +386,13 @@ function renderSegments(list){
   var box = $('segList'); box.innerHTML = '';
   if(!list || !list.length){ box.innerHTML = '<div class="empty">No segments yet. Add one on the left; it appears on the booth page on its next load.</div>'; return; }
   list.forEach(function(s, i){
-    var el = document.createElement('div'); el.className = 'item'+(s.visible?'':' hidden'); el.dataset.id = s.id;
+    var mode = s.mode || (s.visible ? 'show' : 'hidden');
+    var el = document.createElement('div'); el.className = 'item'+(mode==='show'?'':' hidden'); el.dataset.id = s.id;
     el.innerHTML =
       (s.thumbnail_url ? '<img class="thumb" src="'+esc(s.thumbnail_url)+'" alt="">' : '<div class="thumb"></div>') +
       '<div><div class="t">'+esc(s.title)+'</div><div class="m">After '+esc(sectionName(s.after))+' · '+
         (s.embed_url ? 'Embed · ' : '') + (s.link_url ? 'Link · ' : '') +
-        (s.visible ? '<b>Show</b>' : '<i>Hidden</i>')+'</div></div>' +
+        (mode==='show' ? '<b>Show</b>' : mode==='locked' ? '<i>&#128274; Locked</i>' : '<i>Hidden</i>')+'</div></div>' +
       '<div class="icons">'+
         '<button class="ic" type="button" data-act="up" title="Move up" '+(i===0?'disabled':'')+'>↑</button>'+
         '<button class="ic" type="button" data-act="down" title="Move down" '+(i===list.length-1?'disabled':'')+'>↓</button>'+
@@ -345,10 +423,10 @@ function startEdit(seg){
   state.editing = seg.id; $('segId').value = seg.id; $('segFormTitle').textContent = '✎ Edit segment';
   $('segTitle').value = seg.title||''; $('segEyebrow').value = seg.eyebrow||''; $('segDesc').value = seg.description||'';
   $('segAfter').value = seg.after||'end'; $('segThumb').value = seg.thumbnail_url||''; $('segEmbed').value = seg.embed_url||'';
-  $('segLink').value = seg.link_url||''; $('segLinkLabel').value = seg.link_label||''; $('segVisible').checked = !!seg.visible;
+  $('segLink').value = seg.link_url||''; $('segLinkLabel').value = seg.link_label||''; $('segMode').value = seg.mode || (seg.visible ? 'show' : 'hidden');
   preview(); show('segCancel', true); $('segTitle').focus();
 }
-function resetForm(){ state.editing = null; $('segForm').reset(); $('segId').value=''; $('segVisible').checked = true; $('segFormTitle').textContent = '＋ Add segment'; show('segCancel', false); preview(); if(!$('segAfter').value) $('segAfter').value='end'; }
+function resetForm(){ state.editing = null; $('segForm').reset(); $('segId').value=''; $('segMode').value = 'show'; $('segFormTitle').textContent = '＋ Add segment'; show('segCancel', false); preview(); if(!$('segAfter').value) $('segAfter').value='end'; }
 $('segCancel').addEventListener('click', resetForm);
 function preview(){ var u=$('segThumb').value.trim(); var img=$('segThumbPreview'); if(/^https:\/\//.test(u)){ img.src=u; img.classList.add('on'); } else { img.removeAttribute('src'); img.classList.remove('on'); } }
 $('segThumb').addEventListener('input', preview);
@@ -356,7 +434,7 @@ $('segForm').addEventListener('submit', function(e){
   e.preventDefault();
   var seg = { id:$('segId').value||'', title:$('segTitle').value, eyebrow:$('segEyebrow').value, description:$('segDesc').value,
     after:$('segAfter').value, thumbnail_url:$('segThumb').value, embed_url:$('segEmbed').value, link_url:$('segLink').value,
-    link_label:$('segLinkLabel').value, visible: $('segVisible').checked };
+    link_label:$('segLinkLabel').value, mode: $('segMode').value };
   $('segSave').disabled = true;
   api('admin.segment.save', { segment:seg }).then(function(r){
     state.data.segments = r.segments; renderSegments(r.segments); toast(seg.id ? 'Segment updated' : 'Segment added'); resetForm();

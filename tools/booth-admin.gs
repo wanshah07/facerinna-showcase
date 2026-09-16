@@ -73,13 +73,17 @@ var LINK_MINUTES = 20;    /* a sign-in link is good for this long */
 var SESSION_DAYS = 30;    /* a session lasts this long after signing in */
 var FROM_NAME    = 'FACERINNA Booth';
 
-var T_ADMINS = 'Admins', T_SETTINGS = 'Settings', T_SEGMENTS = 'Segments', T_SESSIONS = 'Admin sessions';
+var T_ADMINS = 'Admins', T_SETTINGS = 'Settings', T_SEGMENTS = 'Segments',
+    T_SESSIONS = 'Admin sessions', T_SECTIONS = 'Sections';
 
 var ADMIN_HEADERS    = ['email', 'active', 'name', 'added'];
 var SETTING_HEADERS  = ['key', 'value', 'updated', 'by'];
 var SEGMENT_HEADERS  = ['id', 'order', 'after', 'eyebrow', 'title', 'description',
                         'thumbnail_url', 'embed_url', 'link_url', 'link_label', 'visible', 'updated', 'by'];
 var SESSION_HEADERS  = ['key', 'kind', 'email', 'created', 'expires', 'used', 'last_seen'];
+/* One row per section of the booth page. passcode is optional: a locked
+   section with none falls back to the site passcode. */
+var SECTION_HEADERS  = ['id', 'label', 'mode', 'passcode', 'message', 'updated', 'by'];
 
 /* The settings the page understands, and what they are until somebody sets
    them. Anything else posted to admin.settings is dropped, so a typo cannot
@@ -89,7 +93,13 @@ var SETTING_KEYS = {
   passcode:       '',         /* what "locked" asks for; never sent to the page */
   lock_message:   'This page is locked. Enter the passcode from the FACERINNA team.',
   hidden_message: 'The FACERINNA booth page is not open right now.',
-  welcome:        'show'      /* show | hide -- the WELCOME TO FACERINNA BOOTH strip */
+  welcome:        'show',     /* show | hide -- the WELCOME TO FACERINNA BOOTH strip */
+  /* The privacy page reads these. They are public by design -- a privacy
+     notice with no named entity and no address to write to is not a notice. */
+  privacy_entity:    '',
+  privacy_email:     '',
+  privacy_address:   '',
+  privacy_retention: ''
 };
 var PRIVATE_SETTINGS = { passcode: true };
 
@@ -115,6 +125,16 @@ function setUp() {
   tab_(book, T_SETTINGS, SETTING_HEADERS);
   tab_(book, T_SEGMENTS, SEGMENT_HEADERS);
   tab_(book, T_SESSIONS, SESSION_HEADERS);
+  tab_(book, T_SECTIONS, SECTION_HEADERS);
+
+  /* A row per section, so the sheet shows every one there is and the admin
+     page has something to list before anything has been changed. */
+  var known = {};
+  rows_(T_SECTIONS, SECTION_HEADERS).forEach(function (r) { known[String(r.id).trim()] = true; });
+  SECTIONS.forEach(function (sec) {
+    if (sec[0] === 'end' || known[sec[0]]) return;
+    sheet_(T_SECTIONS).appendRow([sec[0], sec[1], 'show', '', '', now_(), 'setUp']);
+  });
 
   /* You are the first admin, so you can sign in the moment this is deployed. */
   var me = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
@@ -298,6 +318,69 @@ function publicSettings_() {
   return out;
 }
 
+/* ---------------------------------------------------------------- sections
+
+   A section of the booth page can be shown, locked behind a passcode, or
+   hidden. Locking a built-in section draws a card over it; the section's own
+   markup is in the published file either way, so this is a closed door and
+   not a safe -- the same caveat as the whole-page lock. */
+
+function sectionMode_(v) {
+  v = String(v == null ? '' : v).trim().toLowerCase();
+  if (v === 'locked' || v === 'lock') return 'locked';
+  if (v === 'hidden' || v === 'hide' || v === 'no' || v === 'false' || v === '0') return 'hidden';
+  return 'show';
+}
+function sectionRows_() {
+  var byId = {};
+  rows_(T_SECTIONS, SECTION_HEADERS).forEach(function (r) {
+    var id = String(r.id || '').trim();
+    if (id) byId[id] = r;
+  });
+  /* Ordered by the page, not by the sheet: the list an admin reads should be
+     the order they will walk past at the booth. */
+  var out = [];
+  SECTIONS.forEach(function (sec) {
+    if (sec[0] === 'end') return;
+    var r = byId[sec[0]] || {};
+    out.push({ id: sec[0], label: sec[1], mode: sectionMode_(r.mode),
+               passcode: String(r.passcode == null ? '' : r.passcode),
+               message: String(r.message == null ? '' : r.message) });
+  });
+  return out;
+}
+/* Only the ones that are not plainly shown, and never their passcodes. */
+function publicSections_() {
+  return sectionRows_().filter(function (s) { return s.mode !== 'show'; })
+    .map(function (s) { return { id: s.id, label: s.label, mode: s.mode, message: s.message }; });
+}
+function setSection_(b, by) {
+  var id = String((b && b.id) || '').trim();
+  if (!SECTIONS.some(function (x) { return x[0] === id && x[0] !== 'end'; }))
+    return json_({ ok: false, error: 'no such section' });
+  var mode = sectionMode_(b.mode);
+  var pass = String(b.passcode == null ? '' : b.passcode).trim().slice(0, 64);
+  var msg  = String(b.message == null ? '' : b.message).trim().slice(0, 400);
+  /* A locked section with no passcode of its own falls back to the site
+     passcode; with neither, locking it would shut everyone out for good. */
+  if (mode === 'locked' && !pass && !String(settings_().passcode || '').trim())
+    return json_({ ok: false, error: 'set a passcode for this section, or a site passcode, before locking it' });
+
+  var label = '';
+  SECTIONS.forEach(function (x) { if (x[0] === id) label = x[1]; });
+  var sh = sheet_(T_SECTIONS);
+  var rows = rows_(T_SECTIONS, SECTION_HEADERS);
+  var vals = [id, label, mode, pass, msg, now_(), by];
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].id).trim() === id) {
+      sh.getRange(rows[i]._row, 1, 1, vals.length).setValues([vals]);
+      return json_({ ok: true, sections: sectionRows_() });
+    }
+  }
+  sh.appendRow(vals);
+  return json_({ ok: true, sections: sectionRows_() });
+}
+
 /* ---------------------------------------------------------------- segments */
 
 function segments_() {
@@ -307,15 +390,29 @@ function segments_() {
     var o = {};
     SEGMENT_HEADERS.forEach(function (h) { if (h !== 'updated' && h !== 'by') o[h] = r[h] == null ? '' : String(r[h]); });
     o.order = Number(r.order) || 0;
-    o.visible = yes_(r.visible);
+    o.mode = sectionMode_(r.visible);      /* show | locked | hidden */
+    o.visible = o.mode === 'show';
     return o;
   });
 }
+/* A hidden segment is not sent at all. A LOCKED one is sent without the two
+   things it exists to hand over -- the embed and the link -- so locking it
+   withholds the content rather than merely covering it. The unlock call
+   returns them once the passcode is right. */
 function publicSegments_() {
-  return segments_().filter(function (s) { return s.visible && s.title; })
-    .map(function (s) { return { id: s.id, after: s.after, eyebrow: s.eyebrow, title: s.title,
-      description: s.description, thumbnail_url: s.thumbnail_url, embed_url: s.embed_url,
-      link_url: s.link_url, link_label: s.link_label }; });
+  return segments_().filter(function (s) { return s.mode !== 'hidden' && s.title; })
+    .map(function (s) {
+      var o = { id: s.id, after: s.after, eyebrow: s.eyebrow, title: s.title,
+                description: s.description, thumbnail_url: s.thumbnail_url };
+      if (s.mode === 'locked') { o.locked = true; return o; }
+      o.embed_url = s.embed_url; o.link_url = s.link_url; o.link_label = s.link_label;
+      return o;
+    });
+}
+function segmentById_(id) {
+  var all = segments_();
+  for (var i = 0; i < all.length; i++) if (String(all[i].id) === String(id)) return all[i];
+  return null;
 }
 function url_(u) {
   u = String(u || '').trim();
@@ -348,7 +445,10 @@ function saveSegment_(b, by) {
     String(s.description || '').trim().slice(0, 600),
     urls.thumbnail_url, urls.embed_url, urls.link_url,
     String(s.link_label || '').trim().slice(0, 40),
-    (s.visible === false || /^(no|hide|false|0)$/i.test(String(s.visible))) ? 'no' : 'yes',
+    /* 'yes' | 'locked' | 'no' -- the column keeps its name and its old values
+       still read correctly through sectionMode_ */
+    (s.mode ? sectionMode_(s.mode) === 'locked' ? 'locked' : sectionMode_(s.mode) === 'hidden' ? 'no' : 'yes'
+            : (s.visible === false || /^(no|hide|false|0)$/i.test(String(s.visible))) ? 'no' : 'yes'),
     now_(), by];
   if (row) sh.getRange(row._row, 1, 1, vals.length).setValues([vals]);
   else sh.appendRow(vals);
@@ -383,13 +483,41 @@ function orderSegments_(b, by) {
 
 function config_() {
   return json_({ ok: true, settings: publicSettings_(), segments: publicSegments_(),
-                 sections: SECTIONS, at: Date.now() });
+                 sections: SECTIONS, section_states: publicSections_(), at: Date.now() });
 }
+/* One door-opener for three kinds of door: the whole page, one section of it,
+   or one segment. A section or segment with no passcode of its own falls back
+   to the site passcode, so the usual case is one code for the booth. */
 function unlock_(b) {
-  var want = String(settings_().passcode || '').trim();
-  var got = String((b && b.passcode) || '').trim();
+  b = b || {};
+  var site = String(settings_().passcode || '').trim();
+  var got = String(b.passcode || '').trim();
+  var want = site, give = null;
+
+  if (b.section) {
+    var sec = null;
+    sectionRows_().forEach(function (x) { if (x.id === String(b.section)) sec = x; });
+    if (!sec) return json_({ ok: false, error: 'no such section' });
+    if (sec.mode !== 'locked') return json_({ ok: true, open: true });
+    want = String(sec.passcode || '').trim() || site;
+  } else if (b.segment) {
+    var seg = segmentById_(String(b.segment));
+    if (!seg) return json_({ ok: false, error: 'no such segment' });
+    if (seg.mode !== 'locked') return json_({ ok: true, open: true });
+    /* A segment has no passcode column of its own -- it opens with the site
+       passcode. One code per booth is what a person on a stand can remember;
+       sections get their own only because a whole section is a bigger thing
+       to hand out. */
+    want = site;
+    give = { embed_url: seg.embed_url, link_url: seg.link_url, link_label: seg.link_label };
+  }
+
   if (!want) return json_({ ok: true, open: true });
-  if (got && got === want) return json_({ ok: true });
+  if (got && got === want) {
+    var out = { ok: true };
+    if (give) out.segment = give;
+    return json_(out);
+  }
   Utilities.sleep(600);   /* a guess costs a little time */
   return json_({ ok: false, error: 'wrong passcode' });
 }
@@ -401,25 +529,47 @@ function adminGet_(email) {
   }).filter(function (a) { return a.email; });
   var quota = 0; try { quota = MailApp.getRemainingDailyQuota(); } catch (e) {}
   return json_({ ok: true, email: email, settings: settings, segments: segments_(),
-                 admins: admins, sections: SECTIONS, quota: quota });
+                 admins: admins, sections: SECTIONS, section_rows: sectionRows_(), quota: quota });
 }
 function adminSettings_(b, email) {
   var s = (b && b.settings) || {};
-  var changed = [];
+  var now = settings_();
+
+  /* What the sheet WOULD hold, worked out in full before a cell is touched.
+     The first cut wrote each key as it read it and only then checked the
+     result, so a refusal left the sheet in the very state it had just said no
+     to -- the page went on reading `locked` with no passcode, and the public
+     view quietly coerced it back to open, which is what hid it. */
+  var next = {}, changed = [];
+  Object.keys(SETTING_KEYS).forEach(function (k) {
+    next[k] = (k in now) ? String(now[k]) : String(SETTING_KEYS[k]);
+  });
   Object.keys(SETTING_KEYS).forEach(function (k) {
     if (!(k in s)) return;
     var v = String(s[k] == null ? '' : s[k]).trim();
     if (k === 'page_mode' && ['open', 'locked', 'hidden'].indexOf(v) < 0) v = 'open';
     if (k === 'welcome') v = yes_(v) ? 'show' : 'hide';
     if (k === 'passcode') v = v.slice(0, 64);
-    if (k === 'lock_message' || k === 'hidden_message') v = v.slice(0, 400);
-    setSetting_(k, v, email);
-    changed.push(k);
+    else v = v.slice(0, 400);
+    next[k] = v; changed.push(k);
   });
-  var all = settings_();
-  if (all.page_mode === 'locked' && !String(all.passcode || '').trim())
-    return json_({ ok: false, error: 'set a passcode before locking the page', changed: changed });
-  return json_({ ok: true, changed: changed, settings: all, public: publicSettings_() });
+
+  var pass = String(next.passcode || '').trim();
+  if (next.page_mode === 'locked' && !pass)
+    return json_({ ok: false, changed: [], error: 'set a passcode before locking the page' });
+  /* Clearing the site passcode while something leans on it would leave that
+     thing locked with no way in, so say which one rather than let it happen. */
+  if (!pass) {
+    var stranded = sectionRows_().filter(function (x) { return x.mode === 'locked' && !x.passcode; });
+    var lockedSegs = segments_().filter(function (x) { return x.mode === 'locked'; });
+    if (stranded.length || lockedSegs.length)
+      return json_({ ok: false, changed: [],
+        error: 'a site passcode is needed while ' +
+          (stranded.length ? stranded[0].label : lockedSegs[0].title) + ' is locked' });
+  }
+
+  changed.forEach(function (k) { setSetting_(k, next[k], email); });
+  return json_({ ok: true, changed: changed, settings: settings_(), public: publicSettings_() });
 }
 
 function doPost(e) {
@@ -451,6 +601,7 @@ function doPost(e) {
         case 'admin.segment.save':    return saveSegment_(b, email);
         case 'admin.segment.delete':  return deleteSegment_(b, email);
         case 'admin.segment.order':   return orderSegments_(b, email);
+        case 'admin.section.set':     return setSection_(b, email);
         default: return json_({ ok: false, error: 'unknown action' });
       }
     } finally { lock.releaseLock(); }
