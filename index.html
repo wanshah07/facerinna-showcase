@@ -87,7 +87,10 @@ body.slides .slide-fit .wrap{max-width:calc(var(--maxw) / min(1, var(--k,1)))}
 .reveal.in{opacity:1;transform:none}
 
 /* NAV */
-.nav{position:sticky;top:0;z-index:60;background:rgba(251,246,244,.82);backdrop-filter:blur(14px);
+/* top:var(--rb) rather than top:0 -- see --rb under .booth-ribbon. It is 0px
+   for every visitor, so this is the same rule it has always been except when
+   the admin ribbon is on screen. */
+.nav{position:sticky;top:var(--rb,0px);z-index:60;background:rgba(251,246,244,.82);backdrop-filter:blur(14px);
   border-bottom:1px solid var(--line);transition:box-shadow .3s}
 .nav.scrolled{box-shadow:var(--shadow-sm)}
 /* The header row is not the body column: brand, two certification marks,
@@ -315,16 +318,16 @@ body.slides .pres-count{display:block}
 /* in normal flow the per-series sections stack as one continuous list */
 .series-slide{padding:0 0 34px}
 html.slides-on{height:100%;overflow:hidden;scroll-snap-type:none}
-body.slides{--slide-top:118px;scrollbar-width:none}   /* header + docked series chips */
+body.slides{--slide-top:calc(118px + var(--rb,0px));scrollbar-width:none}   /* header + docked series chips */
 /* the chips only dock on the range and series slides; everywhere else that
    54px was dead space that pushed every slide's first line down the screen */
-body.slides.chips-off{--slide-top:76px}
+body.slides.chips-off{--slide-top:calc(76px + var(--rb,0px))}
 body.slides::-webkit-scrollbar{width:0;height:0}
 body.slides > .wrap{display:none}          /* the 1px inter-section dividers */
 /* the HEADER, not anything with class "nav" — the hero slideshow's arrows are
    .nav too, and this rule was pinning them both to the top-left corner of the
    deck instead of leaving them either side of the key visual */
-body.slides > header.nav{position:fixed;top:0;left:0;right:0}
+body.slides > header.nav{position:fixed;top:var(--rb,0px);left:0;right:0}
 /* Every slide is one whole screen in BOTH directions. It used to be only the
    horizontal deck that scaled an oversized slide down; vertically the section
    kept its full height and scrolled inside its own screen, so slide one's
@@ -402,7 +405,17 @@ body.slides-h > section,body.slides-h > footer{flex:0 0 100vw;width:100vw}
    typography, and product renders cut out on transparent. Cropping either to
    fill would destroy it, so slides are contained and centred on the brand
    gradient instead. */
-.slideshow{position:relative;width:100%;height:100%;overflow:hidden}
+/* touch-action:pan-y is what makes the swipe below work at all. Left at the
+   default `auto`, the browser treats a drag across the slideshow as a gesture
+   it owns, claims it part-way through and sends pointercancel -- so the swipe
+   handler, which correctly drops a cancelled pointer, never saw a pointerup
+   and never advanced a slide. The arrows worked, so nothing looked broken;
+   the swipe simply did nothing, on every touch device in the hall. pan-y
+   keeps vertical scrolling with the page and gives horizontal drags to us. */
+.slideshow{position:relative;width:100%;height:100%;overflow:hidden;touch-action:pan-y}
+/* and the same gesture with a mouse used to start a native image drag, which
+   ends in pointercancel just the same */
+.slideshow img{-webkit-user-drag:none;user-select:none}
 .slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   opacity:0;visibility:hidden;transition:opacity .9s ease,visibility 0s linear .9s;
   background-size:cover;background-position:center}
@@ -1826,8 +1839,22 @@ html.booth-no-welcome .hero-marquee{display:none!important}
 #boothVeil .bv-err{min-height:20px;color:#FFB4B4;font-size:13.5px;margin-top:8px}
 #boothVeil .bv-admin{margin-top:14px;font-size:12.5px;color:#9FB8D6}
 #boothVeil .bv-admin a{color:#BFD8F5}
+/* The ribbon is fixed to the top of the screen -- and so is the header right
+   under it, which is why it needs to reserve its own room rather than just
+   outrank the header on z-index. It used to do exactly that: at z-index 99999
+   over the header's 60 it PAINTED OVER the top 30px of a 65px header, and on a
+   phone, where its text wraps to two lines, over 48px of it -- burying the
+   logo and the burger. Only an admin ever sees it, which is why it lasted.
+
+   --rb is the ribbon's height, measured rather than assumed because the
+   wrapping decides it. It is 0px whenever there is no ribbon, so every rule
+   that reads it is unchanged for visitors. */
+:root{--rb:0px}
 .booth-ribbon{position:fixed;left:0;right:0;top:0;z-index:99999;background:#F2FF9A;color:#0b1620;font:700 13px/1.4 'Inter',system-ui,sans-serif;
   text-align:center;padding:6px 12px}
+/* the deck sizes its slides off the screen, so pushing the body down would
+   push its last slide off the bottom; there --rb goes into --slide-top above */
+body:not(.slides){padding-top:var(--rb,0px)}
 body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outranks the brochure's full-width rule */
 .booth-seg .seg-desc{margin:0 0 12px;color:var(--ink-2,#5b6b7f)}
 #segModal{position:fixed;inset:0;z-index:100001;background:rgba(6,16,28,.86);display:grid;grid-template-rows:auto 1fr;padding:12px}
@@ -3304,6 +3331,8 @@ const HEROES = [
     if(Math.abs(dx)>44 && Math.abs(dx)>Math.abs(dy)){ (dx<0?next:prev)(); hold(); }
   });
   show.addEventListener('pointercancel', function(){ sx=null; });
+  /* -webkit-user-drag covers Blink and WebKit; this covers the rest */
+  show.addEventListener('dragstart', function(e){ e.preventDefault(); });
 
   play();
 })();
@@ -6413,9 +6442,30 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   }
   function ribbon(text){
     var r=document.getElementById('boothRibbon');
-    if(!text){ if(r) r.remove(); return; }
+    if(!text){ if(r) r.remove(); ribbonRoom(null); return; }
     if(!r){ r=document.createElement('div'); r.id='boothRibbon'; r.className='booth-ribbon'; document.body.appendChild(r); }
     r.textContent=text;
+    ribbonRoom(r);
+  }
+  /* How tall the ribbon is decides how far down everything pinned to the top
+     of the screen has to start, and it is not a constant: the same sentence is
+     one line on a tablet and two on a phone, and it re-wraps when the screen
+     turns. So it is measured, and watched. */
+  var rbWatch=null;
+  function ribbonRoom(el){
+    if(!el){
+      if(rbWatch){ try{ rbWatch.disconnect(); }catch(e){} rbWatch=null; }
+      html.style.removeProperty('--rb');
+      return;
+    }
+    var put=function(){ html.style.setProperty('--rb', Math.round(el.getBoundingClientRect().height)+'px'); };
+    put();
+    if(!rbWatch && 'ResizeObserver' in window){
+      rbWatch=new ResizeObserver(put); rbWatch.observe(el);
+    } else if(!rbWatch){
+      addEventListener('resize', put);          /* older browsers: good enough */
+      rbWatch={ disconnect:function(){ removeEventListener('resize', put); } };
+    }
   }
 
   /* ---- one section of the page: shown, locked or hidden ----------------
