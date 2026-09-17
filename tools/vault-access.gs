@@ -82,6 +82,15 @@ var THUMBS_BOOK  = '1F1zDeTnSrfZ7j7bIu7FfiHRW0eoXu3_n4NjFAmnWBfE';
 var GIDS = { reports: 378921450, series: 610219740, skus: 1440505952, thumbs: 524451717 };
 
 var TOKEN_DAYS = 14;     /* a link stops working after this long */
+/* A one-time code, for getting in on a device the mailed link never reached.
+   The link is per-browser by design -- it lands in whatever browser opened the
+   mail, which at a booth is usually the mail app's own webview and not the
+   browser the visitor is actually using. The code closes that gap without
+   weakening anything: it is mailed to the approved address, it is worth one
+   use, and it buys exactly the token the link would have. */
+var CODE_MINS  = 10;     /* a code is worth nothing after this long */
+var CODE_TRIES = 5;      /* wrong guesses before that code is dead */
+var CODE_GAP_MS = 60000; /* one code a minute per address */
 var FROM_NAME  = 'FACERINNA Regulatory Affairs';
 
 /* Who is told when somebody asks. Nobody watches a spreadsheet at a booth, so
@@ -404,6 +413,124 @@ function checkStatus_(b) {
   return json_({ ok: true, status: found.status === 'pending' ? 'pending' : 'refused' });
 }
 
+/* ------------------------------------------------------- the one-time code
+
+   Body: {action:'code', email}
+   Back: {ok:true, status:'sent'|'pending'|'refused'|'none'}
+
+   It answers with the row's real state rather than a blanket "if that address
+   is approved we have sent something". The `status` action above already
+   tells anyone the state of any address, so hiding it here would buy nothing
+   and would leave a visitor whose request is still pending waiting on a mail
+   that is never coming.                                                     */
+function codeRequest_(b) {
+  var email = String(b.email || '').trim().toLowerCase().slice(0, 120);
+  if (!/^[A-Za-z0-9][^@\s]*@[^@\s]+\.[^@\s]+$/.test(email))
+    return json_({ ok: false, error: 'That does not look like an email address.' });
+
+  var found = findRow_(reqTab_(), email);
+  if (!found) return json_({ ok: true, status: 'none' });
+  if (found.status !== 'approved')
+    return json_({ ok: true, status: found.status === 'pending' ? 'pending' : 'refused' });
+
+  var props = PropertiesService.getScriptProperties();
+  var slot = 'code:' + email;
+  var prev = readCode_(props, slot);
+  /* Asking twice in a minute re-sends nothing and mints nothing: without this
+     a form held down is a mail bomb aimed at somebody else's inbox, and every
+     fresh code would silently kill the one they are already typing in. */
+  if (prev && (Date.now() - prev.made) < CODE_GAP_MS)
+    return json_({ ok: true, status: 'sent', already: true });
+
+  var code = sixDigits_();
+  /* Mailed first, stored second. The other order leaves an address locked out
+     for CODE_GAP_MS holding a code that never arrived. */
+  MailApp.sendEmail({
+    to: email,
+    name: FROM_NAME,
+    subject: 'Your FACERINNA vault code: ' + code,
+    htmlBody:
+      '<p>Hello ' + esc_(String(found.name || '')) + ',</p>' +
+      '<p>Your one-time code for the FACERINNA test report vault is:</p>' +
+      '<p style="font:700 28px/1.2 monospace;letter-spacing:4px">' + code + '</p>' +
+      '<p style="color:#667;font-size:13px">It works once, on whichever device ' +
+      'you type it into, and stops working in ' + CODE_MINS + ' minutes. ' +
+      'If you did not ask for it, ignore this mail and tell us.</p>' +
+      '<p style="color:#667;font-size:13px">FACERINNA Regulatory Affairs</p>'
+  });
+  props.setProperty(slot, JSON.stringify({
+    h: codeHash_(email, code), exp: Date.now() + CODE_MINS * 60000,
+    tries: 0, made: Date.now()
+  }));
+  return json_({ ok: true, status: 'sent' });
+}
+
+/* Body: {action:'redeem', email, code}
+   Back: {ok:true, token} | {ok:false, reason:...}
+
+   A spent code is deleted before the token goes out, so the same six digits
+   can never buy a second one. */
+function codeRedeem_(b) {
+  var email = String(b.email || '').trim().toLowerCase().slice(0, 120);
+  var code  = String(b.code || '').replace(/\D/g, '');
+  var props = PropertiesService.getScriptProperties();
+  var slot  = 'code:' + email;
+  var rec   = readCode_(props, slot);
+
+  if (!rec) return json_({ ok: false, reason: 'nocode' });
+  if (Date.now() > rec.exp) { props.deleteProperty(slot); return json_({ ok: false, reason: 'codeexpired' }); }
+  if (rec.tries >= CODE_TRIES) { props.deleteProperty(slot); return json_({ ok: false, reason: 'toomany' }); }
+
+  if (!code || codeHash_(email, code) !== rec.h) {
+    rec.tries++;
+    props.setProperty(slot, JSON.stringify(rec));
+    /* Each wrong one costs longer than the last, capped low: a long wait holds
+       one of the script's execution slots, which is a cheaper thing to attack
+       than six digits with five tries and ten minutes on them. */
+    Utilities.sleep(Math.min(400 * rec.tries, 2000));
+    return json_({ ok: false, reason: 'badcode', left: CODE_TRIES - rec.tries });
+  }
+
+  props.deleteProperty(slot);
+
+  /* Read the row again rather than trusting the state it had when the code was
+     asked for: a row revoked in those ten minutes must not still let someone
+     in on a code minted while it was live. */
+  var sh = reqTab_();
+  var found = findRow_(sh, email);
+  if (!found || found.status !== 'approved') return json_({ ok: false, reason: 'revoked' });
+
+  var token = found.token;
+  var exp   = found.expires;
+  if (!token || (exp && Date.now() > exp)) {
+    token = Utilities.getUuid();
+    exp = Date.now() + TOKEN_DAYS * 86400000;
+    sh.getRange(found.row, 6).setValue(token);
+    sh.getRange(found.row, 7).setValue(new Date(exp));
+    sh.getRange(found.row, 8).setValue(new Date());
+  }
+  return json_({ ok: true, token: token });
+}
+
+function readCode_(props, slot) {
+  try { var raw = props.getProperty(slot); return raw ? JSON.parse(raw) : null; }
+  catch (e) { return null; }
+}
+
+function sixDigits_() {
+  return String(Math.floor(Math.random() * 900000) + 100000);
+}
+
+/* Salted and hashed, so the stored copy is not itself a working code. The salt
+   is minted once and lives with the script, never in the sheet. */
+function codeHash_(email, code) {
+  var props = PropertiesService.getScriptProperties();
+  var salt = props.getProperty('code-salt');
+  if (!salt) { salt = Utilities.getUuid(); props.setProperty('code-salt', salt); }
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + '|' + email + '|' + code);
+  return Utilities.base64Encode(bytes);
+}
+
 /* ---------------------------------------------------- reading the workbooks
 
    These mirror build-public.js exactly — same header hunt, same column order,
@@ -505,6 +632,8 @@ function doPost(e) {
       case 'request': return requestAccess_(b);
       case 'data':    return vaultData_(b);
       case 'status':  return checkStatus_(b);
+      case 'code':    return codeRequest_(b);
+      case 'redeem':  return codeRedeem_(b);
       default:        return json_({ ok: false, error: 'unknown action' });
     }
   } catch (err) {

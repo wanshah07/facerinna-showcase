@@ -103,8 +103,21 @@ let uuid = 0;
    will act on a key. A stub returning 'tok-1' let the tests agree with each
    other while disagreeing with Apps Script. The counter stays in the last
    block so a value is still traceable by eye. */
+let SLEPT = [];
 const Utilities = { getUuid: () => '00000000-0000-4000-8000-' + String(++uuid).padStart(12,'0'),
-                    formatDate: d => d.toISOString().slice(0,10) };
+                    formatDate: d => d.toISOString().slice(0,10),
+                    sleep: ms => SLEPT.push(ms),
+                    DigestAlgorithm: { SHA_256: 'sha256' },
+                    /* not a real digest, but a real one-way-ish mapping: what
+                       the tests need is that the stored value is NOT the code
+                       and that the same input maps to the same output. */
+                    computeDigest: (alg, str) => Array.from(String(str)).map(c=>c.charCodeAt(0)),
+                    base64Encode: bytes => Buffer.from(bytes).toString('base64') };
+const PROPS = {};
+const PropertiesService = { getScriptProperties: () => ({
+  getProperty: k => (k in PROPS ? PROPS[k] : null),
+  setProperty: (k,v) => { PROPS[k] = String(v); },
+  deleteProperty: k => { delete PROPS[k]; } }) };
 const Session = { getScriptTimeZone: () => 'UTC',
                   getEffectiveUser: () => ({ getEmail: () => 'owner@facerinna.test' }) };
 const Logger = { log(){} };
@@ -341,6 +354,96 @@ check('an ordinary name is left exactly as it was',
   REQ.rows.some(x => String(x[1]) === 'Dr Lim'), REQ.rows.map(x=>x[1]));
 check('an address that would be a formula is refused outright',
   call({action:'request', name:'X', email:'=cmd@evil.test', consent:true}).ok === false);
+
+/* ------------------------------------------------------- the one-time code
+   The mailed link is per-browser: it lands wherever the mail was opened, which
+   at a booth is the mail app's own webview rather than the browser in the
+   visitor's hand. The code is the way in from any device, so what matters here
+   is that it buys the SAME token a link would, once, and that none of the
+   things it must not do become possible along the way. */
+console.log('\na one-time code, for a device the link never reached');
+REQ.rows.push([new Date(), 'Coded', 'coded@clinic.my', '', 'approved', '', '', '', '', '']);
+const codeOf = () => {
+  const m2 = mails.filter(x => /vault code/i.test(x.subject || '')).pop();
+  return m2 ? (String(m2.subject).match(/(\d{6})/) || [])[1] : null;
+};
+
+const c1 = call({action:'code', email:'coded@clinic.my'});
+check('an approved address is sent a code', c1.ok === true && c1.status === 'sent');
+const CODE = codeOf();
+check('the mail carries six digits', /^\d{6}$/.test(String(CODE)), CODE);
+check('the mail went to the address on the row, not to whoever asked',
+  mails.filter(x=>/vault code/i.test(x.subject||'')).pop().to === 'coded@clinic.my');
+check('the stored copy is not the code itself',
+  !Object.keys(PROPS).some(k => String(PROPS[k]).indexOf(String(CODE)) >= 0), PROPS);
+
+console.log('\nwhat the code will not do');
+check('a pending address is told so, and gets no code',
+  (() => { REQ.rows.push([new Date(),'Waiting','waiting@clinic.my','', 'pending','','','','','']);
+           const before = mails.length;
+           const r = call({action:'code', email:'waiting@clinic.my'});
+           return r.status === 'pending' && mails.length === before; })());
+check('an address nobody asked for gets nothing at all',
+  (() => { const before = mails.length;
+           const r = call({action:'code', email:'stranger@nowhere.my'});
+           return r.status === 'none' && mails.length === before; })());
+check('a second code inside the minute re-sends nothing',
+  (() => { const before = mails.length;
+           const r = call({action:'code', email:'coded@clinic.my'});
+           return r.ok === true && r.already === true && mails.length === before; })());
+check('...so the code already typed out stays the one that works',
+  codeOf() === CODE);
+
+console.log('\nspending it');
+SLEPT = [];
+const bad1 = call({action:'redeem', email:'coded@clinic.my', code:'000000'});
+check('a wrong code is refused', bad1.ok === false && bad1.reason === 'badcode', bad1);
+check('...and says how many tries are left', bad1.left === 4, bad1);
+check('...and costs time, so six digits cannot be walked through', SLEPT.length === 1 && SLEPT[0] > 0, SLEPT);
+let reasons = [];
+check('the wait is capped low, so it cannot itself be the attack',
+  (() => { SLEPT=[]; reasons=[];
+           for(let i=0;i<8;i++) reasons.push(call({action:'redeem', email:'coded@clinic.my', code:'000001'}).reason);
+           return Math.max(...SLEPT) <= 2000; })(), SLEPT);
+check('the guesses run out rather than going on for ever', reasons.indexOf('toomany') >= 0, reasons);
+/* and the code is gone, not merely locked: the RIGHT digits buy nothing now */
+check('too many wrong tries throws the code away, right digits and all',
+  call({action:'redeem', email:'coded@clinic.my', code:String(CODE)}).ok === false);
+
+/* a fresh one, since that one is dead */
+PROPS['code:coded@clinic.my'] = undefined; delete PROPS['code:coded@clinic.my'];
+call({action:'code', email:'coded@clinic.my'});
+const CODE2 = codeOf();
+const good = call({action:'redeem', email:'coded@clinic.my', code:String(CODE2)});
+check('the right code hands back a token', good.ok === true && !!good.token, good);
+check('...written on the row, so the link and the code are one door',
+  REQ.rows.find(x=>x[2]==='coded@clinic.my')[5] === good.token);
+check('...and that token reads the vault',
+  (() => { const d = call({action:'data', token:good.token}); return d.ok === true && d.reports.length > 0; })());
+check('a spent code cannot be spent twice',
+  call({action:'redeem', email:'coded@clinic.my', code:String(CODE2)}).reason === 'nocode');
+
+console.log('\nthe row still decides, not the code');
+call({action:'code', email:'coded@clinic.my'});
+PROPS['code:coded@clinic.my'] = JSON.stringify({
+  ...JSON.parse(PROPS['code:coded@clinic.my']), made: 0 });
+call({action:'code', email:'coded@clinic.my'});
+const CODE3 = codeOf();
+REQ.rows.find(x=>x[2]==='coded@clinic.my')[4] = 'revoked';
+check('a code minted while approved is worthless once the row is revoked',
+  call({action:'redeem', email:'coded@clinic.my', code:String(CODE3)}).reason === 'revoked');
+REQ.rows.find(x=>x[2]==='coded@clinic.my')[4] = 'approved';
+
+console.log('\nan expired token is replaced rather than handed back dead');
+const rr = REQ.rows.find(x=>x[2]==='coded@clinic.my');
+rr[5] = 'stale-token'; rr[6] = new Date(Date.now() - 86400000);
+delete PROPS['code:coded@clinic.my'];
+call({action:'code', email:'coded@clinic.my'});
+const CODE4 = codeOf();
+const fresh = call({action:'redeem', email:'coded@clinic.my', code:String(CODE4)});
+check('a fresh token comes back', fresh.ok === true && fresh.token !== 'stale-token', fresh);
+check('...and the old one stops working', call({action:'data', token:'stale-token'}).ok === false);
+check('...while the new one works', call({action:'data', token:fresh.token}).ok === true);
 
 console.log(ok ? '\nall good' : '\nSOMETHING IS WRONG');
 process.exit(ok ? 0 : 1);
