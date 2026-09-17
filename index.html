@@ -6710,13 +6710,58 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     return post({ action:'whoami', token:t }, 4000).then(function(j){ return !!(j && j.ok); }).catch(function(){ return false; });
   }
 
+  /* ---- keeping up with the sheet while the page stays open --------------
+     This used to be asked once, at load, and never again. A screen at the
+     booth is open all day, so hiding a section or locking the games reached
+     nobody already looking at it -- which is exactly the "it does not update
+     until we clear the cache" the stand reported. The cache was never the
+     problem; nothing was asking.
+
+     apply() is already idempotent and already drops a config identical to the
+     one it last saw, so asking again costs a request and changes nothing when
+     nothing changed. */
+  var POLL_MS = 90000;
+  var adminFlag = false, lastAsk = 0;
+
+  function refresh(force){
+    /* A hidden tab is a tab nobody is looking at: it gets the config when it
+       comes back, not on a timer nobody can see the result of. */
+    if(!force && document.visibilityState === 'hidden') return Promise.resolve();
+    var now = Date.now();
+    /* Coming back to a tab can fire visibilitychange, focus and pageshow
+       together; without this they are three requests for one glance. force
+       means somebody asked for this one by name -- the first load, or a test
+       -- so it skips the floor as well as the visibility check. */
+    if(!force && now - lastAsk < (window.__boothAskFloorMs || 15000)) return Promise.resolve();
+    lastAsk = now;
+    return post({ action:'config' }, 2500).then(function(j){
+      if(j && j.ok && j.settings){ remember(j); apply(j, adminFlag); }
+    }).catch(function(){ /* offline: the cached copy stands */ });
+  }
+  window.__boothRefresh = refresh;   /* the tests, and nothing else */
+
   function go(){
     var seen=cached();
     isAdminSession().then(function(admin){
+      adminFlag = admin;
       if(seen) apply(seen, admin);
-      return post({ action:'config' }, 2500).then(function(j){
-        if(j && j.ok && j.settings){ remember(j); apply(j, admin); }
-      }).catch(function(){ /* offline: the cached copy stands */ });
+      return refresh(true);
+    }).then(function(){
+      /* setTimeout rather than setInterval, so the wait is read fresh each
+         time round: a fixed interval is set once at boot and can then only be
+         proved by reading the source, which is not the same as proving the
+         page asks. */
+      (function tick(){
+        setTimeout(function(){ refresh(false); tick(); }, window.__boothPollMs || POLL_MS);
+      })();
+      /* the moments a change matters most: somebody has just looked back at
+         the screen, or the network has just come back */
+      ['visibilitychange','focus','pageshow','online'].forEach(function(ev){
+        addEventListener(ev, function(){
+          if(ev === 'visibilitychange' && document.visibilityState === 'hidden') return;
+          refresh(false);
+        });
+      });
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', go); else go();

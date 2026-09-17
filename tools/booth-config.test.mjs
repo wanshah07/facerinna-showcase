@@ -80,11 +80,13 @@ function handle(b){
     default: return {ok:false,error:'unknown action'};
   }
 }
+const SEEN=[];
 const srv=http.createServer((req,res)=>{
   const u=new URL(req.url,BASE);
   if(u.pathname==='/api'){
     if(S.down){ res.destroy(); return; }
     let body=''; req.on('data',c=>body+=c); req.on('end',()=>{ let b={}; try{ b=JSON.parse(body||'{}'); }catch(e){}
+      SEEN.push(String(b.action||''));   /* what the page actually asked for */
       res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify(handle(b))); });
     return;
   }
@@ -554,6 +556,106 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   await c.close();
 }
 
+/* ---------------- a change reaching a page that is already open ---------- */
+/* The stand reported that hiding a section or locking the games "does not
+   update until we clear the cache". The cache was never the problem: the
+   config was asked for once, at load, and never again, so a screen open all
+   day at the booth never heard about anything. Nothing static can catch that
+   -- it needs a page left open while the sheet changes under it. */
+{
+  const c=await ctx(); const p=await c.newPage();
+  const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  S.settings.page_mode='open';
+  S.sectionRows.forEach(x=>{ x.mode='show'; x.passcode=''; });
+  await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1200);
+
+  const shown = sel => p.evaluate(s2=>{ const e=document.querySelector(s2);
+    return !!e && getComputedStyle(e).display!=='none'; }, sel);
+  chk('open: the QR section is on the page to start with', await shown('#qrcore'));
+
+  /* the sheet changes; nothing touches the page */
+  S.sectionRows.find(x=>x.id==='qrcore').mode='hidden';
+  const asked = await p.evaluate(()=>window.__boothRefresh(true));
+  chk('a page that is already open picks the change up without a reload',
+      await until(async()=>(await shown('#qrcore'))===false, 5000), asked);
+
+  /* and back again, since a hide that cannot be undone is half a switch */
+  S.sectionRows.find(x=>x.id==='qrcore').mode='show';
+  await p.evaluate(()=>window.__boothRefresh(true));
+  chk('...and puts it back the same way', await until(async()=>(await shown('#qrcore'))===true, 5000));
+
+  /* locking is the other half of the complaint */
+  S.sectionRows.find(x=>x.id==='game').mode='locked';
+  S.settings.passcode='booth2026';
+  await p.evaluate(()=>window.__boothRefresh(true));
+  chk('a lock arriving while the page is open takes hold too',
+      await until(async()=>await p.evaluate(()=>{
+        const e=document.getElementById('game');
+        return !!e && e.classList.contains('booth-sec-locked');
+      }), 5000));
+  S.sectionRows.find(x=>x.id==='game').mode='show';
+
+  /* Nothing above proves the page asks BY ITSELF -- each of those drove the
+     refresh by hand. This one does not touch it: the sheet changes, a glance
+     back at the screen is all that happens, and the section has to go. The
+     floor is shortened rather than waited out; the shipped values are pinned
+     below where a shortened copy could not hide them. */
+  await p.evaluate(()=>{ window.__boothAskFloorMs = 50; });
+  await sleep(120);
+  S.sectionRows.find(x=>x.id==='talk').mode='hidden';
+  await p.evaluate(()=>dispatchEvent(new Event('visibilitychange')));
+  chk('looking back at the screen is enough on its own',
+      await until(async()=>(await shown('#talk'))===false, 5000));
+  S.sectionRows.find(x=>x.id==='talk').mode='show';
+  await p.evaluate(()=>dispatchEvent(new Event('focus')));
+  chk('...and so is coming back to the tab', await until(async()=>(await shown('#talk'))===true, 5000));
+  await p.evaluate(()=>{ delete window.__boothAskFloorMs; });
+
+  /* the shipped numbers, where a test's shortened copy cannot stand in */
+  const SRC = fs.readFileSync(ROOT+'/index.html','utf8');
+  chk('the timer it ships with is a minute and a half',   /var POLL_MS = 90000;/.test(SRC));
+  chk('the floor it ships with is fifteen seconds',       /window\.__boothAskFloorMs \|\| 15000/.test(SRC));
+  chk('...and the four moments worth asking at are wired',
+      /'visibilitychange','focus','pageshow','online'/.test(SRC));
+  /* three events can fire for one glance; without the floor that is three
+     requests every time somebody picks the tablet up */
+  const before = SEEN.filter(x=>x==='config').length;
+  await p.evaluate(()=>{ window.__boothRefresh(); window.__boothRefresh(); window.__boothRefresh(); });
+  await sleep(600);
+  chk('...but not three times over for one glance',
+      SEEN.filter(x=>x==='config').length - before <= 1,
+      SEEN.filter(x=>x==='config').length - before);
+
+  chk('open-page refresh: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
+  await c.close();
+}
+
+/* The timer on its own, with nothing touching the page at all: no event, no
+   call, just a screen sitting there while the sheet changes under it. That is
+   the booth's actual case -- a tablet on a stand that nobody picks up. The
+   wait is shortened BEFORE the page loads, because the first one is scheduled
+   at boot and a value set afterwards cannot reach a timer already pending. */
+{
+  const c=await ctx();
+  await c.addInitScript(()=>{ window.__boothPollMs = 300; window.__boothAskFloorMs = 50; });
+  const p=await c.newPage();
+  const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  S.settings.page_mode='open';
+  S.sectionRows.forEach(x=>{ x.mode='show'; x.passcode=''; });
+  await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1200);
+  const shown2 = sel => p.evaluate(s2=>{ const e=document.querySelector(s2);
+    return !!e && getComputedStyle(e).display!=='none'; }, sel);
+  chk('timer: the talk section starts on the page', await shown2('#talk'));
+  S.sectionRows.find(x=>x.id==='talk').mode='hidden';
+  chk('a screen nobody touches keeps up on its own',
+      await until(async()=>(await shown2('#talk'))===false, 8000));
+  S.sectionRows.find(x=>x.id==='talk').mode='show';
+  chk('...and puts it back on its own too',
+      await until(async()=>(await shown2('#talk'))===true, 8000));
+  chk('timer: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
+  await c.close();
+}
+
 await b.close(); await new Promise(r=>srv.close(r));
-console.log(bad? '\nSOMETHING IS WRONG' : '\nthe sheet runs the page, section by section');
+console.log(bad? '\nSOMETHING IS WRONG' : '\nthe sheet runs the page, section by section, while it is open');
 process.exit(bad?1:0);
