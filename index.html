@@ -128,17 +128,25 @@ body.slides .slide-fit .wrap{max-width:calc(var(--maxw) / min(1, var(--k,1)))}
    words occupy, so the bar's baseline does not move. Under 1460 the rule
    below hands it back to the dropdown's own size, where it is an icon beside
    the word "Admin" and does not need to carry the meaning alone. */
-/* The side padding comes down from the 14px a word gets to 10px, because a
-   22px glyph in 14px padding is a 48px item where the 15px one was 41px --
-   and at 1460, the width at which the bar still holds every link, that extra
-   7px is the whole of the slack: the gear landed on the full-screen button.
-   At 10px it is 40px wide, so the bar's geometry is what it was before the
-   glyph grew, and the clearance the corner had is the clearance it keeps. */
-.nav-lk.nav-admin{display:inline-flex;align-items:center;gap:7px;font-size:22px;line-height:1;
-  padding-left:10px;padding-right:10px}
+/* A drawn silhouette rather than a glyph, so its size is a number here and
+   not whatever the font decides. 20px square is the weight that sits level
+   with 13.76px words beside it.
+   The side padding stays at 10px, not the 14px a word gets: at 14px the item
+   is 48px wide where the old 15px glyph was 41px, and at 1460 -- the width at
+   which the bar still holds every link -- those 7px are the whole of the
+   slack, so it landed on the full-screen button. At 10px it is 40px wide and
+   the corner keeps the clearance it had. */
+.nav-lk.nav-admin{display:inline-flex;align-items:center;gap:7px;line-height:1;
+  padding:9px 10px}          /* 9 + 20 + 9 = the 38px row the words fill */
+.nav-admin-i{width:20px;height:20px;flex:0 0 auto;display:block;
+  fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .nav-lk.nav-admin .nav-admin-t{display:none}
 @media(max-width:1459px){
   .nav-lk.nav-admin{font-size:inherit}
+  /* beside the word in the dropdown it is an icon, not the whole meaning,
+     and the dropdown's own 12px rows are what it has to match there */
+  .nav-lk.nav-admin{padding:12px 10px}
+  .nav-admin-i{width:17px;height:17px}
   .nav-lk.nav-admin .nav-admin-t{display:inline}
 }
 }
@@ -1966,7 +1974,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
            scrollspy, which matches on "#"+id and would only ever clear it. -->
       <a href="events/" class="nav-ext">Events</a>
       <a href="#game" class="nav-cta">Play &amp; Win</a>
-      <a href="admin.html" class="nav-lk nav-admin" id="adminBtn" rel="nofollow" aria-label="Booth admin" title="Booth admin">⚙<span class="nav-admin-t">Admin</span></a>
+      <a href="admin.html" class="nav-lk nav-admin" id="adminBtn" rel="nofollow" aria-label="Booth admin" title="Booth admin"><svg class="nav-admin-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.6"/><path d="M4.6 20.2a7.4 7.4 0 0 1 14.8 0"/></svg><span class="nav-admin-t">Admin</span></a>
     </nav>
     <button class="tv-btn" id="tvBtn" type="button" aria-label="Full screen TV mode" title="Full screen (TV mode)">⛶</button>
     <button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
