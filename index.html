@@ -4881,7 +4881,11 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
   addEventListener('keydown', function(e){
     if(e.key!=='Escape') return;
     if(fsEl()) return;
-    if(document.querySelector('.bookmodal.open, .cmodal.open')) return;
+    /* Every dialog that can be on top belongs in this list, not only the two
+       that were here first. The chat panel and a segment's embed both sit
+       over the deck; with them missing, Escape dropped the deck out of
+       presentation and left the dialog open -- wrong in both directions. */
+    if(document.querySelector('.bookmodal.open, .cmodal.open, .chat-panel.open, #segModal')) return;
     const d=window.__deck;
     if(d && d.mode()){ autoDeck=false; d.off(); }
   }, true);
@@ -6308,6 +6312,13 @@ function launchConfetti(){
     setTimeout(function(){inp.focus();},200);
   }
   function closeChat(){panel.classList.remove('open');}
+  /* role="dialog", so Escape closes it like every other dialog here. An
+     ordinary bubbling listener on purpose: the deck's own Escape handler runs
+     in capture and stands down while a dialog is still open, so closing from
+     here means one keystroke closes the chat and leaves the deck alone. */
+  addEventListener('keydown', function(e){
+    if(e.key==='Escape' && panel.classList.contains('open')) closeChat();
+  });
   fab.addEventListener('click',function(){panel.classList.contains('open')?closeChat():openChat();});
   closeBtn.addEventListener('click',closeChat);
   send.addEventListener('click',function(){handle(inp.value);inp.value='';});

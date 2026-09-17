@@ -402,6 +402,53 @@ for(const [tag,w,h] of [VIEWS[1],VIEWS[2]]){
   await c.close();
 }
 
+/* ------------------------------------------------ 4. Escape, and who owns it */
+/* The deck's Escape handler runs in capture and stands down while a dialog is
+   open -- but its list held only .bookmodal and .cmodal. The chat panel and a
+   segment's embed both sit over the deck and were missing from it, so Escape
+   dropped the deck out of presentation AND left the dialog open: wrong in
+   both directions at once. Nothing static could see this; it needs the deck
+   on, a dialog open, and a key pressed. */
+console.log('\nEscape, with a dialog over the deck');
+for(const [tag,w,h] of [VIEWS[1], DESKS[2]]){
+  const c=await b.newContext({viewport:{width:w,height:h}});
+  const p=await c.newPage();
+  const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.route('**/*', r=>{const u=r.request().url();
+    return (u.startsWith('file://')||u.startsWith('data:')||u.startsWith('blob:'))?r.continue():r.abort();});
+  await p.goto(DIR+'index.html',{waitUntil:'load'});
+  await p.waitForTimeout(1500);
+
+  /* the flipbook: opens, holds the page still, gives it back on Escape */
+  const card=await p.$('#fanLayout .fan-card');
+  await card.scrollIntoViewIfNeeded(); await p.waitForTimeout(600);
+  await card.click({force:true}); await p.waitForTimeout(900);
+  const book=await p.evaluate(()=>({open:!!document.querySelector('.bookmodal:not([hidden])'),
+    lock:document.body.style.overflow}));
+  chk(`${tag}: a gallery card opens the reader`, book.open===true, book);
+  chk(`${tag}: ...and the page behind it stops scrolling`, book.lock==='hidden', book.lock);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(700);
+  const shut=await p.evaluate(()=>({open:!!document.querySelector('.bookmodal:not([hidden])'),
+    lock:document.body.style.overflow}));
+  chk(`${tag}: Escape closes the reader`, shut.open===false, shut);
+  chk(`${tag}: ...and gives the page its scrolling back`, shut.lock!=='hidden', shut.lock);
+
+  /* the chat panel, with the deck on underneath it */
+  await p.evaluate(()=>window.__deck && window.__deck.on('v'));
+  await p.waitForTimeout(800);
+  chk(`${tag}: the deck is on`, await p.evaluate(()=>!!(window.__deck&&window.__deck.mode())));
+  await p.click('.chat-fab',{force:true}); await p.waitForTimeout(700);
+  chk(`${tag}: the chat opens`,
+      await p.evaluate(()=>document.querySelector('.chat-panel').classList.contains('open')));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(700);
+  const after=await p.evaluate(()=>({deck:!!(window.__deck&&window.__deck.mode()),
+    chat:document.querySelector('.chat-panel').classList.contains('open')}));
+  chk(`${tag}: Escape closes the chat`, after.chat===false, after);
+  chk(`${tag}: ...and leaves the deck where it was`, after.deck===true, after);
+  chk(`${tag}: no page errors`, errs.length===0, errs[0]);
+  await c.close();
+}
+
 await b.close();
 console.log(bad? '\nSOMETHING IS WRONG'
   : '\nphone, tablet and desk: every page fits, the header keeps off itself, the slideshow drives, the ribbon keeps off the header');
