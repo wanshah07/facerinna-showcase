@@ -145,21 +145,30 @@ for(const [tag,w,h] of DESKS){
     const gear=document.getElementById('adminBtn');
     const word=[...document.querySelectorAll('.nav-links a')].find(a=>vis(a)&&!a.id);
     const G=gear?gear.getBoundingClientRect():null, Wd=word?word.getBoundingClientRect():null;
+    const icon=gear?gear.querySelector('.nav-admin-i'):null;
+    const I=icon?icon.getBoundingClientRect():null;
     return {pairs:[...new Set(pairs)], inBar:!!(gear&&gear.closest('.nav-links')&&vis(gear)),
-      gearFs:gear?parseFloat(getComputedStyle(gear).fontSize):null,
-      wordFs:word?parseFloat(getComputedStyle(word).fontSize):null,
+      icon:I?{w:Math.round(I.width),h:Math.round(I.height)}:null,
+      iconTag:icon?icon.tagName.toLowerCase():null,
+      label:gear?(gear.getAttribute('aria-label')||''):null,
+      gearW:G?Math.round(G.width):null,
       gearH:G?Math.round(G.height):null, wordH:Wd?Math.round(Wd.height):null,
       gearOn:G?(G.left>=-1&&G.right<=innerWidth+1):null};
   });
   chk(`${tag}: nothing in the header sits on anything else`, r.pairs.length===0, r.pairs);
   if(r.inBar){
-    /* the gear is a glyph among words: at the words' own size it reads as a
-       stray mark rather than an item, so it is deliberately larger -- and
-       that size is what put it on the corner button, so it is pinned here */
-    chk(`${tag}: the gear is set larger than the words beside it`,
-        r.gearFs>=20 && r.gearFs>r.wordFs, {gear:r.gearFs, word:r.wordFs});
-    chk(`${tag}: ...but sits in the same row, not taller than it`,
-        Math.abs(r.gearH-r.wordH)<=2, {gear:r.gearH, word:r.wordH});
+    /* a drawn silhouette, not a font glyph: its size is a number in the
+       stylesheet rather than whatever the typeface decides, so it is the
+       number that gets pinned */
+    chk(`${tag}: the admin mark is drawn, not a glyph`, r.iconTag==='svg', r.iconTag);
+    chk(`${tag}: it is the size that sits level with the words`,
+        r.icon && r.icon.w>=18 && r.icon.h>=18, r.icon);
+    chk(`${tag}: ...in the same row, not taller than it`,
+        Math.abs(r.gearH-r.wordH)<=2, {admin:r.gearH, word:r.wordH});
+    /* the width is the thing that put it on the corner button once already */
+    chk(`${tag}: and no wider than the corner has room for`, r.gearW<=42, r.gearW);
+    chk(`${tag}: it says what it is, since it carries no word here`,
+        /admin/i.test(r.label||''), r.label);
     chk(`${tag}: and stays on the screen`, r.gearOn===true, r);
   }
   await c.close();
