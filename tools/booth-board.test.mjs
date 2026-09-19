@@ -25,7 +25,13 @@ async function board(games){
   const out=await pg.evaluate(()=>{
     const rows=[...document.querySelectorAll('#rankBody .rank-row')].map(r=>({
       pos:(r.querySelector('.rp')||{}).textContent, n:(r.querySelector('.rn')||{}).textContent}));
-    return {rows, body:(document.getElementById('rankBody')||{}).innerText||''};
+    return {rows, body:(document.getElementById('rankBody')||{}).innerText||'',
+      label:(document.getElementById('rankBtn')||{}).textContent||'',
+      heading:((document.querySelector('#rankModal .rank-head h3'))||{}).textContent||'',
+      aria:(document.getElementById('rankModal')||{getAttribute:()=>''}).getAttribute('aria-label')||'',
+      games:[...document.querySelectorAll('#rankBody .rank-game .gname')].map(g=>g.textContent),
+      played:[...document.querySelectorAll('#rankBody .rank-row .rg')].map(g=>g.textContent),
+      intro:(document.getElementById('rankIntro')||{}).textContent||''};
   });
   await ctx.close(); return {...out, errs};
 }
@@ -70,6 +76,36 @@ console.log('\na row with no timestamp loses the tie rather than winning it');
     'lab-run':   [{n:'Timed',  s:707, t: Date.parse('2026-09-10T23:00:00Z')}]});
   console.log('   order:', r.rows.map(x=>x.pos+' '+x.n).join('  |  '));
   check('the timestamped run wins', r.rows[0] && r.rows[0].n==='Timed');
+}
+
+console.log('\nFacy Run is on the board like any other game');
+{
+  const r = await board({...EMPTY,'match-lab':[],'pack-match':[],'lab-run':[],
+    'facy-run':[{n:'Runner', s:8200, t: Date.parse('2026-09-19T09:00:00Z')}]});
+  check('it holds its own game',      /Facy Run/.test(r.body) && r.games.indexOf('Facy Run')>=0);
+  check('...with the name and score', /Runner/.test(r.body) && /8200/.test(r.body));
+  check('and winning it pays the same as winning any other',
+        r.rows.length===1 && r.rows[0].n==='Runner' && /5 pts/.test(r.body));
+  check('no page errors', r.errs.length===0);
+}
+
+console.log('\nthe label counts the games rather than spelling the number out');
+{
+  /* The button said "all five games" under a heading that said eight, because
+     the number was typed in four places and the list was only one of them. */
+  const r = await board({...EMPTY,'match-lab':[],'pack-match':[],'lab-run':[],
+    'facy-run':[{n:'Runner', s:8200, t: 1000}]});
+  const n = r.games.length;
+  console.log('   games on the board:', n, '·', r.label.trim());
+  check('every game in the list holds a row', n===6);
+  check('the button says so',   new RegExp('all six games').test(r.label));
+  check('the heading says so',  /^Six games, one board$/.test(r.heading.trim()));
+  check('the screen reader is told the same', /six games/.test(r.aria));
+  check('and a player is counted out of that many', r.played.every(x=>/ of 6$/.test(x.trim())), r.played);
+  /* The first cut of this read "fiveth is worth 1": the ordinal was built by
+     sticking "th" on the number word. A board nobody can argue with should
+     not be the thing on screen that cannot spell. */
+  check('the places are spelled like English', /fifth is worth 1/.test(r.intro) && !/fiveth/.test(r.intro), r.intro);
 }
 
 console.log(ok?'\nall good':'\nSOMETHING IS WRONG');

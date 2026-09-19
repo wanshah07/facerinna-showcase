@@ -1616,9 +1616,9 @@ body.space-theme .fan-card{border-color:rgba(255,255,255,.18);
 .cg-cap p{margin:9px 0 0;font-size:.76rem;line-height:1.5;opacity:.74}
 .cg-cap .cc-play{display:inline-block;margin-top:11px;font-weight:700;font-size:.84rem;color:#8FD0F7}
 .cg-hint{margin-top:30px;font-size:.82rem;color:var(--muted)}
-/* The five arcade games each keep their own board on the device they are
-   played on. Same origin, same localStorage — so the booth screen can read all
-   five and put them together without a server. */
+/* The scored games each keep their own board on the device they are
+   played on. Same origin, same localStorage — so the booth screen can read
+   them all and put them together without a server. */
 .rank-cta{margin-top:18px;text-align:center}
 /* It shows itself now, so it stops short of blacking the booth screen out:
    the wheel and the cards stay readable behind a light wash, and the card
@@ -2457,7 +2457,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
       <p class="cg-hint">🖱️ Scroll to rotate the gallery · drag to spin · tap a card to play</p>
     </div>
     <div class="rank-cta reveal">
-      <button class="btn btn-ghost" type="button" id="rankBtn">🏆 Booth ranking — all five games</button>
+      <button class="btn btn-ghost" type="button" id="rankBtn">🏆 Booth ranking — all six games</button>
     </div>
     <div class="game-shell reveal" id="skinIQ" hidden>
       <div class="game-inner">
@@ -2530,14 +2530,14 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
 </div>
 
 <!-- CLINICAL DATA MODAL -->
-<div class="cmodal" id="rankModal" role="dialog" aria-modal="true" aria-label="Booth ranking across the five games">
+<div class="cmodal" id="rankModal" role="dialog" aria-modal="true" aria-label="Booth ranking across the six games">
   <div class="backdrop" data-rank-close></div>
   <div class="cpanel rank-panel">
     <i class="rank-bar" id="rankBar" aria-hidden="true"></i>
     <button class="cclose" type="button" data-rank-close aria-label="Close the ranking">&#10005;</button>
     <div class="rank-head">
       <span class="cat">Booth leaderboard</span>
-      <h3>Five games, one board</h3>
+      <h3>Six games, one board</h3>
       <p id="rankIntro"></p>
     </div>
     <div id="rankBody"></div>
@@ -5579,7 +5579,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
 
 
 /* ============================================================
-   BOOTH RANKING — the five arcade games, on one board
+   BOOTH RANKING — the scored games, on one board
 
    Each game keeps its own board in localStorage under fx.rank.<id>, written by
    fx-rank.js when a run ends. The games are pages on this same site, so this
@@ -5587,8 +5587,8 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
    board is whatever this device has played — which is exactly what a booth
    wants.
 
-   The five scores are on five different scales — points, drops, streaks — so
-   adding them would be meaningless. Places are added instead: a game's top five
+   The scores are on different scales — points, drops, streaks — so adding
+   them would be meaningless. Places are added instead: a game's top five
    are worth 5, 4, 3, 2 and 1, the way a multi-event meet is scored, and the
    totals are comparable because every game contributes the same amount.
    ============================================================ */
@@ -5602,11 +5602,26 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     {id:'pack-match', name:'Pack Match', unit:'pts'},
     {id:'shelf-shot', name:'Shelf Shot', unit:'pts'},
     {id:'deep-lab',   name:'Deep Lab',   unit:'pts'},
-    {id:'lab-run',    name:'Lab Run',    unit:'pts'}
+    {id:'lab-run',    name:'Lab Run',    unit:'pts'},
+    {id:'facy-run',   name:'Facy Run',   unit:'pts'}
   ];
   const TOP=5;
   const body=document.getElementById('rankBody');
   const intro=document.getElementById('rankIntro');
+
+  /* How many games the board covers is counted, never typed. The button read
+     "all five games" for a day after Facy Run joined, under a heading that
+     said eight, because the number was spelled out in four places and the
+     list was only one of them. */
+  const WORDS=['no','one','two','three','four','five','six','seven','eight','nine','ten'];
+  const ORDS=['','first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth'];
+  const many=n=>WORDS[n]||String(n);
+  const nth=n=>ORDS[n]||(n+'th');
+  const HOWMANY=many(GAMES.length);
+  btn.textContent='\u{1F3C6} Booth ranking \u2014 all '+HOWMANY+' games';
+  modal.setAttribute('aria-label','Booth ranking across the '+HOWMANY+' games');
+  const rhead=modal.querySelector('.rank-head h3');
+  if(rhead) rhead.textContent=HOWMANY.charAt(0).toUpperCase()+HOWMANY.slice(1)+' games, one board';
 
   /* Locked-down and private browsers throw on localStorage rather than
      returning null, and the board is a nicety — the page must not care. */
@@ -5714,15 +5729,15 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
       body.innerHTML='<div class="rank-empty">The board fills itself as people play. '+
         (SHARED
           ? 'Every screen at the booth writes to the same board — start one of the '+
-            'five and it will show up here.'
+            HOWMANY+' and it will show up here.'
           : 'Scores are on the device they were played on for now, so this is the '+
-            'ranking for this screen — start one of the five and it will show up here.')+
+            'ranking for this screen — start one of the '+HOWMANY+' and it will show up here.')+
         '</div>';
       return;
     }
 
-    intro.textContent='Every game gives out the same five places, so one board holds all five. '+
-      'Top spot in a game is worth 5, fifth is worth 1.';
+    intro.textContent='Every game gives out the same '+many(TOP)+' places, so one board holds all '+
+      HOWMANY+'. Top spot in a game is worth '+TOP+', '+nth(TOP)+' is worth 1.';
 
     let html='<div class="rank-sub">Overall</div>';
     const shown=list.slice(0,TOP);
@@ -5874,7 +5889,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
          avoid showing an empty panel instead showed nothing at all with no way
          to tell that apart from a fault. The empty state was already written
          and reads as an invitation — "the board fills itself as people play,
-         start one of the five" — which is the right thing for a booth stand
+         start one of the games" — which is the right thing for a booth stand
          before anyone has played. */
       /* No cooldown: every arrival at the games shows the board, however many
          times you come back. `armed` only clears once the section has actually
