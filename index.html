@@ -1085,6 +1085,13 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
   color:var(--ink-2);line-height:1.45}
 .guide-panel th{font-weight:800;color:var(--ink);white-space:nowrap}
 .g-gate{text-align:center;padding:14px 4px}
+.g-form{display:flex;flex-direction:column;gap:10px;max-width:300px;margin:0 auto}
+.g-in{appearance:none;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;
+  font:inherit;font-size:16px;background:var(--surface);color:var(--ink)}
+.g-in:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand)}
+.g-off{display:none}
+.g-form input[inputmode="numeric"]{letter-spacing:.42em;text-align:center;font-weight:800}
+.g-say{margin:12px auto 0;max-width:340px;font-size:13px;line-height:1.5}
 .g-gate h3{margin:0 0 8px;font-size:20px}
 .g-gate p{margin:0 auto 14px;max-width:380px}
 .g-bad{color:#b3342a}
@@ -6599,6 +6606,17 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   var el = function(tag, cls){ var n = document.createElement(tag); if(cls) n.className = cls; return n; };
   function token(){ try{ return localStorage.getItem(ADMIN) || ''; }catch(e){ return ''; } }
 
+  /* One way out to the script, with a timeout, so a booth on a dead hall wifi
+     says so rather than sitting on a spinner until somebody gives up. */
+  function post(body){
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctl && setTimeout(function(){ ctl.abort(); }, 20000);
+    return fetch(API, { method:'POST', body:JSON.stringify(body),
+                        signal: ctl ? ctl.signal : undefined })
+      .then(function(r){ return r.json(); })
+      .finally(function(){ if(timer) clearTimeout(timer); });
+  }
+
   /* *stars* to <b>, without handing any string to the parser. The script is
      kept to plain ASCII so it pastes into the Apps Script editor whatever the
      clipboard does to it; the dash it writes as -- is drawn as one here. */
@@ -6649,6 +6667,72 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     var a = box.appendChild(el('a','btn btn-primary'));
     a.href = 'admin.html'; a.textContent = 'Open the admin';
   }
+
+  /* The way in on a device that has never been signed in. The link route sends
+     a sign-in to whichever browser opens the mail, which at a booth is rarely
+     the browser the booth is running; a code is typed into the thing in front
+     of you. It buys what the link buys, so this signs the device in to the
+     booth admin generally, not to the guide alone. */
+  function askForCode(){
+    clear();
+    var box = body.appendChild(el('div','g-gate'));
+    box.appendChild(el('h3')).appendChild(document.createTextNode('Booth staff only'));
+    fill(box.appendChild(el('p')),
+      'This guide is for the people running the booth. Put in the address on the ' +
+      'admin list and a six-digit code comes back \u2014 it works on *this* device, ' +
+      'whichever device that is.');
+
+    var f = box.appendChild(el('form','g-form'));
+    var mail = f.appendChild(el('input','g-in')); mail.type='email'; mail.required=true;
+    mail.placeholder='you@example.com'; mail.autocomplete='email';
+    mail.setAttribute('aria-label','Your admin e-mail address');
+    var digits = f.appendChild(el('input','g-in g-off')); digits.type='text';
+    digits.inputMode='numeric'; digits.autocomplete='one-time-code'; digits.maxLength=6;
+    digits.placeholder='000000'; digits.setAttribute('aria-label','The six-digit code');
+    var go = f.appendChild(el('button','btn btn-primary')); go.type='submit';
+    go.textContent='Send me a code';
+    var say = box.appendChild(el('p','g-say'));
+
+    var stage = 'email';
+    function busy(on, label){ go.disabled = on; go.textContent = on ? 'One moment\u2026' : label; }
+    function tell(msg, bad){ say.className = bad ? 'g-say g-bad' : 'g-say'; say.textContent = msg; }
+    f.addEventListener('submit', function(e){
+      e.preventDefault();
+      var addr = mail.value.trim();
+      if(stage === 'email'){
+        busy(true);
+        post({ action:'code', email:addr }).then(function(j){
+          busy(false, 'Open the guide');
+          if(!j || j.ok !== true) return tell((j && j.error) || 'That did not work. Try again.', true);
+          stage = 'code';
+          digits.classList.remove('g-off'); digits.focus();
+          tell('If that address is on the admin list, a code is on its way. It lasts ten minutes.');
+        }).catch(function(err){ busy(false, 'Send me a code');
+          tell('Could not reach the booth script: ' + (err && err.message || err), true); });
+        return;
+      }
+      busy(true);
+      post({ action:'redeem', email:addr, code:digits.value }).then(function(j){
+        busy(false, 'Open the guide');
+        if(j && j.ok === true && j.token){
+          try{ localStorage.setItem(ADMIN, j.token); }catch(e){}
+          return ask();                      /* straight through to the guide */
+        }
+        var why = (j && j.reason) || '';
+        tell(why === 'badcode'     ? 'That code is not right.' + (j && j.left ? ' ' + j.left + ' more ' + (j.left===1?'try':'tries') + '.' : '')
+           : why === 'codeexpired' ? 'That code has run out. Ask for another.'
+           : why === 'toomany'     ? 'Too many wrong tries. Ask for a new code.'
+           : why === 'revoked'     ? 'That address is no longer on the admin list.'
+           : why === 'nocode'      ? 'No code has been sent to that address yet.'
+           : 'That did not work. Try again.', true);
+        if(why === 'codeexpired' || why === 'toomany' || why === 'nocode'){
+          stage='email'; digits.value=''; digits.classList.add('g-off'); go.textContent='Send me a code';
+        }
+      }).catch(function(err){ busy(false, 'Open the guide');
+        tell('Could not reach the booth script: ' + (err && err.message || err), true); });
+    });
+    mail.focus();
+  }
   function draw(j){
     clear();
     var top = body.appendChild(el('div','g-top'));
@@ -6660,23 +6744,19 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   var loaded = false, asking = false;
   function ask(){
     var t = token();
-    if(!t) return gate('Booth staff only', 'This guide is for the people running the booth. Sign in once on this device with an address on the admin list, then open it again.');
+    if(!t) return askForCode();
     if(asking) return;
     asking = true;
     note('Checking this device…');
-    var ctl = ('AbortController' in window) ? new AbortController() : null;
-    var timer = ctl && setTimeout(function(){ ctl.abort(); }, 20000);
-    fetch(API, { method:'POST', body:JSON.stringify({ action:'admin.guide', token:t }),
-                 signal: ctl ? ctl.signal : undefined })
-      .then(function(r){ return r.json(); })
+    post({ action:'admin.guide', token:t })
       .then(function(j){
         if(j && j.ok === true){ loaded = true; return draw(j); }
         var err = (j && j.error) || 'no answer';
-        if(/signed out/i.test(err)) return gate('Signed out', 'This device’s sign-in has expired. Sign in again and the guide comes back.');
+        if(/signed out/i.test(err)){ try{ localStorage.removeItem(ADMIN); }catch(e){} return askForCode(); }
         gate('That did not work', err, true);
       })
       .catch(function(e){ gate('That did not work', 'Could not reach the booth script: ' + (e && e.message || e), true); })
-      .finally(function(){ asking = false; if(timer) clearTimeout(timer); });
+      .finally(function(){ asking = false; });
   }
 
   function open_(){

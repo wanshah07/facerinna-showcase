@@ -19,6 +19,7 @@ async function until(fn, ms=8000, step=100){ const t=Date.now(); while(Date.now(
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript'};
 
 const TOKEN='11111111-1111-4111-8111-111111111111';
+const ADMIN_EMAIL='owner@facerinna.test', GOOD_CODE='123456';
 const SECRET='the counter routine nobody outside the booth should read';
 const BLOCKS=[
   {t:'note', s:'You can read this because this device is signed in as an admin.'},
@@ -29,7 +30,7 @@ const BLOCKS=[
   {t:'table', head:['Column','What it holds'], rows:[['claim','the code inside the QR'],['by','which admin scanned it']]},
   {t:'p', s:'<img src=x onerror="window.__pwned=1">'}
 ];
-const S={seen:[]};
+const S={seen:[], codeFor:[]};
 const srv=http.createServer((req,res)=>{
   const u=new URL(req.url,BASE);
   if(u.pathname==='/api'){
@@ -38,6 +39,12 @@ const srv=http.createServer((req,res)=>{
       S.seen.push(b);
       let out={ok:false,error:'unknown action'};
       if(b.action==='config') out={ok:true, settings:{}, segments:[], sections:[]};
+      else if(b.action==='code'){ S.codeFor.push(b.email); out={ok:true, sent:true}; }
+      else if(b.action==='redeem'){
+        out = (b.email===ADMIN_EMAIL && b.code===GOOD_CODE)
+          ? {ok:true, token:TOKEN, email:ADMIN_EMAIL}
+          : {ok:false, reason:'badcode', left:4};
+      }
       else if(b.action==='admin.guide'){
         out = b.token===TOKEN
           ? {ok:true, you:'owner@facerinna.test', title:'Running the booth', blocks:BLOCKS}
@@ -87,22 +94,15 @@ console.log('\na visitor');
   await openPanel(p);
   chk('the panel opens', await until(()=>isOpen(p)));
   chk('...and says the guide is for booth staff', /booth staff/i.test(await panelText(p)));
-  chk('...with a way to sign in', await p.$eval('#guideBody a', a=>a.getAttribute('href'))==='admin.html');
+  chk('...asking for an address rather than sending them off to another page',
+      await p.$('#guideBody form input[type=email]') !== null);
+  chk('...with the code box held back until there is a code to type',
+      await p.evaluate(()=>{ const d=document.querySelector('#guideBody form input[inputmode=numeric]');
+        return !!d && d.offsetParent===null; }));
   await p.waitForTimeout(400);
   chk('the script was never asked for the guide', S.seen.filter(x=>x.action==='admin.guide').length===0, S.seen.map(x=>x.action));
   chk('and not one word of it is anywhere in the page',
       !(await p.evaluate(s=>document.documentElement.innerHTML.indexOf(s)>=0, SECRET)));
-  chk('no page errors', errs.length===0, errs[0]);
-  await c.close();
-}
-
-console.log('\na sign-in the script no longer honours');
-{
-  S.seen=[];
-  const {c,p,errs}=await open_('stale-token');
-  await openPanel(p);
-  chk('is sent back to sign in', await until(async()=>/sign in again|expired/i.test(await panelText(p))));
-  chk('...and still gets no guide', !/At the counter/.test(await panelText(p)));
   chk('no page errors', errs.length===0, errs[0]);
   await c.close();
 }
@@ -132,6 +132,47 @@ console.log('\na signed-in admin');
       await p.evaluate(()=>window.__guide.close()); await openPanel(p); await sleep(400);
       return S.seen.filter(x=>x.action==='admin.guide').length===1; })(), S.seen.filter(x=>x.action==='admin.guide').length);
   chk('Escape closes it', await (async()=>{ await p.keyboard.press('Escape'); return !(await isOpen(p)); })());
+  chk('no page errors', errs.length===0, errs[0]);
+  await c.close();
+}
+
+console.log('\na device that has never been signed in, signing in with a code');
+{
+  S.seen=[]; S.codeFor=[];
+  const {c,p,errs}=await open_('');
+  await openPanel(p);
+  await until(()=>p.$('#guideBody form input[type=email]').then(x=>!!x));
+  await p.fill('#guideBody input[type=email]', ADMIN_EMAIL);
+  await p.click('#guideBody button[type=submit]');
+  chk('asking sends the address and nothing else', await until(()=>Promise.resolve(S.codeFor.length===1)) && S.codeFor[0]===ADMIN_EMAIL, S.codeFor);
+  chk('...and says a code is coming', await until(async()=>/code is on its way/i.test(await panelText(p))));
+  chk('...and now there is somewhere to type it',
+      await until(()=>p.evaluate(()=>{ const d=document.querySelector('#guideBody input[inputmode=numeric]');
+        return !!d && d.offsetParent!==null; })));
+
+  await p.fill('#guideBody input[inputmode=numeric]', '000000');
+  await p.click('#guideBody button[type=submit]');
+  chk('a wrong code is refused, with the tries left, and no guide',
+      await until(async()=>/not right/i.test(await panelText(p))) && !/At the counter/.test(await panelText(p)));
+  chk('...and nothing is kept for it', await p.evaluate(()=>{ try{ return !localStorage.getItem('fx.admin.token'); }catch(e){ return true; } }));
+
+  await p.fill('#guideBody input[inputmode=numeric]', GOOD_CODE);
+  await p.click('#guideBody button[type=submit]');
+  chk('the right code opens the guide on this device', await until(async()=>/At the counter/.test(await panelText(p))));
+  chk('...and the device stays signed in, so it need not be typed again',
+      await p.evaluate(()=>{ try{ return localStorage.getItem('fx.admin.token'); }catch(e){ return null; } })===TOKEN);
+  chk('no page errors', errs.length===0, errs[0]);
+  await c.close();
+}
+
+console.log('\na sign-in the script has stopped honouring');
+{
+  const {c,p,errs}=await open_('stale-token');
+  await openPanel(p);
+  chk('is offered a code rather than left stuck',
+      await until(()=>p.$('#guideBody form input[type=email]').then(x=>!!x)));
+  chk('...and the dead token is thrown away',
+      await p.evaluate(()=>{ try{ return !localStorage.getItem('fx.admin.token'); }catch(e){ return true; } }));
   chk('no page errors', errs.length===0, errs[0]);
   await c.close();
 }
