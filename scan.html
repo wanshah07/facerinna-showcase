@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B1620">
+<title>Facerinna — Booth counter</title>
+<style>
+  /* The counter's own screen. It is opened once at the start of the day and
+     not left again: the camera stays on, each visitor's code is read in this
+     page, the wheel spins here, and the next visitor steps up. That is the
+     whole point of it -- redeem.html signs a browser in per scan, and the
+     phone's camera does not always hand the scan back to the browser that
+     was signed in, so the counter ends up typing an address per visitor. */
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:#0B1620;color:#EAF4FF;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{display:flex;flex-direction:column;align-items:center;
+    padding:calc(14px + env(safe-area-inset-top,0)) 14px calc(20px + env(safe-area-inset-bottom,0));text-align:center}
+  .eyebrow{font-size:11px;letter-spacing:.42em;text-transform:uppercase;font-weight:800;color:#54C1F5;margin:0 0 6px}
+  h1{font-size:clamp(19px,4.6vw,26px);margin:0 0 4px;letter-spacing:-.01em}
+  .sub{font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.72);max-width:420px;margin:0 0 12px;font-weight:600}
+  .hidden{display:none!important}
+
+  /* the camera */
+  #cam{position:relative;width:min(92vw,420px);aspect-ratio:1;border-radius:20px;overflow:hidden;
+    background:#08121b;box-shadow:0 20px 44px rgba(0,0,0,.45)}
+  #cam video{width:100%;height:100%;object-fit:cover;display:block}
+  #frame{position:absolute;inset:14%;border:3px solid rgba(255,255,255,.85);border-radius:16px;
+    box-shadow:0 0 0 100vmax rgba(8,18,27,.45);pointer-events:none}
+  #camNote{margin:10px 0 0;font-size:13px;color:rgba(255,255,255,.66);font-weight:600;min-height:20px}
+
+  /* the wheel */
+  #wheelWrap{position:relative;width:min(88vw,400px);aspect-ratio:1;margin:6px auto 12px}
+  #wheel{width:100%;height:100%;display:block;border-radius:50%;box-shadow:0 26px 54px rgba(0,0,0,.5)}
+  #pin{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;
+    border-left:15px solid transparent;border-right:15px solid transparent;border-top:28px solid #FFE066;
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,.4))}
+
+  .card{background:#fff;color:#0b1620;border-radius:18px;padding:16px 18px;width:min(92vw,420px);margin:6px auto;
+    box-shadow:0 18px 44px rgba(0,0,0,.45)}
+  .card h2{margin:0 0 6px;font-size:19px}
+  .card p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:#3f5670;font-weight:600}
+  .prize{font-family:Georgia,serif;font-size:clamp(19px,4.4vw,26px);font-weight:700;color:#1b6fb8;margin:6px 0 4px}
+  .btn{appearance:none;border:0;border-radius:999px;padding:13px 26px;font:inherit;font-size:16px;font-weight:800;
+    cursor:pointer;background:linear-gradient(135deg,#6FDCC6,#3FA6EE);color:#0b1620;margin:8px 4px 0;
+    text-decoration:none;display:inline-block}
+  .btn[disabled]{opacity:.6;cursor:default}
+  .bad{color:#c0392b}
+  .who{font-size:12px;color:rgba(255,255,255,.5);margin-top:14px;line-height:1.5}
+  .who b{color:rgba(255,255,255,.72)}
+
+  /* signing in, once a day */
+  #gate form{display:flex;flex-direction:column;gap:9px;margin-top:10px}
+  #gate input{appearance:none;width:100%;padding:12px 14px;border:1px solid #cfdcea;border-radius:12px;
+    font:inherit;font-size:16px;color:#0b1620;background:#fff}
+  #gate input.code{letter-spacing:.42em;text-align:center;font-weight:800}
+  #gate .say{font-size:12.5px;line-height:1.5;margin:8px 0 0}
+</style>
+</head>
+<body>
+<p class="eyebrow">Facerinna · Booth counter</p>
+<h1 id="head">Scan a gift code</h1>
+<p class="sub" id="lead">Starting the camera…</p>
+
+<!-- signing in: once, at the start of the day -->
+<div class="card hidden" id="gate">
+  <h2>Sign in once</h2>
+  <p>This is the counter screen. Sign in now and it stays signed in — you will not be asked again while this screen is open.</p>
+  <form id="gateForm">
+    <input type="email" id="gateMail" placeholder="you@example.com" autocomplete="email" aria-label="Your admin e-mail address" required>
+    <input type="text" id="gateCode" class="code hidden" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="The six-digit code">
+    <button class="btn" type="submit" id="gateGo">Send me a code</button>
+  </form>
+  <p class="say" id="gateSay"></p>
+</div>
+
+<!-- the camera, open all day -->
+<div id="camWrap" class="hidden">
+  <div id="cam"><video id="video" playsinline muted></video><div id="frame"></div></div>
+  <p id="camNote">Hold the visitor's code inside the square.</p>
+</div>
+
+<!-- the spin -->
+<div id="wheelWrap" class="hidden"><div id="pin"></div><canvas id="wheel" width="840" height="840" aria-label="Prize wheel"></canvas></div>
+
+<div class="card hidden" id="result">
+  <h2 id="resTitle">The wheel says</h2>
+  <div class="prize" id="prize"></div>
+  <p id="resText"></p>
+  <p id="resMeta" style="font-size:12px;color:#8095ab"></p>
+  <button class="btn" type="button" id="next">Scan the next one</button>
+</div>
+
+<div class="card hidden" id="oops">
+  <h2>That did not work</h2>
+  <p id="oopsText" class="bad"></p>
+  <button class="btn" type="button" id="again">Back to the camera</button>
+</div>
+
+<p class="who" id="who"></p>
+
+<script src="jsqr.js"></script>
+<script>
+(function(){
+'use strict';
+var API = (typeof window.__BOOTH_API === 'string') ? window.__BOOTH_API
+  : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
+var KEY = 'fx.admin.token';
+var $ = function(id){ return document.getElementById(id); };
+var show = function(id, on){ $(id).classList.toggle('hidden', !on); };
+
+function token(){ try{ return localStorage.getItem(KEY) || ''; }catch(e){ return ''; } }
+function keep(t){ try{ localStorage.setItem(KEY, t); }catch(e){} }
+function drop(){ try{ localStorage.removeItem(KEY); }catch(e){} }
+function post(body, ms){
+  var ctl = ('AbortController' in window) ? new AbortController() : null;
+  var t = ctl && setTimeout(function(){ ctl.abort(); }, ms || 20000);
+  return fetch(API, { method:'POST', body:JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ return r.json(); }).finally(function(){ if(t) clearTimeout(t); });
+}
+
+/* ------------------------------------------------------------- the wheel */
+var cv = $('wheel'), g = cv.getContext('2d'), R = cv.width/2;
+var COLS = ['#3FA6EE','#6FDCC6','#F6C744','#FFA75C','#B9A6FF','#7ED957','#FFB3C7','#8FD0F7','#2E7CBE','#FFE066'];
+var products = [], angle = 0, pics = {};
+
+/* A slice carries the product's own picture when the booth page has one for
+   it, because a counter reading eight long names off a spinning wheel reads
+   none of them. The name stays under it: the picture says which, the name
+   settles it. */
+function pic(name){
+  if(pics[name] !== undefined) return pics[name];
+  pics[name] = null;
+  var slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  var im = new Image();
+  im.onload = function(){ pics[name] = im; drawWheel(); };
+  im.onerror = function(){ pics[name] = null; };
+  im.src = 'products/' + slug + '.webp';
+  return null;
+}
+function short(s){ var w = String(s).split(' '); return w.length>4 ? w.slice(0,4).join(' ') : s; }
+function drawWheel(){
+  var n = products.length; if(!n) return;
+  g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,cv.width,cv.height);
+  g.save(); g.translate(R,R); g.rotate(angle);
+  var slice = 2*Math.PI/n;
+  for(var i=0;i<n;i++){
+    var a0 = -Math.PI/2 + i*slice - slice/2, a1 = a0 + slice;
+    g.beginPath(); g.moveTo(0,0); g.arc(0,0,R-8,a0,a1); g.closePath();
+    g.fillStyle = COLS[i % COLS.length]; g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 3; g.stroke();
+    g.save(); g.rotate(a0 + slice/2);
+    var im = pic(products[i]), a = a0 + slice/2 + angle;
+    if(im){
+      /* The picture alone, standing upright however far round the wheel has
+         turned: a bottle read sideways is a bottle nobody recognises, and the
+         card under the wheel names the winner anyway. Turning the slice back
+         out by its own angle is what keeps it upright; the label is gone
+         because at this size it only collided with the hub. */
+      var d = Math.min(R*0.46, (R-8)*Math.sin(slice/2)*1.7);
+      g.save();
+      g.translate(R*0.56, 0);
+      g.rotate(-a);
+      var w = im.width, h = im.height, k = Math.min(d/w, d/h);
+      g.drawImage(im, -w*k/2, -h*k/2, w*k, h*k);
+      g.restore();
+    } else {
+      g.fillStyle = '#0b1620'; g.font = 'bold '+(n>8?21:25)+'px system-ui,sans-serif';
+      g.textAlign = 'right'; g.textBaseline = 'middle';
+      var label = short(products[i]);
+      if(label.length > 22) label = label.slice(0,21)+'…';
+      g.fillText(label, R-28, 0);
+    }
+    g.restore();
+  }
+  g.beginPath(); g.arc(0,0,44,0,6.283); g.fillStyle='#fff'; g.fill();
+  g.fillStyle='#3FA6EE'; g.font='bold 20px system-ui,sans-serif';
+  g.textAlign='center'; g.textBaseline='middle'; g.fillText('FX', 0, 0);
+  g.restore();
+}
+var spinning = false, landed = -1;
+function spinTo(index, done){
+  var n = products.length, slice = 2*Math.PI/n;
+  var target = -index*slice - Math.PI*2*5;
+  var from = angle, t0 = performance.now(), dur = 4000;
+  spinning = true;
+  function tick(now){
+    var t = Math.min(1, (now-t0)/dur), e = 1 - Math.pow(1-t, 3);
+    angle = from + (target-from)*e;
+    drawWheel();
+    if(t < 1) requestAnimationFrame(tick);
+    else { spinning = false; landed = index; if(done) done(); }
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ------------------------------------------------------------- the camera */
+var stream = null, raf = 0, busy = false, lastText = '', lastAt = 0;
+/* `running` as well as the frame handle: the loop is async, so a call already
+   in flight when the handle is cancelled would re-arm itself afterwards and
+   the camera would go on decoding underneath the wheel. */
+var running = false, lastLook = 0;
+/* Decoding is not cheap -- a full frame through jsQR -- and doing it on every
+   animation frame leaves nothing for the spin. Four times a second reads a
+   code held up to the lens just as quickly and costs a fraction of it. */
+var LOOK_MS = 250;
+var video = $('video'), work = document.createElement('canvas'), wctx = work.getContext('2d', {willReadFrequently:true});
+var detector = null;
+try { if('BarcodeDetector' in window) detector = new window.BarcodeDetector({formats:['qr_code']}); } catch(e){ detector = null; }
+
+function camNote(t){ $('camNote').textContent = t; }
+
+async function startCam(){
+  show('camWrap', true); show('wheelWrap', false); show('result', false); show('oops', false);
+  $('head').textContent = 'Scan a gift code';
+  $('lead').textContent = 'The camera stays on. Scan one visitor after another.';
+  if(stream){ running = true; loop(); return; }
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'} }, audio:false });
+    video.srcObject = stream;
+    await video.play();
+    camNote('Hold the visitor’s code inside the square.');
+    loop();
+  }catch(err){
+    camNote('');
+    fail('The camera did not open: ' + (err && err.message || err) +
+         '. Allow camera access for this site, then tap below.');
+  }
+}
+function stopLoop(){ running = false; if(raf) cancelAnimationFrame(raf); raf = 0; }
+
+function readFrame(){
+  if(!video.videoWidth) return null;
+  var w = Math.min(520, video.videoWidth), h = Math.round(video.videoHeight * (w/video.videoWidth));
+  work.width = w; work.height = h;
+  wctx.drawImage(video, 0, 0, w, h);
+  var img = wctx.getImageData(0, 0, w, h);
+  if(typeof jsQR === 'function'){
+    var r = jsQR(img.data, w, h, {inversionAttempts:'dontInvert'});
+    return r && r.data ? r.data : null;
+  }
+  return null;
+}
+
+async function loop(){
+  if(!running) return;
+  raf = requestAnimationFrame(loop);
+  if(busy || video.readyState < 2) return;
+  if(Date.now() - lastLook < LOOK_MS) return;
+  lastLook = Date.now();
+  var text = null;
+  if(detector){
+    try{ var hits = await detector.detect(video); if(hits && hits.length) text = hits[0].rawValue; }catch(e){ detector = null; }
+  }
+  if(!text) text = readFrame();
+  if(!text) return;
+  /* the same code sitting in front of the lens is one scan, not thirty */
+  if(text === lastText && Date.now() - lastAt < 4000) return;
+  lastText = text; lastAt = Date.now();
+  handle(text);
+}
+
+/* A code is the claim in a redeem link, or the claim on its own. Anything
+   else under the lens -- a product barcode, somebody's boarding pass -- is
+   not ours and must not be sent anywhere. */
+function claimFrom(text){
+  var s = String(text || '').trim();
+  var m = s.match(/[?&]c=([0-9a-fA-F-]{36})/);
+  if(m) return m[1];
+  if(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s)) return s;
+  return '';
+}
+
+/* ------------------------------------------------------------- the flow */
+var state = { stage:'start', product:'', already:false, claim:'' };
+function fail(msg){
+  state.stage = 'fail';
+  stopLoop(); show('camWrap', false); show('wheelWrap', false); show('result', false);
+  $('lead').textContent = '';
+  $('oopsText').textContent = msg;
+  show('oops', true);
+}
+function reveal(j){
+  state.stage = 'done'; state.product = j.product; state.already = !!j.already;
+  $('prize').textContent = j.product;
+  $('resTitle').textContent = j.already ? 'Already redeemed' : 'The wheel says';
+  $('resText').textContent = j.already
+    ? 'This code was already used. The gift it got is above — do not hand out a second one.'
+    : 'Hand this product to the visitor. The code is now spent and cannot be scanned again.';
+  $('resMeta').textContent = (j.name ? j.name+' · ' : '') + (j.score ? j.score+' points' : '') +
+    (j.already && j.at ? ' · redeemed '+String(j.at).slice(0,16) : '');
+  show('result', true);
+  $('lead').textContent = '';
+}
+
+function handle(text){
+  var claim = claimFrom(text);
+  if(!claim){ camNote('That is not a Facerinna gift code.'); return; }
+  busy = true; stopLoop();
+  state.claim = claim;
+  show('camWrap', false);
+  $('head').textContent = 'Gift wheel';
+  $('lead').textContent = 'Spending the code…';
+  post({ action:'admin.gift.redeem', token:token(), claim:claim }).then(function(j){
+    if(!j || j.ok !== true){
+      var err = (j && j.error) || 'no answer';
+      if(/signed out/i.test(err)){ drop(); return gate('This counter’s sign-in has expired. Sign in again.'); }
+      return fail(err);
+    }
+    products = j.products || [];
+    $('who').innerHTML = 'One gift per device · <b>the pick is made by the booth script</b>, not by this phone';
+    if(j.already || j.index < 0 || !products.length){ return reveal(j); }
+    show('wheelWrap', true); drawWheel();
+    $('lead').textContent = 'Spinning…';
+    state.stage = 'spin';
+    spinTo(j.index, function(){ reveal(j); });
+  }).catch(function(e){
+    fail('Could not reach the booth script: ' + (e && e.message || e));
+  });
+}
+
+function nextOne(){
+  busy = false; lastText = ''; lastAt = 0;
+  show('result', false); show('oops', false); show('wheelWrap', false);
+  angle = 0;
+  startCam();
+}
+$('next').addEventListener('click', nextOne);
+$('again').addEventListener('click', nextOne);
+
+/* ------------------------------------------------------------- signing in */
+function gate(why){
+  stopLoop(); show('camWrap', false); show('wheelWrap', false); show('result', false); show('oops', false);
+  $('head').textContent = 'Booth counter';
+  $('lead').textContent = why || '';
+  show('gate', true);
+  $('gateMail').focus();
+}
+var stage = 'email';
+function say(t, bad){ var s = $('gateSay'); s.className = 'say' + (bad ? ' bad' : ''); s.textContent = t; }
+$('gateForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var addr = $('gateMail').value.trim(), go = $('gateGo');
+  if(stage === 'email'){
+    go.disabled = true; go.textContent = 'One moment…';
+    post({ action:'code', email:addr }).then(function(j){
+      go.disabled = false; go.textContent = 'Open the counter';
+      if(!j || j.ok !== true) return say((j && j.error) || 'That did not work. Try again.', true);
+      stage = 'code';
+      $('gateCode').classList.remove('hidden'); $('gateCode').focus();
+      say('If that address is on the admin list, a code is on its way. It lasts ten minutes.');
+    }).catch(function(err){ go.disabled=false; go.textContent='Send me a code';
+      say('Could not reach the booth script: ' + (err && err.message || err), true); });
+    return;
+  }
+  go.disabled = true; go.textContent = 'One moment…';
+  post({ action:'redeem', email:addr, code:$('gateCode').value }).then(function(j){
+    go.disabled = false; go.textContent = 'Open the counter';
+    if(j && j.ok === true && j.token){
+      keep(j.token);
+      show('gate', false);
+      say('');
+      return startCam();
+    }
+    var why = (j && j.reason) || '';
+    say(why === 'badcode'     ? 'That code is not right.' + (j && j.left ? ' ' + j.left + ' more ' + (j.left===1?'try':'tries') + '.' : '')
+      : why === 'codeexpired' ? 'That code has run out. Ask for another.'
+      : why === 'toomany'     ? 'Too many wrong tries. Ask for a new code.'
+      : why === 'revoked'     ? 'That address is no longer on the admin list.'
+      : why === 'nocode'      ? 'No code has been sent to that address yet.'
+      : 'That did not work. Try again.', true);
+    if(why === 'codeexpired' || why === 'toomany' || why === 'nocode'){
+      stage = 'email'; $('gateCode').value=''; $('gateCode').classList.add('hidden'); go.textContent='Send me a code';
+    }
+  }).catch(function(err){ go.disabled=false; go.textContent='Open the counter';
+    say('Could not reach the booth script: ' + (err && err.message || err), true); });
+});
+
+/* The camera is given up when the screen goes away and taken back when it
+   returns, so a counter phone in a pocket is not holding it all afternoon. */
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden'){ stopLoop(); }
+  else if(!busy && !$('camWrap').classList.contains('hidden')){ running = true; loop(); }
+});
+
+if(token()) startCam(); else gate('Sign in once and this screen stays signed in.');
+
+/* the tests, and nothing else */
+window.__scan = {
+  state: function(){ return state; }, handle: handle, claimFrom: claimFrom,
+  products: function(){ return products; }, angle: function(){ return angle; },
+  landed: function(){ return landed; }, spinning: function(){ return spinning; },
+  next: nextOne, gate: gate, decoder: function(){ return typeof jsQR === 'function'; }
+};
+})();
+</script>
+</body>
+</html>
