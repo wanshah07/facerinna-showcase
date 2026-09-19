@@ -35,7 +35,10 @@ const srv=http.createServer((req,res)=>{
       let b={}; try{ b=JSON.parse(body||'{}'); }catch(e){}
       G.seen.push(b.action);
       let out={ok:false,error:'unknown action'};
-      if(b.action==='config') out={ok:true,settings:{page_mode:'open',welcome:'show',gift_active:G.active,gift_points:G.points},segments:[],sections:[],section_states:[]};
+      /* The bar is per game now and the script works it out, so the answer
+         carries a map rather than a number for the page to parse. */
+      if(b.action==='config') out={ok:true,settings:{page_mode:'open',welcome:'show',gift_active:G.active,gift_points:'facy-run = '+G.points},
+        gift_needs:{'facy-run':G.points}, gift_games:['facy-run'], segments:[],sections:[],section_states:[]};
       else if(b.action==='gift.claim'){
         if(G.active!=='yes') out={ok:false,reason:'inactive'};
         else if(!/^[A-Za-z0-9_-]{6,40}$/.test(String(b.device||''))) out={ok:false,reason:'device'};

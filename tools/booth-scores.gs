@@ -97,7 +97,8 @@ var GAMES = {
   'shelf-shot': { name: 'Shelf Shot', max: 100000 },
   'deep-lab':   { name: 'Deep Lab',   max: 100000 },
   'lab-run':    { name: 'Lab Run',    max: 100000 },
-  'facy-run':   { name: 'Facy Run',   max: 100000 }
+  'facy-run':   { name: 'Facy Run',   max: 100000 },
+  'skin-iq':    { name: 'Skin IQ',    max: 5 }
 };
 
 /* Ceilings start generous on purpose. Watch the real scores for an hour, then

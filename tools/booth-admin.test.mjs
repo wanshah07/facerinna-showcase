@@ -295,12 +295,14 @@ check('no action at all', call({}).ok===false);
    bar, one claim per device, one spin per claim, and that the product is
    chosen HERE and written before it is answered -- the phone that scans is
    told where the wheel stops, it does not decide. */
-console.log('\nthe gift at the end of Facy Run');
+console.log('\nthe gift at the end of a game');
 call({action:'admin.settings',token,settings:{page_mode:'open',passcode:''}});
 check('off until an admin turns it on', call({action:'config'}).settings.gift_active==='no');
-check('...and the bar ships at six thousand', call({action:'config'}).settings.gift_points==='6000');
+check('...and ships with a bar for Facy Run and none for the rest',
+  (()=>{ const c=call({action:'config'}); return c.gift_needs['facy-run']===6000
+    && Object.keys(c.gift_needs).length===1; })(), call({action:'config'}).gift_needs);
 check('a run cannot claim while it is off',
-  call({action:'gift.claim',device:'dev1abcd',score:9000}).reason==='inactive');
+  call({action:'gift.claim',device:'dev1abcd',score:9000,game:'facy-run'}).reason==='inactive');
 check('it cannot be switched on with nothing on the wheel',
   call({action:'admin.settings',token,settings:{gift_active:'yes',gift_products:''}}).ok===false);
 check('the wheel keeps its default products', call({action:'config'}).settings.gift_products.split('\n').length>=8);
@@ -311,19 +313,41 @@ check('a stranger cannot', call({action:'admin.settings',settings:{gift_active:'
 
 console.log('\nclaiming');
 check('a run under the bar is told how short it fell',
-  (()=>{ const x=call({action:'gift.claim',device:'dev1abcd',score:5999}); return x.reason==='short' && x.need===6000; })());
-check('a score off the scale is refused', call({action:'gift.claim',device:'dev1abcd',score:999999}).reason==='score');
-check('a device id that is not one is refused', call({action:'gift.claim',device:'x',score:9000}).reason==='device');
+  (()=>{ const x=call({action:'gift.claim',device:'dev1abcd',score:5999,game:'facy-run'}); return x.reason==='short' && x.need===6000; })());
+check('a score off the scale is refused', call({action:'gift.claim',device:'dev1abcd',score:999999,game:'facy-run'}).reason==='score');
+check('a device id that is not one is refused', call({action:'gift.claim',device:'x',score:9000,game:'facy-run'}).reason==='device');
 const c1=call({action:'gift.claim',device:'dev1abcd',score:6000,name:'Ahmad',game:'facy-run'});
 check('exactly the bar is enough', c1.ok===true && /^[0-9a-f-]{36}$/.test(c1.claim), c1);
 check('...and the row is in the Gifts tab', (tabs['Gifts']||{rows:[]}).rows.some(x=>x[0]===c1.claim && x[1]==='dev1abcd'));
-const c2=call({action:'gift.claim',device:'dev1abcd',score:9500,name:'Ahmad'});
+const c2=call({action:'gift.claim',device:'dev1abcd',score:9500,name:'Ahmad',game:'facy-run'});
 check('the same device asking again gets the same claim, not a second', c2.claim===c1.claim);
 check('...and a better score does not buy another', (tabs['Gifts'].rows.filter(x=>x[1]==='dev1abcd').length)===1);
-const c3=call({action:'gift.claim',device:'dev2efgh',score:7000,name:'=SUM(A1)'});
+const c3=call({action:'gift.claim',device:'dev2efgh',score:7000,name:'=SUM(A1)',game:'facy-run'});
 check('another device gets its own', c3.ok===true && c3.claim!==c1.claim);
 check('a name that would be a formula is stored as text',
   String(tabs['Gifts'].rows.find(x=>x[0]===c3.claim)[4]).charAt(0)==="'");
+
+console.log('\na bar per game, because the scales have nothing in common');
+{
+  call({action:'admin.settings',token,settings:{gift_points:'facy-run = 6000\nskin-iq = 4'}});
+  const cfg = call({action:'config'});
+  check('the script works the figures out, so no page has to parse them',
+    cfg.gift_needs['facy-run']===6000 && cfg.gift_needs['skin-iq']===4, cfg.gift_needs);
+  check('...and says which games can have one at all',
+    Array.isArray(cfg.gift_games) && cfg.gift_games.indexOf('uv-card')<0, cfg.gift_games);
+  check('four out of five wins the quiz its gift, where it would fail Facy Run',
+    call({action:'gift.claim',device:'quizdev1',score:4,game:'skin-iq'}).ok===true
+    && call({action:'gift.claim',device:'quizdev2',score:4,game:'facy-run'}).reason==='short');
+  check('a game with no figure set offers nothing, rather than everything',
+    call({action:'gift.claim',device:'labdev01',score:9000,game:'match-lab'}).reason==='nogame');
+  check('a claim naming no game at all is refused',
+    call({action:'gift.claim',device:'nogamedv',score:9000}).reason==='nogame');
+  check('the single number the setting used to hold still means every game',
+    (()=>{ call({action:'admin.settings',token,settings:{gift_points:'6000'}});
+           const c=call({action:'config'});
+           return c.gift_needs['match-lab']===6000 && c.gift_needs['facy-run']===6000; })());
+  call({action:'admin.settings',token,settings:{gift_points:'facy-run = 6000'}});
+}
 
 console.log('\nspinning');
 check('a stranger cannot redeem', call({action:'admin.gift.redeem',claim:c1.claim}).ok===false);
@@ -339,13 +363,13 @@ check('...written on the row before it was answered',
 const s2=call({action:'admin.gift.redeem',token,claim:c1.claim});
 check('a second scan is a receipt, not a second prize', s2.ok===true && s2.already===true && s2.product===s1.product);
 check('...and the visitor side now says so too',
-  (()=>{ const x=call({action:'gift.claim',device:'dev1abcd',score:9000}); return x.redeemed===true && x.product===s1.product; })());
+  (()=>{ const x=call({action:'gift.claim',device:'dev1abcd',score:9000,game:'facy-run'}); return x.redeemed===true && x.product===s1.product; })());
 check('the pick is random across the wheel',
-  (()=>{ const seen=new Set(); for(let i=0;i<60;i++){ const c=call({action:'gift.claim',device:'rnd'+String(i).padStart(6,'0'),score:8000});
+  (()=>{ const seen=new Set(); for(let i=0;i<60;i++){ const c=call({action:'gift.claim',device:'rnd'+String(i).padStart(6,'0'),score:8000,game:'facy-run'});
            seen.add(call({action:'admin.gift.redeem',token,claim:c.claim}).product); } return seen.size>=3; })());
 check('switching it off stops new claims but not the one already earned',
   (()=>{ call({action:'admin.settings',token,settings:{gift_active:'no'}});
-         return call({action:'gift.claim',device:'dev9zzzz',score:9000}).reason==='inactive'
+         return call({action:'gift.claim',device:'dev9zzzz',score:9000,game:'facy-run'}).reason==='inactive'
              && call({action:'admin.gift.redeem',token,claim:c3.claim}).ok===true; })());
 
 console.log('\nsigning in with a code, from any device');

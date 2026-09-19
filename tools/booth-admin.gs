@@ -106,11 +106,21 @@ var SETTING_KEYS = {
   privacy_retention: '',
   /* The gift at the end of Facy Run. Off until an admin turns it on, so a
      visitor cannot earn a QR code on a day nobody is at the counter to scan
-     it. gift_points is what a run has to score; gift_products is the wheel,
-     one product per line, chosen at random ON THE SCRIPT when the admin
-     scans, so the phone doing the spinning has no say in what it lands on. */
+     it. gift_products is the wheel, one product per line, chosen at random ON
+     THE SCRIPT when the admin scans, so the phone doing the spinning has no
+     say in what it lands on.
+
+     gift_points is one line per game -- "facy-run = 6000" -- because the
+     games are scored on scales with nothing to do with each other: six
+     thousand is a good run of Facy Run and unreachable in a quiz marked out
+     of five. A game with no line offers no gift, which is the safe way round:
+     a figure guessed too low hands one to everybody. Watch an hour of real
+     scores on the board, then fill these in.
+
+     A bare number with no lines is read as the figure for every game, so the
+     single number this setting used to hold still means what it meant. */
   gift_active:   'no',
-  gift_points:   '6000',
+  gift_points:   'facy-run = 6000',
   gift_products: 'Niacinamide Brightening Serum Sunscreen SPF50 PA++++\n' +
                  '2% Salicylic Acid Acne Serum\n' +
                  'Ceramide B5 Balancing Moisturizer\n' +
@@ -121,7 +131,14 @@ var SETTING_KEYS = {
                  '5% B5 Intensive Barrier Cream'
 };
 var PRIVATE_SETTINGS = { passcode: true };
-var GIFT_MAX_SCORE = 100000;   /* the same ceiling booth-scores.gs applies */
+var GIFT_MAX_SCORE = 100000;
+
+/* The games that keep a score, so can have a bar to clear. UV Card is absent
+   on purpose: it deals a random token rather than scoring a performance, and
+   a gift for luck sits oddly beside one for a good run -- it hands out its
+   own prize already. */
+var GIFT_GAMES = ['match-lab', 'pack-match', 'shelf-shot', 'deep-lab',
+                  'lab-run', 'facy-run', 'skin-iq'];   /* the same ceiling booth-scores.gs applies */
 
 /* Where a segment may be placed: after one of these sections, or at the end.
    Sent to the admin page so its menu cannot drift from the real page. */
@@ -638,9 +655,34 @@ function orderSegments_(b, by) {
 
 /* ------------------------------------------------------------- the actions */
 
+/* What each game has to score, worked out here so no page has to parse it.
+   Two pages reading one format is two places for it to drift; they get a
+   plain map of id to number and look theirs up. */
+function giftNeeds_(raw) {
+  var out = {};
+  var text = String(raw == null ? '' : raw).trim();
+  if (!text) return out;
+  if (/^\d+$/.test(text)) {                 /* the old single number */
+    var all = parseInt(text, 10);
+    GIFT_GAMES.forEach(function (id) { out[id] = all; });
+    return out;
+  }
+  text.split(/[\r\n,;]+/).forEach(function (line) {
+    var bits = String(line).split(/[=:]/);
+    if (bits.length < 2) return;
+    var id = bits[0].trim().toLowerCase();
+    var n = parseInt(String(bits[1]).replace(/[^0-9]/g, ''), 10);
+    if (id && !isNaN(n) && n > 0) out[id] = n;
+  });
+  return out;
+}
+
 function config_() {
-  return json_({ ok: true, settings: publicSettings_(), segments: publicSegments_(),
-                 sections: SECTIONS, section_states: publicSections_(), at: Date.now() });
+  var set = publicSettings_();
+  return json_({ ok: true, settings: set, segments: publicSegments_(),
+                 sections: SECTIONS, section_states: publicSections_(),
+                 gift_games: GIFT_GAMES, gift_needs: giftNeeds_(set.gift_points),
+                 at: Date.now() });
 }
 /* One door-opener for three kinds of door: the whole page, one section of it,
    or one segment. A section or segment with no passcode of its own falls back
@@ -733,7 +775,7 @@ function adminSettings_(b, email) {
     if (k === 'page_mode' && ['open', 'locked', 'hidden'].indexOf(v) < 0) v = 'open';
     if (k === 'welcome') v = yes_(v) ? 'show' : 'hide';
     if (k === 'gift_active') v = yes_(v) ? 'yes' : 'no';
-    if (k === 'gift_points') { v = String(parseInt(v, 10) || 0); if (+v < 1) v = SETTING_KEYS.gift_points; }
+    if (k === 'gift_points') v = String(v == null ? '' : v).slice(0, 600);
     if (k === 'passcode') v = v.slice(0, 64);
     else if (k === 'gift_products') v = v.slice(0, 2000);
     else v = v.slice(0, 400);
@@ -804,7 +846,10 @@ function giftPublic_(r) {
 function giftClaim_(b) {
   var all = settings_();
   var active = yes_((('gift_active' in all) ? all.gift_active : SETTING_KEYS.gift_active));
-  var need = parseInt((('gift_points' in all) ? all.gift_points : SETTING_KEYS.gift_points), 10) || 6000;
+  var needs = giftNeeds_(('gift_points' in all) ? all.gift_points : SETTING_KEYS.gift_points);
+  var need = needs[String(b && b.game || '').toLowerCase()];
+  /* No figure for this game is not "everything qualifies": it is no gift. */
+  if (!need) return json_({ ok: false, reason: 'nogame' });
   if (!active) return json_({ ok: false, reason: 'inactive' });
 
   var device = String(b.device || '').trim();

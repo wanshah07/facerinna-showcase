@@ -83,6 +83,10 @@
   .secctl .lockonly{display:none}
   .item.is-locked .secctl .lockonly{display:block}
   .item.is-hidden .t{opacity:.55;text-decoration:line-through}
+.giftrows{display:grid;gap:8px;margin:6px 0 4px}
+.giftrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0}
+.giftrow span{font-size:14px}
+.giftrow input{max-width:130px}
 </style>
 </head>
 <body>
@@ -144,11 +148,12 @@
         <textarea id="hiddenMessage"></textarea>
         <h2 style="margin-top:20px">Welcome strip</h2>
         <label class="check"><input type="checkbox" id="welcome"> Show “WELCOME TO FACERINNA BOOTH” under the hero</label>
-        <h2 style="margin-top:20px">Facy Run gift</h2>
-        <p class="note">Facy Run ends on a QR code once a run scores enough. Scan it with this phone, signed in here, and the wheel picks the product. One gift per device. Leave it off on a day nobody is at the counter to scan.</p>
+        <h2 style="margin-top:20px">The gift at the end of a game</h2>
+        <p class="note">A game ends on a QR code once it scores enough. Scan it with this phone, signed in here, and the wheel picks the product. One gift per device, whichever game earned it. Leave it off on a day nobody is at the counter to scan.</p>
         <label class="check"><input type="checkbox" id="giftActive"> Gift QR code is on</label>
-        <label for="giftPoints">Points a run needs</label>
-        <input type="number" id="giftPoints" min="1" step="100" placeholder="6000" style="max-width:160px">
+        <label>What each game has to score</label>
+        <p class="note">The games are scored on scales with nothing to do with each other, so each has its own figure. <b>Leave one empty and that game offers no gift</b> — the safe way round, since a figure set too low hands one to everybody. Watch an hour of real scores on the booth board, then fill these in. UV Card is not here: it deals a random number rather than scoring a run, and hands out its own prize already.</p>
+        <div id="giftPoints" class="giftrows"></div>
         <label for="giftProducts">Products on the wheel — one per line</label>
         <textarea id="giftProducts" style="min-height:120px" placeholder="One product name per line"></textarea>
         <div class="row" style="margin-top:18px"><button class="btn" id="saveSettings" type="button">Save settings</button><span class="note" id="settingsState"></span></div>
@@ -355,6 +360,49 @@ $('secList').addEventListener('click', function(e){
 });
 
 /* settings */
+/* One row per game that keeps a score. Together they make the setting the
+   booth script parses: a line per game. An empty box writes no line, and no
+   line means that game offers no gift. */
+var GIFT_GAMES = [
+  ['match-lab',  'Match Lab'],
+  ['pack-match', 'Pack Match'],
+  ['shelf-shot', 'Shelf Shot'],
+  ['deep-lab',   'Deep Lab'],
+  ['lab-run',    'Lab Run'],
+  ['facy-run',   'Facy Run'],
+  ['skin-iq',    'Skin IQ (out of 5)']
+];
+function giftRows(raw){
+  var have = {}, text = String(raw || '').trim();
+  if(/^\d+$/.test(text)) GIFT_GAMES.forEach(function(g){ have[g[0]] = text; });
+  else text.split(/[\r\n,;]+/).forEach(function(line){
+    var bits = String(line).split(/[=:]/);
+    if(bits.length < 2) return;
+    var n = String(bits[1]).replace(/[^0-9]/g,'');
+    if(n) have[bits[0].trim().toLowerCase()] = n;
+  });
+  var box = $('giftPoints');
+  box.textContent = '';
+  GIFT_GAMES.forEach(function(g){
+    var row = document.createElement('label'); row.className = 'giftrow';
+    var lab = document.createElement('span'); lab.textContent = g[1];
+    var inp = document.createElement('input');
+    inp.type = 'number'; inp.min = '1'; inp.step = '1'; inp.placeholder = 'no gift';
+    inp.value = have[g[0]] || '';
+    inp.setAttribute('data-game', g[0]);
+    inp.setAttribute('aria-label', 'Score needed for ' + g[1]);
+    row.appendChild(lab); row.appendChild(inp);
+    box.appendChild(row);
+  });
+}
+function giftLines(){
+  var out = [];
+  [].forEach.call($('giftPoints').querySelectorAll('input[data-game]'), function(i){
+    var n = parseInt(i.value, 10);
+    if(n > 0) out.push(i.getAttribute('data-game') + ' = ' + n);
+  });
+  return out.join('\n');
+}
 function fillSettings(s){
   var mode = s.page_mode==='locked' ? 'modeLocked' : s.page_mode==='hidden' ? 'modeHidden' : 'modeOpen';
   $(mode).checked = true;
@@ -367,7 +415,7 @@ function fillSettings(s){
   $('privAddress').value = s.privacy_address || '';
   $('privRetention').value = s.privacy_retention || '';
   $('giftActive').checked = /^(yes|y|true|1|on)$/i.test(String(s.gift_active||'no'));
-  $('giftPoints').value = s.gift_points || '6000';
+  giftRows(s.gift_points || '');
   $('giftProducts').value = s.gift_products || '';
   $('settingsState').textContent = '';
 }
@@ -378,7 +426,7 @@ $('saveSettings').addEventListener('click', function(){
                    hidden_message:$('hiddenMessage').value, welcome: $('welcome').checked ? 'show' : 'hide',
                    privacy_entity:$('privEntity').value, privacy_email:$('privEmail').value,
                    privacy_address:$('privAddress').value, privacy_retention:$('privRetention').value,
-                   gift_active: $('giftActive').checked ? 'yes' : 'no', gift_points:$('giftPoints').value,
+                   gift_active: $('giftActive').checked ? 'yes' : 'no', gift_points: giftLines(),
                    gift_products:$('giftProducts').value };
   if(mode==='locked' && !settings.passcode.trim()){ toast('Set a passcode before locking the page', true); $('passcode').focus(); return; }
   $('saveSettings').disabled = true; $('settingsState').textContent = 'Saving…';
