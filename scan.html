@@ -201,7 +201,7 @@ var stream = null, raf = 0, busy = false, lastText = '', lastAt = 0;
 /* `running` as well as the frame handle: the loop is async, so a call already
    in flight when the handle is cancelled would re-arm itself afterwards and
    the camera would go on decoding underneath the wheel. */
-var running = false, lastLook = 0;
+var running = false, lastLook = 0, looks = 0;
 /* Decoding is not cheap -- a full frame through jsQR -- and doing it on every
    animation frame leaves nothing for the spin. Four times a second reads a
    code held up to the lens just as quickly and costs a fraction of it. */
@@ -212,24 +212,56 @@ try { if('BarcodeDetector' in window) detector = new window.BarcodeDetector({for
 
 function camNote(t){ $('camNote').textContent = t; }
 
+/* A track the phone took back while this screen was away is worse than no
+   track: the video element keeps the last frame, so the counter would be
+   holding codes up to a picture. Asking for a new one is the only cure. */
+function live(){
+  if(!stream) return false;
+  var t = stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+  return !!t && t.readyState === 'live';
+}
+
 async function startCam(){
   show('camWrap', true); show('wheelWrap', false); show('result', false); show('oops', false);
   $('head').textContent = 'Scan a gift code';
   $('lead').textContent = 'The camera stays on. Scan one visitor after another.';
-  if(stream){ running = true; loop(); return; }
+  camNote('Hold the visitor’s code inside the square.');
+  /* Armed before anything else can return early: the loop reads this flag on
+     its first line, so a camera opened without it shows the counter a picture
+     that is never looked at. */
+  busy = false; running = true; stayAwake(true);
+  if(live()){ loop(); return; }
+  if(stream){ try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} stream = null; }
   try{
     stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'} }, audio:false });
     video.srcObject = stream;
     await video.play();
-    camNote('Hold the visitor’s code inside the square.');
     loop();
   }catch(err){
     camNote('');
     fail('The camera did not open: ' + (err && err.message || err) +
-         '. Allow camera access for this site, then tap below.');
+         '. Allow camera access for this site and tap below. If this phone ' +
+         'will not open its camera at all, redeem.html still works one ' +
+         'visitor at a time.');
   }
 }
 function stopLoop(){ running = false; if(raf) cancelAnimationFrame(raf); raf = 0; }
+
+/* A counter phone locks itself after half a minute, and a locked phone is a
+   counter typing a passcode between visitors. The lock is released whenever
+   the camera is not the thing on screen, and re-taken on the way back: the
+   phone still sleeps in somebody's pocket, just not mid-queue. */
+var wake = null;
+function stayAwake(on){
+  if(!('wakeLock' in navigator)) return;
+  if(!on){ if(wake){ try{ wake.release(); }catch(e){} wake = null; } return; }
+  if(wake) return;
+  try{
+    navigator.wakeLock.request('screen').then(function(w){
+      wake = w; w.addEventListener('release', function(){ wake = null; });
+    }).catch(function(){});
+  }catch(e){}
+}
 
 function readFrame(){
   if(!video.videoWidth) return null;
@@ -249,7 +281,7 @@ async function loop(){
   raf = requestAnimationFrame(loop);
   if(busy || video.readyState < 2) return;
   if(Date.now() - lastLook < LOOK_MS) return;
-  lastLook = Date.now();
+  lastLook = Date.now(); looks++;
   var text = null;
   if(detector){
     try{ var hits = await detector.detect(video); if(hits && hits.length) text = hits[0].rawValue; }catch(e){ detector = null; }
@@ -265,11 +297,14 @@ async function loop(){
 /* A code is the claim in a redeem link, or the claim on its own. Anything
    else under the lens -- a product barcode, somebody's boarding pass -- is
    not ours and must not be sent anywhere. */
+var UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
 function claimFrom(text){
   var s = String(text || '').trim();
-  var m = s.match(/[?&]c=([0-9a-fA-F-]{36})/);
-  if(m) return m[1];
-  if(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s)) return s;
+  /* Case-insensitively, and handed on in lower case: some encoders put a URL
+     into a QR in capitals, and the claim the script wrote is lower case. */
+  var m = s.match(new RegExp('[?&]c=(' + UUID + ')', 'i'));
+  if(m) return m[1].toLowerCase();
+  if(new RegExp('^' + UUID + '$').test(s)) return s.toLowerCase();
   return '';
 }
 
@@ -277,7 +312,7 @@ function claimFrom(text){
 var state = { stage:'start', product:'', already:false, claim:'' };
 function fail(msg){
   state.stage = 'fail';
-  stopLoop(); show('camWrap', false); show('wheelWrap', false); show('result', false);
+  busy = false; stopLoop(); stayAwake(false); show('camWrap', false); show('wheelWrap', false); show('result', false);
   $('lead').textContent = '';
   $('oopsText').textContent = msg;
   show('oops', true);
@@ -332,7 +367,7 @@ $('again').addEventListener('click', nextOne);
 
 /* ------------------------------------------------------------- signing in */
 function gate(why){
-  stopLoop(); show('camWrap', false); show('wheelWrap', false); show('result', false); show('oops', false);
+  busy = false; stopLoop(); stayAwake(false); show('camWrap', false); show('wheelWrap', false); show('result', false); show('oops', false);
   $('head').textContent = 'Booth counter';
   $('lead').textContent = why || '';
   show('gate', true);
@@ -378,11 +413,15 @@ $('gateForm').addEventListener('submit', function(e){
     say('Could not reach the booth script: ' + (err && err.message || err), true); });
 });
 
-/* The camera is given up when the screen goes away and taken back when it
-   returns, so a counter phone in a pocket is not holding it all afternoon. */
+/* Decoding stops when the screen goes away and starts again when it comes
+   back. The stream itself is kept so the next visitor is scanned the instant
+   the counter looks down -- but if the phone took the camera back while this
+   was in the background, startCam asks for a new one rather than reading a
+   frozen frame. */
 document.addEventListener('visibilitychange', function(){
-  if(document.visibilityState === 'hidden'){ stopLoop(); }
-  else if(!busy && !$('camWrap').classList.contains('hidden')){ running = true; loop(); }
+  if(document.visibilityState === 'hidden'){ stopLoop(); stayAwake(false); return; }
+  if(busy || $('camWrap').classList.contains('hidden')) return;
+  if(live()){ running = true; loop(); } else { startCam(); }
 });
 
 if(token()) startCam(); else gate('Sign in once and this screen stays signed in.');
@@ -392,7 +431,9 @@ window.__scan = {
   state: function(){ return state; }, handle: handle, claimFrom: claimFrom,
   products: function(){ return products; }, angle: function(){ return angle; },
   landed: function(){ return landed; }, spinning: function(){ return spinning; },
-  next: nextOne, gate: gate, decoder: function(){ return typeof jsQR === 'function'; }
+  next: nextOne, gate: gate, decoder: function(){ return typeof jsQR === 'function'; },
+  looking: function(){ return running; }, looks: function(){ return looks; },
+  awake: function(){ return !!wake; }
 };
 })();
 </script>
