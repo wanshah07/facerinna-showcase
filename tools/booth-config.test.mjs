@@ -613,7 +613,7 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
 
   /* the shipped numbers, where a test's shortened copy cannot stand in */
   const SRC = fs.readFileSync(ROOT+'/index.html','utf8');
-  chk('the timer it ships with is a minute and a half',   /var POLL_MS = 90000;/.test(SRC));
+  chk('the timer it ships with is three minutes',        /var POLL_MS = 180000;/.test(SRC));
   chk('the floor it ships with is fifteen seconds',       /window\.__boothAskFloorMs \|\| 15000/.test(SRC));
   chk('...and the four moments worth asking at are wired',
       /'visibilitychange','focus','pageshow','online'/.test(SRC));

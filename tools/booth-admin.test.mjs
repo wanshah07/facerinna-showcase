@@ -282,5 +282,63 @@ check('bad json is an answer, not a crash', JSON.parse(m.doPost({postData:{conte
 check('an unknown action', call({action:'dance'}).ok===false);
 check('no action at all', call({}).ok===false);
 
-console.log(ok? '\nadmin: sign in, settings, sections, segments, privacy' : '\nSOMETHING IS WRONG');
+/* ------------------------------------------------------------- the gift
+   Facy Run ends on a QR code. What is under test: the switch, the score
+   bar, one claim per device, one spin per claim, and that the product is
+   chosen HERE and written before it is answered -- the phone that scans is
+   told where the wheel stops, it does not decide. */
+console.log('\nthe gift at the end of Facy Run');
+call({action:'admin.settings',token,settings:{page_mode:'open',passcode:''}});
+check('off until an admin turns it on', call({action:'config'}).settings.gift_active==='no');
+check('...and the bar ships at six thousand', call({action:'config'}).settings.gift_points==='6000');
+check('a run cannot claim while it is off',
+  call({action:'gift.claim',device:'dev1abcd',score:9000}).reason==='inactive');
+check('it cannot be switched on with nothing on the wheel',
+  call({action:'admin.settings',token,settings:{gift_active:'yes',gift_products:''}}).ok===false);
+check('the wheel keeps its default products', call({action:'config'}).settings.gift_products.split('\n').length>=8);
+r=call({action:'admin.settings',token,settings:{gift_active:'yes'}});
+check('an admin switches it on', r.ok===true && call({action:'config'}).settings.gift_active==='yes');
+check('a stranger cannot', call({action:'admin.settings',settings:{gift_active:'no'}}).ok===false
+  && call({action:'config'}).settings.gift_active==='yes');
+
+console.log('\nclaiming');
+check('a run under the bar is told how short it fell',
+  (()=>{ const x=call({action:'gift.claim',device:'dev1abcd',score:5999}); return x.reason==='short' && x.need===6000; })());
+check('a score off the scale is refused', call({action:'gift.claim',device:'dev1abcd',score:999999}).reason==='score');
+check('a device id that is not one is refused', call({action:'gift.claim',device:'x',score:9000}).reason==='device');
+const c1=call({action:'gift.claim',device:'dev1abcd',score:6000,name:'Ahmad',game:'facy-run'});
+check('exactly the bar is enough', c1.ok===true && /^[0-9a-f-]{36}$/.test(c1.claim), c1);
+check('...and the row is in the Gifts tab', (tabs['Gifts']||{rows:[]}).rows.some(x=>x[0]===c1.claim && x[1]==='dev1abcd'));
+const c2=call({action:'gift.claim',device:'dev1abcd',score:9500,name:'Ahmad'});
+check('the same device asking again gets the same claim, not a second', c2.claim===c1.claim);
+check('...and a better score does not buy another', (tabs['Gifts'].rows.filter(x=>x[1]==='dev1abcd').length)===1);
+const c3=call({action:'gift.claim',device:'dev2efgh',score:7000,name:'=SUM(A1)'});
+check('another device gets its own', c3.ok===true && c3.claim!==c1.claim);
+check('a name that would be a formula is stored as text',
+  String(tabs['Gifts'].rows.find(x=>x[0]===c3.claim)[4]).charAt(0)==="'");
+
+console.log('\nspinning');
+check('a stranger cannot redeem', call({action:'admin.gift.redeem',claim:c1.claim}).ok===false);
+check('nonsense is not a claim', call({action:'admin.gift.redeem',token,claim:'abc'}).ok===false);
+check('an unknown claim is refused',
+  call({action:'admin.gift.redeem',token,claim:'00000000-0000-4000-8000-999999999999'}).ok===false);
+const s1=call({action:'admin.gift.redeem',token,claim:c1.claim});
+const wheel=call({action:'config'}).settings.gift_products.split('\n');
+check('an admin scan picks a product', s1.ok===true && s1.already===false && wheel.indexOf(s1.product)>=0, s1);
+check('...and says where on the wheel it is', s1.index===wheel.indexOf(s1.product) && s1.products.length===wheel.length);
+check('...written on the row before it was answered',
+  (()=>{ const row=tabs['Gifts'].rows.find(x=>x[0]===c1.claim); return row[7]===s1.product && !!row[6] && row[8]===OWNER; })());
+const s2=call({action:'admin.gift.redeem',token,claim:c1.claim});
+check('a second scan is a receipt, not a second prize', s2.ok===true && s2.already===true && s2.product===s1.product);
+check('...and the visitor side now says so too',
+  (()=>{ const x=call({action:'gift.claim',device:'dev1abcd',score:9000}); return x.redeemed===true && x.product===s1.product; })());
+check('the pick is random across the wheel',
+  (()=>{ const seen=new Set(); for(let i=0;i<60;i++){ const c=call({action:'gift.claim',device:'rnd'+String(i).padStart(6,'0'),score:8000});
+           seen.add(call({action:'admin.gift.redeem',token,claim:c.claim}).product); } return seen.size>=3; })());
+check('switching it off stops new claims but not the one already earned',
+  (()=>{ call({action:'admin.settings',token,settings:{gift_active:'no'}});
+         return call({action:'gift.claim',device:'dev9zzzz',score:9000}).reason==='inactive'
+             && call({action:'admin.gift.redeem',token,claim:c3.claim}).ok===true; })());
+
+console.log(ok? '\nadmin: sign in, settings, sections, segments, privacy, gifts' : '\nSOMETHING IS WRONG');
 process.exit(ok?0:1);

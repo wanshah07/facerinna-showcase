@@ -2329,12 +2329,12 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
   <div class="wrap">
     <div class="sec-head center reveal">
       <span class="eyebrow">Interactive · Booth Engagement</span>
-      <h2>Seven games, one booth</h2>
-      <p>Seven challenges built for the booth — five 3D arcade games, the UV Card lucky draw and the Skin IQ quiz, all on the spinning lab wheel. Score well and claim your reward at the booth.</p>
+      <h2>Eight games, one booth</h2>
+      <p>Eight challenges built for the booth — five 3D arcade games, Facy Run, the UV Card lucky draw and the Skin IQ quiz, all on the spinning lab wheel. Score well and claim your reward at the booth.</p>
     </div>
     <div class="cg-wrap reveal">
       <div class="cg" id="gameGallery" role="region" aria-roledescription="carousel"
-           aria-label="Circular 3D gallery of the seven booth games">
+           aria-label="Circular 3D gallery of the eight booth games">
         <div class="cg-ring" id="gameRing">
           <div class="cg-item" role="group" aria-label="Match Lab">
             <a class="cg-card" href="match-lab.html" data-art="0">
@@ -2446,6 +2446,18 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
               <span class="pill">Q <span class="k" id="qNum">1</span>/5</span>
               <span class="pill">Score <span class="k" id="scoreNum">0</span></span>
             </div>
+          </div>
+          <div class="cg-item" role="group" aria-label="Facy Run">
+            <a class="cg-card" href="facy-run.html" data-art="7">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">08</span>
+              <div class="cg-cap">
+                <h4>Facy Run</h4>
+                <em>Run · Jump · Learn</em>
+                <p>Prof Facy runs three zones — Skin Types, Skin Concerns, Ingredients. Bump the ? blocks, pick the right product at each signpost, stomp the breakouts. Score 6,000 for a gift.</p>
+                <span class="cc-play">▶ Play Facy Run</span>
+              </div>
+            </a>
           </div>
           <div class="progress"><i id="progBar"></i></div>
           <div class="q-text" id="qText"></div>
@@ -4594,7 +4606,8 @@ const GALLERY_DOCS = [
     {a:'#0C3F5C', b:'#49BEDC', ic:'🌊'},
     {a:'#14406E', b:'#6FB6F0', ic:'🏃'},
     {a:'#123256', b:'#8FD0F7', ic:'🧠'},
-    {a:'#2A1B5E', b:'#8D6BF0', ic:'🔦'}
+    {a:'#2A1B5E', b:'#8D6BF0', ic:'🔦'},
+    {a:'#0E4B7E', b:'#7EC8F5', ic:'🏃‍♂️'}
   ];
   ring.querySelectorAll('.cg-art').forEach(function(cv){
     const spec=ART[+cv.parentNode.dataset.art]||ART[0];
@@ -6280,7 +6293,7 @@ function launchConfetti(){
       setChips(['Clinical proof','Find my routine','Visit the booth']);return;
     }
     if(m.indexOf('game')>=0||m.indexOf('play')>=0||m.indexOf('main')>=0||m.indexOf('quiz')>=0||m.indexOf('bubble')>=0){
-      bot('Seven games at this booth 🎮<br><br>🧠 <b>Skin IQ Challenge</b> — 5 questions, score 4+ for a reward → <a href="#game">play here</a><br>🎯 Match Lab, 📦 Pack Match, 🛒 Shelf Shot, 🌊 Deep Lab &amp; 🏃 Lab Run — five 3D arcade challenges on our spinning game wheel → <a href="#game">see them all</a><br>🔦 <b>UV Card</b> — pick a brochure, slide the UV light, reveal your number → <a href="uv-card.html">play here</a>');
+      bot('Eight games at this booth 🎮<br><br>🏃 <b>Facy Run</b> — run Prof Facy through skin types, concerns and ingredients; 6,000 points earns a gift → <a href="facy-run.html">play here</a><br>🧠 <b>Skin IQ Challenge</b> — 5 questions, score 4+ for a reward → <a href="#game">play here</a><br>🎯 Match Lab, 📦 Pack Match, 🛒 Shelf Shot, 🌊 Deep Lab &amp; 🏃 Lab Run — five 3D arcade challenges on our spinning game wheel → <a href="#game">see them all</a><br>🔦 <b>UV Card</b> — pick a brochure, slide the UV light, reveal your number → <a href="uv-card.html">play here</a>');
       setChips(['Hero products','Visit the booth']);return;
     }
     if(m.indexOf('booth')>=0||m.indexOf('sample')>=0||m.indexOf('prize')>=0||m.indexOf('reward')>=0||m.indexOf('visit')>=0){
@@ -6720,7 +6733,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
      apply() is already idempotent and already drops a config identical to the
      one it last saw, so asking again costs a request and changes nothing when
      nothing changed. */
-  var POLL_MS = 90000;
+  var POLL_MS = 180000;   /* 90s first; halved the script's load at Wan's ask */
   var adminFlag = false, lastAsk = 0;
 
   function refresh(force){

@@ -144,6 +144,13 @@
         <textarea id="hiddenMessage"></textarea>
         <h2 style="margin-top:20px">Welcome strip</h2>
         <label class="check"><input type="checkbox" id="welcome"> Show “WELCOME TO FACERINNA BOOTH” under the hero</label>
+        <h2 style="margin-top:20px">Facy Run gift</h2>
+        <p class="note">Facy Run ends on a QR code once a run scores enough. Scan it with this phone, signed in here, and the wheel picks the product. One gift per device. Leave it off on a day nobody is at the counter to scan.</p>
+        <label class="check"><input type="checkbox" id="giftActive"> Gift QR code is on</label>
+        <label for="giftPoints">Points a run needs</label>
+        <input type="number" id="giftPoints" min="1" step="100" placeholder="6000" style="max-width:160px">
+        <label for="giftProducts">Products on the wheel — one per line</label>
+        <textarea id="giftProducts" style="min-height:120px" placeholder="One product name per line"></textarea>
         <div class="row" style="margin-top:18px"><button class="btn" id="saveSettings" type="button">Save settings</button><span class="note" id="settingsState"></span></div>
       </div>
       <div class="card" style="margin-bottom:18px">
@@ -359,6 +366,9 @@ function fillSettings(s){
   $('privEmail').value = s.privacy_email || '';
   $('privAddress').value = s.privacy_address || '';
   $('privRetention').value = s.privacy_retention || '';
+  $('giftActive').checked = /^(yes|y|true|1|on)$/i.test(String(s.gift_active||'no'));
+  $('giftPoints').value = s.gift_points || '6000';
+  $('giftProducts').value = s.gift_products || '';
   $('settingsState').textContent = '';
 }
 $('showPass').addEventListener('click', function(){ var p=$('passcode'); p.type = p.type==='password' ? 'text' : 'password'; this.textContent = p.type==='password' ? 'Show' : 'Hide'; });
@@ -367,7 +377,9 @@ $('saveSettings').addEventListener('click', function(){
   var settings = { page_mode:mode, passcode:$('passcode').value, lock_message:$('lockMessage').value,
                    hidden_message:$('hiddenMessage').value, welcome: $('welcome').checked ? 'show' : 'hide',
                    privacy_entity:$('privEntity').value, privacy_email:$('privEmail').value,
-                   privacy_address:$('privAddress').value, privacy_retention:$('privRetention').value };
+                   privacy_address:$('privAddress').value, privacy_retention:$('privRetention').value,
+                   gift_active: $('giftActive').checked ? 'yes' : 'no', gift_points:$('giftPoints').value,
+                   gift_products:$('giftProducts').value };
   if(mode==='locked' && !settings.passcode.trim()){ toast('Set a passcode before locking the page', true); $('passcode').focus(); return; }
   $('saveSettings').disabled = true; $('settingsState').textContent = 'Saving…';
   api('admin.settings', { settings:settings }).then(function(r){

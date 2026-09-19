@@ -104,7 +104,7 @@ check('one game returns rows',           one.ok && one.rows.length === 2);
 check('sorted best first',               one.rows[0].n === 'Ahmad' && one.rows[0].s === 450);
 check('one row per person',              one.rows.filter(x=>x.n==='Ahmad').length === 1);
 const all = get({all:'1', top:5});
-check('all=1 covers all five games',     Object.keys(all.games).length === 5);
+check('all=1 covers all six games',      Object.keys(all.games).length === 6);
 check('unknown game on read',            get({game:'nope'}).error === 'unknown game');
 
 console.log('\nthe cache: fast, but never stale enough to lie');

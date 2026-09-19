@@ -88,7 +88,7 @@
 var SHEET_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
 var TAB      = 'Scores';
 
-/* The five games, by the id each game page declares in window.FX_RANK. A post
+/* The six games, by the id each game page declares in window.FX_RANK. A post
    naming anything else is refused: it is either a typo or somebody poking, and
    neither belongs in the board. */
 var GAMES = {
@@ -96,7 +96,8 @@ var GAMES = {
   'pack-match': { name: 'Pack Match', max: 100000 },
   'shelf-shot': { name: 'Shelf Shot', max: 100000 },
   'deep-lab':   { name: 'Deep Lab',   max: 100000 },
-  'lab-run':    { name: 'Lab Run',    max: 100000 }
+  'lab-run':    { name: 'Lab Run',    max: 100000 },
+  'facy-run':   { name: 'Facy Run',   max: 100000 }
 };
 
 /* Ceilings start generous on purpose. Watch the real scores for an hour, then
