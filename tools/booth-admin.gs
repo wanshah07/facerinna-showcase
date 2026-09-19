@@ -730,6 +730,91 @@ function giftRedeem_(b, email) {
                  products: products, score: row.score, name: String(row.name || '') });
 }
 
+/* ----------------------------------------------------------------- the guide
+
+   The booth page carries a question mark beside the games. Behind it is this:
+   how the gift works at the counter, and how the two scripts were set up.
+
+   It is kept here rather than in the page for the reason the top of this file
+   gives about locking: the page is a public file, and anything written into it
+   can be read by anyone who opens the source, passcode or no passcode. This
+   text never reaches a browser that is not holding a live admin session -- an
+   address on the Admins tab, signed in on that device.
+
+   Blocks, not markup: the page builds every one of these with text nodes, so
+   nothing typed here can turn into HTML there. A *word in stars* comes out
+   bold, and that is the whole of the formatting. */
+
+var GUIDE_TITLE = 'Running the booth';
+
+var GUIDE = [
+  { t: 'note', s: 'You can read this because this device is signed in as an admin. Visitors cannot open it.' },
+
+  { t: 'h', s: 'At the counter' },
+  { t: 'ol', items: [
+    'A visitor finishes Facy Run. If the run scored enough, the result screen shows a QR code.',
+    'Scan it with the counter phone. The gift page opens and the wheel spins by itself.',
+    'It lands on one product. Hand that product over.',
+    'The code is now spent. Scanning it again shows the same product marked already redeemed, which is your check against giving a second gift.'
+  ] },
+  { t: 'p', s: 'The product is picked by the booth script, not by the phone that scans. Nobody at the counter can steer the wheel.' },
+
+  { t: 'h', s: 'The counter phone has to be signed in' },
+  { t: 'p', s: 'Once, on that phone: open *my.facerinna.com/admin.html*, enter an address that is on the Admins tab with active set to yes, and open the mailed link on that same phone. It stays signed in after that.' },
+  { t: 'p', s: 'A phone that is not signed in gets a sign-in card instead of a wheel, and nothing is spent.' },
+
+  { t: 'h', s: 'Turning the gift on, and off' },
+  { t: 'p', s: 'In the admin page, under *Facy Run gift*:' },
+  { t: 'ul', items: [
+    '*Gift QR code is on* -- untick it and runs stop showing the QR code. Codes already issued still redeem, so nobody is left holding a dead code.',
+    '*Points a run needs* -- 6,000 to begin with. About 14,950 are reachable in a run, so 6,000 asks for a good run, not a perfect one.',
+    '*Products on the wheel* -- one per line. Delete a line to take a product off the wheel, add one to put it on.'
+  ] },
+  { t: 'p', s: 'A saved change reaches the booth screens within three minutes, or at once if a screen is reopened. Ticking the gift on with no products is refused: the wheel cannot spin on nothing.' },
+
+  { t: 'h', s: 'One gift per device' },
+  { t: 'p', s: 'The limit is per device, not per run. A visitor who plays again on the same phone gets the same code back, already spent. A different phone is a different device, which is the honest limit a booth can hold without asking anyone for a name.' },
+
+  { t: 'h', s: 'Where the records are' },
+  { t: 'p', s: 'The scores workbook has a *Gifts* tab, one row per code:' },
+  { t: 'table', head: ['Column', 'What it holds'], rows: [
+    ['claim', 'the code inside the QR'],
+    ['device', 'the browser that earned it'],
+    ['game, score, name', 'the run that earned it'],
+    ['created', 'when the code was issued'],
+    ['redeemed', 'when it was scanned, blank until then'],
+    ['product', 'what the wheel gave'],
+    ['by', 'which admin scanned it']
+  ] },
+  { t: 'p', s: 'To clear a test claim of your own, delete its row.' },
+
+  { t: 'h', s: 'The two scripts, and which is which' },
+  { t: 'p', s: 'Only needed when the code changes. Each Apps Script project has exactly one doPost, so pasting a file into the wrong project takes that project\'s feature off the air. Check which one you have open under Deploy, Manage deployments, and read the web app address.' },
+  { t: 'table', head: ['File', 'Project', 'Its address starts'], rows: [
+    ['booth-scores.gs', 'booth scores', 'AKfycbx4zwb'],
+    ['booth-admin.gs', 'booth admin', 'AKfycbyXD0qJ']
+  ] },
+  { t: 'ol', items: [
+    'Open the project, select everything in the editor, delete it, paste the whole file, save.',
+    'For booth admin only: Run, then setUp. It adds only what is missing, which is the Gifts tab and the three gift rows on Settings.',
+    'Deploy, Manage deployments, the pencil, Version: *New version*, Deploy.'
+  ] },
+  { t: 'note', s: 'New version, never New deployment. A new deployment mints a different address, and both pages would still be pointing at the old one.' },
+
+  { t: 'h', s: 'Testing it before the doors open' },
+  { t: 'ol', items: [
+    'Play Facy Run past the points threshold. The QR code appears on the result screen.',
+    'Scan it with the counter phone. The wheel spins and lands.',
+    'Scan the same code again. No spin, just the receipt.',
+    'Delete that row from the Gifts tab afterwards, so a test does not sit in the records.'
+  ] }
+];
+
+/* A read, so it runs before the lock: nothing here writes. */
+function guide_(email) {
+  return json_({ ok: true, you: email, title: GUIDE_TITLE, blocks: GUIDE });
+}
+
 function doPost(e) {
   try {
     var b = {};
@@ -751,6 +836,7 @@ function doPost(e) {
     var email = auth_(b);
     if (!email) return json_({ ok: false, error: 'signed out' });
     if (action === 'admin.get') return adminGet_(email);
+    if (action === 'admin.guide') return guide_(email);
 
     var lock = LockService.getScriptLock();
     if (!lock.tryLock(10000)) return json_({ ok: false, error: 'busy, try again' });
