@@ -2452,6 +2452,18 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
               </div>
             </a>
           </div>
+          <div class="cg-item" role="group" aria-label="Facy Run">
+            <a class="cg-card" href="facy-run.html" data-art="7">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">08</span>
+              <div class="cg-cap">
+                <h4>Facy Run</h4>
+                <em>Run · Jump · Learn</em>
+                <p>Prof Facy runs three zones — Skin Types, Skin Concerns, Ingredients. Bump the ? blocks, pick the right product at each signpost, stomp the breakouts. Score 6,000 for a gift.</p>
+                <span class="cc-play">▶ Play Facy Run</span>
+              </div>
+            </a>
+          </div>
         </div>
       </div>
       <p class="cg-hint">🖱️ Scroll to rotate the gallery · drag to spin · tap a card to play</p>
@@ -2478,18 +2490,6 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
               <span class="pill">Q <span class="k" id="qNum">1</span>/5</span>
               <span class="pill">Score <span class="k" id="scoreNum">0</span></span>
             </div>
-          </div>
-          <div class="cg-item" role="group" aria-label="Facy Run">
-            <a class="cg-card" href="facy-run.html" data-art="7">
-              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
-              <span class="cg-num">08</span>
-              <div class="cg-cap">
-                <h4>Facy Run</h4>
-                <em>Run · Jump · Learn</em>
-                <p>Prof Facy runs three zones — Skin Types, Skin Concerns, Ingredients. Bump the ? blocks, pick the right product at each signpost, stomp the breakouts. Score 6,000 for a gift.</p>
-                <span class="cc-play">▶ Play Facy Run</span>
-              </div>
-            </a>
           </div>
           <div class="progress"><i id="progBar"></i></div>
           <div class="q-text" id="qText"></div>
@@ -6523,8 +6523,31 @@ addEventListener('orientationchange', function(){
    of it. A page that reloaded mid-scroll, mid-game or mid-passcode would look
    like a fault, and a visitor would be right to think so. */
 if ('serviceWorker' in navigator) addEventListener('load', function(){
-  navigator.serviceWorker.register('/sw.js').then(function(reg){
-    setInterval(function(){ try{ reg.update(); }catch(e){} }, 30*60*1000);
+  /* updateViaCache:'none' so a check for a new worker is answered by the
+     server and not by the browser's own stored copy of sw.js. Without it the
+     page can ask, be told from cache that nothing has changed, and sit on an
+     old edition for as long as that copy is considered fresh -- which is the
+     "clear your cache" this whole block exists to make unnecessary. */
+  navigator.serviceWorker.register('/sw.js', {updateViaCache:'none'}).then(function(reg){
+    /* A check is one conditional request. On a timer alone a booth screen can
+       be half an hour behind; the moment that matters is when somebody comes
+       back to it -- unlocked the tablet, returned to the tab, the wifi came
+       back -- so ask then too, at most once a minute however many of those
+       arrive at once. */
+    var last = 0, CHECK_MS = 60000;
+    function look(){
+      if(Date.now() - last < (window.__fxCheckMs || CHECK_MS)) return;
+      last = Date.now();
+      try{ reg.update(); }catch(e){}
+    }
+    window.__fxCheckNow = look;                /* the test drives this directly */
+    setInterval(look, 30*60*1000);
+    addEventListener('focus', look);
+    addEventListener('online', look);
+    addEventListener('pageshow', look);
+    addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible') look();
+    });
   }).catch(function(){});
 
   var touched = Date.now(), going = false;

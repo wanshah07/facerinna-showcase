@@ -69,10 +69,30 @@ chk('the page asks the worker to look again on a timer, so a screen that never n
    pinning here where a shortened copy could not hide it */
 chk('the shipped idle rule is a full minute, not something a test left behind',
     /var IDLE_MS = 60000;/.test(fs.readFileSync(path.join(ROOT,'index.html'),'utf8')));
+chk('...and so is the gap between checks',
+    /CHECK_MS = 60000;/.test(fs.readFileSync(path.join(ROOT,'index.html'),'utf8')));
+/* The browser keeps its own copy of sw.js and will answer a check from it.
+   Registered with updateViaCache 'none' the check goes to the server, which
+   is the difference between finding a new edition and being told there is
+   none by the very cache we are trying to get past. */
+chk('the check for a new worker goes to the server, not to the browser\'s copy of sw.js',
+    await p.evaluate(()=>navigator.serviceWorker.getRegistration().then(r=>r.updateViaCache))==='none');
 
 /* ---- a new version is published while the page is open ---- */
 over['/index.html']=page2; over['/sw.js']=sw2;
-await p.evaluate(()=>navigator.serviceWorker.getRegistration().then(r=>r.update()));
+/* Nothing below asks the worker to update. Coming back to the screen is the
+   trigger -- the tablet unlocked, the tab returned to, the wifi back -- and
+   that is the whole point: a booth screen should not need a person to know
+   that a new version exists. Only the once-a-minute throttle is shortened. */
+/* Watch for the registration finding a new worker, so the check below is
+   about that happening and not about something that was true anyway. */
+await p.evaluate(()=>navigator.serviceWorker.getRegistration().then(r=>{
+  window.__found = false;
+  r.addEventListener('updatefound', ()=>{ window.__found = true; });
+}));
+await p.evaluate(()=>{ window.__fxCheckMs = 1; dispatchEvent(new Event('focus')); });
+chk('coming back to the screen is itself a check: the page finds the new worker on its own',
+    await until(()=>p.evaluate(()=>window.__found===true), 20000));
 
 /* ---- it must NOT reload while somebody is using the screen ---- */
 await until(()=>p.evaluate(()=>!!navigator.serviceWorker.controller), 15000);
