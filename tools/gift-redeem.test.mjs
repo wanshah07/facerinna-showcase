@@ -66,7 +66,13 @@ console.log('a phone that is not signed in');
 {
   const {c,p,errs}=await open_('?c='+CLAIM, '');
   chk('is told to sign in, and nothing is spent', await vis(p,'signin') && !(await vis(p,'wheelWrap')) && S.seen.length===0, S.seen);
-  chk('...with a way to the admin', await p.$eval('#signin a', a=>a.getAttribute('href'))==='admin.html');
+  /* The counter screen first, the admin second: this page signs a browser in
+     per scan, and the phone's camera does not reliably hand the scan back to
+     the browser that was signed in. The counter screen is the way out of
+     that, so it is the one offered first. */
+  const ways = await p.$$eval('#signin a', as=>as.map(a=>a.getAttribute('href')));
+  chk('...offered the counter screen first, and the admin after it',
+      ways[0]==='scan.html' && ways.indexOf('admin.html')>0, ways);
   chk('no page errors', errs.length===0, errs[0]);
   await c.close();
 }

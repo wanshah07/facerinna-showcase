@@ -45,8 +45,9 @@
 
 <div class="card hidden" id="signin">
   <h2>Sign in first</h2>
-  <p>This page only works on a phone that is signed in to the booth admin. Sign in once, then scan the visitor's code again.</p>
-  <a class="btn" href="admin.html">Open the admin</a>
+  <p>This page only works on a phone signed in to the booth admin. Better: open the counter screen instead — it signs in once and then reads one visitor after another without leaving the page.</p>
+  <a class="btn" href="scan.html">Open the counter screen</a>
+  <a class="btn ghost" href="admin.html">Admin</a>
 </div>
 
 <div class="card hidden" id="result">
@@ -84,12 +85,27 @@ function post(body){
 /* ------------------------------------------------------------- the wheel */
 var cv = $('wheel'), g = cv.getContext('2d'), R = cv.width/2;
 var COLS = ['#3FA6EE','#6FDCC6','#F6C744','#FFA75C','#B9A6FF','#7ED957','#FFB3C7','#8FD0F7','#2E7CBE','#FFE066'];
-var products = [], angle = 0;
+var products = [], angle = 0, pics = {};
+
+/* A slice carries the product's own picture where there is one, because a
+   counter reading eight long names off a spinning wheel reads none of them.
+   The name stays under it: the picture says which, the name settles it. A
+   product with no picture falls back to the name alone, as before. */
+function pic(name){
+  if(pics[name] !== undefined) return pics[name];
+  pics[name] = null;
+  var slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  var im = new Image();
+  im.onload = function(){ pics[name] = im; drawWheel(); };
+  im.onerror = function(){ pics[name] = null; };
+  im.src = 'products/' + slug + '.webp';
+  return null;
+}
 function short(s){ var w = String(s).split(' '); return w.length>4 ? w.slice(0,4).join(' ') : s; }
 function drawWheel(){
   var n = products.length; if(!n) return;
   g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,cv.width,cv.height);
-  g.translate(R,R); g.rotate(angle);
+  g.save(); g.translate(R,R); g.rotate(angle);
   var slice = 2*Math.PI/n;
   for(var i=0;i<n;i++){
     var a0 = -Math.PI/2 + i*slice - slice/2, a1 = a0 + slice;
@@ -97,14 +113,32 @@ function drawWheel(){
     g.fillStyle = COLS[i % COLS.length]; g.fill();
     g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 3; g.stroke();
     g.save(); g.rotate(a0 + slice/2);
-    g.fillStyle = '#0b1620'; g.font = 'bold '+(n>8?22:26)+'px system-ui,sans-serif'; g.textAlign = 'right'; g.textBaseline = 'middle';
-    var label = short(products[i]);
-    if(label.length > 22) label = label.slice(0,21)+'…';
-    g.fillText(label, R-28, 0);
+    var im = pic(products[i]), a = a0 + slice/2 + angle;
+    if(im){
+      /* The picture alone, standing upright however far round the wheel has
+         turned: a bottle read sideways is a bottle nobody recognises, and the
+         card under the wheel names the winner anyway. Turning the slice back
+         out by its own angle is what keeps it upright; the label is gone
+         because at this size it only collided with the hub. */
+      var d = Math.min(R*0.46, (R-8)*Math.sin(slice/2)*1.7);
+      g.save();
+      g.translate(R*0.56, 0);
+      g.rotate(-a);
+      var w = im.width, h = im.height, k = Math.min(d/w, d/h);
+      g.drawImage(im, -w*k/2, -h*k/2, w*k, h*k);
+      g.restore();
+    } else {
+      g.fillStyle = '#0b1620'; g.font = 'bold '+(n>8?22:26)+'px system-ui,sans-serif';
+      g.textAlign = 'right'; g.textBaseline = 'middle';
+      var label = short(products[i]);
+      if(label.length > 22) label = label.slice(0,21)+'…';
+      g.fillText(label, R-28, 0);
+    }
     g.restore();
   }
   g.beginPath(); g.arc(0,0,44,0,6.283); g.fillStyle='#fff'; g.fill();
   g.fillStyle='#3FA6EE'; g.font='bold 20px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('FX', 0, 0);
+  g.restore();
 }
 /* Spin to `index`: the wheel is drawn with slice i centred at -90deg + i*slice
    when angle is 0, so landing i under the top pin means angle = -i*slice
