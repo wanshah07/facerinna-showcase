@@ -10,7 +10,18 @@ const { chromium } = pkg;
 import http from 'http'; import fs from 'fs';
 const ROOT='/workspace/facerinna-showcase';
 const html=fs.readFileSync(ROOT+'/index.html');
-const srv=http.createServer((q,r)=>{r.writeHead(200,{'Content-Type':'text/html'});r.end(html);});
+/* The page is not the only file it asks for any more: fx-gift.js is a real
+   request, and a server answering every path with the page hands the browser
+   HTML where it expects JavaScript. Serve what is asked for. */
+const srv=http.createServer((q,r)=>{
+  const path=decodeURIComponent(new URL(q.url,'http://x').pathname);
+  if(path==='/'||path==='/index.html'){ r.writeHead(200,{'Content-Type':'text/html'}); return r.end(html); }
+  const f='/workspace/facerinna-showcase'+path;
+  if(/^\/[\w.-]+\.js$/.test(path) && fs.existsSync(f)){
+    r.writeHead(200,{'Content-Type':'text/javascript'}); return r.end(fs.readFileSync(f));
+  }
+  r.writeHead(404); r.end();
+});
 await new Promise(r=>srv.listen(0,r)); const P=srv.address().port;
 let ok=true; const check=(l,c,x)=>{ if(!c) ok=false;
   console.log((c?'  PASS  ':'  FAIL  ')+l+(!c&&x!==undefined?'  -> '+JSON.stringify(x):'')); };

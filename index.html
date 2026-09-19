@@ -1084,6 +1084,13 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .guide-panel th,.guide-panel td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);
   color:var(--ink-2);line-height:1.45}
 .guide-panel th{font-weight:800;color:var(--ink);white-space:nowrap}
+.iq-board{margin:14px auto 0;max-width:340px;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.iq-board form{display:flex;gap:8px;margin-top:8px}
+.iq-board input{flex:1;min-width:0;appearance:none;padding:10px 12px;border:1px solid var(--line);
+  border-radius:10px;font:inherit;font-size:16px;background:var(--surface);color:var(--ink)}
+.iq-board button{appearance:none;border:0;border-radius:10px;padding:10px 16px;font:inherit;
+  font-size:14px;font-weight:800;cursor:pointer;background:var(--brand);color:#fff}
+.iq-board button[disabled]{opacity:.6;cursor:default}
 .g-gate{text-align:center;padding:14px 4px}
 .g-form{display:flex;flex-direction:column;gap:10px;max-width:300px;margin:0 auto}
 .g-in{appearance:none;width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;
@@ -2476,7 +2483,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
       <p class="cg-hint">🖱️ Scroll to rotate the gallery · drag to spin · tap a card to play</p>
     </div>
     <div class="rank-cta reveal">
-      <button class="btn btn-ghost" type="button" id="rankBtn">🏆 Booth ranking — all six games</button>
+      <button class="btn btn-ghost" type="button" id="rankBtn">🏆 Booth ranking — all seven games</button>
     </div>
     <div class="game-shell reveal" id="skinIQ" hidden>
       <div class="game-inner">
@@ -2516,6 +2523,8 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
             <span class="big" id="prizeText">Free deluxe sample</span>
             <span class="sm" id="prizeCode"></span>
           </div>
+          <span id="iqScoreRaw" hidden></span>
+          <div id="iqBoard" class="iq-board"></div>
           <div><button class="btn btn-ghost" id="replayBtn">↺ Play again</button></div>
         </div>
       </div>
@@ -2537,14 +2546,14 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
 </div>
 
 <!-- CLINICAL DATA MODAL -->
-<div class="cmodal" id="rankModal" role="dialog" aria-modal="true" aria-label="Booth ranking across the six games">
+<div class="cmodal" id="rankModal" role="dialog" aria-modal="true" aria-label="Booth ranking across the seven games">
   <div class="backdrop" data-rank-close></div>
   <div class="cpanel rank-panel">
     <i class="rank-bar" id="rankBar" aria-hidden="true"></i>
     <button class="cclose" type="button" data-rank-close aria-label="Close the ranking">&#10005;</button>
     <div class="rank-head">
       <span class="cat">Booth leaderboard</span>
-      <h3>Six games, one board</h3>
+      <h3>Seven games, one board</h3>
       <p id="rankIntro"></p>
     </div>
     <div id="rankBody"></div>
@@ -5610,7 +5619,8 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     {id:'shelf-shot', name:'Shelf Shot', unit:'pts'},
     {id:'deep-lab',   name:'Deep Lab',   unit:'pts'},
     {id:'lab-run',    name:'Lab Run',    unit:'pts'},
-    {id:'facy-run',   name:'Facy Run',   unit:'pts'}
+    {id:'facy-run',   name:'Facy Run',   unit:'pts'},
+    {id:'skin-iq',    name:'Skin IQ',    unit:'of 5'}
   ];
   const TOP=5;
   const body=document.getElementById('rankBody');
@@ -5646,6 +5656,9 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
      wifi is out — in which case everything below runs on this device's scores
      exactly as it always did. */
   const BOOTH_SCORES = 'https://script.google.com/macros/s/AKfycbx4zwbrto2iEUu7T9BMZG7_7VNALN2eNrr_209P9Bll-R1FK6fT0_qg9lJnNyqInJZz/exec';
+  /* One definition of it. The quiz below posts its score to the same place,
+     and a second copy of an address is a second thing to change. */
+  window.FX_SCORES_API = BOOTH_SCORES;
   let SHARED = null;
 
   /* top=50, not 5. Places are only awarded down to fifth, but "played 3 of 5"
@@ -6223,6 +6236,59 @@ function showResult(){
     prize='Complimentary sachet';code='CODE: PDM-START';}
   el('resultTitle').textContent=title;el('resultMsg').textContent=msg;
   el('prizeText').textContent=prize;el('prizeCode').textContent=code;
+  /* A plain number for whatever reads the score. #finalScore says "4/5",
+     which anything stripping non-digits reads as forty-five. */
+  el('iqScoreRaw').textContent=String(score);
+  iqBoard(score);
+}
+
+/* ---- the quiz on the booth board ---------------------------------------
+   The five arcade games and Facy Run are their own pages and hand their
+   scores to fx-rank; the quiz lives on this one, and loading fx-rank here
+   would put a game's floating ranking button over the whole booth page. So
+   it writes the same two things itself -- the row in this device's board and
+   the row on the booth's -- in the shape fx-rank uses, because the board
+   reads both and they must agree about who is who.
+   The name is the one already given to any other game; only a visitor whose
+   first game is the quiz is asked for it. */
+function iqStore(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function iqRead(k){ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } }
+function iqDevice(){
+  var d=iqRead('fx.device');
+  if(!d){ d=Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); iqStore('fx.device',d); }
+  return d;
+}
+function iqPost(name, sc){
+  var rows=[];
+  try{ rows=JSON.parse(iqRead('fx.rank.skin-iq')||'[]'); if(!Array.isArray(rows)) rows=[]; }catch(e){ rows=[]; }
+  rows.push({n:name, s:sc, t:Date.now()});
+  iqStore('fx.rank.skin-iq', JSON.stringify(rows.slice(-50)));
+  var api=window.FX_SCORES_API;
+  if(!api) return Promise.resolve();
+  return fetch(api,{method:'POST',body:JSON.stringify({game:'skin-iq',name:name,score:sc,device:iqDevice()})})
+    .then(function(r){ return r.json(); }).catch(function(){});
+}
+function iqBoard(sc){
+  var box=el('iqBoard'); if(!box) return;
+  box.textContent='';
+  var said=function(t){ box.textContent=t; };
+  var name=iqRead('fx.player').trim();
+  if(name){ iqPost(name, sc); said(name+', your '+sc+'/5 is on the booth board.'); return; }
+  said('Put your score on the booth board:');
+  var f=document.createElement('form');
+  var i=document.createElement('input');
+  i.type='text'; i.maxLength=24; i.placeholder='Your name'; i.setAttribute('aria-label','Your name for the booth board');
+  var b=document.createElement('button'); b.type='submit'; b.textContent='Add me';
+  f.appendChild(i); f.appendChild(b); box.appendChild(f);
+  f.addEventListener('submit',function(e){
+    e.preventDefault();
+    var n=i.value.trim().slice(0,24);
+    if(!n) return i.focus();
+    b.disabled=true;
+    iqStore('fx.player', n);
+    iqPost(n, sc);
+    said(n+', your '+sc+'/5 is on the booth board.');
+  });
 }
 el('startBtn').addEventListener('click',startGame);
 el('nextBtn').addEventListener('click',next);
@@ -7069,5 +7135,10 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', go); else go();
 })();
 </script>
+<!-- The quiz can earn a gift like any other scored game. It tells fx-gift
+     where its result screen is and where a plain number of a score lives,
+     since the one on screen reads "4/5". -->
+<script>window.FX_GIFT={id:'skin-iq',result:'#gameResult',score:'#iqScoreRaw'};</script>
+<script src="fx-gift.js"></script>
 </body>
 </html>

@@ -1,127 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#0B1620">
-<title>Facerinna — Facy Run</title>
-<style>
-  /* Facy Run: Prof Facy runs, jumps and stomps across three zones -- Skin
-     Types, Skin Concerns, Ingredients -- and a run good enough ends on a QR
-     code the booth scans for a gift.
+/* The gift at the end of a game.
+ *
+ * Every game that keeps a score can offer one: clear the figure the admin set
+ * for that game and a QR code appears, which the counter scans to spin the
+ * wheel. The rules live in the booth script -- whether gifts are on at all,
+ * what each game must score, one gift per device -- and this file only asks.
+ *
+ * A game wires itself in with one line:
+ *
+ *     <script src="fx-gift.js"></script>
+ *
+ * after fx-rank.js. There is nothing else to add: the id, the result screen
+ * and where the score is written are already in FX_RANK, and this reads the
+ * same three. A game whose score is not a plain number in that element (a
+ * quiz reading "4/5") sets window.FX_GIFT = {score:'#someCleanNumber'} first,
+ * and anything it sets wins over FX_RANK.
+ *
+ * The panel is built here rather than in each game's markup, so a game needs
+ * no HTML for it and every game's gift looks and behaves the same.
+ *
+ * The device id and the player's name are the ones fx-rank already keeps, so
+ * the Gifts tab and the Scores tab agree about who is who.
+ */
+(function () {
+  'use strict';
 
-     One canvas, one 2D context, a fixed 60 Hz step under requestAnimationFrame
-     and nothing allocated per frame: the world is a tile grid, every entity
-     is a plain object in a preallocated array, and every sprite is a handful
-     of canvas paths. No image decodes, no WebGL, no shaders to compile -- the
-     first frame is as cheap as the thousandth, which is what "no lag" on a
-     four-year-old Android at a booth actually needs. */
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;overflow:hidden;background:#0B1620;color:#EAF4FF;
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    -webkit-user-select:none;user-select:none;touch-action:none;overscroll-behavior:none}
-  body{position:relative;height:100vh}
-  @supports(height:100dvh){ body{height:100dvh} }
-  #stage{position:absolute;inset:0;width:100%;height:100%;display:block;background:#7EC8F5}
-  /* HUD: one row, never over the safe area */
-  .hud{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top,0)) 14px 0;
-    display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:3;
-    font-weight:800;font-size:clamp(14px,2.6vw,20px);text-shadow:0 2px 0 rgba(0,0,0,.35)}
-  .hud .l,.hud .r{display:flex;gap:14px;align-items:center}
-  .hud .r{pointer-events:auto}
-  .pill{background:rgba(11,22,32,.55);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:5px 12px;
-    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-  .back{color:#EAF4FF;text-decoration:none;font-weight:800}
-  #lives b{color:#FF8FA3}
-  /* the touch pad, only where a finger is the pointer */
-  /* Lifted clear of the bottom corners: the ranking's own two buttons --
-     Booth at bottom-left, Ranking at bottom-right -- sit at 14px from the
-     bottom on every game, and the pad drawn there was underneath them. */
-  #ctl{position:absolute;left:0;right:0;bottom:0;display:none;justify-content:space-between;align-items:flex-end;
-    padding:0 14px calc(72px + env(safe-area-inset-bottom,0));z-index:4;pointer-events:none}
-  #ctl .grp{display:flex;gap:12px;pointer-events:auto}
-  #ctl button{width:clamp(62px,11vw,84px);height:clamp(62px,11vw,84px);border-radius:50%;border:2px solid rgba(255,255,255,.35);
-    background:rgba(11,22,32,.45);color:#fff;font-size:28px;font-weight:900;display:grid;place-items:center;
-    -webkit-user-select:none;user-select:none;touch-action:none}
-  #ctl button.on{background:rgba(63,166,238,.75);border-color:#fff}
-  #jump{width:clamp(78px,14vw,104px)!important;height:clamp(78px,14vw,104px)!important;background:rgba(63,166,238,.55)!important}
-  @media(hover:none) and (pointer:coarse){ #ctl{display:flex} }
-  /* screens */
-  .screen{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    text-align:center;padding:24px;background:linear-gradient(180deg,rgba(8,22,34,.86),rgba(8,22,34,.97));
-    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);overflow:auto}
-  .screen.hidden{display:none}
-  .eyebrow{font-size:11px;letter-spacing:.42em;text-transform:uppercase;font-weight:800;color:#54C1F5;margin:0 0 10px}
-  h1{font-size:clamp(26px,5vw,40px);margin:0 0 8px;letter-spacing:-.01em}
-  .sub{font-size:15px;line-height:1.55;color:rgba(255,255,255,.75);max-width:440px;margin:0 0 18px;font-weight:600}
-  .keys{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:0 0 20px}
-  .key{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700}
-  .btn{appearance:none;border:0;border-radius:14px;padding:14px 26px;font:inherit;font-size:17px;font-weight:800;cursor:pointer;
-    background:linear-gradient(135deg,#6FDCC6,#3FA6EE);color:#0b1620;margin:4px}
-  .btn.ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25)}
-  .final{font-size:clamp(44px,9vw,76px);font-weight:900;margin:2px 0 6px;letter-spacing:-.02em}
-  .line{font-size:14px;color:rgba(255,255,255,.7);margin:0 0 14px;font-weight:600}
-  .brk{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;width:min(520px,92vw);margin:0 auto 18px}
-  .brk div{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:8px 10px;font-size:12px;font-weight:700}
-  .brk b{display:block;font-size:18px;color:#8FD0F7}
-  /* the gift */
-  #gift{width:min(420px,92vw);margin:6px auto 14px;background:#fff;color:#0b1620;border-radius:18px;padding:16px;display:none}
-  #gift.on{display:block}
-  #gift h3{margin:0 0 6px;font-size:18px}
-  #gift p{margin:0 0 10px;font-size:13px;line-height:1.5;color:#3f5670;font-weight:600}
-  #qr{display:block;margin:6px auto;width:min(240px,60vw);height:auto;image-rendering:pixelated}
-  #claimCode{font:700 13px/1.4 ui-monospace,Menlo,monospace;letter-spacing:1px;color:#1b6fb8;word-break:break-all}
-  /* the hint cards that pop over the world */
-  #toast{position:absolute;left:50%;top:18%;transform:translate(-50%,0);z-index:5;pointer-events:none;
-    background:rgba(255,255,255,.96);color:#0b1620;border-radius:14px;padding:10px 16px;max-width:min(420px,88vw);
-    font-weight:800;font-size:clamp(13px,2.4vw,17px);box-shadow:0 12px 30px rgba(0,0,0,.35);opacity:0;transition:opacity .18s}
-  #toast.on{opacity:1}
-  #toast small{display:block;font-weight:600;color:#3f5670;font-size:.82em;margin-top:2px}
-  #toast.bad{background:#FFE3E8}
-  #toast.good{background:#E3FBF2}
-</style>
-</head>
-<body>
-<canvas id="stage" aria-label="Facy Run"></canvas>
-<div class="hud">
-  <div class="l"><a class="back pill" id="boothLink" href="index.html#game">‹ Booth</a><span class="pill" id="score">0</span><span class="pill" id="lives">♥ <b>3</b></span></div>
-  <div class="r"><span class="pill" id="zone">Skin Types</span><span class="pill" id="clock">3:00</span></div>
-</div>
-<div id="toast" role="status" aria-live="polite"></div>
-<div id="ctl" aria-hidden="true">
-  <div class="grp"><button id="left" aria-label="Left">◀</button><button id="right" aria-label="Right">▶</button></div>
-  <div class="grp"><button id="jump" aria-label="Jump">▲</button></div>
-</div>
-
-<div class="screen" id="intro">
-  <p class="eyebrow">Facerinna · Booth game 08</p>
-  <h1>Facy Run</h1>
-  <p class="sub">Run Prof Facy through three zones — <b>Skin Types</b>, <b>Skin Concerns</b> and <b>Ingredients</b>. Bump the <b>?</b> blocks, grab the capsules, pick the right product at each signpost and stomp the breakouts. Reach the flag before the clock does.</p>
-  <div class="keys"><span class="key">← → move</span><span class="key">↑ / Space / W jump</span><span class="key">hold for a higher jump</span></div>
-  <button class="btn" id="start" type="button">Start</button>
-  <a class="btn ghost" href="index.html#game">Booth</a>
-</div>
-
-<div class="screen hidden" id="over">
-  <p class="eyebrow" id="overEyebrow">Run over</p>
-  <p class="final" id="finalScore">0</p>
-  <p class="line" id="finalLine"></p>
-  <div class="brk" id="brk"></div>
-  <div id="gift">
-    <h3 id="giftTitle">Your gift is waiting</h3>
-    <p id="giftText">Show this code at the FACERINNA counter. Our team scans it and the wheel picks your product.</p>
-    <canvas id="qr" width="1" height="1" aria-label="Gift QR code"></canvas>
-    <div id="claimCode"></div>
-    <button class="btn" id="claimBtn" type="button" style="display:none">Claim my gift</button>
-  </div>
-  <div>
-    <button class="btn" id="again" type="button">Play again</button>
-    <a class="btn ghost" id="boothBtn" href="index.html#game">Booth</a>
-  </div>
-</div>
-
-<script>
 /* qrcode-generator 1.4.4 -- Kazuhiko Arase, MIT licence -- inlined so the
    booth needs no network to draw a code. Unmodified.
    https://github.com/kazuhikoarase/qrcode-generator */
@@ -2423,642 +2325,215 @@ var qrcode = function() {
     return qrcode;
 }));
 
-</script>
-<script>
-(function(){
-'use strict';
-/* ---------------------------------------------------------------- setup */
-/* The booth admin script: gift_active and gift_points live there, and so
-   does the claim ledger. A test points this at its own server by setting
-   window.__BOOTH_API first; '' switches the gift off entirely. */
+/* ------------------------------------------------------------ the gift */
+
+var CFG = (function () {
+  var r = window.FX_RANK || {}, g = window.FX_GIFT || {};
+  return { id: g.id || r.id, result: g.result || r.result, score: g.score || r.score,
+           name: g.name || r.name || '' };
+})();
+if (!CFG.id || !CFG.result) return;              /* nothing to hang it on */
+
+/* The booth admin script. A test points this somewhere else by setting
+   window.__BOOTH_API before this file loads. */
 var API = (typeof window.__BOOTH_API === 'string') ? window.__BOOTH_API
   : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
-var REDEEM_URL = 'https://my.facerinna.com/redeem.html';
-var DEVICE_KEY = 'fx.device', NAME_KEY = 'fx.player';
+var REDEEM_URL = (typeof window.__REDEEM_URL === 'string') ? window.__REDEEM_URL
+  : 'https://my.facerinna.com/redeem.html';
+var NAME_KEY = 'fx.player', DEVICE_KEY = 'fx.device';
 
-var MOBILE = (function(){
-  try { if (window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches) return true; } catch(e){}
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
-})();
-
-var cv = document.getElementById('stage'), g = cv.getContext('2d', {alpha:false});
-var $ = function(id){ return document.getElementById(id); };
-var el = { score:$('score'), lives:$('lives'), zone:$('zone'), clock:$('clock'), toast:$('toast'),
-  intro:$('intro'), over:$('over'), finalScore:$('finalScore'), finalLine:$('finalLine'), brk:$('brk'),
-  gift:$('gift'), giftTitle:$('giftTitle'), giftText:$('giftText'), qr:$('qr'), claimCode:$('claimCode'),
-  claimBtn:$('claimBtn'), overEyebrow:$('overEyebrow') };
-
-/* ------------------------------------------------------------- the data
-   Everything a card says comes from the booth's own product pages. Short on
-   purpose: a card is on screen for two seconds while the player keeps
-   running, so one line is all it can carry. */
-var INGREDIENTS = [
-  {k:'Niacinamide',      tip:'Evens tone, calms sebum',        c:'#F6C744'},
-  {k:'Salicylic Acid',   tip:'Clears the pore',                c:'#7ED957'},
-  {k:'Ceramide',         tip:'Rebuilds the barrier',           c:'#8FD0F7'},
-  {k:'Panthenol B5',     tip:'Soothes and hydrates',           c:'#B9A6FF'},
-  {k:'Centella',         tip:'Calms redness',                  c:'#6FDCC6'},
-  {k:'Tranexamic Acid',  tip:'Fades dark spots',               c:'#FFB3C7'},
-  {k:'Retinol',          tip:'Smooths early lines',            c:'#FFA75C'},
-  {k:'UV Filters',       tip:'Blocks UVA and UVB',             c:'#FFE066'}
-];
-var SKIN_TYPES = [
-  {t:'Dry skin',         tip:'Cream textures with ceramides and B5'},
-  {t:'Oily skin',        tip:'Gel textures; 2% salicylic acid clears the pore'},
-  {t:'Combination skin', tip:'Light lotion; treat the T-zone on its own'},
-  {t:'Sensitive skin',   tip:'5% B5 + Centella, nothing fragranced'},
-  {t:'Normal skin',      tip:'Keep the barrier and add SPF every day'}
-];
-var GATES = [
-  {c:'Acne',           right:'2% Salicylic Acid Acne Serum',
-   wrong:['Retinol Early Aging Moisturizer','5% B5 Intensive Barrier Cream'],
-   why:'2% salicylic acid clears the pore'},
-  {c:'Dark spots',     right:'10% Niacinamide 3% TXA Bright Dark Spot Serum',
-   wrong:['2% Salicylic Acid Acne Serum','Low pH B5 Gel Cleanser'],
-   why:'Niacinamide + TXA slow melanin transfer'},
-  {c:'Redness',        right:'5% B5 Centella Calming Gel Cream',
-   wrong:['Retinol Early Aging Moisturizer','2% Salicylic Acid Acne Serum'],
-   why:'Centella and 5% B5 calm the flush'},
-  {c:'Dry, tight skin',right:'Ceramide B5 Balancing Moisturizer',
-   wrong:['2% Salicylic Acid Acne Serum','Acne Defense Matte Serum Sunscreen'],
-   why:'Ceramide NS + panthenol rebuild the barrier'},
-  {c:'Sun damage',     right:'Niacinamide Brightening Serum Sunscreen SPF50 PA++++',
-   wrong:['Ceramide B5 Balancing Toner','Retinol Early Aging Moisturizer'],
-   why:'SPF50 PA++++ every day blocks UVA and UVB'}
-];
-var ZONES = ['Skin Types','Skin Concerns','Ingredients'];
-var PTS = { capsule:100, block:300, gate:500, stomp:150, flag:1000, timeMax:1500 };
-var TIME_LIMIT = 180;    /* seconds */
-var LIVES = 3;
-
-/* ------------------------------------------------------------- the world
-   A tile grid, 12 rows tall. 0 air, 1 ground, 2 brick, 3 ? block (spent -> 4),
-   5 flagpole. Built once from a seeded generator, so every run is the same
-   level: fair between visitors, and a test can name a column and know what
-   is there. */
-var TILE = 32, ROWS = 12, COLS = 232;
-var map = new Uint8Array(ROWS*COLS);
-/* Past the left or right edge is a wall; above the top is air; BELOW the
-   bottom is air too, not a floor -- a gap has to be a fall, or a player who
-   drops into one lands on nothing and stands in a two-tile pit for ever. */
-function T(c,r){ if(c<0||c>=COLS) return 1; if(r<0||r>=ROWS) return 0; return map[r*COLS+c]; }
-function setT(c,r,v){ if(c>=0&&c<COLS&&r>=0&&r<ROWS) map[r*COLS+c]=v; }
-function solid(t){ return t===1||t===2||t===3||t===4; }
-
-var ents = [];      /* everything that is not a tile */
-var checkpoints = [2, 80, 158];   /* first column of each zone */
-var zoneAt = function(c){ return c>=158 ? 2 : c>=80 ? 1 : 0; };
-
-function build(){
-  var seed = 20260919;
-  var rnd = function(){ seed = (seed*1664525 + 1013904223) >>> 0; return seed/4294967296; };
-  map.fill(0);
-  ents.length = 0;
-  /* ground with two-tile gaps. Two tiles, always: a jump at full run clears
-     about 120px, and a three-tile gap plus the body is 118 -- clearable by a
-     test, not by a person holding a phone sideways. A gap never sits within
-     six tiles of a checkpoint, a ? block or a signpost: a ? block three
-     tiles before a pit makes the jump that bumps it the jump that falls in,
-     and that is a trap, not a challenge. */
-  var qcols = [10, 30, 52, 100, 140], gcols = [24, 66, 96, 124, 186];
-  var keep = checkpoints.concat(qcols, gcols);
-  var c = 0;
-  while(c < COLS){
-    var run = 8 + Math.floor(rnd()*9);
-    for(var i=0;i<run && c<COLS;i++,c++){ setT(c,10,1); setT(c,11,1); }
-    if(c < COLS-12){
-      var near = keep.some(function(k){ return c+2 > k-6 && c < k+6; });
-      if(!near) c += 2;
-    }
-  }
-  for(c=COLS-10;c<COLS;c++){ setT(c,10,1); setT(c,11,1); }
-  /* platforms and bricks */
-  var pi = 0;
-  for(c=14; c<COLS-16; c+=6+Math.floor(rnd()*5)){
-    var len = 2+Math.floor(rnd()*3), row = rnd()<0.5 ? 7 : 6;
-    /* only over unbroken ground, with three whole tiles of it past the end:
-       a platform that ends at a pit sends a player who bumps their head on
-       it straight down the hole, and that is not a challenge, it is a trap */
-    var ok = true;
-    for(i=-1;i<len+4;i++) if(T(c+i,10)!==1){ ok=false; break; }
-    if(!ok) continue;
-    for(i=0;i<len;i++) setT(c+i,row,2);
-    /* every other platform carries a ? block on its top row */
-    if((pi++ % 2)===0 && row===7) setT(c+Math.floor(len/2), 4, 3);
-  }
-  /* the five ? blocks that carry skin types are placed by hand so all five
-     appear, and the capsules ride the platforms */
-  qcols.forEach(function(qc, k){ for(var r=4;r<10;r++) if(T(qc,r)) setT(qc,r,0); setT(qc,6,3); ents.push({kind:'q',c:qc,r:6,i:k,done:false}); });
-  /* stray ? blocks the generator placed carry ingredients instead */
-  for(c=0;c<COLS;c++) for(var r=0;r<ROWS;r++) if(T(c,r)===3 && !ents.some(function(e){ return e.kind==='q'&&e.c===c&&e.r===r; })) ents.push({kind:'q',c:c,r:r,i:-1,done:false});
-  /* capsules: rows of three over ground and singles over platforms */
-  var ci = 0;
-  for(c=6; c<COLS-14; c+=5+Math.floor(rnd()*4)){
-    if(T(c,10)!==1) continue;
-    var top = 9; while(top>2 && !T(c,top-1)) top--;     /* row above the nearest solid */
-    var y = (T(c,7)||T(c,6)) ? 4 : 8;
-    for(i=0;i<3 && c+i<COLS;i++){
-      if(rnd()<0.75) ents.push({kind:'cap',x:(c+i)*TILE+8,y:y*TILE+6,w:16,h:20,i:(ci++)%INGREDIENTS.length,got:false,bob:rnd()*6.28});
-    }
-  }
-  /* the concern gates: a signpost and three bubbles, one right */
-  gcols.forEach(function(gc, k){
-    var gate = GATES[k];
-    var order = [gate.right, gate.wrong[0], gate.wrong[1]];
-    /* deterministic shuffle */
-    for(var s2=order.length-1;s2>0;s2--){ var j=Math.floor(rnd()*(s2+1)); var t=order[s2]; order[s2]=order[j]; order[j]=t; }
-    ents.push({kind:'sign',x:gc*TILE,y:8*TILE,w:TILE,h:2*TILE,i:k});
-    order.forEach(function(name, j){
-      ents.push({kind:'bub',x:(gc+2+j*2)*TILE, y:(j===1?5:6)*TILE, w:44, h:44, gate:k, name:name, right:name===gate.right, done:false});
-    });
-  });
-  /* enemies: breakout bumps that patrol, and UV rays that hover */
-  for(c=20; c<COLS-16; c+=9+Math.floor(rnd()*7)){
-    if(T(c,10)!==1 || T(c+1,10)!==1) continue;
-    if(checkpoints.some(function(k){ return Math.abs(k-c)<5; })) continue;
-    if(rnd()<0.7) ents.push({kind:'bump',x:c*TILE,y:9*TILE+4,w:28,h:28,vx:-40,alive:true,t:rnd()*10});
-    else ents.push({kind:'ray',x:c*TILE,y:5*TILE,w:30,h:30,base:5*TILE,alive:true,t:rnd()*10});
-  }
-  /* the flag */
-  for(var r2=4;r2<10;r2++) setT(COLS-6,r2,5);
-  ents.push({kind:'flag',x:(COLS-6)*TILE,y:4*TILE,w:TILE,h:6*TILE});
-}
-
-/* ------------------------------------------------------------- the state */
-var S = {};
-function reset(){
-  build();
-  S = { phase:'intro', score:0, lives:LIVES, time:TIME_LIMIT, caps:0, blocks:0, gates:0, stomps:0, flagged:false,
-        px:checkpoints[0]*TILE, py:8*TILE, vx:0, vy:0, w:22, h:30, onGround:false, face:1, coyote:0, buffer:0,
-        jumping:false, hurt:0, camX:0, cp:0, anim:0, zone:0, toastUntil:0, endReason:'', flagBonus:0, timeBonus:0 };
-  hud();
-}
-
-/* ------------------------------------------------------------- input */
-var keys = { left:false, right:false, jump:false }, jumpWasDown = false;
-function key(e, on){
-  var k = e.code || e.key;
-  if(k==='ArrowLeft'||k==='KeyA'){ keys.left=on; e.preventDefault(); }
-  else if(k==='ArrowRight'||k==='KeyD'){ keys.right=on; e.preventDefault(); }
-  else if(k==='ArrowUp'||k==='KeyW'||k==='Space'){ keys.jump=on; e.preventDefault(); }
-  else if(on && (k==='Enter') && S.phase==='intro') start();
-}
-addEventListener('keydown', function(e){ if(e.repeat) return; key(e,true); });
-addEventListener('keyup', function(e){ key(e,false); });
-/* touch pad: pointer events so a finger sliding off a button lets it go */
-function pad(id, name){
-  var b = $(id);
-  var set = function(on){ keys[name]=on; b.classList.toggle('on', on); };
-  b.addEventListener('pointerdown', function(e){ e.preventDefault(); try{ b.setPointerCapture(e.pointerId); }catch(x){} set(true); });
-  b.addEventListener('pointerup', function(){ set(false); });
-  b.addEventListener('pointercancel', function(){ set(false); });
-  b.addEventListener('lostpointercapture', function(){ set(false); });
-}
-pad('left','left'); pad('right','right'); pad('jump','jump');
-/* a tap on the canvas jumps too -- a phone held sideways rarely finds the
-   pad on the first try, and Facy jumping is the thing everybody tries first */
-cv.addEventListener('pointerdown', function(e){ if(S.phase==='play'){ keys.jump=true; setTimeout(function(){ keys.jump=false; }, 120); } });
-
-/* ------------------------------------------------------------- physics
-   Units are pixels per second; the step is a fixed 1/60 so a phone that
-   renders at 30 gets two steps a frame and the same jump height. */
-var DT = 1/60, GRAV = 1900, RUN = 190, ACC = 1400, FRIC = 1600, JUMP = -560, JUMP_CUT = -200, COYOTE = 6, BUFFER = 6;
-
-function rectHitsTiles(x,y,w,h){
-  var c0=Math.floor(x/TILE), c1=Math.floor((x+w-1)/TILE), r0=Math.floor(y/TILE), r1=Math.floor((y+h-1)/TILE);
-  for(var c=c0;c<=c1;c++) for(var r=r0;r<=r1;r++) if(solid(T(c,r))) return true;
-  return false;
-}
-function overlaps(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
-
-function step(){
-  if(S.phase!=='play') return;
-  S.time -= DT;
-  if(S.time <= 0){ S.time = 0; return end('time'); }
-
-  /* --- player --- */
-  var want = (keys.right?1:0) - (keys.left?1:0);
-  if(want){ S.vx += want*ACC*DT; S.face = want; }
-  else { var f = FRIC*DT; if(Math.abs(S.vx)<=f) S.vx=0; else S.vx -= Math.sign(S.vx)*f; }
-  if(S.vx > RUN) S.vx = RUN; if(S.vx < -RUN) S.vx = -RUN;
-
-  if(S.onGround) S.coyote = COYOTE; else if(S.coyote>0) S.coyote--;
-  if(keys.jump && !jumpWasDown) S.buffer = BUFFER; else if(S.buffer>0) S.buffer--;
-  jumpWasDown = keys.jump;
-  if(S.buffer>0 && S.coyote>0){ S.vy = JUMP; S.jumping = true; S.coyote = 0; S.buffer = 0; S.onGround = false; }
-  if(S.jumping && !keys.jump && S.vy < JUMP_CUT){ S.vy = JUMP_CUT; S.jumping = false; }
-  S.vy += GRAV*DT; if(S.vy > 900) S.vy = 900;
-
-  /* move x then y, tile by tile, so a fast fall never passes through a floor */
-  var nx = S.px + S.vx*DT;
-  if(rectHitsTiles(nx, S.py, S.w, S.h)){
-    var dir = Math.sign(S.vx);
-    while(!rectHitsTiles(S.px+dir, S.py, S.w, S.h)) S.px += dir;
-    S.vx = 0;
-  } else S.px = nx;
-  if(S.px < 0){ S.px = 0; S.vx = 0; }
-  if(S.px > COLS*TILE - S.w) S.px = COLS*TILE - S.w;
-
-  var ny = S.py + S.vy*DT;
-  S.onGround = false;
-  if(rectHitsTiles(S.px, ny, S.w, S.h)){
-    var dy = Math.sign(S.vy);
-    while(!rectHitsTiles(S.px, S.py+dy, S.w, S.h)) S.py += dy;
-    if(dy > 0){ S.onGround = true; S.jumping = false; }
-    else { headBump(); }
-    S.vy = 0;
-  } else S.py = ny;
-  if(S.py > ROWS*TILE + 40) return hurt(true);
-
-  /* --- zones and checkpoints --- */
-  var col = Math.floor((S.px+S.w/2)/TILE);
-  var z = zoneAt(col);
-  if(z !== S.zone){ S.zone = z; S.cp = z; el.zone.textContent = ZONES[z]; toast('Zone '+(z+1)+': '+ZONES[z], '', 'good'); }
-
-  /* --- entities --- */
-  var me = {x:S.px,y:S.py,w:S.w,h:S.h};
-  for(var i=0;i<ents.length;i++){
-    var e = ents[i];
-    if(e.kind==='cap'){
-      if(e.got) continue;
-      e.bob += DT*3;
-      var box = {x:e.x, y:e.y+Math.sin(e.bob)*3, w:e.w, h:e.h};
-      if(overlaps(me, box)){ e.got=true; S.caps++; add(PTS.capsule); var ing=INGREDIENTS[e.i]; toast(ing.k, ing.tip, ''); }
-    } else if(e.kind==='bub'){
-      if(e.done) continue;
-      if(overlaps(me, e)){
-        /* one pick per gate: the other two bubbles go with it */
-        for(var j=0;j<ents.length;j++) if(ents[j].kind==='bub' && ents[j].gate===e.gate) ents[j].done=true;
-        var gate = GATES[e.gate];
-        if(e.right){ S.gates++; add(PTS.gate); toast('✓ '+gate.c+' → '+e.name, gate.why, 'good'); }
-        else { toast('✗ Not for '+gate.c.toLowerCase(), 'Right pick: '+gate.right, 'bad'); }
-      }
-    } else if(e.kind==='bump'){
-      if(!e.alive) continue;
-      e.t += DT;
-      var ex = e.x + e.vx*DT;
-      var foot = Math.floor((e.y+e.h+2)/TILE), ahead = Math.floor((e.vx<0?ex:ex+e.w)/TILE);
-      if(!solid(T(ahead,foot)) || rectHitsTiles(ex,e.y,e.w,e.h)) e.vx = -e.vx; else e.x = ex;
-      if(overlaps(me, e)) resolveEnemy(e);
-    } else if(e.kind==='ray'){
-      if(!e.alive) continue;
-      e.t += DT; e.y = e.base + Math.sin(e.t*1.6)*40;
-      if(overlaps(me, e)) resolveEnemy(e);
-    } else if(e.kind==='flag'){
-      if(!S.flagged && overlaps(me, e)){
-        S.flagged = true; S.flagBonus = PTS.flag; S.timeBonus = Math.round(PTS.timeMax * (S.time/TIME_LIMIT));
-        add(S.flagBonus + S.timeBonus);
-        return end('flag');
-      }
-    }
-  }
-  if(S.hurt>0) S.hurt--;
-  S.anim += Math.abs(S.vx)*DT*0.08;
-
-  /* --- camera --- */
-  var target = S.px + S.w/2 - view.w*0.42 + S.face*40;
-  S.camX += (target - S.camX)*0.12;
-  if(S.camX < 0) S.camX = 0;
-  if(S.camX > COLS*TILE - view.w) S.camX = COLS*TILE - view.w;
-}
-function resolveEnemy(e){
-  /* falling onto it from above is a stomp; anything else is a hit */
-  if(S.vy > 60 && S.py + S.h - e.y < 18){
-    e.alive = false; S.stomps++; add(PTS.stomp); S.vy = -330; S.jumping = false; toast('Stomp!', '', 'good');
-  } else hurt(false);
-}
-function hurt(fell){
-  if(S.hurt > 0 && !fell) return;
-  S.lives--; hud();
-  if(S.lives <= 0){ S.lives = 0; return end('lives'); }
-  /* back to the zone's first column, invulnerable for a second and a half */
-  S.px = checkpoints[S.cp]*TILE; S.py = 8*TILE; S.vx = 0; S.vy = 0; S.hurt = 90;
-  S.camX = Math.max(0, S.px - view.w*0.42);
-  toast('Ouch — back to the checkpoint', '', 'bad');
-}
-function headBump(){
-  /* the ? block above: which column of the player's head hit it */
-  var r = Math.floor((S.py-1)/TILE);
-  var cs = [Math.floor((S.px+2)/TILE), Math.floor((S.px+S.w-3)/TILE)];
-  for(var k=0;k<cs.length;k++){
-    var c = cs[k];
-    if(T(c,r)===3){
-      setT(c,r,4);
-      var q = null; for(var i=0;i<ents.length;i++) if(ents[i].kind==='q'&&ents[i].c===c&&ents[i].r===r) q=ents[i];
-      if(q && !q.done){
-        q.done = true;
-        if(q.i >= 0){ S.blocks++; add(PTS.block); var st = SKIN_TYPES[q.i]; toast(st.t, st.tip, 'good'); }
-        else { S.caps++; add(PTS.capsule); var ing = INGREDIENTS[(c*7)%INGREDIENTS.length]; toast(ing.k, ing.tip, ''); }
-      }
-      return;
-    }
-  }
-}
-function add(n){ S.score += n; hud(); }
-function hud(){
-  el.score.textContent = S.score;
-  el.lives.innerHTML = '♥ <b>'+S.lives+'</b>';
-  var t = Math.max(0, Math.ceil(S.time)); el.clock.textContent = Math.floor(t/60)+':'+String(t%60).padStart(2,'0');
-}
-function toast(title, sub, kind){
-  el.toast.innerHTML = title + (sub ? '<small></small>' : '');
-  if(sub) el.toast.querySelector('small').textContent = sub;
-  el.toast.className = 'on ' + (kind||'');
-  S.toastUntil = performance.now() + 2000;
-}
-
-/* ------------------------------------------------------------- drawing
-   The view is a fixed-height window on the world scaled to the screen, so
-   a TV, a tablet and a phone all see the same jump. Width follows the aspect
-   ratio inside a range: a tall phone sees a little less ahead, a wide TV a
-   little more, and neither is stretched. */
-var view = { w:640, h:ROWS*TILE, scale:1, ox:0, oy:0 };
-/* The world is 384px tall and a phone screen is over twice that, so the
-   backing store is already an upscale at 1x. 1x on a touch device, 2x on a
-   desk; and the governor below steps it down further the moment frames run
-   long, the way the 3D games step their render scale. */
-var DPR_CAP = Math.min(window.devicePixelRatio||1, MOBILE ? 1 : 2);
-var DPR = DPR_CAP, DPR_MIN = 0.6;
-function fit(){
-  var W = innerWidth, H = innerHeight;
-  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
-  /* the CSS size as well as the backing store: a turn that goes wrong
-     leaves the element the old shape, and only this puts it right */
-  cv.style.width = W + 'px'; cv.style.height = H + 'px';
-  var aspect = W/H;
-  view.w = Math.max(480, Math.min(1000, Math.round(view.h*aspect)));
-  view.scale = Math.min(W/view.w, H/view.h);
-  view.ox = Math.round((W - view.w*view.scale)/2); view.oy = Math.round((H - view.h*view.scale)/2);
-  g.imageSmoothingEnabled = false;
-}
-addEventListener('resize', fit); fit();
-/* Some Android browsers fire orientationchange with no resize at all, and
-   others report the old size on the first of the two; so re-fit on the
-   turn itself and once more a beat later, when the numbers have settled. */
-addEventListener('orientationchange', function(){ fit(); setTimeout(fit, 250); });
-
-function draw(){
-  var sc = view.scale*DPR, ox = view.ox*DPR, oy = view.oy*DPR;
-  g.setTransform(1,0,0,1,0,0);
-  g.fillStyle = '#7EC8F5'; g.fillRect(0,0,cv.width,cv.height);
-  g.setTransform(sc,0,0,sc,ox,oy);
-  /* sky by zone */
-  var skies = ['#7EC8F5','#5FA9E8','#3C6FB5'];
-  g.fillStyle = skies[S.zone]; g.fillRect(0,0,view.w,view.h);
-  /* far hills: a parallax layer of round bumps, drawn from a few sines */
-  g.fillStyle = 'rgba(255,255,255,.22)';
-  var px = -(S.camX*0.25)%240;
-  for(var x=px-240;x<view.w+240;x+=240){ g.beginPath(); g.arc(x+120, 300, 130, Math.PI, 0); g.fill(); }
-  g.fillStyle = 'rgba(255,255,255,.35)';
-  px = -(S.camX*0.5)%180;
-  for(x=px-180;x<view.w+180;x+=180){ g.beginPath(); g.arc(x+90, 336, 80, Math.PI, 0); g.fill(); }
-
-  g.save(); g.translate(-Math.round(S.camX), 0);
-  /* tiles in view only */
-  var c0 = Math.max(0, Math.floor(S.camX/TILE)-1), c1 = Math.min(COLS-1, Math.ceil((S.camX+view.w)/TILE)+1);
-  for(var c=c0;c<=c1;c++) for(var r=0;r<ROWS;r++){
-    var t = T(c,r); if(!t) continue;
-    var X = c*TILE, Y = r*TILE;
-    if(t===1){ g.fillStyle = r===10 ? '#7ED957' : '#8B5E3C'; g.fillRect(X,Y,TILE,TILE);
-      if(r===10){ g.fillStyle='#5DBB3F'; g.fillRect(X,Y,TILE,6); } }
-    else if(t===2){ g.fillStyle='#C97B4A'; g.fillRect(X,Y,TILE,TILE); g.fillStyle='#A65F35';
-      g.fillRect(X,Y+15,TILE,2); g.fillRect(X+15,Y,2,15); g.fillRect(X+7,Y+17,2,15); g.fillRect(X+23,Y+17,2,15); }
-    else if(t===3){ g.fillStyle='#F6C744'; g.fillRect(X,Y,TILE,TILE); g.fillStyle='#B8860B'; g.fillRect(X,Y,TILE,3); g.fillRect(X,Y+29,TILE,3);
-      g.fillStyle='#0b1620'; g.font='bold 22px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('?', X+16, Y+17); }
-    else if(t===4){ g.fillStyle='#B48A4A'; g.fillRect(X,Y,TILE,TILE); g.fillStyle='#8A6A35'; g.fillRect(X+4,Y+4,TILE-8,TILE-8); }
-    else if(t===5){ g.fillStyle='#EAF4FF'; g.fillRect(X+14,Y,4,TILE); }
-  }
-  /* entities */
-  for(var i=0;i<ents.length;i++){
-    var e = ents[i];
-    if(e.kind!=='q' && (e.x+e.w < S.camX-40 || e.x > S.camX+view.w+40)) continue;
-    if(e.kind==='cap' && !e.got){
-      var ing = INGREDIENTS[e.i], yy = e.y+Math.sin(e.bob)*3;
-      g.fillStyle = ing.c; rr(e.x, yy, e.w, e.h, 8); g.fill();
-      g.fillStyle = '#fff'; rr(e.x, yy, e.w, e.h/2, 8); g.fill();
-      g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(e.x+3, yy+e.h/2-1, e.w-6, 2);
-    } else if(e.kind==='bub' && !e.done){
-      g.fillStyle = 'rgba(255,255,255,.92)'; g.beginPath(); g.arc(e.x+e.w/2, e.y+e.h/2, e.w/2, 0, 6.283); g.fill();
-      g.strokeStyle = '#3FA6EE'; g.lineWidth = 3; g.stroke();
-      bottle(e.x+e.w/2, e.y+e.h/2, e.name);
-    } else if(e.kind==='sign'){
-      var gate = GATES[e.i];
-      g.fillStyle='#8B5E3C'; g.fillRect(e.x+14, e.y+20, 6, 44);
-      g.fillStyle='#fff'; rr(e.x-22, e.y-4, 80, 30, 6); g.fill(); g.strokeStyle='#3FA6EE'; g.lineWidth=2; g.stroke();
-      g.fillStyle='#0b1620'; g.font='bold 11px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
-      g.fillText(gate.c, e.x+18, e.y+11);
-    } else if(e.kind==='bump' && e.alive){
-      g.fillStyle='#E85B5B'; g.beginPath(); g.arc(e.x+14, e.y+14, 14, 0, 6.283); g.fill();
-      g.fillStyle='#FFD1D1'; g.beginPath(); g.arc(e.x+14, e.y+10, 5, 0, 6.283); g.fill();
-      g.fillStyle='#0b1620'; g.fillRect(e.x+8, e.y+16, 3, 3); g.fillRect(e.x+17, e.y+16, 3, 3);
-      var wob = Math.sin(e.t*12)*2; g.fillStyle='#C94141'; g.fillRect(e.x+4, e.y+26, 8, 2+wob); g.fillRect(e.x+16, e.y+26, 8, 2-wob);
-    } else if(e.kind==='ray' && e.alive){
-      g.fillStyle='#FFE066'; g.beginPath(); g.arc(e.x+15, e.y+15, 12, 0, 6.283); g.fill();
-      g.strokeStyle='#FFB800'; g.lineWidth=3;
-      for(var k=0;k<8;k++){ var a=k*Math.PI/4+e.t; g.beginPath(); g.moveTo(e.x+15+Math.cos(a)*15, e.y+15+Math.sin(a)*15); g.lineTo(e.x+15+Math.cos(a)*22, e.y+15+Math.sin(a)*22); g.stroke(); }
-      g.fillStyle='#0b1620'; g.fillRect(e.x+10, e.y+12, 3, 4); g.fillRect(e.x+17, e.y+12, 3, 4);
-    } else if(e.kind==='flag'){
-      g.fillStyle='#3FA6EE'; g.beginPath(); g.moveTo(e.x+18, e.y+4); g.lineTo(e.x+50, e.y+14); g.lineTo(e.x+18, e.y+24); g.fill();
-      g.fillStyle='#fff'; g.font='bold 10px system-ui,sans-serif'; g.textAlign='left'; g.fillText('FINISH', e.x+22, e.y+16);
-    }
-  }
-  facy(S.px, S.py, S.face, S.onGround ? S.anim : -1, S.hurt>0 && (Math.floor(S.hurt/6)%2===0));
-  g.restore();
-}
-function rr(x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
-function bottle(cx, cy, name){
-  /* a tiny bottle coloured by its series, so the three choices read apart
-     even before the name is legible */
-  var col = /Salicylic|Acne/.test(name) ? '#7ED957' : /Niacinamide|TXA|Bright/.test(name) ? '#F6C744'
-          : /Ceramide|Barrier|B5/.test(name) ? '#8FD0F7' : /Retinol|Aging/.test(name) ? '#FFA75C' : '#B9A6FF';
-  g.fillStyle = col; rr(cx-7, cy-9, 14, 20, 4); g.fill();
-  g.fillStyle = '#0b1620'; g.fillRect(cx-4, cy-13, 8, 5);
-  g.fillStyle = '#fff'; g.fillRect(cx-5, cy-2, 10, 6);
-}
-function facy(x, y, face, anim, blink){
-  if(blink) return;
-  g.save(); g.translate(x+11, y); if(face<0) g.scale(-1,1);
-  var legs = anim<0 ? 0 : Math.sin(anim*6)*5;
-  /* coat and legs */
-  g.fillStyle='#2A5F8F'; g.fillRect(-7+legs, 22, 6, 8); g.fillRect(1-legs, 22, 6, 8);
-  g.fillStyle='#FFF9F7'; rr(-9, 12, 18, 12, 4); g.fill();
-  g.fillStyle='#3FA6EE'; g.fillRect(-1, 13, 2, 10);
-  /* head, goggles, face */
-  g.fillStyle='#3FA6EE'; g.beginPath(); g.arc(0, 8, 10, 0, 6.283); g.fill();
-  g.fillStyle='#FFF9F7'; g.beginPath(); g.ellipse(1, 10, 7, 6.5, 0, 0, 6.283); g.fill();
-  g.strokeStyle='#3FA6EE'; g.lineWidth=2; rr(-6, 4, 14, 6, 3); g.stroke();
-  g.fillStyle='#10222F'; g.beginPath(); g.ellipse(-1, 10, 1.6, 2, 0, 0, 6.283); g.fill(); g.beginPath(); g.ellipse(4, 10, 1.6, 2, 0, 0, 6.283); g.fill();
-  g.fillStyle='#FFC2CE'; g.fillRect(-4, 13, 2, 1.5); g.fillRect(6, 13, 2, 1.5);
-  g.strokeStyle='#E85B5B'; g.lineWidth=1.4; g.beginPath(); g.moveTo(0,14); g.quadraticCurveTo(2,16,4,14); g.stroke();
-  g.restore();
-}
-
-/* ------------------------------------------------------------- the loop
-   Fixed step, capped catch-up: a tab that was hidden for a minute does not
-   run a minute of physics on its first frame back. */
-var last = 0, acc = 0, raf = 0, frames = 0, frameAcc = 0;
-var perf = { avg:16, slow:0, rounds:0, warm:0, cooldown:0, drops:0 };
-/* Frame-time governor. The first frames are thrown away (nothing is warm
-   yet), then every thirty frames: over ~45fps for a round, drop the pixel
-   ratio a notch and wait; under ~13ms for a round with room left, put a
-   notch back. It only ever changes how many pixels are drawn; the world,
-   the jump and the clock are untouched. */
-function govern(avg){
-  perf.rounds++;
-  if(perf.cooldown>0){ perf.cooldown--; return; }
-  if(avg > 22 && DPR > DPR_MIN){ DPR = Math.max(DPR_MIN, +(DPR-0.2).toFixed(2)); perf.drops++; perf.cooldown = 3; fit(); }
-  else if(avg < 13 && DPR < DPR_CAP){ DPR = Math.min(DPR_CAP, +(DPR+0.2).toFixed(2)); perf.cooldown = 6; fit(); }
-}
-function loop(now){
-  raf = requestAnimationFrame(loop);
-  var dt = Math.min(0.1, (now - last)/1000 || 0); last = now;
-  acc += dt;
-  var n = 0;
-  while(acc >= DT && n < 4){ step(); acc -= DT; n++; }
-  if(n === 4) acc = 0;
-  draw();
-  if(S.toastUntil && now > S.toastUntil){ el.toast.className=''; S.toastUntil=0; }
-  if(S.phase==='play'){ hud(); }
-  /* frame-time bookkeeping, read by the tests and by nobody else */
-  if(perf.warm < 20){ perf.warm++; return; }
-  frames++; frameAcc += dt*1000;
-  if(frames>=30){ perf.avg = frameAcc/frames; if(perf.avg>24) perf.slow++; frames=0; frameAcc=0; if(S.phase==='play') govern(perf.avg); }
-}
-document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden'){ acc=0; last=performance.now(); } });
-
-/* ------------------------------------------------------------- flow */
-function start(){
-  reset(); S.phase='play'; el.intro.classList.add('hidden'); el.over.classList.add('hidden');
-  el.zone.textContent = ZONES[0]; last = performance.now(); acc = 0;
-}
-function end(reason){
-  S.phase = 'over'; S.endReason = reason; hud();
-  el.overEyebrow.textContent = reason==='flag' ? 'You reached the flag' : reason==='time' ? 'Time is up' : 'No lives left';
-  el.finalScore.textContent = S.score;
-  el.finalLine.textContent = S.caps+' capsules · '+S.blocks+' skin types · '+S.gates+' right picks · '+S.stomps+' stomps';
-  el.brk.innerHTML =
-    '<div>Capsules<b>'+(S.caps*PTS.capsule)+'</b></div><div>Skin types<b>'+(S.blocks*PTS.block)+'</b></div>'+
-    '<div>Right picks<b>'+(S.gates*PTS.gate)+'</b></div><div>Stomps<b>'+(S.stomps*PTS.stomp)+'</b></div>'+
-    (S.flagged ? '<div>Flag + time<b>'+(S.flagBonus+S.timeBonus)+'</b></div>' : '');
-  /* the result screen first, so the ranking sees it; the gift a beat after */
-  el.over.classList.remove('hidden');
-  giftCheck();
-}
-$('start').addEventListener('click', start);
-$('again').addEventListener('click', start);
-
-/* ------------------------------------------------------------- the gift
-   Two calls to the admin script: `config` says whether the gift is on and
-   what a run must score, `gift.claim` mints (or returns) this device's one
-   claim. Both are plain-text POSTs, no preflight. The device id is the same
-   one the scores use, so the sheet's Gifts tab and Scores tab agree on who
-   is who. */
-function read(k){ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } }
-function write(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
-function deviceId(){
+function read(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+function write(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function deviceId() {
   var d = read(DEVICE_KEY);
-  if(!d){ d = Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); write(DEVICE_KEY, d); }
+  if (!d) { d = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); write(DEVICE_KEY, d); }
   return d;
 }
-function post(body, ms){
+function post(body, ms) {
   var ctl = ('AbortController' in window) ? new AbortController() : null;
-  var t = ctl && setTimeout(function(){ ctl.abort(); }, ms||8000);
-  return fetch(API, { method:'POST', body:JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
-    .then(function(r){ return r.json(); }).finally(function(){ if(t) clearTimeout(t); });
+  var t = ctl && setTimeout(function () { ctl.abort(); }, ms || 8000);
+  return fetch(API, { method: 'POST', body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
+    .then(function (r) { return r.json(); })
+    .finally(function () { if (t) clearTimeout(t); });
 }
-var giftCfg = null, giftCfgAt = 0;
-function giftConfig(){
-  if(giftCfg && Date.now()-giftCfgAt < 60000) return Promise.resolve(giftCfg);
-  return post({action:'config'}, 6000).then(function(j){
-    /* the whole answer: gift_needs rides beside settings, and it is the
-       script that works out what each game must score -- a format parsed on
-       the page too is a format that drifts between them */
-    if(j && j.ok && j.settings){
-      giftCfg = { gift_active: j.settings.gift_active, gift_needs: j.gift_needs || {} };
-      giftCfgAt = Date.now();
+
+/* Asked once a minute at most. A booth screen finishing a run every thirty
+   seconds should not ask the script what the rules are every time. */
+var cfgCache = null, cfgAt = 0;
+function settings() {
+  if (cfgCache && Date.now() - cfgAt < 60000) return Promise.resolve(cfgCache);
+  return post({ action: 'config' }, 6000).then(function (j) {
+    /* the whole answer, not just settings: gift_needs rides beside it */
+    if (j && j.ok && j.settings) {
+      cfgCache = { gift_active: j.settings.gift_active, gift_needs: j.gift_needs || {} };
+      cfgAt = Date.now();
     }
-    return giftCfg;
-  }).catch(function(){ return giftCfg; });
+    return cfgCache;
+  }).catch(function () { return cfgCache; });
 }
-function giftShow(title, text, claim){
-  el.giftTitle.textContent = title; el.giftText.textContent = text;
-  el.claimBtn.style.display = 'none';
-  if(claim){
-    var url = REDEEM_URL + '?c=' + encodeURIComponent(claim);
-    drawQR(url);
-    el.claimCode.textContent = claim;
-    el.qr.style.display = 'block';
-  } else { el.qr.style.display = 'none'; el.claimCode.textContent = ''; }
-  el.gift.classList.add('on');
+function on_(v) { return /^(yes|y|true|1|on)$/i.test(String(v || 'no')); }
+
+/* What this game must score is worked out by the booth script and handed
+   over ready: the games are scored on scales with nothing to do with each
+   other, the setting is a line per game, and a format parsed in two places
+   is a format that drifts. Here we look ours up and no more. */
+function needFor(cfg, id) {
+  var needs = cfg && cfg.gift_needs;
+  var n = needs && needs[String(id).toLowerCase()];
+  return (typeof n === 'number' && n > 0) ? n : null;
 }
-function giftHide(){ el.gift.classList.remove('on'); }
-var lastClaim = null;
-function giftCheck(){
-  giftHide(); lastClaim = null;
-  if(!API) return;
-  giftConfig().then(function(cfg){
-    if(!cfg || !/^(yes|y|true|1|on)$/i.test(String(cfg.gift_active||'no'))) return;
-    var need = (cfg.gift_needs || {})['facy-run'];
-    if(!need) return;                     /* no figure set for this game */
-    if(S.score < need){
-      giftShow('Gift at '+need+' points', (need - S.score)+' more points and the QR code is yours. Play again!', null);
+
+/* ------------------------------------------------------------ the panel */
+
+var panel = null, els = null;
+function build(into) {
+  if (panel && panel.parentNode === into) return;
+  panel = document.createElement('div');
+  panel.className = 'fxg';
+  panel.innerHTML =
+    '<style>' +
+    '.fxg{margin:16px auto 0;max-width:420px;background:rgba(255,255,255,.96);color:#0b1620;' +
+      'border-radius:16px;padding:16px 18px;text-align:center;box-shadow:0 14px 34px rgba(0,0,0,.28);' +
+      'font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}' +
+    '.fxg h4{margin:0 0 6px;font-size:17px;line-height:1.3}' +
+    '.fxg p{margin:0 0 10px;font-size:13.5px;line-height:1.5;color:#3f5670;font-weight:600}' +
+    '.fxg canvas{display:none;width:min(210px,60vw);height:auto;image-rendering:pixelated;' +
+      'border-radius:10px;margin:2px auto 6px}' +
+    '.fxg .fxg-code{display:block;font:600 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;' +
+      'color:#8095ab;word-break:break-all;margin-bottom:4px}' +
+    '.fxg button{appearance:none;border:0;border-radius:999px;padding:11px 22px;font:inherit;' +
+      'font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#6FDCC6,#3FA6EE);' +
+      'color:#0b1620;display:none}' +
+    '.fxg button[disabled]{opacity:.6;cursor:default}' +
+    '</style>' +
+    '<h4></h4><p></p><canvas aria-label="Your gift code"></canvas>' +
+    '<span class="fxg-code"></span><button type="button">Claim my gift</button>';
+  into.appendChild(panel);
+  els = { title: panel.querySelector('h4'), text: panel.querySelector('p'),
+          qr: panel.querySelector('canvas'), code: panel.querySelector('.fxg-code'),
+          btn: panel.querySelector('button') };
+}
+function show(title, text, claim) {
+  if (!els) return;
+  els.title.textContent = title;
+  els.text.textContent = text;
+  els.btn.style.display = 'none';
+  if (claim) {
+    drawQR(REDEEM_URL + '?c=' + encodeURIComponent(claim));
+    els.code.textContent = claim;
+    els.qr.style.display = 'block';
+  } else {
+    els.qr.style.display = 'none';
+    els.code.textContent = '';
+  }
+  panel.style.display = 'block';
+}
+function hide() { if (panel) panel.style.display = 'none'; }
+
+function drawQR(text) {
+  if (typeof qrcode !== 'function' || !els) return;
+  var q = qrcode(0, 'M'); q.addData(text); q.make();
+  var n = q.getModuleCount(), cell = 4, m = 4 * cell, size = n * cell + m * 2;
+  els.qr.width = size; els.qr.height = size;
+  var c = els.qr.getContext('2d');
+  c.fillStyle = '#fff'; c.fillRect(0, 0, size, size);
+  c.fillStyle = '#0b1620';
+  for (var r = 0; r < n; r++) for (var col = 0; col < n; col++)
+    if (q.isDark(r, col)) c.fillRect(m + col * cell, m + r * cell, cell, cell);
+}
+
+/* ------------------------------------------------------------ the flow */
+
+var lastClaim = null, lastScore = null;
+
+function scoreNow() {
+  if (!CFG.score) return null;
+  var el = document.querySelector(CFG.score);
+  if (!el) return null;
+  var n = parseInt(String(el.textContent).replace(/[^0-9-]/g, ''), 10);
+  return isNaN(n) ? null : n;
+}
+
+function offer(score) {
+  var into = document.querySelector(CFG.result);
+  if (!into) return Promise.resolve();
+  build(into);
+  hide();
+  lastClaim = null;
+  lastScore = score;
+  if (!API) return Promise.resolve();
+
+  return settings().then(function (cfg) {
+    if (!cfg || !on_(cfg.gift_active)) return;
+    var need = needFor(cfg, CFG.id);
+    if (need === null) return;              /* this game has no figure set */
+    if (score < need) {
+      show('Gift at ' + need + (need === 1 ? ' point' : ' points'),
+           (need - score) + ' more and the code is yours. Play again!', null);
       return;
     }
-    /* enough: one tap mints the claim, so the ledger only grows for a run
-       that actually wanted the gift */
-    giftShow('You earned the gift', 'Tap below and show the code at the FACERINNA counter. One gift per device.', null);
-    el.claimBtn.style.display = 'inline-block';
-    el.claimBtn.disabled = false;
-    el.claimBtn.onclick = function(){
-      el.claimBtn.disabled = true; el.claimBtn.textContent = 'One moment…';
-      post({action:'gift.claim', device:deviceId(), score:S.score, game:'facy-run', name:read(NAME_KEY)}, 10000).then(function(j){
-        el.claimBtn.textContent = 'Claim my gift';
-        if(!j || j.ok !== true){
-          var why = (j && j.reason) || 'error';
-          if(why==='inactive' || why==='nogame') giftShow('Gifts are not on right now', 'Ask the FACERINNA team at the counter.', null);
-          else if(why==='short') giftShow('Gift at '+(j.need||need)+' points', 'This run fell short. Play again!', null);
-          else giftShow('Could not fetch your code', 'Show this screen at the counter instead — your score is on it.', null);
-          return;
-        }
-        lastClaim = j.claim;
-        if(j.redeemed) giftShow('Already claimed on this device', 'This device already took home '+(j.product||'a gift')+'. One gift per device — thank you for playing again!', null);
-        else giftShow('Your gift is waiting', 'Show this code at the FACERINNA counter. Our team scans it and the wheel picks your product.', j.claim);
-      }).catch(function(){
-        el.claimBtn.textContent = 'Claim my gift'; el.claimBtn.disabled = false;
-        giftShow('No connection just now', 'Try again in a moment, or show this screen at the counter.', null);
-        el.claimBtn.style.display = 'inline-block';
-      });
-    };
+    /* Enough. The claim is minted on a tap, not on the score, so the ledger
+       only grows for somebody who actually wants the gift. */
+    show('You earned the gift',
+         'Tap below and show the code at the FACERINNA counter. One gift per device.', null);
+    els.btn.style.display = 'inline-block';
+    els.btn.disabled = false;
+    els.btn.onclick = claim;
   });
 }
-function drawQR(text){
-  if(typeof qrcode !== 'function') return;
-  var q = qrcode(0, 'M'); q.addData(text); q.make();
-  var n = q.getModuleCount(), cell = 4, m = 4*cell, size = n*cell + m*2;
-  el.qr.width = size; el.qr.height = size;
-  var c = el.qr.getContext('2d');
-  c.fillStyle = '#fff'; c.fillRect(0,0,size,size);
-  c.fillStyle = '#0b1620';
-  for(var r=0;r<n;r++) for(var col=0;col<n;col++) if(q.isDark(r,col)) c.fillRect(m+col*cell, m+r*cell, cell, cell);
+
+function claim() {
+  els.btn.disabled = true;
+  els.btn.textContent = 'One moment…';
+  return post({ action: 'gift.claim', device: deviceId(), score: lastScore,
+                game: CFG.id, name: read(NAME_KEY) }, 10000)
+    .then(function (j) {
+      els.btn.textContent = 'Claim my gift';
+      if (!j || j.ok !== true) {
+        var why = (j && j.reason) || 'error';
+        if (why === 'inactive') show('Gifts are not on right now', 'Ask the FACERINNA team at the counter.', null);
+        else if (why === 'short') show('Not quite there', 'This run fell short. Play again!', null);
+        else show('Could not fetch your code', 'Show this screen at the counter instead — your score is on it.', null);
+        return;
+      }
+      lastClaim = j.claim;
+      if (j.redeemed) show('Already claimed on this device',
+        'This device already took home ' + (j.product || 'a gift') +
+        '. One gift per device — thank you for playing again!', null);
+      else show('Your gift is waiting',
+        'Show this code at the FACERINNA counter. Our team scans it and the wheel picks your product.', j.claim);
+    })
+    .catch(function () {
+      els.btn.textContent = 'Claim my gift';
+      els.btn.disabled = false;
+      show('No connection just now', 'Try again in a moment, or show this screen at the counter.', null);
+      els.btn.style.display = 'inline-block';
+    });
 }
 
-/* ------------------------------------------------------------- go */
-reset();
-raf = requestAnimationFrame(loop);
+/* The same signal fx-rank waits for: the result screen losing `hidden`. A
+   game that shows its result some other way calls fxGift.offer() itself. */
+var resultEl = document.querySelector(CFG.result);
+if (resultEl) {
+  new MutationObserver(function () {
+    if (!resultEl.classList.contains('hidden')) {
+      var s = scoreNow();
+      if (s !== null) offer(s);
+    } else hide();
+  }).observe(resultEl, { attributes: true, attributeFilter: ['class'] });
+  if (!resultEl.classList.contains('hidden')) {
+    var s0 = scoreNow();
+    if (s0 !== null) offer(s0);
+  }
+}
 
-/* the tests, and nothing else: step the world by hand, read it, drive it */
-window.__facy = {
-  S: function(){ return S; }, ents: function(){ return ents; }, keys: keys, map: T, TILE: TILE, COLS: COLS, ROWS: ROWS,
-  start: start, step: function(n){ for(var i=0;i<(n||1);i++) step(); },
-  perf: perf, view: view, giftCheck: giftCheck, lastClaim: function(){ return lastClaim; },
-  dpr: function(){ return DPR; }, dprCap: function(){ return DPR_CAP; }, govern: govern, draw: draw,
-  teleport: function(col){ S.px = col*TILE; S.py = 8*TILE; S.vx = 0; S.vy = 0; S.camX = Math.max(0, S.px - view.w*0.42); },
-  setScore: function(n){ S.score = n; hud(); }, end: end, PTS: PTS, GATES: GATES, INGREDIENTS: INGREDIENTS, SKIN_TYPES: SKIN_TYPES,
-  qr: function(){ return el.qr; }, drawQR: drawQR
+window.fxGift = {
+  offer: offer, drawQR: drawQR, needFor: needFor,
+  claim: function () { return claim(); },
+  lastClaim: function () { return lastClaim; },
+  panel: function () { return panel; },
+  qr: function () { return els && els.qr; },
+  settings: settings,
+  forget: function () { cfgCache = null; cfgAt = 0; }
 };
 })();
-</script>
-<script>window.FX_RANK={id:'facy-run',name:'Facy Run',result:'#over',score:'#finalScore'};</script>
-<script src="fx-rank.js"></script>
-</body>
-</html>
