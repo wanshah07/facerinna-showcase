@@ -1193,7 +1193,7 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
     <div class="fine">
       <span>© 2026 FACERINNA® · Internal Regulatory Affairs reference. Not for external distribution.</span>
       <span id="footerSync">Loading data…</span>
-      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-19 · 757a6da</span>
+      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-19 · 2308c44</span>
 
     </div>
   </div>
@@ -1300,6 +1300,12 @@ async function vaPost(body, timeoutMs){
   }finally{ if(timer) clearTimeout(timer); }
 }
 
+/* The mailed link lands in whichever browser opened the mail -- at a booth,
+   usually the mail app's own webview and not the browser in the visitor's
+   hand. These two are the way in from any device: an approved address asks for
+   a six-digit code, and the code buys the same token the link carries. */
+const vaCode   = email        => vaPost({action:'code',   email:email}, 30000);
+const vaRedeem = (email,code) => vaPost({action:'redeem', email:email, code:code}, 30000);
 const vaRequest = d => vaPost({action:'request', name:d.name, email:d.email,
                                organisation:d.organisation, consent:true});
 const vaFetchData = t => vaPost({action:'data', token:t}, 30000);
@@ -1588,6 +1594,20 @@ function vaultGate(state, detail){
       +'<button type="submit" style="padding:11px 13px;border:0;border-radius:11px;background:#1b6fb8;color:#fff;'
       +'font:inherit;font-weight:700;cursor:pointer">Request access</button>'
       +'</form>'
+      /* asking for a code, and then spending it */
+      +'<form id="vgCodeForm" style="display:none;gap:9px;text-align:left">'
+      +'<input id="vgCodeEmail" type="email" required autocomplete="email" placeholder="you@company.com" style="'+inp+'">'
+      +'<button type="submit" style="padding:11px 13px;border:0;border-radius:11px;background:#1b6fb8;color:#fff;'
+      +'font:inherit;font-weight:700;cursor:pointer">Email me a code</button>'
+      +'</form>'
+      +'<form id="vgPinForm" style="display:none;gap:9px;text-align:left">'
+      +'<input id="vgPin" type="text" required inputmode="numeric" autocomplete="one-time-code" '
+      +'pattern="[0-9]*" maxlength="6" placeholder="6-digit code" style="'+inp+';letter-spacing:6px;text-align:center;font-weight:700">'
+      +'<button type="submit" style="padding:11px 13px;border:0;border-radius:11px;background:#1b6fb8;color:#fff;'
+      +'font:inherit;font-weight:700;cursor:pointer">Unlock</button>'
+      +'</form>'
+      +'<button id="vgSwitch" type="button" style="margin:12px 0 0;background:0;border:0;padding:0;'
+      +'font:inherit;font-size:.78rem;color:#1b6fb8;text-decoration:underline;cursor:pointer"></button>'
       +'<p id="vgNote" style="margin:14px 0 0;font-size:.76rem;color:#8095ab;line-height:1.5"></p></div>';
     document.body.appendChild(el);
     el.querySelector('#vgForm').addEventListener('submit', async ev=>{
@@ -1607,24 +1627,91 @@ function vaultGate(state, detail){
         else vaultGate('error', (res && res.error) || 'Could not send that request.');
       }catch(e){ vaultGate('error', e.message); }
     });
+
+    /* the code route: ask for one, then spend it */
+    let codeEmail='';
+    el.querySelector('#vgSwitch').addEventListener('click', ()=>{
+      const showing = el.querySelector('#vgForm').style.display !== 'none';
+      vaultGate(showing ? 'code' : 'ask');
+    });
+    el.querySelector('#vgCodeForm').addEventListener('submit', async ev=>{
+      ev.preventDefault();
+      const email = el.querySelector('#vgCodeEmail').value.trim();
+      if(!email) return;
+      vaultGate('sending');
+      try{
+        const res = await vaCode(email);
+        if(!res || res.ok!==true){ vaultGate('error',(res&&res.error)||'Could not send that code.'); return; }
+        codeEmail = email;
+        if(res.status==='sent')        vaultGate(res.already ? 'codeagain' : 'codesent', email);
+        else if(res.status==='pending')vaultGate('pending');
+        else if(res.status==='refused')vaultGate('refused');
+        else                           vaultGate('codenone');
+      }catch(e){ vaultGate('error', e.message); }
+    });
+    el.querySelector('#vgPinForm').addEventListener('submit', async ev=>{
+      ev.preventDefault();
+      const code = el.querySelector('#vgPin').value.replace(/\D/g,'');
+      if(!code || !codeEmail) return;
+      vaultGate('sending');
+      try{
+        const res = await vaRedeem(codeEmail, code);
+        if(res && res.ok===true && res.token){
+          vaStore(res.token);
+          el.querySelector('#vgPin').value='';
+          /* straight on to the rows, the same path the mailed link takes */
+          await loadVaultData();
+          return;
+        }
+        const why=(res && res.reason)||'badcode';
+        if(why==='badcode')          vaultGate('badcode', res.left===1 ? 'One try left.' : (res.left||0)+' tries left.');
+        else if(why==='codeexpired') vaultGate('codegone');
+        else if(why==='toomany')     vaultGate('toomany');
+        else if(why==='nocode')      vaultGate('nocode');
+        else if(why==='revoked')     vaultGate('revoked');
+        else                         vaultGate('error','That code could not be used.');
+      }catch(e){ vaultGate('error', e.message); }
+    });
   }
-  const msg=el.querySelector('#vgMsg'), note=el.querySelector('#vgNote'), form=el.querySelector('#vgForm');
-  const show=(t,n,f)=>{ msg.textContent=t; note.textContent=n; form.style.display=f?'grid':'none'; };
+  const msg=el.querySelector('#vgMsg'), note=el.querySelector('#vgNote');
+  const forms={ request:el.querySelector('#vgForm'), code:el.querySelector('#vgCodeForm'),
+                pin:el.querySelector('#vgPinForm') };
+  const swap=el.querySelector('#vgSwitch');
+  /* Three forms now, so which one is showing is named rather than a boolean.
+     The switch under them is the only way between asking for access and
+     spending a code, and it never offers the route a visitor is already on. */
+  const show=(t,n,which,alt)=>{
+    msg.textContent=t; note.textContent=n;
+    Object.keys(forms).forEach(k=>{ forms[k].style.display = (k===which)?'grid':'none'; });
+    swap.style.display = alt ? 'inline' : 'none';
+    if(alt) swap.textContent = alt;
+  };
 
   /* Every refusal says which one it is. "Still with us", "no longer active"
      and "expired" send a person to three different places, and a single
      "denied" sends them to none of them -- they just ask Wan, and he has to
      open the sheet to find out which it was. */
-  if(state==='ask')          show('The report numbers, laboratories, dates and claim text are for named viewers. Ask for access and we will email you a link.','Requests are answered by FACERINNA Regulatory Affairs. Nothing else on this page is affected.',true);
-  else if(state==='sending') show('Sending…','',false);
-  else if(state==='asked')   show('Thank you — your request is with FACERINNA Regulatory Affairs.','We will email '+detail+' a link once it is approved. You can close this page.',false);
-  else if(state==='already') show('You have already asked for access.','We will email '+detail+' as soon as it is approved. Asking again does not make it faster.',false);
-  else if(state==='pending') show('Your request has not been decided yet.','We will email you a link once it is approved.',false);
-  else if(state==='refused') show('That request was not approved.','If you think that is a mistake, speak to FACERINNA Regulatory Affairs.',false);
-  else if(state==='expired') show('That link has expired.','Links last a limited time. Ask again below and a fresh one will be sent.',true);
-  else if(state==='revoked') show('That link is no longer active.','Access was withdrawn or the request was reopened. Ask again below if you still need it.',true);
-  else if(state==='offline') show('Could not reach the vault just now.','The page is fine; the connection to the report store is not. Try again in a moment.',false);
-  else if(state==='error')   show('Could not send that request.',String(detail||''),true);
+  const ALT_CODE = 'Already approved? Email me a code instead';
+  const ALT_ASK  = 'Not approved yet? Ask for access';
+  if(state==='ask')          show('The report numbers, laboratories, dates and claim text are for named viewers. Ask for access and we will email you a link.','Requests are answered by FACERINNA Regulatory Affairs. Nothing else on this page is affected.','request',ALT_CODE);
+  else if(state==='sending') show('Sending…','',null);
+  else if(state==='asked')   show('Thank you — your request is with FACERINNA Regulatory Affairs.','We will email '+detail+' a link once it is approved. You can close this page.',null);
+  else if(state==='already') show('You have already asked for access.','We will email '+detail+' as soon as it is approved. Asking again does not make it faster.',null,ALT_CODE);
+  else if(state==='pending') show('Your request has not been decided yet.','We will email you a link once it is approved.',null);
+  else if(state==='refused') show('That request was not approved.','If you think that is a mistake, speak to FACERINNA Regulatory Affairs.',null);
+  else if(state==='expired') show('That link has expired.','Links last a limited time. Ask for a code below and a fresh one is issued on the spot.','code',ALT_ASK);
+  else if(state==='revoked') show('That link is no longer active.','Access was withdrawn or the request was reopened. Ask again below if you still need it.','request',ALT_CODE);
+  else if(state==='offline') show('Could not reach the vault just now.','The page is fine; the connection to the report store is not. Try again in a moment.',null);
+  else if(state==='error')   show('Could not send that request.',String(detail||''),'request',ALT_CODE);
+  /* the code route */
+  else if(state==='code')     show('Already approved? We will email a six-digit code to the address on your approval.','It works once, on whichever device you type it into, and lasts '+'10 minutes.','code',ALT_ASK);
+  else if(state==='codesent') show('Code sent to '+detail+'.','Type it below. It works once and lasts 10 minutes. Check spam if it is slow.','pin',ALT_ASK);
+  else if(state==='codeagain')show('A code was already sent to '+detail+'.','Use the one you have — a new one can be asked for a minute after the last.','pin',ALT_ASK);
+  else if(state==='badcode')  show('That code is not right.',String(detail||'')+' Type it again, or ask for a new one in a minute.','pin',ALT_ASK);
+  else if(state==='nocode')   show('No code is waiting for that address.','Ask for one below.','code',ALT_ASK);
+  else if(state==='codegone') show('That code has expired.','Codes last 10 minutes. Ask for a new one below.','code',ALT_ASK);
+  else if(state==='toomany')  show('Too many wrong tries on that code.','It has been thrown away. Ask for a new one below.','code',ALT_ASK);
+  else if(state==='codenone') show('That address is not on the approved list.','Ask for access below and we will answer it.','request',null);
   el.style.display='grid';
 }
 function vaultGateHide(){ const el=document.getElementById('vaultGate'); if(el) el.style.display='none'; }
