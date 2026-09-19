@@ -340,5 +340,32 @@ check('switching it off stops new claims but not the one already earned',
          return call({action:'gift.claim',device:'dev9zzzz',score:9000}).reason==='inactive'
              && call({action:'admin.gift.redeem',token,claim:c3.claim}).ok===true; })());
 
-console.log(ok? '\nadmin: sign in, settings, sections, segments, privacy, gifts' : '\nSOMETHING IS WRONG');
+console.log('\nthe guide behind the question mark');
+check('no session, no guide', call({action:'admin.guide'}).ok===false);
+check('a made-up token, no guide', call({action:'admin.guide',token:'00000000-0000-4000-8000-999999999999'}).ok===false);
+const g=call({action:'admin.guide',token});
+check('a signed-in admin gets it', g.ok===true && Array.isArray(g.blocks) && g.blocks.length>5, g.error);
+check('...told who is reading it', g.you===OWNER);
+check('...and it is the counter routine, not a placeholder',
+  /at the counter/i.test(g.blocks.map(b=>b.s||'').join(' ')));
+check('every block is a kind the page knows how to draw',
+  g.blocks.every(b=>['h','p','ol','ul','table','note'].indexOf(b.t)>=0),
+  g.blocks.map(b=>b.t).filter(t=>['h','p','ol','ul','table','note'].indexOf(t)<0));
+check('...and carries what that kind needs',
+  g.blocks.every(b => (b.t==='ol'||b.t==='ul') ? (Array.isArray(b.items) && b.items.length>0)
+    : b.t==='table' ? (Array.isArray(b.rows) && b.rows.length>0)
+    : (typeof b.s==='string' && b.s.length>0)));
+check('the bold marks are paired, so nothing comes out half-bold',
+  g.blocks.every(b => [].concat(b.s||[], b.items||[], b.head||[], ...(b.rows||[]))
+    .every(s => (String(s).split('*').length-1) % 2 === 0)),
+  g.blocks.filter(b => [].concat(b.s||[], b.items||[], b.head||[], ...(b.rows||[]))
+    .some(s => (String(s).split('*').length-1) % 2 !== 0)).map(b=>b.s||b.t));
+check('it is a read: it answers with the script lock held, and writes nothing',
+  (()=>{ const before=JSON.stringify(tabs); LOCK_FREE=false;
+         const r=call({action:'admin.guide',token}); LOCK_FREE=true;
+         return r.ok===true && JSON.stringify(tabs)===before; })());
+check('the public config still does not carry it',
+  !JSON.stringify(call({action:'config'})).match(/at the counter/i));
+
+console.log(ok? '\nadmin: sign in, settings, sections, segments, privacy, gifts, the guide' : '\nSOMETHING IS WRONG');
 process.exit(ok?0:1);

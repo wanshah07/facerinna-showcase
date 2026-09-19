@@ -1058,6 +1058,37 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .cclose{position:sticky;top:0;float:right;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
   background:var(--surface);cursor:pointer;font-size:1.05rem;color:var(--ink-2);z-index:5;box-shadow:var(--shadow-sm)}
 .cclose:hover{color:var(--brand-deep);border-color:var(--brand)}
+/* The question mark beside the games heading, and the panel behind it. The
+   panel arrives from the booth script and is built from text nodes, so these
+   are the only shapes it can take. */
+.ghelp{appearance:none;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;
+  margin-left:.42em;width:1.15em;height:1.15em;min-width:28px;min-height:28px;padding:0;
+  border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--brand-deep);
+  font:inherit;font-size:max(15px,.44em);font-weight:800;line-height:1;cursor:pointer;
+  box-shadow:var(--shadow-sm);transition:background .2s,color .2s,border-color .2s,transform .2s}
+.ghelp:hover,.ghelp:focus-visible{background:var(--brand);border-color:var(--brand);color:#fff;transform:scale(1.09)}
+.guide-panel{max-width:660px}
+.guide-panel .g-top{margin:0 0 16px}
+.guide-panel .g-top h3{margin:0;font-size:clamp(20px,3.4vw,26px)}
+.guide-panel .g-top .g-who{margin:4px 0 0;font-size:12.5px;color:var(--ink-2);font-weight:600}
+.guide-panel h4{margin:22px 0 8px;font-size:16px;color:var(--brand-deep);letter-spacing:-.01em}
+.guide-panel h4:first-child{margin-top:0}
+.guide-panel p{margin:0 0 10px;font-size:14.5px;line-height:1.62;color:var(--ink-2)}
+.guide-panel ol,.guide-panel ul{margin:0 0 12px;padding-left:22px}
+.guide-panel li{font-size:14.5px;line-height:1.6;color:var(--ink-2);margin-bottom:6px}
+.guide-panel b{color:var(--ink)}
+.g-note{background:var(--surface-2);border-left:3px solid var(--brand);border-radius:0 12px 12px 0;
+  padding:11px 14px;margin:0 0 14px;font-size:13.5px;line-height:1.55;color:var(--ink-2);font-weight:600}
+.g-tablewrap{overflow-x:auto;margin:0 0 14px}
+.guide-panel table{border-collapse:collapse;width:100%;font-size:13.5px}
+.guide-panel th,.guide-panel td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);
+  color:var(--ink-2);line-height:1.45}
+.guide-panel th{font-weight:800;color:var(--ink);white-space:nowrap}
+.g-gate{text-align:center;padding:14px 4px}
+.g-gate h3{margin:0 0 8px;font-size:20px}
+.g-gate p{margin:0 auto 14px;max-width:380px}
+.g-bad{color:#b3342a}
+@media (max-width:640px){.cpanel.guide-panel{margin:3vh 12px;padding:24px 18px}}
 .chead{display:flex;gap:22px;align-items:center;margin-bottom:20px}
 .chead .cimg{flex:0 0 128px;height:150px;display:grid;place-items:center;border-radius:16px;
   background:radial-gradient(circle at 50% 35%,#fff,var(--surface-2))}
@@ -2329,7 +2360,8 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
   <div class="wrap">
     <div class="sec-head center reveal">
       <span class="eyebrow">Interactive · Booth Engagement</span>
-      <h2>Eight games, one booth</h2>
+      <h2>Eight games, one booth<button class="ghelp" type="button" id="guideBtn"
+        aria-label="Booth staff guide" title="Booth staff guide">?</button></h2>
       <p>Eight challenges built for the booth — five 3D arcade games, Facy Run, the UV Card lucky draw and the Skin IQ quiz, all on the spinning lab wheel. Score well and claim your reward at the booth.</p>
     </div>
     <div class="cg-wrap reveal">
@@ -2483,6 +2515,19 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
     </div>
   </div>
 </section>
+
+<!-- BOOTH STAFF GUIDE -->
+<!-- Empty on purpose. The guide is not in this file: this page is public, and
+     a passcode drawn over it does not stop anyone reading its source. The text
+     comes from the booth script, which hands it over only to a browser holding
+     a live admin session. -->
+<div class="cmodal" id="guideModal" role="dialog" aria-modal="true" aria-label="Booth staff guide">
+  <div class="backdrop" data-guide-close></div>
+  <div class="cpanel guide-panel">
+    <button class="cclose" type="button" data-guide-close aria-label="Close the guide">&#10005;</button>
+    <div id="guideBody"></div>
+  </div>
+</div>
 
 <!-- CLINICAL DATA MODAL -->
 <div class="cmodal" id="rankModal" role="dialog" aria-modal="true" aria-label="Booth ranking across the five games">
@@ -6490,6 +6535,132 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     if(e.data && e.data.type === 'fx-updated') whenIdle();
   });
 });
+</script>
+<script>
+/* ---- the guide behind the question mark -------------------------------
+   Booth staff need the counter routine to hand; visitors have no business
+   reading it. So the text is not in this file at all -- it lives in the
+   booth script, which checks the admin session before it parts with a word.
+   Everything below is plumbing: ask, and draw what comes back.
+
+   Drawn with text nodes and createElement, never innerHTML. The blocks come
+   from our own script, but a page that cannot be made to render markup from
+   a network answer cannot be made to render markup from a network answer,
+   whoever is answering. A *word in stars* comes out bold; that is the whole
+   of the formatting.
+   A test points this at its own server by setting window.__BOOTH_API first. */
+(function(){
+  var btn = document.getElementById('guideBtn');
+  var modal = document.getElementById('guideModal');
+  var body = document.getElementById('guideBody');
+  if(!btn || !modal || !body) return;
+
+  var API = (typeof window.__BOOTH_API === 'string') ? window.__BOOTH_API
+    : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
+  var ADMIN = 'fx.admin.token';
+  var el = function(tag, cls){ var n = document.createElement(tag); if(cls) n.className = cls; return n; };
+  function token(){ try{ return localStorage.getItem(ADMIN) || ''; }catch(e){ return ''; } }
+
+  /* *stars* to <b>, without handing any string to the parser. The script is
+     kept to plain ASCII so it pastes into the Apps Script editor whatever the
+     clipboard does to it; the dash it writes as -- is drawn as one here. */
+  function fill(node, s){
+    String(s == null ? '' : s).replace(/ -- /g, ' \u2014 ').split('*').forEach(function(part, i){
+      if(part === '') return;
+      if(i % 2) node.appendChild(el('b')).appendChild(document.createTextNode(part));
+      else node.appendChild(document.createTextNode(part));
+    });
+    return node;
+  }
+  function list(kind, items){
+    var l = el(kind);
+    (items || []).forEach(function(it){ fill(l.appendChild(el('li')), it); });
+    return l;
+  }
+  function table(b){
+    var wrap = el('div','g-tablewrap'), t = wrap.appendChild(el('table'));
+    if(b.head && b.head.length){
+      var tr = t.appendChild(el('thead')).appendChild(el('tr'));
+      b.head.forEach(function(h){ fill(tr.appendChild(el('th')), h); });
+    }
+    var tb = t.appendChild(el('tbody'));
+    (b.rows || []).forEach(function(row){
+      var tr = tb.appendChild(el('tr'));
+      (row || []).forEach(function(c){ fill(tr.appendChild(el('td')), c); });
+    });
+    return wrap;
+  }
+  function block(b){
+    if(!b || typeof b !== 'object') return null;
+    if(b.t === 'h')     return fill(el('h4'), b.s);
+    if(b.t === 'p')     return fill(el('p'), b.s);
+    if(b.t === 'note')  return fill(el('div','g-note'), b.s);
+    if(b.t === 'ol')    return list('ol', b.items);
+    if(b.t === 'ul')    return list('ul', b.items);
+    if(b.t === 'table') return table(b);
+    return null;
+  }
+
+  function clear(){ while(body.firstChild) body.removeChild(body.firstChild); }
+  function note(text){ clear(); fill(body.appendChild(el('p')), text); }
+  function gate(title, text, bad){
+    clear();
+    var box = body.appendChild(el('div','g-gate'));
+    box.appendChild(el('h3')).appendChild(document.createTextNode(title));
+    fill(box.appendChild(el('p', bad ? 'g-bad' : '')), text);
+    var a = box.appendChild(el('a','btn btn-primary'));
+    a.href = 'admin.html'; a.textContent = 'Open the admin';
+  }
+  function draw(j){
+    clear();
+    var top = body.appendChild(el('div','g-top'));
+    top.appendChild(el('h3')).appendChild(document.createTextNode(j.title || 'Running the booth'));
+    if(j.you) top.appendChild(el('p','g-who')).appendChild(document.createTextNode('Signed in as ' + j.you));
+    (j.blocks || []).forEach(function(b){ var n = block(b); if(n) body.appendChild(n); });
+  }
+
+  var loaded = false, asking = false;
+  function ask(){
+    var t = token();
+    if(!t) return gate('Booth staff only', 'This guide is for the people running the booth. Sign in once on this device with an address on the admin list, then open it again.');
+    if(asking) return;
+    asking = true;
+    note('Checking this device…');
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctl && setTimeout(function(){ ctl.abort(); }, 20000);
+    fetch(API, { method:'POST', body:JSON.stringify({ action:'admin.guide', token:t }),
+                 signal: ctl ? ctl.signal : undefined })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(j && j.ok === true){ loaded = true; return draw(j); }
+        var err = (j && j.error) || 'no answer';
+        if(/signed out/i.test(err)) return gate('Signed out', 'This device’s sign-in has expired. Sign in again and the guide comes back.');
+        gate('That did not work', err, true);
+      })
+      .catch(function(e){ gate('That did not work', 'Could not reach the booth script: ' + (e && e.message || e), true); })
+      .finally(function(){ asking = false; if(timer) clearTimeout(timer); });
+  }
+
+  function open_(){
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    if(!loaded) ask();
+    var x = modal.querySelector('.cclose'); if(x) x.focus();
+  }
+  function close(){
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+    try{ btn.focus(); }catch(e){}
+  }
+  btn.addEventListener('click', open_);
+  modal.querySelectorAll('[data-guide-close]').forEach(function(e){ e.addEventListener('click', close); });
+  /* Capture, ahead of the deck's own Escape, the same way the ranking does. */
+  addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && modal.classList.contains('open')){ e.stopPropagation(); close(); }
+  }, true);
+
+  window.__guide = { open: open_, close: close, ask: ask, loaded: function(){ return loaded; } };
+})();
 </script>
 <script>
 /* ---- what the admin sheet says ----------------------------------------
