@@ -4,6 +4,7 @@
    config never leaks the passcode or the admin list, and that the sheet is
    the one place an admin can be revoked. */
 import fs from 'fs';
+import crypto from 'node:crypto';
 const src = fs.readFileSync('/workspace/facerinna-showcase/tools/booth-admin.gs','utf8');
 
 const BOOK_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
@@ -41,7 +42,14 @@ const ContentService = { MimeType:{JSON:'j'}, createTextOutput: s => ({ setMimeT
 let uuid=0;
 let slept=[];
 const Utilities = { getUuid: () => '00000000-0000-4000-8000-' + String(++uuid).padStart(12,'0'),
-                    sleep(ms){ slept.push(ms); } };
+                    sleep(ms){ slept.push(ms); },
+                    /* A real SHA-256, not a stand-in: the point of hashing the
+                       code is that what is stored cannot be turned back into a
+                       working one, and a reversible stub would let that check
+                       pass while proving nothing. */
+                    DigestAlgorithm: { SHA_256: 'SHA-256' },
+                    computeDigest: (alg, str) => Array.from(crypto.createHash('sha256').update(String(str)).digest()),
+                    base64Encode: bytes => Buffer.from(bytes).toString('base64') };
 const PROPS={};
 const PropertiesService = { getScriptProperties: () => ({
   getProperty: k => (k in PROPS ? PROPS[k] : null),
@@ -340,6 +348,65 @@ check('switching it off stops new claims but not the one already earned',
          return call({action:'gift.claim',device:'dev9zzzz',score:9000}).reason==='inactive'
              && call({action:'admin.gift.redeem',token,claim:c3.claim}).ok===true; })());
 
+console.log('\nsigning in with a code, from any device');
+const dig = m => (m.body.match(/\b(\d{6})\b/)||[])[1];
+{
+  const before = mails.length;
+  let r = call({action:'code', email:'stranger@example.com'});
+  check('a stranger gets the same answer as an admin', r.ok===true && r.sent===true);
+  check('...and no mail: the form cannot be used to ask who the admins are', mails.length===before);
+
+  r = call({action:'code', email:'Owner@Facerinna.test'});
+  check('an admin gets a code, case-insensitively', r.ok===true && mails.length===before+1 && mails[before].to===OWNER);
+  const code = dig(mails[before]);
+  check('the mail carries six digits', /^\d{6}$/.test(code||''), code);
+  check('...and says what they buy', /booth admin/i.test(mails[before].htmlBody));
+  check('the code is not stored where it could be read back',
+    Object.keys(PROPS).every(k => !String(PROPS[k]).includes(code)), Object.keys(PROPS));
+
+  check('asking again within the minute sends nothing new',
+    (()=>{ const n=mails.length; const a=call({action:'code', email:OWNER}); return a.ok===true && mails.length===n; })());
+
+  check('a wrong code does not get in, and says how many tries are left',
+    (()=>{ const a=call({action:'redeem', email:OWNER, code:'000000'});
+           return a.ok===false && a.reason==='badcode' && a.left===4; })());
+  check('...and each wrong one waits a little longer', slept[slept.length-1]>=400);
+
+  r = call({action:'redeem', email:OWNER, code});
+  check('the right code buys a session', r.ok===true && !!r.token && r.email===OWNER, r.reason);
+  const t2 = r.token;
+  check('...a real one, good for the admin', call({action:'admin.get', token:t2}).ok===true);
+  check('...and it opens the guide, which is what this was for', call({action:'admin.guide', token:t2}).ok===true);
+  check('the same six digits cannot buy a second session',
+    call({action:'redeem', email:OWNER, code}).ok===false);
+  check('a device signed in by code is a device signed in: the link still works too',
+    (()=>{ call({action:'login', email:OWNER}); const k=linkKey(mails[mails.length-1]);
+           return call({action:'exchange', key:k}).ok===true; })());
+}
+
+console.log('\ncodes run out, and an address can be taken off the list');
+{
+  call({action:'code', email:OWNER});
+  const c = dig(mails[mails.length-1]);
+  NOW += 11*60*1000;
+  check('a code older than ten minutes is dead',
+    call({action:'redeem', email:OWNER, code:c}).reason==='codeexpired');
+
+  call({action:'code', email:OWNER});
+  const c2 = dig(mails[mails.length-1]);
+  for(let i=0;i<5;i++) call({action:'redeem', email:OWNER, code:'111111'});
+  check('five wrong guesses kill that code, right one or not',
+    call({action:'redeem', email:OWNER, code:c2}).ok===false);
+
+  call({action:'code', email:OWNER});
+  const c3 = dig(mails[mails.length-1]);
+  const row = tabs['Admins'].rows.findIndex(r=>String(r[0]).toLowerCase()===OWNER);
+  tabs['Admins'].rows[row][1]='no';
+  check('an address taken off the list cannot spend a code minted while it was on it',
+    call({action:'redeem', email:OWNER, code:c3}).reason==='revoked');
+  tabs['Admins'].rows[row][1]='yes';
+}
+
 console.log('\nthe guide behind the question mark');
 check('no session, no guide', call({action:'admin.guide'}).ok===false);
 check('a made-up token, no guide', call({action:'admin.guide',token:'00000000-0000-4000-8000-999999999999'}).ok===false);
@@ -367,5 +434,5 @@ check('it is a read: it answers with the script lock held, and writes nothing',
 check('the public config still does not carry it',
   !JSON.stringify(call({action:'config'})).match(/at the counter/i));
 
-console.log(ok? '\nadmin: sign in, settings, sections, segments, privacy, gifts, the guide' : '\nSOMETHING IS WRONG');
+console.log(ok? '\nadmin: sign in by link or code, settings, sections, segments, privacy, gifts, the guide' : '\nSOMETHING IS WRONG');
 process.exit(ok?0:1);

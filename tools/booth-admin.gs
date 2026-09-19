@@ -315,6 +315,132 @@ function logout_(b) {
   return json_({ ok: true });
 }
 
+/* ------------------------------------------------- signing in with a code
+
+   The link route above binds a sign-in to whichever device opened the mail.
+   That is fine for one tablet and a nuisance for a booth: the counter phone,
+   the iPad on the stand and whatever somebody has in their pocket each need
+   their own link, and a link opened in a mail app's own browser signs THAT
+   browser in rather than the one the booth is running.
+
+   So: the same address, a six-digit code, typed into whatever is in front of
+   you. It proves control of the address exactly as the link does, and buys
+   exactly what the link buys -- a session of SESSION_DAYS -- so an admin can
+   sign in anywhere without a link to chase.
+
+   The stored copy is salted and hashed, so a look at the script's properties
+   does not hand anybody a working code.                                     */
+
+var CODE_MINS   = 10;     /* a code is worth nothing after this long */
+var CODE_TRIES  = 5;      /* wrong guesses before that code is dead */
+var CODE_GAP_MS = 60000;  /* one code a minute per address */
+
+/* Body: {action:'code', email}
+   Back: {ok:true, sent:true}
+
+   The same answer for any address, admin or not -- the link route makes that
+   promise and a code route that broke it would turn this form into a way of
+   asking the booth who its admins are. */
+function codeRequest_(b) {
+  var email = email_(b && b.email);
+  if (!email) return json_({ ok: false, error: 'enter your e-mail address' });
+
+  var sent = { ok: true, sent: true,
+               note: 'If that address is an admin, a code is on its way.' };
+  if (!isAdmin_(email)) return json_(sent);
+
+  var props = PropertiesService.getScriptProperties();
+  var slot = 'admincode:' + email;
+  var prev = readCode_(props, slot);
+  /* Asking twice in a minute mints nothing and sends nothing: without this a
+     held-down button is a mail bomb aimed at somebody else's inbox, and each
+     fresh code would quietly kill the one they are already typing. */
+  if (prev && (Date.now() - prev.made) < CODE_GAP_MS) return json_(sent);
+
+  var code = sixDigits_();
+  /* Mailed first, stored second. The other order can leave an address locked
+     out for CODE_GAP_MS holding a code that never arrived. */
+  MailApp.sendEmail({
+    to: email,
+    name: FROM_NAME,
+    subject: 'Your FACERINNA booth admin code: ' + code,
+    htmlBody:
+      '<p>Your one-time code for the FACERINNA booth admin is:</p>' +
+      '<p style="font:700 28px/1.2 monospace;letter-spacing:4px">' + code + '</p>' +
+      '<p style="color:#667;font-size:13px">It works once, on whichever device you ' +
+      'type it into, and stops working in ' + CODE_MINS + ' minutes. It signs that ' +
+      'device in to the booth admin, so treat it as you would the sign-in link.</p>' +
+      '<p style="color:#667;font-size:13px">If you did not ask for it, ignore this ' +
+      'mail; nothing changes.</p>',
+    body: 'Your FACERINNA booth admin code is ' + code + '. It works once, for ' +
+          CODE_MINS + ' minutes, on whichever device you type it into.'
+  });
+  props.setProperty(slot, JSON.stringify({
+    h: codeHash_(email, code), exp: Date.now() + CODE_MINS * 60000,
+    tries: 0, made: Date.now()
+  }));
+  return json_(sent);
+}
+
+/* Body: {action:'redeem', email, code}
+   Back: {ok:true, token, email, expires} | {ok:false, reason:...}
+
+   A spent code is deleted before the session goes out, so the same six digits
+   can never buy a second one. */
+function codeRedeem_(b) {
+  var email = email_(b && b.email);
+  var code  = String((b && b.code) || '').replace(/\D/g, '');
+  if (!email) return json_({ ok: false, reason: 'nocode' });
+
+  var props = PropertiesService.getScriptProperties();
+  var slot  = 'admincode:' + email;
+  var rec   = readCode_(props, slot);
+
+  if (!rec) return json_({ ok: false, reason: 'nocode' });
+  if (Date.now() > rec.exp) { props.deleteProperty(slot); return json_({ ok: false, reason: 'codeexpired' }); }
+  if (rec.tries >= CODE_TRIES) { props.deleteProperty(slot); return json_({ ok: false, reason: 'toomany' }); }
+
+  if (!code || codeHash_(email, code) !== rec.h) {
+    rec.tries++;
+    props.setProperty(slot, JSON.stringify(rec));
+    /* Each wrong one costs longer than the last, capped low: a long wait holds
+       one of the script's execution slots, which is a cheaper thing to attack
+       than six digits with five tries and ten minutes on them. */
+    Utilities.sleep(Math.min(400 * rec.tries, 2000));
+    return json_({ ok: false, reason: 'badcode', left: CODE_TRIES - rec.tries });
+  }
+
+  props.deleteProperty(slot);
+
+  /* Asked again rather than trusting what was true when the code was minted:
+     an address taken off the list in those ten minutes must not still get in
+     on a code from while it was live. */
+  if (!isAdmin_(email)) return json_({ ok: false, reason: 'revoked' });
+
+  var token = addSession_('session', email, SESSION_DAYS * 24 * 60);
+  return json_({ ok: true, token: token, email: email,
+                 expires: new Date(Date.now() + SESSION_DAYS * 86400000).toISOString() });
+}
+
+function readCode_(props, slot) {
+  try { var raw = props.getProperty(slot); return raw ? JSON.parse(raw) : null; }
+  catch (e) { return null; }
+}
+
+function sixDigits_() {
+  return String(Math.floor(Math.random() * 900000) + 100000);
+}
+
+/* Salted and hashed, so the stored copy is not itself a working code. The salt
+   is minted once and lives with the script, never in the sheet. */
+function codeHash_(email, code) {
+  var props = PropertiesService.getScriptProperties();
+  var salt = props.getProperty('admin-code-salt');
+  if (!salt) { salt = Utilities.getUuid(); props.setProperty('admin-code-salt', salt); }
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + '|' + email + '|' + code);
+  return Utilities.base64Encode(bytes);
+}
+
 /* ---------------------------------------------------------------- settings */
 
 function settings_() {
@@ -829,6 +955,8 @@ function doPost(e) {
     if (action === 'exchange') return exchange_(b);
     if (action === 'whoami')  return whoami_(b);
     if (action === 'logout')  return logout_(b);
+    if (action === 'code')    return codeRequest_(b);
+    if (action === 'redeem')  return codeRedeem_(b);
     if (action === 'gift.claim') return giftClaim_(b);
 
     /* the admin ones: every write takes the lock */
