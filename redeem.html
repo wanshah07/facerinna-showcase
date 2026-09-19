@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B1620">
+<title>Facerinna — Gift wheel</title>
+<style>
+  /* The page a booth admin's phone opens by scanning the QR code on a Facy
+     Run result screen. It asks the admin script to spend the claim; the
+     script picks the product and says which slice it is; this page spins the
+     wheel to that slice. Nothing here chooses anything. */
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:#0B1620;color:#EAF4FF;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{display:flex;flex-direction:column;align-items:center;padding:calc(18px + env(safe-area-inset-top,0)) 16px 32px;text-align:center}
+  .eyebrow{font-size:11px;letter-spacing:.42em;text-transform:uppercase;font-weight:800;color:#54C1F5;margin:0 0 8px}
+  h1{font-size:clamp(22px,5vw,32px);margin:0 0 6px;letter-spacing:-.01em}
+  .sub{font-size:14px;line-height:1.55;color:rgba(255,255,255,.72);max-width:420px;margin:0 0 16px;font-weight:600}
+  #wheelWrap{position:relative;width:min(88vw,420px);aspect-ratio:1;margin:8px auto 14px}
+  #wheel{width:100%;height:100%;display:block;border-radius:50%;box-shadow:0 30px 60px rgba(0,0,0,.5)}
+  #pin{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;
+    border-left:16px solid transparent;border-right:16px solid transparent;border-top:30px solid #FFE066;
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,.4))}
+  .card{background:#fff;color:#0b1620;border-radius:18px;padding:18px 20px;width:min(92vw,440px);margin:6px auto;
+    box-shadow:0 20px 50px rgba(0,0,0,.45)}
+  .card h2{margin:0 0 6px;font-size:20px}
+  .card p{margin:0 0 8px;font-size:14px;line-height:1.5;color:#3f5670;font-weight:600}
+  .prize{font-family:Georgia,serif;font-size:clamp(20px,4.6vw,28px);font-weight:700;color:#1b6fb8;margin:6px 0 4px}
+  .btn{display:inline-block;appearance:none;border:0;border-radius:12px;padding:12px 20px;font:inherit;font-size:15px;font-weight:800;
+    cursor:pointer;background:linear-gradient(135deg,#6FDCC6,#3FA6EE);color:#0b1620;text-decoration:none;margin:6px 4px 0}
+  .btn.ghost{background:rgba(11,22,32,.08);color:#0b1620}
+  .hidden{display:none!important}
+  .who{font-size:12px;color:rgba(255,255,255,.55);margin-top:18px}
+  .bad{color:#c0392b}
+</style>
+</head>
+<body>
+<p class="eyebrow">Facerinna · Booth counter</p>
+<h1>Gift wheel</h1>
+<p class="sub" id="lead">Checking the code…</p>
+
+<div id="wheelWrap" class="hidden"><div id="pin"></div><canvas id="wheel" width="840" height="840" aria-label="Prize wheel"></canvas></div>
+
+<div class="card hidden" id="signin">
+  <h2>Sign in first</h2>
+  <p>This page only works on a phone that is signed in to the booth admin. Sign in once, then scan the visitor's code again.</p>
+  <a class="btn" href="admin.html">Open the admin</a>
+</div>
+
+<div class="card hidden" id="result">
+  <h2 id="resTitle">The wheel says</h2>
+  <div class="prize" id="prize"></div>
+  <p id="resText"></p>
+  <p id="resMeta" style="font-size:12px;color:#8095ab"></p>
+  <a class="btn ghost" href="admin.html">Admin</a>
+</div>
+
+<div class="card hidden" id="oops">
+  <h2>That did not work</h2>
+  <p id="oopsText" class="bad"></p>
+  <a class="btn ghost" href="admin.html">Admin</a>
+</div>
+<p class="who" id="who"></p>
+
+<script>
+(function(){
+'use strict';
+var API = (typeof window.__BOOTH_API === 'string') ? window.__BOOTH_API
+  : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
+var KEY = 'fx.admin.token';
+var $ = function(id){ return document.getElementById(id); };
+var show = function(id, on){ $(id).classList.toggle('hidden', !on); };
+
+function token(){ try{ return localStorage.getItem(KEY) || ''; }catch(e){ return ''; } }
+function post(body){
+  var ctl = ('AbortController' in window) ? new AbortController() : null;
+  var t = ctl && setTimeout(function(){ ctl.abort(); }, 20000);
+  return fetch(API, { method:'POST', body:JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ return r.json(); }).finally(function(){ if(t) clearTimeout(t); });
+}
+
+/* ------------------------------------------------------------- the wheel */
+var cv = $('wheel'), g = cv.getContext('2d'), R = cv.width/2;
+var COLS = ['#3FA6EE','#6FDCC6','#F6C744','#FFA75C','#B9A6FF','#7ED957','#FFB3C7','#8FD0F7','#2E7CBE','#FFE066'];
+var products = [], angle = 0;
+function short(s){ var w = String(s).split(' '); return w.length>4 ? w.slice(0,4).join(' ') : s; }
+function drawWheel(){
+  var n = products.length; if(!n) return;
+  g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,cv.width,cv.height);
+  g.translate(R,R); g.rotate(angle);
+  var slice = 2*Math.PI/n;
+  for(var i=0;i<n;i++){
+    var a0 = -Math.PI/2 + i*slice - slice/2, a1 = a0 + slice;
+    g.beginPath(); g.moveTo(0,0); g.arc(0,0,R-8,a0,a1); g.closePath();
+    g.fillStyle = COLS[i % COLS.length]; g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 3; g.stroke();
+    g.save(); g.rotate(a0 + slice/2);
+    g.fillStyle = '#0b1620'; g.font = 'bold '+(n>8?22:26)+'px system-ui,sans-serif'; g.textAlign = 'right'; g.textBaseline = 'middle';
+    var label = short(products[i]);
+    if(label.length > 22) label = label.slice(0,21)+'…';
+    g.fillText(label, R-28, 0);
+    g.restore();
+  }
+  g.beginPath(); g.arc(0,0,44,0,6.283); g.fillStyle='#fff'; g.fill();
+  g.fillStyle='#3FA6EE'; g.font='bold 20px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('FX', 0, 0);
+}
+/* Spin to `index`: the wheel is drawn with slice i centred at -90deg + i*slice
+   when angle is 0, so landing i under the top pin means angle = -i*slice
+   (mod 2pi), plus a few whole turns for the show. Eased out, 4.2 seconds. */
+var spinning = false, landed = -1;
+function spinTo(index, done){
+  var n = products.length, slice = 2*Math.PI/n;
+  var target = -index*slice - Math.PI*2*5;
+  var from = angle, t0 = performance.now(), dur = 4200;
+  spinning = true;
+  function tick(now){
+    var t = Math.min(1, (now-t0)/dur), e = 1 - Math.pow(1-t, 3);
+    angle = from + (target-from)*e;
+    drawWheel();
+    if(t < 1) requestAnimationFrame(tick);
+    else { spinning = false; landed = index; if(done) done(); }
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ------------------------------------------------------------- flow */
+var claim = new URLSearchParams(location.search).get('c') || '';
+var state = { stage:'start', product:'', already:false };
+function fail(msg){ state.stage='fail'; $('lead').textContent=''; show('oops', true); $('oopsText').textContent = msg; }
+function reveal(j){
+  state.stage = 'done'; state.product = j.product; state.already = !!j.already;
+  $('prize').textContent = j.product;
+  $('resTitle').textContent = j.already ? 'Already redeemed' : 'The wheel says';
+  $('resText').textContent = j.already
+    ? 'This code was already used. The gift it got is above — do not hand out a second one.'
+    : 'Hand this product to the visitor. The code is now spent and cannot be scanned again.';
+  $('resMeta').textContent = (j.name ? j.name+' · ' : '') + (j.score ? j.score+' points' : '') + (j.already && j.at ? ' · redeemed '+String(j.at).slice(0,16) : '');
+  show('result', true);
+}
+function go(){
+  if(!claim){ return fail('No claim code in this link. Scan the QR code on the visitor\'s result screen.'); }
+  var t = token();
+  if(!t){ state.stage='signin'; $('lead').textContent='Scan again once this phone is signed in.'; show('signin', true); return; }
+  $('lead').textContent = 'Spending the code…';
+  post({ action:'admin.gift.redeem', token:t, claim:claim }).then(function(j){
+    if(!j || j.ok !== true){
+      var err = (j && j.error) || 'no answer';
+      if(/signed out/i.test(err)){ state.stage='signin'; $('lead').textContent='This phone\'s sign-in has expired.'; show('signin', true); return; }
+      return fail(err);
+    }
+    products = j.products || [];
+    $('who').textContent = 'One gift per device · the pick is made by the booth script, not by this phone';
+    if(j.already || j.index < 0 || !products.length){ $('lead').textContent=''; return reveal(j); }
+    show('wheelWrap', true); drawWheel();
+    $('lead').textContent = 'Spinning…';
+    state.stage = 'spin';
+    spinTo(j.index, function(){ $('lead').textContent=''; reveal(j); });
+  }).catch(function(e){ fail('Could not reach the booth script: '+(e && e.message || e)); });
+}
+go();
+
+/* the tests, and nothing else */
+window.__redeem = { state: function(){ return state; }, products: function(){ return products; },
+  angle: function(){ return angle; }, landed: function(){ return landed; }, spinning: function(){ return spinning; },
+  spinTo: spinTo, setProducts: function(p){ products = p; drawWheel(); } };
+})();
+</script>
+</body>
+</html>

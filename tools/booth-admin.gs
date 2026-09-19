@@ -74,7 +74,7 @@ var SESSION_DAYS = 30;    /* a session lasts this long after signing in */
 var FROM_NAME    = 'FACERINNA Booth';
 
 var T_ADMINS = 'Admins', T_SETTINGS = 'Settings', T_SEGMENTS = 'Segments',
-    T_SESSIONS = 'Admin sessions', T_SECTIONS = 'Sections';
+    T_SESSIONS = 'Admin sessions', T_SECTIONS = 'Sections', T_GIFTS = 'Gifts';
 
 var ADMIN_HEADERS    = ['email', 'active', 'name', 'added'];
 var SETTING_HEADERS  = ['key', 'value', 'updated', 'by'];
@@ -84,6 +84,10 @@ var SESSION_HEADERS  = ['key', 'kind', 'email', 'created', 'expires', 'used', 'l
 /* One row per section of the booth page. passcode is optional: a locked
    section with none falls back to the site passcode. */
 var SECTION_HEADERS  = ['id', 'label', 'mode', 'passcode', 'message', 'updated', 'by'];
+/* One row per device that earned a gift. `claim` is the secret in the QR code;
+   `redeemed` and `product` are written the moment an admin scans it, and never
+   again -- that row IS the one-gift-per-device rule. */
+var GIFT_HEADERS     = ['claim', 'device', 'game', 'score', 'name', 'created', 'redeemed', 'product', 'by'];
 
 /* The settings the page understands, and what they are until somebody sets
    them. Anything else posted to admin.settings is dropped, so a typo cannot
@@ -99,9 +103,25 @@ var SETTING_KEYS = {
   privacy_entity:    '',
   privacy_email:     '',
   privacy_address:   '',
-  privacy_retention: ''
+  privacy_retention: '',
+  /* The gift at the end of Facy Run. Off until an admin turns it on, so a
+     visitor cannot earn a QR code on a day nobody is at the counter to scan
+     it. gift_points is what a run has to score; gift_products is the wheel,
+     one product per line, chosen at random ON THE SCRIPT when the admin
+     scans, so the phone doing the spinning has no say in what it lands on. */
+  gift_active:   'no',
+  gift_points:   '6000',
+  gift_products: 'Niacinamide Brightening Serum Sunscreen SPF50 PA++++\n' +
+                 '2% Salicylic Acid Acne Serum\n' +
+                 'Ceramide B5 Balancing Moisturizer\n' +
+                 '5% B5 Centella Calming Gel Cream\n' +
+                 'Low pH B5 Gel Cleanser\n' +
+                 'Ceramide B5 Balancing Toner\n' +
+                 '10% Niacinamide 3% TXA Bright Dark Spot Serum\n' +
+                 '5% B5 Intensive Barrier Cream'
 };
 var PRIVATE_SETTINGS = { passcode: true };
+var GIFT_MAX_SCORE = 100000;   /* the same ceiling booth-scores.gs applies */
 
 /* Where a segment may be placed: after one of these sections, or at the end.
    Sent to the admin page so its menu cannot drift from the real page. */
@@ -126,6 +146,7 @@ function setUp() {
   tab_(book, T_SEGMENTS, SEGMENT_HEADERS);
   tab_(book, T_SESSIONS, SESSION_HEADERS);
   tab_(book, T_SECTIONS, SECTION_HEADERS);
+  tab_(book, T_GIFTS,    GIFT_HEADERS);
 
   /* A row per section, so the sheet shows every one there is and the admin
      page has something to list before anything has been changed. */
@@ -179,6 +200,13 @@ function validKey_(k) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}
    value, so unlike a name it cannot be made safe with a leading apostrophe,
    and one beginning with = would be a formula in the sheet that holds it. */
 function email_(s) { s = String(s || '').trim().toLowerCase(); return /^[A-Za-z0-9][^\s@]*@[^\s@]+\.[^\s@]+$/.test(s) ? s : ''; }
+/* A visitor's name goes into a cell. One that starts with = + - or @ would be
+   a formula there, and a formula can read the row beside it. A leading
+   apostrophe makes it text; the sheet shows it without the apostrophe. */
+function cell_(v) {
+  var s = String(v == null ? '' : v);
+  return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
+}
 
 /* rows of a tab as objects keyed by header, with their 1-based sheet row */
 function rows_(name, headers) {
@@ -578,7 +606,10 @@ function adminSettings_(b, email) {
     var v = String(s[k] == null ? '' : s[k]).trim();
     if (k === 'page_mode' && ['open', 'locked', 'hidden'].indexOf(v) < 0) v = 'open';
     if (k === 'welcome') v = yes_(v) ? 'show' : 'hide';
+    if (k === 'gift_active') v = yes_(v) ? 'yes' : 'no';
+    if (k === 'gift_points') { v = String(parseInt(v, 10) || 0); if (+v < 1) v = SETTING_KEYS.gift_points; }
     if (k === 'passcode') v = v.slice(0, 64);
+    else if (k === 'gift_products') v = v.slice(0, 2000);
     else v = v.slice(0, 400);
     next[k] = v; changed.push(k);
   });
@@ -586,6 +617,9 @@ function adminSettings_(b, email) {
   var pass = String(next.passcode || '').trim();
   if (next.page_mode === 'locked' && !pass)
     return json_({ ok: false, changed: [], error: 'set a passcode before locking the page' });
+  /* a wheel with nothing on it cannot be spun, so it cannot be switched on */
+  if (yes_(next.gift_active) && !giftProducts_(next.gift_products).length)
+    return json_({ ok: false, changed: [], error: 'list at least one product before switching the gift on' });
   /* Clearing the site passcode while something leans on it would leave that
      thing locked with no way in, so say which one rather than let it happen. */
   if (!pass) {
@@ -599,6 +633,101 @@ function adminSettings_(b, email) {
 
   changed.forEach(function (k) { setSetting_(k, next[k], email); });
   return json_({ ok: true, changed: changed, settings: settings_(), public: publicSettings_() });
+}
+
+/* ------------------------------------------------------------------- gifts
+
+   Facy Run ends on a QR code once a run scores gift_points. The code is a
+   claim: one per device, minted here and written to the Gifts tab. The admin
+   scans it with a phone that is signed in to admin.html, and THIS script picks
+   the product -- at random, from gift_products -- and writes it against the
+   claim in the same call. The wheel on the admin's screen only animates to
+   the answer it is handed. So: the device gets one claim, the claim is spent
+   once, and nothing on the visitor's side chooses the prize.
+
+   What this cannot do: tell two devices apart if one of them clears its
+   storage. The device id lives in the browser, the same way the scores' does.
+   A visitor who wipes it looks like a new visitor. */
+
+function giftProducts_(raw) {
+  return String(raw == null ? SETTING_KEYS.gift_products : raw)
+    .split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 40);
+}
+function giftTab_() {
+  return tab_(SpreadsheetApp.openById(SHEET_ID), T_GIFTS, GIFT_HEADERS);
+}
+function giftRows_() {
+  /* the tab is made on first use rather than by setUp, so a script deployed
+     before gifts existed does not have to be set up again */
+  giftTab_();
+  return rows_(T_GIFTS, GIFT_HEADERS);
+}
+function giftFind_(rows, key, val) {
+  for (var i = 0; i < rows.length; i++)
+    if (String(rows[i][key] || '').trim() === val) return rows[i];
+  return null;
+}
+function giftPublic_(r) {
+  return { ok: true, claim: String(r.claim), redeemed: !!r.redeemed,
+           product: r.product ? String(r.product) : '' };
+}
+
+/* Body: {action:'gift.claim', device, score, game, name}
+   Back: {ok:true, claim, redeemed, product} | {ok:false, reason}
+   The same device asking twice gets the same claim back, never a second. */
+function giftClaim_(b) {
+  var all = settings_();
+  var active = yes_((('gift_active' in all) ? all.gift_active : SETTING_KEYS.gift_active));
+  var need = parseInt((('gift_points' in all) ? all.gift_points : SETTING_KEYS.gift_points), 10) || 6000;
+  if (!active) return json_({ ok: false, reason: 'inactive' });
+
+  var device = String(b.device || '').trim();
+  if (!/^[A-Za-z0-9_-]{6,40}$/.test(device)) return json_({ ok: false, reason: 'device' });
+  var score = Math.round(Number(b.score));
+  if (!isFinite(score) || score < 0 || score > GIFT_MAX_SCORE) return json_({ ok: false, reason: 'score' });
+  if (score < need) return json_({ ok: false, reason: 'short', need: need, score: score });
+  var game = String(b.game || 'facy-run').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
+  var name = cell_(String(b.name || '').replace(/\s+/g, ' ').trim().slice(0, 18));
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return json_({ ok: false, reason: 'busy' });
+  try {
+    var have = giftFind_(giftRows_(), 'device', device);
+    if (have) return json_(giftPublic_(have));
+    var claim = Utilities.getUuid();
+    sheet_(T_GIFTS).appendRow([claim, device, game, score, name, now_(), '', '', '']);
+    return json_({ ok: true, claim: claim, redeemed: false, product: '' });
+  } finally { lock.releaseLock(); }
+}
+
+/* Body: {action:'admin.gift.redeem', token, claim}
+   Back: {ok:true, product, index, products, already, score, name}
+   Under the admin lock already, from doPost. A claim scanned twice comes back
+   with the product it already got, and `already: true`, so a second scan is
+   a receipt and not a second prize. */
+function giftRedeem_(b, email) {
+  var claim = String(b.claim || '').trim();
+  if (!validKey_(claim)) return json_({ ok: false, error: 'not a claim code' });
+  var row = giftFind_(giftRows_(), 'claim', claim);
+  if (!row) return json_({ ok: false, error: 'no such claim' });
+
+  var products = giftProducts_(settings_().gift_products);
+  if (row.redeemed) {
+    var idx = products.indexOf(String(row.product));
+    return json_({ ok: true, already: true, product: String(row.product), index: idx,
+                   products: products, at: row.redeemed, score: row.score, name: String(row.name || '') });
+  }
+  if (!products.length) return json_({ ok: false, error: 'no products on the wheel' });
+
+  /* Math.random on the script, not on the phone: the spin is decided here and
+     the wheel is told where to stop. */
+  var pick = Math.floor(Math.random() * products.length);
+  var sh = sheet_(T_GIFTS);
+  sh.getRange(row._row, 7).setValue(now_());
+  sh.getRange(row._row, 8).setValue(products[pick]);
+  sh.getRange(row._row, 9).setValue(email);
+  return json_({ ok: true, already: false, product: products[pick], index: pick,
+                 products: products, score: row.score, name: String(row.name || '') });
 }
 
 function doPost(e) {
@@ -615,6 +744,7 @@ function doPost(e) {
     if (action === 'exchange') return exchange_(b);
     if (action === 'whoami')  return whoami_(b);
     if (action === 'logout')  return logout_(b);
+    if (action === 'gift.claim') return giftClaim_(b);
 
     /* the admin ones: every write takes the lock */
     if (action.indexOf('admin.') !== 0) return json_({ ok: false, error: 'unknown action' });
@@ -631,6 +761,7 @@ function doPost(e) {
         case 'admin.segment.delete':  return deleteSegment_(b, email);
         case 'admin.segment.order':   return orderSegments_(b, email);
         case 'admin.section.set':     return setSection_(b, email);
+        case 'admin.gift.redeem':     return giftRedeem_(b, email);
         default: return json_({ ok: false, error: 'unknown action' });
       }
     } finally { lock.releaseLock(); }
