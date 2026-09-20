@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1a2f4a">
+<link rel="icon" href="icon-192.png">
+<title>FACERINNA — Cookie settings</title>
+<meta name="description" content="What FACERINNA Malaysia's site keeps in your browser, and how to clear it.">
+<style>
+  :root{--ink:#16293f;--ink2:#5b6b7f;--line:#e3e8ef;--bg:#f7f9fc;--card:#fff;--brand:#0A5480;--good:#16653c}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  a{color:var(--brand)}
+  header{background:var(--card);border-bottom:1px solid var(--line);padding:16px clamp(16px,4vw,40px)}
+  .brand{font-weight:900;letter-spacing:.26em;text-transform:uppercase;font-size:13px;color:var(--brand)}
+  main{max-width:46rem;margin:0 auto;padding:clamp(20px,4vw,44px) clamp(16px,4vw,40px) 72px}
+  h1{font-size:clamp(26px,4vw,34px);line-height:1.2;margin:0 0 6px}
+  .sub{color:var(--ink2);font-size:14.5px;margin:0 0 28px}
+  h2{font-size:19px;margin:34px 0 10px}
+  p,li{font-size:15.5px}
+  ul{padding-left:20px} li{margin:4px 0}
+  table{width:100%;border-collapse:collapse;margin:10px 0 4px;font-size:14.5px}
+  th,td{text-align:left;vertical-align:top;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--ink2);font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:14px 0}
+  .btn{display:inline-flex;align-items:center;gap:9px;border:0;cursor:pointer;
+    background:var(--brand);color:#fff;font:700 15px/1 system-ui,sans-serif;
+    padding:13px 20px;border-radius:999px}
+  .btn:hover{filter:brightness(1.08)}
+  .said{margin:10px 0 0;font-size:14.5px;color:var(--good);font-weight:600;min-height:1.2em}
+  footer{border-top:1px solid var(--line);margin-top:40px;padding-top:18px;font-size:13.5px;color:var(--ink2)}
+  code{background:#eef3f9;padding:1px 6px;border-radius:6px;font-size:13.5px}
+</style>
+</head>
+<body>
+<header><div class="brand">FACERINNA</div></header>
+<main>
+  <h1>Cookie settings</h1>
+  <p class="sub">What this site keeps in your browser, and the button that clears it.
+     Last reviewed 20 September 2026.</p>
+
+  <div class="card">
+    <p style="margin:0"><b>This site sets no cookies.</b> There is no advertising, no analytics,
+    no tracking pixel and nothing from a third party following you between sites. That is why
+    there is no banner asking you to accept anything — there is nothing to accept.</p>
+  </div>
+
+  <h2>What it does keep, on this device only</h2>
+  <p>A few things are stored in your own browser so the pages behave sensibly. None of it is sent
+     anywhere by the act of browsing, and none of it identifies you by name unless you typed your
+     name into a game yourself.</p>
+  <table>
+    <tr><th>What</th><th>Why</th><th>How long</th></tr>
+    <tr><td>The name you typed into a game</td><td>So the leaderboard can show your runs as yours</td><td>Until cleared</td></tr>
+    <tr><td>A random id for this device</td><td>So a gift is given once per device rather than once per game</td><td>Until cleared</td></tr>
+    <tr><td>Your background and display choices</td><td>So the page looks the way you left it</td><td>Until cleared</td></tr>
+    <tr><td>Sections you have unlocked with a passcode</td><td>So you are not asked again on every visit</td><td>Until cleared</td></tr>
+    <tr><td>A counter sign-in, on staff devices only</td><td>So the booth phone is not signed in per visitor</td><td>30 days</td></tr>
+    <tr><td>An offline copy of the pages</td><td>So the site still opens when the venue's wifi does not</td><td>Until cleared or replaced</td></tr>
+  </table>
+
+  <h2>Clear it</h2>
+  <p>This removes everything above from this browser, including the offline copy. Nothing on our
+     side is affected. If this is a booth staff phone, it will sign out and need its code again.</p>
+  <button class="btn" type="button" id="clear">Clear what this site stored</button>
+  <p class="said" id="said" role="status"></p>
+
+  <h2>Clearing it in the browser instead</h2>
+  <p>Every browser can do the same from its own settings — usually under privacy, then site data
+     for <code>my.facerinna.com</code>. Turning on private or incognito browsing keeps nothing
+     after you close the window.</p>
+
+  <h2>The rest</h2>
+  <p>What we collect when you actually fill something in — an event registration, a game score —
+     is set out in the <a href="privacy.html">privacy notice</a>. The terms for using the site are
+     on the <a href="terms.html">terms of service</a> page.</p>
+
+  <footer>FACERINNA MALAYSIA &middot; <a href="/">Back to the site</a> &middot;
+    <a href="privacy.html">Privacy notice</a> &middot; <a href="terms.html">Terms of service</a></footer>
+</main>
+<script>
+(function(){
+  var btn = document.getElementById('clear'), said = document.getElementById('said');
+  btn.addEventListener('click', function(){
+    var gone = 0;
+    /* Each in its own try: a browser with storage blocked throws on the first
+       one, and the rest still have work to do. */
+    try{ gone += localStorage.length; localStorage.clear(); }catch(e){}
+    try{ sessionStorage.clear(); }catch(e){}
+    /* The offline copy, and the worker that put it there. Without unregistering
+       it the next load installs the same caches again. */
+    var jobs = [];
+    try{ if(window.caches && caches.keys) jobs.push(caches.keys().then(function(ks){
+      return Promise.all(ks.map(function(k){ return caches.delete(k); }));
+    })); }catch(e){}
+    try{ if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations)
+      jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){
+        return Promise.all(rs.map(function(r){ return r.unregister(); }));
+      })); }catch(e){}
+    Promise.all(jobs).catch(function(){}).then(function(){
+      said.textContent = gone
+        ? 'Cleared. ' + gone + (gone === 1 ? ' item' : ' items') + ' and the offline copy are gone from this browser.'
+        : 'Cleared. There was nothing left to remove.';
+    });
+  });
+})();
+</script>
+</body>
+</html>
