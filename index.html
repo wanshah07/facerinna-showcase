@@ -6290,11 +6290,11 @@ function showResult(){
   inner.style.borderRadius='50%';inner.style.margin='16px';
   let title,msg,prize,code;
   if(score>=4){title='🏆 Skincare Scholar!';msg='Outstanding — you know your actives. Show this screen at the FACERINNA booth to claim your reward.';
-    prize='Free deluxe sample + tote';code='CODE: PDM-SCHOLAR';launchConfetti();}
+    prize='Free deluxe sample + tote';code='CODE: FX-SCHOLAR';launchConfetti();}
   else if(score>=2){title='👏 Solid effort!';msg='A good grasp of the basics. Swing by the booth — our team will complete the picture (and hand you a sample).';
-    prize='Free deluxe sample';code='CODE: PDM-GLOW';}
+    prize='Free deluxe sample';code='CODE: FX-GLOW';}
   else{title='🌱 Room to glow!';msg='No worries — visit the booth for a quick actives masterclass and a complimentary sample.';
-    prize='Complimentary sachet';code='CODE: PDM-START';}
+    prize='Complimentary sachet';code='CODE: FX-START';}
   el('resultTitle').textContent=title;el('resultMsg').textContent=msg;
   el('prizeText').textContent=prize;el('prizeCode').textContent=code;
   /* A plain number for whatever reads the score. #finalScore says "4/5",
