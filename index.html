@@ -1907,7 +1907,7 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
    hero and wrong for one section of a long page: it would catch the reader
    scrolling past. */
 #publications{padding-bottom:0}
-.pubx{position:relative;width:100%;height:clamp(520px,78vh,760px);overflow:hidden;
+.pubx{position:relative;width:100%;height:clamp(560px,86vh,900px);overflow:hidden;
   background:#0b1620;color:#fff;-webkit-user-select:none;user-select:none;outline:none;
   touch-action:pan-y}
 .pubx:focus-visible{box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}
@@ -1923,18 +1923,15 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
 .pubx-grain{position:absolute;inset:0;pointer-events:none;opacity:.22;mix-blend-mode:overlay;background-size:180px 180px;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 .pubx-head{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;justify-content:flex-end}
-.pubx-row{display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:6vw;row-gap:8px;width:100%}
+.pubx-row{display:flex;flex-direction:column;align-items:flex-start;gap:12px;width:100%}
 .pubx-title{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:600;line-height:.95;letter-spacing:-.02em;color:#fff}
 .pubx-title > span{display:block;overflow:hidden;padding-bottom:.06em}
 .pubx-title > span > span{display:block;animation:pubxUp .62s cubic-bezier(.22,1,.36,1) both}
 @keyframes pubxUp{from{transform:translateY(110%)}to{transform:none}}
 .pubx-credit,.pubx-meta span{font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
   text-transform:uppercase;letter-spacing:.14em;opacity:.82;animation:pubxIn .5s ease-out both}
-.pubx-meta{margin-left:auto;display:flex;align-items:flex-end;flex-wrap:wrap;justify-content:flex-end}
+.pubx-meta{display:flex;align-items:baseline;flex-wrap:wrap}
 .pubx-meta span{white-space:nowrap}
-/* On a phone there is no room for the facts to sit right of the headline, so
-   they follow the credit down the left instead of wrapping ragged-right. */
-.pubx.narrow .pubx-meta{margin-left:0;justify-content:flex-start}
 @keyframes pubxIn{from{opacity:0;transform:translateY(6px)}to{opacity:.82;transform:none}}
 .pubx-strip{position:absolute;left:0;right:0}
 .pubx-track{display:flex;align-items:flex-start;will-change:transform;cursor:grab;
@@ -1955,6 +1952,7 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
   background:rgba(0,0,0,.28);color:#fff;border-radius:999px;cursor:pointer;font:600 .86rem/1 'Inter',system-ui,sans-serif;
   padding:10px 16px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:.2s}
 .pubx-read:hover{background:#fff;color:#0b1620}
+@media (max-width:600px){ .pubx{height:clamp(520px,72vh,640px)} }
 @media (prefers-reduced-motion:reduce){
   .pubx-track,.pubx-card,.pubx-bar i,.pubx-bgl,.pubx-bgl img{transition:none!important}
   .pubx-title > span > span,.pubx-credit,.pubx-meta span{animation:none!important}}
@@ -2411,14 +2409,14 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
       full: 'Efficacy and Safety of a Combination Serum Containing 2% Salicylic Acid and 2% Niacinamide as Adjuvant Therapy for Mild and Moderate Acne Vulgaris in Ethnic Skin',
       credit: 'Kusumawardani et al.',
       meta: ['Randomised trial', '102 adults', '4 weeks'],
-      card: 'publications/sn2-serum-poster-1100.webp',
+      card: 'publications/sn2-serum-poster-1600.webp',
       image: 'publications/sn2-serum-poster.webp',
       accent: '#12503c' },
     { title: 'Ceramide and\nD-panthenol moisturiser',
       full: 'Integrated In Vitro and Clinical Evaluation of a Ceramide- and D-Panthenol-Based Moisturiser',
       credit: 'INBIOSIS, UKM',
       meta: ['In vitro and clinical', '16 women', '4 weeks'],
-      card: 'publications/ceramide-panthenol-poster-1100.webp',
+      card: 'publications/ceramide-panthenol-poster-1600.webp',
       image: 'publications/ceramide-panthenol-poster.webp',
       accent: '#173a5e' }
   ];
@@ -2430,10 +2428,13 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
       bar = document.getElementById('pubBar'), readBtn = document.getElementById('pubRead');
   var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* Ratios of the stage, as in the original. CARD_H is larger than its 0.264
-     because a poster needs more room than a portrait to be recognised, and
+  /* Ratios of the stage, as in the original, but weighted the other way: the
+     original gives a portrait a quarter of the stage's height and the headline
+     the top half, and here that left a poster filling an eighth of the green.
+     The poster takes two thirds of the height now and the headline a band
+     above it, stacked -- title, then one line of facts -- so it fits there.
      CARD_AR is the posters' own 2000:1415. */
-  var CARD_H = 0.40, CARD_AR = 2000 / 1415, GAP = 0.038, STRIP_TOP = 0.5,
+  var CARD_H = 0.66, CARD_AR = 2000 / 1415, GAP = 0.038, STRIP_TOP = 0.24,
       TITLE = 0.062, LABEL = 0.0145, PAD = 0.04, RAIL = 0.2;
   var WHEEL_THRESHOLD = 60, WHEEL_COOLDOWN = 420;
   var clamp = function(n, a, b){ return Math.min(b, Math.max(a, n)); };
@@ -2460,18 +2461,19 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
     /* By width as well as height: on a phone the height ratio alone makes a
        card nearly the screen's width, and the neighbour -- the whole point
        of a filmstrip -- falls off the edge. */
-    g.fullH = clamp(Math.min(box.h * CARD_H, box.w * 0.72 / CARD_AR), 140, 440);
+    g.top = box.w < 600 ? 0.36 : STRIP_TOP;
+    g.fullH = clamp(Math.min(box.h * CARD_H, box.w * 0.80 / CARD_AR), 140, 640);
     g.halfH = g.fullH / 2;
     g.cardW = g.fullH * CARD_AR;
     g.gap = Math.max(8, Math.round(g.cardW * GAP));
     g.step = g.cardW + g.gap;
     g.pad = Math.max(18, Math.round(box.w * PAD));
     g.label = Math.max(10, Math.round(box.h * LABEL));
-    strip.style.top = (STRIP_TOP * 100) + '%';
+    strip.style.top = (g.top * 100) + '%';
     strip.style.height = g.fullH + 'px';
     track.style.gap = g.gap + 'px';
     cards.forEach(function(c){ c.style.width = g.cardW + 'px'; });
-    head.style.height = (STRIP_TOP * 100) + '%';
+    head.style.height = (g.top * 100) + '%';
     /* The right-hand 100px belong to the floating Contact us, halal and chat
        buttons, which pass over this stage as the page scrolls; the headline's
        meta and the read button both keep out of that column. */
@@ -2538,12 +2540,12 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
     });
     var row = document.createElement('div'); row.className = 'pubx-row';
     row.appendChild(h);
-    var c = document.createElement('p'); c.className = 'pubx-credit';
-    c.style.margin = '0'; c.style.fontSize = g.label + 'px'; c.style.animationDelay = '.1s';
-    c.textContent = p.credit;
-    row.appendChild(c);
     var m = document.createElement('div'); m.className = 'pubx-meta';
-    m.style.gap = '6px ' + Math.max(16, box.w * 0.045) + 'px';
+    m.style.gap = '6px ' + Math.max(18, Math.round(box.w * 0.022)) + 'px';
+    var c = document.createElement('span'); c.className = 'pubx-credit';
+    c.style.fontSize = g.label + 'px'; c.style.animationDelay = '.1s';
+    c.textContent = p.credit;
+    m.appendChild(c);
     p.meta.forEach(function(f, i){
       var sp = document.createElement('span');
       sp.textContent = f; sp.style.fontSize = g.label + 'px';
@@ -2614,6 +2616,12 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
     var vx = (b && a && b.t > a.t) ? (b.x - a.x) / ((b.t - a.t) / 1000) : 0;
     var thrown = x + vx * 0.12;
     var n = Math.round((box.w / 2 - thrown - g.cardW / 2) / g.step);
+    /* Nearest-card alone asks for a drag of half a poster before it moves,
+       and a poster is most of the stage wide now. A deliberate swipe of a
+       fifth of one is enough to mean "the next one". */
+    var dragged = x - xFor(index);
+    if (clamp(n, 0, last) === index && Math.abs(dragged) > g.step * 0.2)
+      n = index - Math.sign(dragged);
     if (clamp(n, 0, last) === index) place(true); else go(n);
     setTimeout(function(){ moved = false; }, 0);
   }
@@ -4627,6 +4635,9 @@ const GALLERY_DOCS = [
      inside it and would leave the pair faded over empty space. */
   function speaks(el){
     if(!el || el===document.body || el===document.documentElement) return false;
+    /* A publication poster is read as much as any paragraph, but it is an
+       image, so it has no words of its own for the test below to find. */
+    if(el.classList && el.classList.contains('pubx-card')) return true;
     for(const n of el.childNodes) if(n.nodeType===3 && n.textContent.trim()) return true;
     return false;
   }
