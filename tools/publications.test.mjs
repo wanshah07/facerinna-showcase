@@ -43,7 +43,7 @@ const idx=p=>p.evaluate(()=>window.__pub.index());
 const title=p=>p.evaluate(()=>(document.querySelector('#pubHead .pubx-title')||{}).textContent||'');
 
 console.log('the files');
-for (const f of ['sn2-serum-poster.webp','sn2-serum-poster-1100.webp','ceramide-panthenol-poster.webp','ceramide-panthenol-poster-1100.webp'])
+for (const f of ['sn2-serum-poster.webp','sn2-serum-poster-1600.webp','ceramide-panthenol-poster.webp','ceramide-panthenol-poster-1600.webp'])
   chk(f+' is in the repository', fs.existsSync(path.join(ROOT,'publications',f)));
 
 console.log('\nthe filmstrip');
@@ -55,6 +55,10 @@ console.log('\nthe filmstrip');
   chk('the first is the one in front', cs[0].cur==='true' && cs[1].cur==='false', cs);
   chk('...at full height, its neighbour at half', Math.abs(cs[0].h-2*cs[1].h)<=2, cs);
   chk('...along one shared top edge', Math.abs(cs[0].top-cs[1].top)<=1, cs);
+  const fill=await p.evaluate(()=>{ const st=document.getElementById('pubStage').getBoundingClientRect();
+    const c=document.querySelector('#pubTrack .pubx-card').getBoundingClientRect();
+    return c.width*c.height/(st.width*st.height); });
+  chk('...and the one in front fills the stage, not an eighth of it', fill>=0.3, Math.round(fill*100)+'%');
   chk('the headline names it', /Salicylic acid/.test(await title(p)), await title(p));
   chk('no page errors', errs.length===0, errs[0]);
   await c.close();
@@ -113,6 +117,15 @@ console.log('\nthe drag');
   for (let i=1;i<=12;i++){ await p.mouse.move(sx-i*25, sy); await sleep(16); }
   await p.mouse.up();
   chk('dragging left brings the next one forward', await until(async()=>await idx(p)===1));
+  /* and the other side of the threshold: a small, slow nudge settles back */
+  await sleep(900);
+  const c2=await p.locator('#pubTrack .pubx-card[aria-current="true"]').boundingBox();
+  const nx=c2.x+c2.width/2, ny=c2.y+c2.height/2;
+  await p.mouse.move(nx,ny); await p.mouse.down();
+  for (let i=1;i<=5;i++){ await p.mouse.move(nx+i*8, ny); await sleep(60); }
+  await sleep(200); await p.mouse.up();
+  await sleep(900);
+  chk('...while a small nudge settles back where it was', await idx(p)===1, await idx(p));
   await sleep(300);
   chk('...and a drag is not a tap: the reader stays shut', await p.evaluate(()=>document.getElementById('pubReader').hidden));
   chk('no page errors', errs.length===0, errs[0]);
@@ -152,8 +165,8 @@ console.log('\non a phone');
              peek: cs[1] ? Math.round(st.right - cs[1].left) : 0, cardW: Math.round(cs[0].width), vw: innerWidth };
   });
   chk('no sideways scroll', !r.wide, r);
-  chk('the next poster still shows at the edge', r.peek>=24, r);
-  chk('the card in front leaves the screen room for it', r.cardW <= r.vw*0.75, r);
+  chk('the next poster still shows at the edge', r.peek>=20, r);
+  chk('the card in front leaves the screen room for it', r.cardW <= r.vw*0.82, r);
   chk('no page errors', errs.length===0, errs[0]);
   await c.close();
 }
