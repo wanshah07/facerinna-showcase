@@ -86,12 +86,25 @@ var REQ_TAB  = 'Vault requests';
    because the link in the email is built from it. */
 var VAULT_URL = 'https://my.facerinna.com/facerinna-test-reports-claims/';
 
-/* The workbooks the reports actually live in, and the tabs inside them. These
-   are the same ids and gids build-public.js reads, moved server-side: the
-   page stops carrying them, so view-source stops being a way in. */
-var REPORTS_BOOK = '15eD6XtMVN1BRm41cD9wm33QMwW16R5sS';
+/* The reports workbook is found BY NAME, in the Drive of the account this
+   script runs as, and never written here. Two reasons. The workbook this
+   file used to name was deleted on or before 24 Sept 2026, and a hard-coded
+   id is a vault that stops the day its book goes; a name can be given to a
+   replacement. And this file is public: an id written here was an id
+   anybody could try, which is the one thing the vault exists to prevent.
+
+   Any Google Sheet whose title contains REPORTS_TITLE will do; if there are
+   several, the one edited most recently wins. It needs three tabs named
+   Reports, Series and SKUs, each with a header row whose first cell is
+   "No.". Keep it private -- the script reads it as its owner, so it never
+   needs sharing. To point at a particular book instead, put its id in the
+   script property "reports-book" (Project Settings -> Script properties). */
+var REPORTS_TITLE = 'FACERINNA Vault Reports';
+var REPORT_TABS = { reports: 'Reports', series: 'Series', skus: 'SKUs' };
+
+/* The pack-shot book is unchanged and still addressed by id and tab gid. */
 var THUMBS_BOOK  = '1F1zDeTnSrfZ7j7bIu7FfiHRW0eoXu3_n4NjFAmnWBfE';
-var GIDS = { reports: 378921450, series: 610219740, skus: 1440505952, thumbs: 524451717 };
+var GIDS = { thumbs: 524451717 };
 
 /* A signed-in device stays signed in until the row says otherwise; there is
    no clock on it. The six-digit code is how a device signs in: it is mailed
@@ -613,18 +626,52 @@ function bodyRows_(rows) {
   });
 }
 
+/* The reports book's id: the script property if one is set, else the Sheet
+   found by title, remembered so the Drive search runs once rather than on
+   every page load. */
+function reportsBook_(fresh) {
+  var props = PropertiesService.getScriptProperties();
+  if (!fresh) { var known = props.getProperty('reports-book'); if (known) return known; }
+  var it = DriveApp.searchFiles("title contains '" + REPORTS_TITLE.replace(/'/g, "\\'") + "' and " +
+    "mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false");
+  var best = null;
+  while (it.hasNext()) {
+    var f = it.next();
+    if (!best || f.getLastUpdated() > best.getLastUpdated()) best = f;
+  }
+  if (!best) throw new Error('no Google Sheet titled "' + REPORTS_TITLE + '" in the Drive of ' +
+                             'the account this script runs as');
+  props.setProperty('reports-book', best.getId());
+  return best.getId();
+}
+
+/* A tab of the reports book, by name. If the remembered book will not open
+   -- deleted, or replaced by a newer one -- the search runs again once. */
+function reportsTab_(name) {
+  function read(id) {
+    var sh = SpreadsheetApp.openById(id).getSheetByName(name);
+    if (!sh) throw new Error('the reports book has no tab named "' + name + '"');
+    return sh.getLastRow() ? sh.getDataRange().getDisplayValues() : [];
+  }
+  try { return read(reportsBook_(false)); }
+  catch (first) {
+    PropertiesService.getScriptProperties().deleteProperty('reports-book');
+    return read(reportsBook_(true));
+  }
+}
+
 function readVault_() {
-  var rep = bodyRows_(grid_(REPORTS_BOOK, GIDS.reports)).map(function (r) {
+  var rep = bodyRows_(reportsTab_(REPORT_TABS.reports)).map(function (r) {
     return { no: num_(r[0]), code: clean_(r[1]), sku: clean_(r[2]), reportNo: clean_(r[3]),
              lab: clean_(r[4]), date: clean_(r[5]), subject: clean_(r[6]), param: clean_(r[7]),
              claimsInstrument: clean_(r[8]), claimsPanel: clean_(r[9]), claimsOther: clean_(r[10]),
              genericClaims: clean_(r[11]), disclaimer: clean_(r[12]) };
   });
-  var ser = bodyRows_(grid_(REPORTS_BOOK, GIDS.series)).map(function (r) {
+  var ser = bodyRows_(reportsTab_(REPORT_TABS.series)).map(function (r) {
     return { no: num_(r[0]), series: clean_(r[1]), skus: clean_(r[2]),
              genericClaims: clean_(r[3]), disclaimer: clean_(r[4]) };
   });
-  var sku = bodyRows_(grid_(REPORTS_BOOK, GIDS.skus)).map(function (r) {
+  var sku = bodyRows_(reportsTab_(REPORT_TABS.skus)).map(function (r) {
     return { no: num_(r[0]), code: clean_(r[1]), sku: clean_(r[2]), series: clean_(r[3]),
              aliases: clean_(r[4]), reportCount: num_(r[5]) };
   });
@@ -811,8 +858,10 @@ function checkWorkbooks() {
   var msg;
   try {
     var d = readVault_();
+    var book = '';
+    try { book = ' from "' + DriveApp.getFileById(reportsBook_(false)).getName() + '"'; } catch (x) {}
     msg = 'OK: reports ' + d.reports.length + ', series ' + d.series.length +
-          ', skus ' + d.skus.length + ', thumbs ' + d.thumbs.length;
+          ', skus ' + d.skus.length + ', thumbs ' + d.thumbs.length + book;
   } catch (err) {
     msg = 'NOT READABLE -- ' + (err && err.message || err);
   }

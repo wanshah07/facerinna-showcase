@@ -10,19 +10,19 @@ const src = fs.readFileSync('/workspace/facerinna-showcase/tools/vault-access.gs
 const REQ = { name:'Vault requests', rows: [] };
 const books = {
   '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso': { byName: { 'Vault requests': REQ } },
-  '15eD6XtMVN1BRm41cD9wm33QMwW16R5sS': { byGid: {
-     378921450: [['note','ignore me'],
+  'REBUILT-REPORTS-BOOK': { byName: {
+     Reports: { grid: [['note','ignore me'],
                  ['No.','Code','SKU','Report No','Lab','Date','Subject','Param',
                   'CI','CP','CO','Generic','Disclaimer'],
                  ['1','FMS004','B5','INB/1','INBIOSIS','31 March 2026','subj','par',
                   'none','','other','generic','disc'],
                  ['2','FSS003','Toner','INB/2','Equilab','1 April 2026','s2','p2',
                   'ci2','cp2','','g2','d2'],
-                 ['','spacer row that must be dropped']],
-     610219740: [['No.','Series','SKUs','Generic','Disclaimer'],
-                 ['1','Ceramide B5','a; b','gc','dd']],
-     1440505952:[['No.','Code','SKU','Series','Aliases','Reports'],
-                 ['1','FMS004','B5','Ceramide B5','none','4']] } },
+                 ['','spacer row that must be dropped']] },
+     Series: { grid: [['No.','Series','SKUs','Generic','Disclaimer'],
+                 ['1','Ceramide B5','a; b','gc','dd']] },
+     SKUs:   { grid: [['No.','Code','SKU','Series','Aliases','Reports'],
+                 ['1','FMS004','B5','Ceramide B5','none','4']] } } },
   '1F1zDeTnSrfZ7j7bIu7FfiHRW0eoXu3_n4NjFAmnWBfE': { byGid: {
      524451717: [['junk'],
                  ['Product Name','SKU Code','Image URL','Test Report URL','Claims URL'],
@@ -113,7 +113,24 @@ const UrlFetchApp = { fetch: (url, opt) => {
   const code = grid ? EXPORT_CODE : 404;
   return { getResponseCode: () => code, getContentText: () => grid ? toCsv(grid) : '' };
 }};
-const DriveApp = { getFileById: id => ({ getMimeType: () => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }) };
+/* What Drive holds, for the search that finds the reports book by title. */
+const DRIVE_FILES = [
+  { id:'REBUILT-REPORTS-BOOK', name:'FACERINNA Vault Reports (rebuilt from 11 Sep 2026 copy)',
+    mime:'application/vnd.google-apps.spreadsheet', updated:new Date('2026-09-24') },
+  { id:'SOMETHING-ELSE', name:'Master List - Claims',
+    mime:'application/vnd.google-apps.spreadsheet', updated:new Date('2026-09-25') },
+];
+const SEARCHES = [];
+const DriveApp = {
+  getFileById: id => { const f = DRIVE_FILES.find(x => x.id === id);
+    if (!f) throw new Error('No item with the given ID could be found');
+    return { getMimeType: () => f.mime, getName: () => f.name }; },
+  searchFiles: q => { SEARCHES.push(q);
+    const t = (q.match(/title contains '([^']+)'/) || [])[1] || '';
+    const hits = DRIVE_FILES.filter(f => f.name.includes(t) && f.mime === 'application/vnd.google-apps.spreadsheet');
+    let i = 0; return { hasNext: () => i < hits.length,
+      next: () => { const f = hits[i++]; return { getId: () => f.id, getLastUpdated: () => f.updated }; } }; },
+};
 let uuid = 0;
 /* Shaped like a real UUID, because the code now checks that shape before it
    will act on a key. A stub returning 'tok-1' let the tests agree with each
@@ -497,29 +514,56 @@ const back = signIn('coded@clinic.my');
 check('a row added back later signs in with a NEW token', back.ok === true && back.token !== OLD, back);
 check('...and the old token stays dead', call({action:'data', token:OLD}).ok === false);
 
+console.log('\nthe reports book is found by name, not by an id in this public file');
+check('the script names no reports workbook at all',
+      !/15eD6XtMVN1BRm41cD9wm33QMwW16R5sS|REPORTS_BOOK/.test(src));
+check('it found the rebuilt book by its title and remembered it',
+      PROPS['reports-book'] === 'REBUILT-REPORTS-BOOK', PROPS['reports-book']);
+check('...and searched Drive for sheets only, leaving the bin out',
+      SEARCHES.some(q => /title contains 'FACERINNA Vault Reports'/.test(q) &&
+                          /google-apps\.spreadsheet/.test(q) && /trashed = false/.test(q)), SEARCHES);
+SEARCHES.length = 0;
+call({action:'data', token:back.token});
+check('once remembered, a page load does not search Drive again', SEARCHES.length === 0, SEARCHES);
+
+/* a newer copy appears, and the remembered one is deleted */
+books['NEWER-REPORTS-BOOK'] = JSON.parse(JSON.stringify(books['REBUILT-REPORTS-BOOK']));
+books['NEWER-REPORTS-BOOK'].byName.Reports.grid.push(['3','FNEW','New one','INB/3','INBIOSIS','2 May 2026','s3','p3','','','','g3','d3']);
+DRIVE_FILES.push({ id:'NEWER-REPORTS-BOOK', name:'FACERINNA Vault Reports v2',
+                   mime:'application/vnd.google-apps.spreadsheet', updated:new Date('2026-10-01') });
+delete books['REBUILT-REPORTS-BOOK'];
+const moved = call({action:'data', token:back.token});
+check('when the remembered book is gone it searches again and reads the newest match',
+      moved.ok === true && moved.reports.length === 3 && PROPS['reports-book'] === 'NEWER-REPORTS-BOOK', moved);
+
 console.log('\na workbook that will not open');
-/* The likely reason a correct code still ended at the request form: the
-   token was fine, the reports workbook would not open, the error came back
-   with no reason, and the page read that as "not let in". */
-REFUSE_OPEN.add('15eD6XtMVN1BRm41cD9wm33QMwW16R5sS');
+REFUSE_OPEN.add('1F1zDeTnSrfZ7j7bIu7FfiHRW0eoXu3_n4NjFAmnWBfE');
 FETCHED.length = 0;
 const viaCsv = call({action:'data', token:back.token});
 check('a book openById refuses is read through its CSV export instead',
-      viaCsv.ok === true && viaCsv.reports.length === 2 && viaCsv.series.length === 1, viaCsv);
+      viaCsv.ok === true && viaCsv.thumbs.length === 1, viaCsv);
 check('...asked with the owner\'s own sign-in, so an unshared book still answers',
       FETCHED.length > 0 && FETCHED.every(f => f.auth === 'Bearer owner-oauth-token'));
-check('...and the rows come out the same as the native read',
-      viaCsv.reports[0].claimsInstrument === '' && viaCsv.skus[0].reportCount === 4);
-EXPORT_CODE = 403;
+REFUSE_OPEN.clear();
+
+/* no reports book anywhere: deleted, and nothing by that title left */
+const keep = DRIVE_FILES.splice(0);
+delete books['NEWER-REPORTS-BOOK'];
 const failed = call({action:'data', token:back.token});
-check('when neither route works it says readfail -- not unknown, not revoked',
+check('with no reports book it says readfail -- not unknown, not revoked',
       failed.ok === false && failed.reason === 'readfail', failed);
 check('...and the answer names no workbook, since the page must never carry one',
-      !/15eD6X|1F1zDe|1J9QAO|spreadsheets\/d\//.test(JSON.stringify(failed)));
+      !/1F1zDe|1J9QAO|REPORTS-BOOK|spreadsheets\/d\//.test(JSON.stringify(failed)));
 check('checkWorkbooks says why, for the owner in the editor',
-      /NOT READABLE/.test(m.checkWorkbooks()) && /spreadsheetml|would not open/.test(m.checkWorkbooks()));
-EXPORT_CODE = 200; REFUSE_OPEN.clear();
-check('...and says OK once it can read again', /^OK: reports 2/.test(m.checkWorkbooks()));
+      /NOT READABLE/.test(m.checkWorkbooks()) && /no Google Sheet titled "FACERINNA Vault Reports"/.test(m.checkWorkbooks()));
+keep.forEach(f => DRIVE_FILES.push(f));
+books['NEWER-REPORTS-BOOK'] = JSON.parse(JSON.stringify(books['SOMETHING-ELSE'] || {}));
+books['NEWER-REPORTS-BOOK'] = { byName: { Reports:{grid:[['No.'],['1','A','B','C','D','E','F','G','','','','H','I']]},
+                                          Series:{grid:[['No.'],['1','S','x','g','d']]},
+                                          SKUs:{grid:[['No.'],['1','A','B','S','','1']]} } };
+const okMsg = m.checkWorkbooks();
+check('...and says OK, naming the book it read, once there is one again',
+      /^OK: reports 1/.test(okMsg) && /from "FACERINNA Vault Reports v2"/.test(okMsg), okMsg);
 
 console.log(ok ? '\nall good' : '\nSOMETHING IS WRONG');
 process.exit(ok ? 0 : 1);
