@@ -154,6 +154,53 @@ console.log('\nthe reader');
   await c.close();
 }
 
+console.log('\nsliding from poster to poster inside the reader');
+{
+  const {c,p,errs}=await open_(1280,900);
+  await p.click('#pubRead');
+  await until(()=>p.evaluate(()=>!document.getElementById('pubReader').hidden));
+  const st=()=>p.evaluate(()=>({ at: window.__pub.readerAt(), strip: window.__pub.index(),
+    count: document.getElementById('pubReaderCount').textContent,
+    title: document.getElementById('pubReaderTitle').textContent,
+    src: document.getElementById('pubReaderImg').getAttribute('src'),
+    prev: document.getElementById('pubReaderPrev').disabled, next: document.getElementById('pubReaderNext').disabled }));
+  let s0=await st();
+  chk('it opens on the first, counted 1 of 2', s0.at===0 && s0.count==='1 / 2', s0);
+  chk('...with nothing to go back to, and somewhere to go next', s0.prev && !s0.next, s0);
+  await p.click('#pubReaderNext');
+  let s1=await st();
+  chk('Next slides to the second poster', s1.at===1 && /Integrated In Vitro/.test(s1.title) && /ceramide-panthenol-poster\.webp$/.test(s1.src), s1);
+  chk('...at its full resolution',
+      await until(()=>p.evaluate(()=>{ const i=document.getElementById('pubReaderImg'); return i.complete && i.naturalWidth===2000; })));
+  chk('...counted 2 of 2, with Next gone at the end', s1.count==='2 / 2' && s1.next && !s1.prev, s1);
+  chk('...and the strip behind it has followed', s1.strip===1, s1);
+  await p.keyboard.press('ArrowLeft');
+  chk('the left arrow key slides back', await until(async()=>(await st()).at===0));
+  await p.keyboard.press('ArrowRight');
+  chk('...and the right one forward again', await until(async()=>(await st()).at===1));
+
+  /* zoomed in, the arrow keys belong to the poster, not the reader */
+  await p.click('#pubReaderImg');
+  chk('tapping the poster zooms it', await p.evaluate(()=>document.getElementById('pubReaderBody').classList.contains('big')));
+  await p.keyboard.press('ArrowLeft');
+  await sleep(200);
+  chk('...and zoomed in, an arrow key does not change poster', (await st()).at===1);
+  await p.click('#pubReaderImg');
+
+  /* a swipe across the poster at fit */
+  const r=await p.locator('#pubReaderImg').boundingBox();
+  const y=r.y+Math.min(r.height/2, 300);
+  await p.mouse.move(r.x+r.width*0.7, y); await p.mouse.down();
+  for (let i=1;i<=8;i++){ await p.mouse.move(r.x+r.width*0.7+i*30, y); await sleep(12); }
+  await p.mouse.up();
+  chk('a swipe to the right slides back to the first', await until(async()=>(await st()).at===0), await st());
+  chk('...without the swipe also zooming it', !(await p.evaluate(()=>document.getElementById('pubReaderBody').classList.contains('big'))));
+  await p.keyboard.press('Escape');
+  chk('closing it leaves the strip on the poster last read', await until(()=>p.evaluate(()=>window.__pub.index()===0)));
+  chk('no page errors', errs.length===0, errs[0]);
+  await c.close();
+}
+
 console.log('\non a phone');
 {
   const {c,p,errs}=await open_(390,844,{isMobile:true,hasTouch:true});
@@ -167,6 +214,20 @@ console.log('\non a phone');
   chk('no sideways scroll', !r.wide, r);
   chk('the next poster still shows at the edge', r.peek>=20, r);
   chk('the card in front leaves the screen room for it', r.cardW <= r.vw*0.82, r);
+
+  /* a finger, not a mouse: the reader's sideways swipe has to survive the
+     browser's own claim on touch gestures */
+  await p.evaluate(()=>window.__pub.open(0)); await sleep(700);
+  const cdp=await c.newCDPSession(p);
+  const ir=await p.locator('#pubReaderImg').boundingBox();
+  const ty=ir.y+ir.height/2, tx=ir.x+ir.width*0.8;
+  const touch=(type,x)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints: type==='touchEnd'?[]:[{x,y:ty}]});
+  await touch('touchStart',tx);
+  for (let i=1;i<=10;i++){ await touch('touchMove',tx-i*22); await sleep(16); }
+  await touch('touchEnd');
+  chk('a finger swiped left in the reader slides to the next poster',
+      await until(()=>p.evaluate(()=>window.__pub.readerAt()===1)));
+  await p.evaluate(()=>window.__pub.close());
   chk('no page errors', errs.length===0, errs[0]);
   await c.close();
 }
