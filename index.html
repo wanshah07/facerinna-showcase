@@ -1894,6 +1894,84 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
 .footer .btn-wa svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;
   stroke-linecap:round;stroke-linejoin:round}
 
+/* PUBLICATION -- a filmstrip hero for the posters, under the gallery.
+   Vanilla port of the 21st.dev HeroCarousel. Kept from it: one shared top
+   edge for every card, the focused card at full height and its neighbours
+   clipped to half, the whole backdrop re-graded to the focused image's hue,
+   headlines that wipe up line by line, a 01/02 rail, drag, keys, and every
+   size read as a ratio of the stage so it is the same at 390px and at 4K.
+   Changed for what it holds: the cards are the posters' own landscape shape
+   rather than 3:4 portraits, the backdrop is softened because a poster is
+   dense text rather than a photograph, and only a SIDEWAYS wheel steps it.
+   The original takes the vertical wheel too, which is right for a full-page
+   hero and wrong for one section of a long page: it would catch the reader
+   scrolling past. */
+#publications{padding-bottom:0}
+.pubx{position:relative;width:100%;height:clamp(520px,78vh,760px);overflow:hidden;
+  background:#0b1620;color:#fff;-webkit-user-select:none;user-select:none;outline:none;
+  touch-action:pan-y}
+.pubx:focus-visible{box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}
+.pubx-bgl{position:absolute;inset:0;opacity:0;transition:opacity .7s ease-out}
+.pubx-bgl.on{opacity:1}
+.pubx-bgl img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  filter:blur(14px);transform:scale(1.42);transition:transform 6s linear}
+.pubx-bgl.on img{transform:scale(1.28)}
+.pubx-bgl .pubx-hue{position:absolute;inset:0;mix-blend-mode:color}
+.pubx-bgl .pubx-mul{position:absolute;inset:0;mix-blend-mode:multiply;opacity:.55}
+.pubx-wash{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(0,0,0,.42),transparent 45%,rgba(0,0,0,.5))}
+.pubx-grain{position:absolute;inset:0;pointer-events:none;opacity:.22;mix-blend-mode:overlay;background-size:180px 180px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.pubx-head{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;justify-content:flex-end}
+.pubx-row{display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:6vw;row-gap:8px;width:100%}
+.pubx-title{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:600;line-height:.95;letter-spacing:-.02em;color:#fff}
+.pubx-title > span{display:block;overflow:hidden;padding-bottom:.06em}
+.pubx-title > span > span{display:block;animation:pubxUp .62s cubic-bezier(.22,1,.36,1) both}
+@keyframes pubxUp{from{transform:translateY(110%)}to{transform:none}}
+.pubx-credit,.pubx-meta span{font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  text-transform:uppercase;letter-spacing:.14em;opacity:.82;animation:pubxIn .5s ease-out both}
+.pubx-meta{margin-left:auto;display:flex;align-items:flex-end;flex-wrap:wrap;justify-content:flex-end}
+.pubx-meta span{white-space:nowrap}
+/* On a phone there is no room for the facts to sit right of the headline, so
+   they follow the credit down the left instead of wrapping ragged-right. */
+.pubx.narrow .pubx-meta{margin-left:0;justify-content:flex-start}
+@keyframes pubxIn{from{opacity:0;transform:translateY(6px)}to{opacity:.82;transform:none}}
+.pubx-strip{position:absolute;left:0;right:0}
+.pubx-track{display:flex;align-items:flex-start;will-change:transform;cursor:grab;
+  transition:transform .7s cubic-bezier(.22,1,.36,1)}
+.pubx-track.drag{transition:none;cursor:grabbing}
+.pubx-card{position:relative;flex:0 0 auto;padding:0;border:0;margin:0;overflow:hidden;cursor:pointer;
+  background:rgba(255,255,255,.06);box-shadow:0 18px 40px rgba(0,0,0,.35);
+  transition:height .6s cubic-bezier(.22,1,.36,1)}
+.pubx-card img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 0%;pointer-events:none}
+.pubx-card::after{content:"";position:absolute;inset:0;background:#000;opacity:.12;transition:opacity .6s}
+.pubx-card[aria-current="true"]::after{opacity:0}
+.pubx-card:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.pubx-rail{position:absolute;font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace}
+.pubx-nums{display:flex;justify-content:space-between;opacity:.82;font-variant-numeric:tabular-nums}
+.pubx-bar{position:relative;margin-top:8px;height:1px;background:rgba(255,255,255,.25)}
+.pubx-bar i{position:absolute;top:0;bottom:0;background:#fff;transition:left .6s cubic-bezier(.22,1,.36,1)}
+.pubx-read{position:absolute;display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.5);
+  background:rgba(0,0,0,.28);color:#fff;border-radius:999px;cursor:pointer;font:600 .86rem/1 'Inter',system-ui,sans-serif;
+  padding:10px 16px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:.2s}
+.pubx-read:hover{background:#fff;color:#0b1620}
+@media (prefers-reduced-motion:reduce){
+  .pubx-track,.pubx-card,.pubx-bar i,.pubx-bgl,.pubx-bgl img{transition:none!important}
+  .pubx-title > span > span,.pubx-credit,.pubx-meta span{animation:none!important}}
+/* The reader: the poster at a readable size, scrolled rather than shrunk. */
+.pubr{position:fixed;inset:0;z-index:250;display:flex;flex-direction:column;background:rgba(6,14,24,.94)}
+.pubr[hidden]{display:none}
+.pubr-bar{display:flex;align-items:center;gap:14px;padding:12px 16px;color:#fff;border-bottom:1px solid rgba(255,255,255,.12)}
+.pubr-bar h4{flex:1;margin:0;font:600 .95rem/1.35 'Inter',system-ui,sans-serif;color:#fff}
+.pubr-bar a{color:#cfe0f0;font:600 .85rem 'Inter',system-ui,sans-serif;text-decoration:none;white-space:nowrap}
+.pubr-bar a:hover{color:#fff}
+.pubr-x{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.3);
+  background:transparent;color:#fff;font-size:18px;cursor:pointer}
+.pubr-body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:16px;display:flex;justify-content:center;align-items:flex-start}
+.pubr-body img{display:block;width:100%;max-width:1400px;height:auto;cursor:zoom-in;background:#fff}
+.pubr-body.big{justify-content:flex-start}
+.pubr-body.big img{width:2000px;max-width:none;cursor:zoom-out}
+
 /* RESPONSIVE */
 @media(max-width:900px){
   .brand{padding-right:14px}
@@ -2291,6 +2369,296 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
     </div>
   </div>
 </section>
+
+<!-- PUBLICATION: the posters, under the gallery -->
+<section id="publications">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">Gallery &middot; Publication</span>
+      <h2>Publication</h2>
+      <p>Study posters on FACERINNA formulations. Swipe or use the arrow keys to move along, and tap the poster in front to read it in full.</p>
+    </div>
+  </div>
+  <div class="pubx" id="pubStage" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Publication posters">
+    <div class="pubx-wash"></div>
+    <div class="pubx-grain" aria-hidden="true"></div>
+    <div class="pubx-head" id="pubHead" aria-live="polite"></div>
+    <div class="pubx-strip" id="pubStrip"><div class="pubx-track" id="pubTrack"></div></div>
+    <div class="pubx-rail" id="pubRail" aria-hidden="true">
+      <div class="pubx-nums"><span id="pubNow">01</span><span id="pubAll">02</span></div>
+      <div class="pubx-bar"><i id="pubBar"></i></div>
+    </div>
+    <button class="pubx-read" id="pubRead" type="button">Read the poster</button>
+  </div>
+</section>
+
+<div class="pubr" id="pubReader" role="dialog" aria-modal="true" aria-labelledby="pubReaderTitle" hidden>
+  <div class="pubr-bar">
+    <h4 id="pubReaderTitle"></h4>
+    <a id="pubReaderOpen" href="#" target="_blank" rel="noopener">Full size &#8599;</a>
+    <button class="pubr-x" id="pubReaderX" type="button" aria-label="Close the poster">&#10005;</button>
+  </div>
+  <div class="pubr-body" id="pubReaderBody"><img id="pubReaderImg" alt=""></div>
+</div>
+
+<script>
+/* PUBLICATION carousel. Plain script: the page ships no framework, and this
+   holds two posters. The shape of it is HeroCarousel's; see the CSS block of
+   the same name for what changed and why. */
+(function(){
+  var PUBS = [
+    { title: 'Salicylic acid and\nniacinamide serum',
+      full: 'Efficacy and Safety of a Combination Serum Containing 2% Salicylic Acid and 2% Niacinamide as Adjuvant Therapy for Mild and Moderate Acne Vulgaris in Ethnic Skin',
+      credit: 'Kusumawardani et al.',
+      meta: ['Randomised trial', '102 adults', '4 weeks'],
+      card: 'publications/sn2-serum-poster-1100.webp',
+      image: 'publications/sn2-serum-poster.webp',
+      accent: '#12503c' },
+    { title: 'Ceramide and\nD-panthenol moisturiser',
+      full: 'Integrated In Vitro and Clinical Evaluation of a Ceramide- and D-Panthenol-Based Moisturiser',
+      credit: 'INBIOSIS, UKM',
+      meta: ['In vitro and clinical', '16 women', '4 weeks'],
+      card: 'publications/ceramide-panthenol-poster-1100.webp',
+      image: 'publications/ceramide-panthenol-poster.webp',
+      accent: '#173a5e' }
+  ];
+
+  var stage = document.getElementById('pubStage');
+  if (!stage) return;
+  var head = document.getElementById('pubHead'), strip = document.getElementById('pubStrip'),
+      track = document.getElementById('pubTrack'), rail = document.getElementById('pubRail'),
+      bar = document.getElementById('pubBar'), readBtn = document.getElementById('pubRead');
+  var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Ratios of the stage, as in the original. CARD_H is larger than its 0.264
+     because a poster needs more room than a portrait to be recognised, and
+     CARD_AR is the posters' own 2000:1415. */
+  var CARD_H = 0.40, CARD_AR = 2000 / 1415, GAP = 0.038, STRIP_TOP = 0.5,
+      TITLE = 0.062, LABEL = 0.0145, PAD = 0.04, RAIL = 0.2;
+  var WHEEL_THRESHOLD = 60, WHEEL_COOLDOWN = 420;
+  var clamp = function(n, a, b){ return Math.min(b, Math.max(a, n)); };
+
+  var index = 0, last = PUBS.length - 1, box = { w: 0, h: 0 }, g = {};
+  var cards = PUBS.map(function(p, i){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'pubx-card';
+    b.setAttribute('aria-label', p.title.replace(/\n/g, ' ') + ' poster');
+    var im = document.createElement('img');
+    im.src = p.card; im.alt = ''; im.draggable = false; im.loading = 'lazy'; im.decoding = 'async';
+    b.appendChild(im);
+    b.addEventListener('click', function(e){
+      if (moved) { e.preventDefault(); return; }
+      if (i === index) openReader(i); else go(i);
+    });
+    track.appendChild(b);
+    return b;
+  });
+  document.getElementById('pubAll').textContent = String(PUBS.length).padStart(2, '0');
+
+  function measure(){
+    box.w = stage.clientWidth; box.h = stage.clientHeight;
+    /* By width as well as height: on a phone the height ratio alone makes a
+       card nearly the screen's width, and the neighbour -- the whole point
+       of a filmstrip -- falls off the edge. */
+    g.fullH = clamp(Math.min(box.h * CARD_H, box.w * 0.72 / CARD_AR), 140, 440);
+    g.halfH = g.fullH / 2;
+    g.cardW = g.fullH * CARD_AR;
+    g.gap = Math.max(8, Math.round(g.cardW * GAP));
+    g.step = g.cardW + g.gap;
+    g.pad = Math.max(18, Math.round(box.w * PAD));
+    g.label = Math.max(10, Math.round(box.h * LABEL));
+    strip.style.top = (STRIP_TOP * 100) + '%';
+    strip.style.height = g.fullH + 'px';
+    track.style.gap = g.gap + 'px';
+    cards.forEach(function(c){ c.style.width = g.cardW + 'px'; });
+    head.style.height = (STRIP_TOP * 100) + '%';
+    /* The right-hand 100px belong to the floating Contact us, halal and chat
+       buttons, which pass over this stage as the page scrolls; the headline's
+       meta and the read button both keep out of that column. */
+    var narrow = box.w < 600;
+    stage.classList.toggle('narrow', narrow);
+    head.style.padding = '0 ' + Math.max(g.pad, narrow ? 80 : 100) + 'px ' + Math.round(box.h * 0.03) + 'px ' + g.pad + 'px';
+    rail.style.left = g.pad + 'px';
+    rail.style.bottom = Math.max(14, box.h * 0.024) + 'px';
+    rail.style.width = Math.max(90, box.w * RAIL) + 'px';
+    rail.style.fontSize = g.label + 'px';
+    readBtn.style.left = (g.pad + Math.max(90, box.w * RAIL) + 24) + 'px';
+    readBtn.style.bottom = Math.max(10, box.h * 0.024 - 4) + 'px';
+    var t = head.querySelector('.pubx-title');
+    if (t) t.style.fontSize = titleSize() + 'px';
+    head.querySelectorAll('.pubx-credit,.pubx-meta span').forEach(function(el){ el.style.fontSize = g.label + 'px'; });
+    place(false);
+  }
+  /* On a narrow phone the height ratio alone sets a headline wider than the
+     screen, so the width gets a say too. */
+  function titleSize(){ return Math.round(Math.max(24, Math.min(box.h * TITLE, box.w * 0.085))); }
+  function xFor(i){ return box.w / 2 - (i * g.step + g.cardW / 2); }
+
+  var x = 0;
+  function setX(v, animate){
+    x = v;
+    track.classList.toggle('drag', !animate);
+    track.style.transform = 'translate3d(' + v + 'px,0,0)';
+  }
+  function place(animate){
+    setX(xFor(index), animate);
+    cards.forEach(function(c, i){
+      c.style.height = (i === index ? g.fullH : g.halfH) + 'px';
+      c.setAttribute('aria-current', i === index ? 'true' : 'false');
+    });
+    bar.style.width = (100 / PUBS.length) + '%';
+    bar.style.left = (index / PUBS.length * 100) + '%';
+    document.getElementById('pubNow').textContent = String(index + 1).padStart(2, '0');
+  }
+
+  /* The backdrop: the focused poster blown up and re-hued to its accent. A
+     new layer fades in over the old, which is then removed. */
+  function backdrop(p){
+    var layer = document.createElement('div');
+    layer.className = 'pubx-bgl';
+    layer.innerHTML = '<img alt="" aria-hidden="true" draggable="false"><div class="pubx-hue"></div><div class="pubx-mul"></div>';
+    layer.querySelector('img').src = p.card;
+    layer.querySelector('.pubx-hue').style.backgroundColor = p.accent;
+    layer.querySelector('.pubx-mul').style.backgroundColor = p.accent;
+    stage.insertBefore(layer, stage.querySelector('.pubx-wash'));
+    var olds = Array.prototype.slice.call(stage.querySelectorAll('.pubx-bgl.on'));
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ layer.classList.add('on'); }); });
+    setTimeout(function(){ olds.forEach(function(o){ o.remove(); }); }, reduced ? 0 : 750);
+  }
+
+  function headline(p){
+    var h = document.createElement('h3');
+    h.className = 'pubx-title';
+    h.style.fontSize = titleSize() + 'px';
+    p.title.split('\n').forEach(function(line, i){
+      var o = document.createElement('span'), inner = document.createElement('span');
+      inner.textContent = line;
+      inner.style.animationDelay = (i * 0.07) + 's';
+      o.appendChild(inner); h.appendChild(o);
+    });
+    var row = document.createElement('div'); row.className = 'pubx-row';
+    row.appendChild(h);
+    var c = document.createElement('p'); c.className = 'pubx-credit';
+    c.style.margin = '0'; c.style.fontSize = g.label + 'px'; c.style.animationDelay = '.1s';
+    c.textContent = p.credit;
+    row.appendChild(c);
+    var m = document.createElement('div'); m.className = 'pubx-meta';
+    m.style.gap = '6px ' + Math.max(16, box.w * 0.045) + 'px';
+    p.meta.forEach(function(f, i){
+      var sp = document.createElement('span');
+      sp.textContent = f; sp.style.fontSize = g.label + 'px';
+      sp.style.animationDelay = (0.12 + i * 0.06) + 's';
+      m.appendChild(sp);
+    });
+    row.appendChild(m);
+    head.textContent = '';
+    head.appendChild(row);
+  }
+
+  function show(){ var p = PUBS[index]; backdrop(p); headline(p); place(true); }
+  function go(n){
+    n = clamp(n, 0, last);
+    if (n === index) { place(true); return; }
+    index = n; show();
+  }
+
+  stage.addEventListener('keydown', function(e){
+    var k = { ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: last };
+    if (!(e.key in k)) return;
+    e.preventDefault(); go(k[e.key]);
+  });
+
+  /* Sideways wheel and trackpad only; see the CSS note. Against an end it
+     hands the gesture back rather than swallowing it. */
+  var acc = 0, until = 0;
+  stage.addEventListener('wheel', function(e){
+    if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    var d = e.deltaX;
+    if ((d > 0 && index === last) || (d < 0 && index === 0)) { acc = 0; return; }
+    e.preventDefault();
+    if (e.timeStamp < until) return;
+    acc += d;
+    if (Math.abs(acc) < WHEEL_THRESHOLD) return;
+    go(index + Math.sign(acc)); acc = 0; until = e.timeStamp + WHEEL_COOLDOWN;
+  }, { passive: false });
+
+  /* Drag. The track follows the finger with a little give past either end,
+     and lands on whichever card the release sits nearest, nudged by the
+     throw so a flick carries. A drag is not a tap. */
+  var down = null, moved = false, samples = [];
+  track.addEventListener('pointerdown', function(e){
+    if (e.button !== 0) return;
+    down = { x: e.clientX, y: e.clientY, from: x, id: e.pointerId };
+    moved = false; samples = [{ t: e.timeStamp, x: e.clientX }];
+  });
+  window.addEventListener('pointermove', function(e){
+    if (!down || e.pointerId !== down.id) return;
+    var dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if (!moved) {
+      if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(dy)) return;
+      moved = true;
+      try { track.setPointerCapture(down.id); } catch (err) {}
+    }
+    var v = down.from + dx, lo = xFor(last), hi = xFor(0);
+    if (v > hi) v = hi + (v - hi) * 0.08;
+    if (v < lo) v = lo + (v - lo) * 0.08;
+    setX(v, false);
+    samples.push({ t: e.timeStamp, x: e.clientX });
+    if (samples.length > 5) samples.shift();
+  });
+  function release(e){
+    if (!down || (e && e.pointerId !== down.id)) return;
+    down = null;
+    if (!moved) return;
+    var a = samples[0], b = samples[samples.length - 1];
+    var vx = (b && a && b.t > a.t) ? (b.x - a.x) / ((b.t - a.t) / 1000) : 0;
+    var thrown = x + vx * 0.12;
+    var n = Math.round((box.w / 2 - thrown - g.cardW / 2) / g.step);
+    if (clamp(n, 0, last) === index) place(true); else go(n);
+    setTimeout(function(){ moved = false; }, 0);
+  }
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', release);
+
+  /* ---------------------------------------------------------- the reader */
+  var reader = document.getElementById('pubReader'), rBody = document.getElementById('pubReaderBody'),
+      rImg = document.getElementById('pubReaderImg'), rTitle = document.getElementById('pubReaderTitle'),
+      rOpen = document.getElementById('pubReaderOpen'), rX = document.getElementById('pubReaderX');
+  var back = null;
+  function openReader(i){
+    var p = PUBS[i];
+    back = document.activeElement;
+    rTitle.textContent = p.full;
+    rImg.alt = 'Poster: ' + p.full;
+    rImg.src = p.image;
+    rOpen.href = p.image;
+    rBody.classList.remove('big');
+    reader.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    rX.focus();
+  }
+  function closeReader(){
+    if (reader.hidden) return;
+    reader.hidden = true;
+    document.documentElement.style.overflow = '';
+    if (back && back.focus) back.focus();
+  }
+  readBtn.addEventListener('click', function(){ openReader(index); });
+  rX.addEventListener('click', closeReader);
+  rImg.addEventListener('click', function(){ rBody.classList.toggle('big'); });
+  rBody.addEventListener('click', function(e){ if (e.target === rBody) closeReader(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeReader(); });
+
+  var ro = new ResizeObserver(function(){ measure(); });
+  ro.observe(stage);
+  measure();
+  show();
+
+  /* the tests, and nothing else */
+  window.__pub = { index: function(){ return index; }, go: go, open: openReader, close: closeReader,
+    geometry: function(){ return { w: box.w, h: box.h, fullH: g.fullH, halfH: g.halfH, cardW: g.cardW }; } };
+})();
+</script>
 
 <div class="bookmodal" id="bookModal" role="dialog" aria-modal="true" aria-label="Document reader" hidden>
   <div class="bookmodal-bg" id="bookBg"></div>
