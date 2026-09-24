@@ -1193,7 +1193,7 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
     <div class="fine">
       <span>© 2026 FACERINNA® · Internal Regulatory Affairs reference. Not for external distribution.</span>
       <span id="footerSync">Loading data…</span>
-      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-24 · 2b9c9b4</span>
+      <span class="build-stamp" title="Which published build you are looking at">build 2026-09-24 · 921b014</span>
 
     </div>
   </div>
@@ -1308,7 +1308,10 @@ const vaCode   = email        => vaPost({action:'code',   email:email}, 30000);
 const vaRedeem = (email,code) => vaPost({action:'redeem', email:email, code:code}, 30000);
 const vaRequest = d => vaPost({action:'request', name:d.name, email:d.email,
                                organisation:d.organisation, consent:true});
-const vaFetchData = t => vaPost({action:'data', token:t}, 30000);
+/* 60s, not 30: a script that has been asleep reads two workbooks and four
+   tabs before it answers, and a cut-off here reads to a visitor as "the
+   vault is broken" while the answer is still on its way. */
+const vaFetchData = t => vaPost({action:'data', token:t}, 60000);
 
 
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -1691,20 +1694,23 @@ function vaultGate(state, detail){
      and "expired" send a person to three different places, and a single
      "denied" sends them to none of them -- they just ask Wan, and he has to
      open the sheet to find out which it was. */
-  const ALT_CODE = 'Already approved? Email me a code instead';
+  /* The approval mail tells people to choose exactly this, so the words
+     on the button and the words in the mail must stay the same. */
+  const ALT_CODE = 'Already approved? Sign in with a code';
   const ALT_ASK  = 'Not approved yet? Ask for access';
-  if(state==='ask')          show('The report numbers, laboratories, dates and claim text are for named viewers. Ask for access and we will email you a link.','Requests are answered by FACERINNA Regulatory Affairs. Nothing else on this page is affected.','request',ALT_CODE);
+  if(state==='ask')          show('The report numbers, laboratories, dates and claim text are for named viewers. Ask for access; once approved, you sign in here with your email and a code.','Requests are answered by FACERINNA Regulatory Affairs. Nothing else on this page is affected.','request',ALT_CODE);
   else if(state==='sending') show('Sending…','',null);
-  else if(state==='asked')   show('Thank you — your request is with FACERINNA Regulatory Affairs.','We will email '+detail+' a link once it is approved. You can close this page.',null);
+  else if(state==='asked')   show('Thank you — your request is with FACERINNA Regulatory Affairs.','We will email '+detail+' once it is approved. Then come back and sign in with a code. You can close this page.',null);
   else if(state==='already') show('You have already asked for access.','We will email '+detail+' as soon as it is approved. Asking again does not make it faster.',null,ALT_CODE);
-  else if(state==='pending') show('Your request has not been decided yet.','We will email you a link once it is approved.',null);
+  else if(state==='pending') show('Your request has not been decided yet.','We will email you once it is approved; then sign in here with a code.',null);
   else if(state==='refused') show('That request was not approved.','If you think that is a mistake, speak to FACERINNA Regulatory Affairs.',null);
   else if(state==='expired') show('That link has expired.','Links last a limited time. Ask for a code below and a fresh one is issued on the spot.','code',ALT_ASK);
-  else if(state==='revoked') show('That link is no longer active.','Access was withdrawn or the request was reopened. Ask again below if you still need it.','request',ALT_CODE);
-  else if(state==='offline') show('Could not reach the vault just now.','The page is fine; the connection to the report store is not. Try again in a moment.',null);
+  else if(state==='revoked') show('This device is no longer signed in.','Access was withdrawn or the request was reopened. Ask again below if you still need it.','request',ALT_CODE);
+  else if(state==='offline') show('Could not reach the vault just now.','You are still signed in. It will try again by itself in half a minute.',null);
+  else if(state==='readfail')show('You are signed in, but the reports could not be loaded just now.','Nothing is wrong with your access. It will try again by itself in half a minute; if it keeps happening, tell FACERINNA Regulatory Affairs.',null);
   else if(state==='error')   show('Could not send that request.',String(detail||''),'request',ALT_CODE);
   /* the code route */
-  else if(state==='code')     show('Already approved? We will email a six-digit code to the address on your approval.','It works once, on whichever device you type it into, and lasts '+'10 minutes.','code',ALT_ASK);
+  else if(state==='code')     show('Sign in with the email address you were approved with. We will email it a six-digit code.','Type the code on this device and it stays signed in. No link to keep, nothing to type again.','code',ALT_ASK);
   else if(state==='codesent') show('Code sent to '+detail+'.','Type it below. It works once and lasts 10 minutes. Check spam if it is slow.','pin',ALT_ASK);
   else if(state==='codeagain')show('A code was already sent to '+detail+'.','Use the one you have — a new one can be asked for a minute after the last.','pin',ALT_ASK);
   else if(state==='badcode')  show('That code is not right.',String(detail||'')+' Type it again, or ask for a new one in a minute.','pin',ALT_ASK);
@@ -1723,12 +1729,21 @@ async function loadVaultData(){
   try{
     const res = await vaFetchData(tok);
     if(!res || res.ok!==true){
-      /* A token the script will not honour is a token worth forgetting: keep
-         it and every reload retries something already answered, and the gate
-         cannot offer to ask again without contradicting itself. */
-      const why = (res && res.reason) || 'unknown';
-      vaClear();
-      vaultGate(why==='expired' ? 'expired' : why==='revoked' ? 'revoked' : 'ask');
+      const why = (res && res.reason) || '';
+      /* Only a refusal signs a device out: the script saying it does not know
+         this token, or that the row behind it is no longer approved. Anything
+         else -- the workbooks would not open, the script threw, an answer
+         with no reason at all -- is the vault failing, not the visitor.
+         Treating those as refusals is what used to throw away a sign-in that
+         had just been made with a correct code and show the request form. */
+      if(why==='unknown' || why==='revoked' || why==='expired'){
+        vaClear();
+        vaultGate(why==='expired' ? 'expired' : why==='revoked' ? 'revoked' : 'ask');
+        return;
+      }
+      if(res && res.error) console.warn('[vault] script said:', res.error);
+      vaultGate('readfail');
+      vaRetryLater();
       return;
     }
     REPORTS = res.reports || [];
@@ -1747,7 +1762,15 @@ async function loadVaultData(){
     console.warn('[vault] read failed:', err.message);
     vaultGate('offline');
     syncState='cached'; updateSyncUI();
+    vaRetryLater();
   }
+}
+/* One retry queued at a time, so a page left open on a bad afternoon does
+   not stack a timer per failure. */
+let vaRetryTimer=0;
+function vaRetryLater(){
+  if(vaRetryTimer) return;
+  vaRetryTimer=setTimeout(()=>{ vaRetryTimer=0; loadVaultData(); }, 30000);
 }
 
 async function loadLiveData(){
