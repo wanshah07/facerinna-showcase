@@ -55,12 +55,24 @@
  *   such restriction and no domain to verify. setUp reports your remaining
  *   quota so the number is never a guess.
  *
+ * HOW A PERSON GETS IN (since 24 Sept 2026)
+ *   Approving a row mails them to say so -- no link in it. On the vault page
+ *   they type their email, get a six-digit code, type it once, and that
+ *   device stays signed in for good. Any device, the same way, once each.
+ *   There is no expiry. What ends it is the sheet: delete their row, or set
+ *   its status to anything but "approved", and every device they signed in
+ *   on is refused on its next load.
+ *
+ *   It used to be a mailed link good for 14 days. The link landed in
+ *   whichever browser opened the mail -- usually the mail app's own, not the
+ *   one in the visitor's hand -- and died a fortnight later wherever it had
+ *   landed. Links already sent still work, and now do not expire either.
+ *
  * WHAT THIS DOES NOT DO
- *   It does not encrypt anything, and a person who is approved can pass their
- *   link to somebody else. The token is a key, and keys can be handed on. What
- *   it gives you is a list of who asked, who you let in, and the ability to
- *   revoke any of them in one cell — which is what "controlled access" means
- *   in practice for a booth. If a link is being shared, blank its token.
+ *   It does not encrypt anything, and a signed-in device can be lent. What it
+ *   gives you is a list of who asked, who you let in, and the ability to
+ *   revoke any of them in one cell -- which is what "controlled access" means
+ *   in practice for a booth.
  */
 
 /* ------------------------------------------------------------------ config */
@@ -81,13 +93,10 @@ var REPORTS_BOOK = '15eD6XtMVN1BRm41cD9wm33QMwW16R5sS';
 var THUMBS_BOOK  = '1F1zDeTnSrfZ7j7bIu7FfiHRW0eoXu3_n4NjFAmnWBfE';
 var GIDS = { reports: 378921450, series: 610219740, skus: 1440505952, thumbs: 524451717 };
 
-var TOKEN_DAYS = 14;     /* a link stops working after this long */
-/* A one-time code, for getting in on a device the mailed link never reached.
-   The link is per-browser by design -- it lands in whatever browser opened the
-   mail, which at a booth is usually the mail app's own webview and not the
-   browser the visitor is actually using. The code closes that gap without
-   weakening anything: it is mailed to the approved address, it is worth one
-   use, and it buys exactly the token the link would have. */
+/* A signed-in device stays signed in until the row says otherwise; there is
+   no clock on it. The six-digit code is how a device signs in: it is mailed
+   to the approved address, it is worth one use, and it buys the row's token,
+   the same one on every device that address signs in on. */
 var CODE_MINS  = 10;     /* a code is worth nothing after this long */
 var CODE_TRIES = 5;      /* wrong guesses before that code is dead */
 var CODE_GAP_MS = 60000; /* one code a minute per address */
@@ -112,7 +121,7 @@ var COL_STATUS = 5, COL_TOKEN = 6, COL_KEY = 10;
 
 /* status column values, and what each one means:
      (blank) / pending   asked, not decided        -> no access
-     approved            let in                    -> token issued, link mailed
+     approved            let in                    -> told by mail; signs in with a code
      anything else       refused, or revoked later -> access dies immediately  */
 
 /* ------------------------------------------------------------------- setup */
@@ -285,17 +294,20 @@ function findRow_(sh, email) {
 
 /* -------------------------------------------------------------- approvals */
 
-/* Sends a link to every row that is approved and has no token yet. Run it by
- * hand from the editor if you like, but installTriggers() below means you do
- * not have to: it fires on the edit that approves a row, and again every five
- * minutes as a net. Safe to run at any moment, from anywhere, as often as you
- * like -- an already-tokened row is never touched twice.
+/* Tells every row that is approved and has not been told yet. Run it by hand
+ * from the editor if you like, but installTriggers() below means you do not
+ * have to: it fires on the edit that approves a row, and again every five
+ * minutes as a net. Safe to run at any moment, as often as you like -- a row
+ * whose "link sent" cell is filled is never mailed twice.
+ *
+ * The mail carries no key. It says they are in and how to sign in: the vault
+ * address, their email, a code. A key in a mail is a key in whichever
+ * browser opens the mail, and that was the whole trouble with the old link.
  */
 function sendApprovals() {
-  /* Two callers can now land at the same moment: the edit trigger and the
-     timer. Without the lock both would see the same tokenless row and both
-     would mail a link -- two keys to a door meant to have one. tryLock, not
-     waitLock: if another run holds it, that run is already doing this. */
+  /* Two callers can land at the same moment: the edit trigger and the timer.
+     Without the lock both would see the same untold row and both would mail.
+     tryLock, not waitLock: if another run holds it, that run is doing this. */
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(3000)) return 'Another run is already sending.';
   try {
@@ -315,36 +327,32 @@ function sendApprovals_() {
 
   for (var i = 0; i < v.length; i++) {
     var status = String(v[i][4] || '').trim().toLowerCase();
-    var token  = String(v[i][5] || '').trim();
-    if (status !== 'approved' || token) { skipped++; continue; }
+    var told   = v[i][7];
+    if (status !== 'approved' || told) { skipped++; continue; }
 
     var email = String(v[i][2]).trim();
     var name  = String(v[i][1]).trim();
-    var tok   = Utilities.getUuid();
-    var exp   = new Date(Date.now() + TOKEN_DAYS * 86400000);
-    var link  = VAULT_URL + '#vault=' + encodeURIComponent(tok);
 
     try {
       MailApp.sendEmail({
         to: email,
         name: FROM_NAME,
-        subject: 'Your access to the FACERINNA test report vault',
+        subject: 'You can now open the FACERINNA test report vault',
         htmlBody:
           '<p>Hello ' + esc_(name) + ',</p>' +
           '<p>Your request to read the FACERINNA test reports and claims has been ' +
-          'approved. Open this link on the device you want to read them on:</p>' +
-          '<p><a href="' + link + '">Open the vault</a></p>' +
-          '<p style="color:#667;font-size:13px">The link is yours alone and stops ' +
-          'working on ' + Utilities.formatDate(exp, Session.getScriptTimeZone(), 'd MMMM yyyy') +
-          '. Please do not forward it — access is granted per person and can be ' +
-          'withdrawn.</p>' +
-          '<p style="color:#667;font-size:13px">FACERINNA Regulatory Affairs</p>'
+          'approved.</p>' +
+          '<p><b>To sign in:</b> open <a href="' + VAULT_URL + '">' + esc_(VAULT_URL) + '</a>, ' +
+          'choose <i>Sign in with a code</i> and enter ' + esc_(email) + '. We email you a ' +
+          'six-digit code; type it in and you are in.</p>' +
+          '<p>Each phone or computer asks for a code once. After that it stays signed ' +
+          'in -- no link to keep, nothing to type again.</p>' +
+          '<p style="color:#667;font-size:13px">Access is granted to you personally and ' +
+          'can be withdrawn. FACERINNA Regulatory Affairs</p>'
       });
       /* Written only after the mail is away. Crash before this and the row is
-         still tokenless, so the next run tries again rather than leaving
-         somebody approved on paper and never told. */
-      sh.getRange(i + 2, 6).setValue(tok);
-      sh.getRange(i + 2, 7).setValue(exp);
+         still untold, so the next run tries again rather than leaving somebody
+         approved on paper and never told. */
       sh.getRange(i + 2, 8).setValue(new Date());
       sent++;
     } catch (e) {
@@ -352,7 +360,7 @@ function sendApprovals_() {
     }
   }
 
-  var msg = 'Sent ' + sent + ', skipped ' + skipped +
+  var msg = 'Told ' + sent + ', skipped ' + skipped +
             '. Mail quota left: ' + MailApp.getRemainingDailyQuota() + '.';
   if (failed.length) msg += ' FAILED: ' + failed.join('; ');
   return msg;
@@ -368,11 +376,14 @@ var esc_ = function (s) {
 
 /* Body: {action:'data', token}
  * Back: {ok:true, reports:[...], series:[...], skus:[...], thumbs:[...]}
- *       {ok:false, reason:'unknown'|'pending'|'revoked'|'expired'}
+ *       {ok:false, reason:'unknown'|'revoked'}   -- not let in
+ *       {ok:false, reason:'readfail'}            -- let in, but the workbooks
+ *                                                   could not be read
  *
- * The reasons are separate on purpose. "Your request is still with us" and
- * "that link has expired" send a person to different places, and a single
- * "denied" sends them to neither.
+ * readfail is its own reason because it is not a refusal. It used to fall
+ * into the catch-all, come back with no reason at all, and the page took
+ * that for "not let in": it threw away a sign-in that was perfectly good and
+ * showed the request form to somebody who had just typed a correct code.
  */
 function vaultData_(b) {
   var token = String(b.token || '').trim();
@@ -389,10 +400,16 @@ function vaultData_(b) {
     var status = String(v[i][4] || '').trim().toLowerCase();
     if (status !== 'approved') return json_({ ok: false, reason: 'revoked' });
 
-    var exp = v[i][6] ? new Date(v[i][6]).getTime() : 0;
-    if (exp && Date.now() > exp) return json_({ ok: false, reason: 'expired' });
-
-    var d = readVault_();
+    /* No expiry check: a signed-in device stays signed in until the row says
+       otherwise. The "expires" column is left in place and no longer read. */
+    var d;
+    try { d = readVault_(); }
+    catch (err) {
+      /* The detail stays in the execution log. It names workbooks, and those
+         ids are exactly what the page must never carry. */
+      console.error('vault read failed: ' + (err && err.message || err));
+      return json_({ ok: false, reason: 'readfail' });
+    }
     d.ok = true;
     d.who = String(v[i][1] || '');
     return json_(d);
@@ -453,9 +470,10 @@ function codeRequest_(b) {
       '<p>Hello ' + esc_(String(found.name || '')) + ',</p>' +
       '<p>Your one-time code for the FACERINNA test report vault is:</p>' +
       '<p style="font:700 28px/1.2 monospace;letter-spacing:4px">' + code + '</p>' +
-      '<p style="color:#667;font-size:13px">It works once, on whichever device ' +
-      'you type it into, and stops working in ' + CODE_MINS + ' minutes. ' +
-      'If you did not ask for it, ignore this mail and tell us.</p>' +
+      '<p style="color:#667;font-size:13px">Type it on the device you want to read ' +
+      'on. It works once and stops working in ' + CODE_MINS + ' minutes; the ' +
+      'device then stays signed in. If you did not ask for it, ignore this mail ' +
+      'and tell us.</p>' +
       '<p style="color:#667;font-size:13px">FACERINNA Regulatory Affairs</p>'
   });
   props.setProperty(slot, JSON.stringify({
@@ -500,14 +518,14 @@ function codeRedeem_(b) {
   var found = findRow_(sh, email);
   if (!found || found.status !== 'approved') return json_({ ok: false, reason: 'revoked' });
 
+  /* One token per row, the same on every device the address signs in on,
+     minted the first time and kept. Deleting the row is what ends it -- for
+     every device at once -- and a row added back later mints a new one. */
   var token = found.token;
-  var exp   = found.expires;
-  if (!token || (exp && Date.now() > exp)) {
+  if (!token) {
     token = Utilities.getUuid();
-    exp = Date.now() + TOKEN_DAYS * 86400000;
     sh.getRange(found.row, 6).setValue(token);
-    sh.getRange(found.row, 7).setValue(new Date(exp));
-    sh.getRange(found.row, 8).setValue(new Date());
+    if (!found.sent) sh.getRange(found.row, 8).setValue(new Date());
   }
   return json_({ ok: true, token: token });
 }
@@ -549,8 +567,32 @@ function tabByGid_(book, gid) {
 }
 
 function grid_(book, gid) {
-  var sh = tabByGid_(book, gid);
-  return sh.getLastRow() ? sh.getDataRange().getDisplayValues() : [];
+  try {
+    var sh = tabByGid_(book, gid);
+    return sh.getLastRow() ? sh.getDataRange().getDisplayValues() : [];
+  } catch (first) {
+    return csvGrid_(book, gid, first);
+  }
+}
+
+/* The route build-public.js has always read these books by: the CSV export.
+   SpreadsheetApp.openById only opens native Google Sheets -- a workbook that
+   is an uploaded .xlsx, opened in Sheets, refuses it -- while the export
+   answers for both. Asked with the script owner's own sign-in, so a book
+   that is not shared publicly still answers. */
+function csvGrid_(book, gid, first) {
+  var url = 'https://docs.google.com/spreadsheets/d/' + book + '/export?format=csv&gid=' + gid;
+  var res = UrlFetchApp.fetch(url, {
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true, followRedirects: true
+  });
+  if (res.getResponseCode() === 200) return Utilities.parseCsv(res.getContentText());
+  var kind = '';
+  try { kind = DriveApp.getFileById(book).getMimeType(); }
+  catch (x) { kind = 'not visible to the account this script runs as'; }
+  throw new Error('workbook ' + book + ' (' + kind + ') would not open: ' +
+                  (first && first.message || first) + '; the CSV export answered ' +
+                  res.getResponseCode());
 }
 
 var clean_ = function (v) {
@@ -668,10 +710,10 @@ function doGet(e) {
     '<div class="who"><b>' + esc_(found.name) + '</b><br>' + esc_(found.email) +
       (found.org ? '<br>' + esc_(found.org) : '') + '</div>' +
     '<p class="now">Currently: <b>' + esc_(found.status || 'pending') + '</b>' +
-      (found.token ? ' &middot; a link has already been sent' : '') + '</p>' +
+      (found.token ? ' &middot; they have signed in' : '') + '</p>' +
     (isApprove
-      ? '<p>Approving mails them a link that works for ' + TOKEN_DAYS + ' days.</p>'
-      : '<p>Declining sends them nothing. If they already hold a link, it stops ' +
+      ? '<p>Approving emails them to say they can sign in with a code.</p>'
+      : '<p>Declining sends them nothing. If they are already signed in, it stops ' +
         'working on their next reload.</p>') +
     '<button id="go" class="' + (isApprove ? 'ok' : 'no') + '">' +
       (isApprove ? 'Yes, approve' : 'Yes, decline') + '</button>' +
@@ -701,12 +743,12 @@ function decideFromPage(key, decision) {
 
   if (decision === 'decline') {
     return 'Declined. ' + found.name + ' has been sent nothing' +
-           (found.token ? ', and the link they hold stops working.' : '.');
+           (found.token ? ', and their signed-in devices stop working.' : '.');
   }
   /* Not left to the five-minute timer: you pressed a button and are watching
      the page, so the mail should be gone before you look away. */
   sendApprovals();
-  return 'Approved. A link has been mailed to ' + found.email + '.';
+  return 'Approved. ' + found.email + ' has been emailed how to sign in.';
 }
 
 /* Shaped like a UUID or it is not one of ours. Checked before the value is
@@ -757,7 +799,7 @@ function preview() {
   var out = v.map(function (r) {
     return [String(r[4] || 'pending').toUpperCase().padEnd(9),
             String(r[2]), String(r[1]),
-            r[5] ? 'link sent' : ''].join('  ');
+            r[5] ? 'signed in' : (r[7] ? 'told' : '')].join('  ');
   });
   Logger.log(out.join('\n'));
   return out.join('\n');
@@ -766,9 +808,14 @@ function preview() {
 /* Reads the workbooks and reports what came back, without needing a token.
    Run this after setUp: if it cannot see the reports, nothing else will. */
 function checkWorkbooks() {
-  var d = readVault_();
-  var msg = 'reports ' + d.reports.length + ', series ' + d.series.length +
-            ', skus ' + d.skus.length + ', thumbs ' + d.thumbs.length;
+  var msg;
+  try {
+    var d = readVault_();
+    msg = 'OK: reports ' + d.reports.length + ', series ' + d.series.length +
+          ', skus ' + d.skus.length + ', thumbs ' + d.thumbs.length;
+  } catch (err) {
+    msg = 'NOT READABLE -- ' + (err && err.message || err);
+  }
   Logger.log(msg);
   return msg;
 }
@@ -800,7 +847,7 @@ function installTriggers() {
   removeTriggers();
   ScriptApp.newTrigger('onSheetEdit').forSpreadsheet(SHEET_ID).onEdit().create();
   ScriptApp.newTrigger('sendApprovals').timeBased().everyMinutes(5).create();
-  return 'Installed. Set a status cell to "approved" and the link goes out by itself.';
+  return 'Installed. Set a status cell to "approved" and the mail goes out by itself.';
 }
 
 /* Re-running installTriggers must not leave two of each: triggers stack
