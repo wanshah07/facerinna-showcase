@@ -56,7 +56,10 @@ const mkSheet = o => ({
     return range;
   },
 });
+/* A book listed here refuses openById, the way an uploaded .xlsx does. */
+const REFUSE_OPEN = new Set();
 const SpreadsheetApp = { openById: id => {
+  if (REFUSE_OPEN.has(id)) throw new Error('Unexpected error while getting the method or property openById');
   const b = books[id]; if(!b) throw new Error('no book '+id);
   return {
     getSheetByName: n => b.byName && b.byName[n] ? mkSheet(b.byName[n]) : null,
@@ -95,9 +98,22 @@ const ScriptApp = {
   getProjectTriggers: () => TRIGGERS.map(t => ({
     getHandlerFunction: () => t.fn, _t: t })),
   getService: () => ({ getUrl: () => 'https://script.example/exec' }),
+  getOAuthToken: () => 'owner-oauth-token',
   deleteTrigger: h => { const i = TRIGGERS.indexOf(h._t); if(i>=0) TRIGGERS.splice(i,1); },
 };
 const ContentService = { MimeType:{JSON:'j'}, createTextOutput: s => ({ setMimeType: () => s }) };
+/* The CSV export, answered from the same in-memory books. EXPORT_CODE lets a
+   test make it refuse too. */
+let EXPORT_CODE = 200; const FETCHED = [];
+const toCsv = grid => grid.map(r => r.map(v => /[",\n]/.test(String(v)) ? '"'+String(v).replace(/"/g,'""')+'"' : String(v)).join(',')).join('\n');
+const UrlFetchApp = { fetch: (url, opt) => {
+  FETCHED.push({ url, auth: opt && opt.headers && opt.headers.Authorization });
+  const m = url.match(/spreadsheets\/d\/([^/]+)\/export\?format=csv&gid=(\d+)/);
+  const grid = m && books[m[1]] && books[m[1]].byGid && books[m[1]].byGid[m[2]];
+  const code = grid ? EXPORT_CODE : 404;
+  return { getResponseCode: () => code, getContentText: () => grid ? toCsv(grid) : '' };
+}};
+const DriveApp = { getFileById: id => ({ getMimeType: () => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }) };
 let uuid = 0;
 /* Shaped like a real UUID, because the code now checks that shape before it
    will act on a key. A stub returning 'tok-1' let the tests agree with each
@@ -112,7 +128,14 @@ const Utilities = { getUuid: () => '00000000-0000-4000-8000-' + String(++uuid).p
                        the tests need is that the stored value is NOT the code
                        and that the same input maps to the same output. */
                     computeDigest: (alg, str) => Array.from(String(str)).map(c=>c.charCodeAt(0)),
-                    base64Encode: bytes => Buffer.from(bytes).toString('base64') };
+                    base64Encode: bytes => Buffer.from(bytes).toString('base64'),
+                    parseCsv: text => {
+                      const rows=[]; let row=[], f='', q=false;
+                      for (let i=0;i<text.length;i++){ const c=text[i];
+                        if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+                        else if(c==='"') q=true; else if(c===','){row.push(f);f='';}
+                        else if(c==='\n'){row.push(f);rows.push(row);row=[];f='';} else f+=c; }
+                      row.push(f); rows.push(row); return rows; } };
 const PROPS = {};
 const PropertiesService = { getScriptProperties: () => ({
   getProperty: k => (k in PROPS ? PROPS[k] : null),
@@ -129,6 +152,18 @@ const m = eval(`(() => { ${src}
            onSheetEdit, installTriggers, removeTriggers, decideFromPage }; })()`);
 
 const call = o => JSON.parse(m.doPost({ postData:{ contents: JSON.stringify(o), type:'text/plain' } }));
+const codeOf = () => {
+  const m2 = mails.filter(x => /vault code/i.test(x.subject || '')).pop();
+  return m2 ? (String(m2.subject).match(/(\d{6})/) || [])[1] : null;
+};
+/* Email, then the code that arrives, as a person does it on the page. The
+   one-a-minute spacing is cleared first, so a second device can sign in
+   straight away in a test. */
+const signIn = email => {
+  delete PROPS['code:' + email];
+  call({action:'code', email});
+  return call({action:'redeem', email, code:String(codeOf())});
+};
 let ok = true;
 const check = (l,c) => { if(!c) ok=false; console.log((c?'  PASS  ':'  FAIL  ')+l); };
 const statusCell = (email, v) => {
@@ -165,11 +200,19 @@ check('nothing sent until sendApprovals runs', links().length === 0);
 const r1 = m.sendApprovals();
 check('one mail went out',      links().length === 1);
 check('to the right person',    links()[0].to === 'lim@clinic.my');
-check('the link carries a token in the fragment',
-      /#vault=[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(links()[0].htmlBody.match(/href="([^"]+)"/)[1]));
+check('the approval mail carries no key -- nothing to land in the wrong browser',
+      !/#vault=/.test(links()[0].htmlBody) &&
+      !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(links()[0].htmlBody));
+check('it tells them to sign in at the vault with their email and a code',
+      links()[0].htmlBody.includes('https://my.facerinna.com/facerinna-test-reports-claims/') &&
+      /six-digit code/.test(links()[0].htmlBody) && links()[0].htmlBody.includes('lim@clinic.my'));
+check('no token is minted at approval; a device mints it by signing in',
+      String(REQ.rows[1][5] || '') === '');
 check('running it again sends nothing more', (m.sendApprovals(), links().length === 1));
 
-const TOKEN = REQ.rows[1][5];
+const SIGNED = signIn('lim@clinic.my');
+check('signing in with email and code hands back a token', SIGNED.ok === true && !!SIGNED.token, SIGNED);
+const TOKEN = SIGNED.token;
 
 console.log('\nwith the token, the reports arrive');
 const d = call({action:'data',token:TOKEN});
@@ -192,11 +235,13 @@ check('the same token now fails', call({action:'data',token:TOKEN}).reason === '
 statusCell('lim@clinic.my','approved');
 check('and putting it back works', call({action:'data',token:TOKEN}).ok === true);
 
-console.log('\nexpiry');
-REQ.rows[1][6] = new Date(Date.now() - 86400000);
-check('an expired link says so, not "unknown"', call({action:'data',token:TOKEN}).reason === 'expired');
-REQ.rows[1][6] = new Date(Date.now() + 86400000);
-check('a live one still works', call({action:'data',token:TOKEN}).ok === true);
+console.log('\nno clock on a sign-in');
+REQ.rows[1][6] = new Date(Date.now() - 400 * 86400000);
+check('an "expires" date long past is ignored: still signed in', call({action:'data',token:TOKEN}).ok === true);
+REQ.rows[1][6] = '';
+const second = signIn('lim@clinic.my');
+check('a second device signing in gets the same token, so one row is one door',
+      second.ok === true && second.token === TOKEN, second);
 
 console.log('\na send that bounces does not mark the row as sent');
 call({action:'request',name:'Bad',email:'bounce@nowhere.com',organisation:'',consent:true});
@@ -204,8 +249,8 @@ statusCell('bounce@nowhere.com','approved');
 const before = links().length;
 const r2 = m.sendApprovals();
 check('no mail recorded',        links().length === before);
-check('no token written, so the next run retries',
-      String(REQ.rows.find(x=>x[2]==='bounce@nowhere.com')[5] || '') === '');
+check('the row is not marked told, so the next run retries',
+      String(REQ.rows.find(x=>x[2]==='bounce@nowhere.com')[7] || '') === '');
 check('and it says which address failed', /bounce@nowhere\.com/.test(r2));
 
 console.log('\nGET tells you the deployment is alive without revealing anything');
@@ -249,7 +294,7 @@ check('an edit on the header row does nothing', links().length === L);
 editOn('Vault requests', 5, 4, 'pending');
 check('any other status does nothing', links().length === L);
 editOn('Vault requests', 5, 4, ' Approved ');
-check('approving sends the link, spacing and case aside', links().length === L + 1);
+check('approving sends the mail, spacing and case aside', links().length === L + 1);
 check('it went to the person approved', links()[links().length-1].to === 'tan@x.my');
 check('a malformed event is survived, not thrown',
       (m.onSheetEdit(undefined), m.onSheetEdit({}), true));
@@ -262,7 +307,7 @@ L = links().length;
 const busy = m.sendApprovals();
 check('the second run declines', links().length === L && /already sending/.test(busy));
 held.releaseLock();
-check('and once free the link goes', (m.sendApprovals(), links().length === L + 1));
+check('and once free the mail goes', (m.sendApprovals(), links().length === L + 1));
 
 console.log('\ntriggers install once, not once per run');
 check('two triggers',   (m.installTriggers(), TRIGGERS.length === 2));
@@ -321,9 +366,9 @@ check('a page is not drawn for a key the button would refuse',
 console.log('\npressing the button on that page');
 const before3 = links().length;
 const said = m.decideFromPage(K, 'approve');
-check('it says the link went',    /mailed to siti@derm\.my/.test(said));
+check('it says they were told',  /siti@derm\.my has been emailed how to sign in/.test(said));
 check('the row is approved',      REQ.rows.find(x=>x[2]==='siti@derm.my')[4] === 'approved');
-check('and one link went out',    links().length === before3 + 1);
+check('and one mail went out',    links().length === before3 + 1);
 check('to the person, not to you', links()[links().length-1].to === 'siti@derm.my');
 
 console.log('\ndeclining');
@@ -363,10 +408,6 @@ check('an address that would be a formula is refused outright',
    things it must not do become possible along the way. */
 console.log('\na one-time code, for a device the link never reached');
 REQ.rows.push([new Date(), 'Coded', 'coded@clinic.my', '', 'approved', '', '', '', '', '']);
-const codeOf = () => {
-  const m2 = mails.filter(x => /vault code/i.test(x.subject || '')).pop();
-  return m2 ? (String(m2.subject).match(/(\d{6})/) || [])[1] : null;
-};
 
 const c1 = call({action:'code', email:'coded@clinic.my'});
 check('an approved address is sent a code', c1.ok === true && c1.status === 'sent');
@@ -416,7 +457,7 @@ call({action:'code', email:'coded@clinic.my'});
 const CODE2 = codeOf();
 const good = call({action:'redeem', email:'coded@clinic.my', code:String(CODE2)});
 check('the right code hands back a token', good.ok === true && !!good.token, good);
-check('...written on the row, so the link and the code are one door',
+check('...written on the row, the one token every device of theirs shares',
   REQ.rows.find(x=>x[2]==='coded@clinic.my')[5] === good.token);
 check('...and that token reads the vault',
   (() => { const d = call({action:'data', token:good.token}); return d.ok === true && d.reports.length > 0; })());
@@ -434,16 +475,51 @@ check('a code minted while approved is worthless once the row is revoked',
   call({action:'redeem', email:'coded@clinic.my', code:String(CODE3)}).reason === 'revoked');
 REQ.rows.find(x=>x[2]==='coded@clinic.my')[4] = 'approved';
 
-console.log('\nan expired token is replaced rather than handed back dead');
+console.log('\na token from before, with an old expiry date, is kept rather than replaced');
 const rr = REQ.rows.find(x=>x[2]==='coded@clinic.my');
-rr[5] = 'stale-token'; rr[6] = new Date(Date.now() - 86400000);
-delete PROPS['code:coded@clinic.my'];
-call({action:'code', email:'coded@clinic.my'});
-const CODE4 = codeOf();
-const fresh = call({action:'redeem', email:'coded@clinic.my', code:String(CODE4)});
-check('a fresh token comes back', fresh.ok === true && fresh.token !== 'stale-token', fresh);
-check('...and the old one stops working', call({action:'data', token:'stale-token'}).ok === false);
-check('...while the new one works', call({action:'data', token:fresh.token}).ok === true);
+const OLD = rr[5]; rr[6] = new Date(Date.now() - 86400000);
+const again = signIn('coded@clinic.my');
+check('signing in again hands back the same token', again.ok === true && again.token === OLD, again);
+check('...and it still reads the vault, so no device already signed in is dropped',
+      call({action:'data', token:OLD}).ok === true);
+
+console.log('\ndeleting the row is what ends it, on every device at once');
+const at = REQ.rows.findIndex(x=>x[2]==='coded@clinic.my');
+const gone = REQ.rows.splice(at, 1)[0];
+const after = call({action:'data', token:OLD});
+check('the token is refused as unknown once the row is gone', after.ok === false && after.reason === 'unknown', after);
+check('...and no code is sent to the address any more',
+      (() => { delete PROPS['code:coded@clinic.my']; const before = mails.length;
+               const r = call({action:'code', email:'coded@clinic.my'});
+               return r.status === 'none' && mails.length === before; })());
+REQ.rows.push([new Date(), 'Coded', 'coded@clinic.my', '', 'approved', '', '', '', '', '']);
+const back = signIn('coded@clinic.my');
+check('a row added back later signs in with a NEW token', back.ok === true && back.token !== OLD, back);
+check('...and the old token stays dead', call({action:'data', token:OLD}).ok === false);
+
+console.log('\na workbook that will not open');
+/* The likely reason a correct code still ended at the request form: the
+   token was fine, the reports workbook would not open, the error came back
+   with no reason, and the page read that as "not let in". */
+REFUSE_OPEN.add('15eD6XtMVN1BRm41cD9wm33QMwW16R5sS');
+FETCHED.length = 0;
+const viaCsv = call({action:'data', token:back.token});
+check('a book openById refuses is read through its CSV export instead',
+      viaCsv.ok === true && viaCsv.reports.length === 2 && viaCsv.series.length === 1, viaCsv);
+check('...asked with the owner\'s own sign-in, so an unshared book still answers',
+      FETCHED.length > 0 && FETCHED.every(f => f.auth === 'Bearer owner-oauth-token'));
+check('...and the rows come out the same as the native read',
+      viaCsv.reports[0].claimsInstrument === '' && viaCsv.skus[0].reportCount === 4);
+EXPORT_CODE = 403;
+const failed = call({action:'data', token:back.token});
+check('when neither route works it says readfail -- not unknown, not revoked',
+      failed.ok === false && failed.reason === 'readfail', failed);
+check('...and the answer names no workbook, since the page must never carry one',
+      !/15eD6X|1F1zDe|1J9QAO|spreadsheets\/d\//.test(JSON.stringify(failed)));
+check('checkWorkbooks says why, for the owner in the editor',
+      /NOT READABLE/.test(m.checkWorkbooks()) && /spreadsheetml|would not open/.test(m.checkWorkbooks()));
+EXPORT_CODE = 200; REFUSE_OPEN.clear();
+check('...and says OK once it can read again', /^OK: reports 2/.test(m.checkWorkbooks()));
 
 console.log(ok ? '\nall good' : '\nSOMETHING IS WRONG');
 process.exit(ok ? 0 : 1);

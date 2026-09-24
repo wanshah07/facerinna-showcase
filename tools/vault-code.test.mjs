@@ -11,7 +11,9 @@
    can answer is whether the gate walks a person through it. */
 import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
 const {chromium}=pkg;
-const PAGE='file:///workspace/facerinna-showcase/facerinna-test-reports-claims/index.html';
+/* VAULT_PAGE lets the same checks run against a fresh build of the source
+   before the publisher has carried it here. */
+const PAGE=process.env.VAULT_PAGE || 'file:///workspace/facerinna-showcase/facerinna-test-reports-claims/index.html';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 
@@ -24,6 +26,7 @@ for(const [tag,w,h,mob] of [['phone',390,844,true],['desk',1440,900,false]]){
   const p=await c.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   const seen=[];
+  let MODE='ok';          /* what the stand-in's `data` answer does */
   /* Order matters: Playwright tries the most recently added route first, so
      the catch-all goes on FIRST and the stand-in script on top of it.
      Registered the other way round, the catch-all aborts the very call under
@@ -41,7 +44,12 @@ for(const [tag,w,h,mob] of [['phone',390,844,true],['desk',1440,900,false]]){
     if(body.action==='redeem') return send(body.code==='123456'
         ? {ok:true, token:'TOK-FROM-CODE'}
         : {ok:false, reason:'badcode', left:4});
-    if(body.action==='data')   return send(body.token==='TOK-FROM-CODE' ? ROWS : {ok:false, reason:'unknown'});
+    if(body.action==='data'){
+      if(body.token!=='TOK-FROM-CODE' || MODE==='unknown') return send({ok:false, reason:'unknown'});
+      if(MODE==='readfail') return send({ok:false, reason:'readfail'});
+      if(MODE==='throw')    return send({ok:false, error:'Exception: something inside the script'});
+      return send(ROWS);
+    }
     return send({ok:false, error:'unexpected '+body.action});
   });
   await p.goto(PAGE,{waitUntil:'load'});
@@ -87,6 +95,32 @@ for(const [tag,w,h,mob] of [['phone',390,844,true],['desk',1440,900,false]]){
   await p.reload({waitUntil:'load'});
   await p.waitForTimeout(1200);
   chk(`${tag}: a reload does not ask again`, !(await vis('#vaultGate')));
+
+  /* The case that stranded people: the code was right, the token was good,
+     and then the reports would not load. The vault failing is not the
+     visitor being refused, and must not cost them their sign-in. */
+  for (const mode of ['readfail','throw']) {
+    MODE=mode;
+    await p.reload({waitUntil:'load'}); await p.waitForTimeout(1200);
+    chk(`${tag}: ${mode}: says you are signed in and the reports did not load`,
+        await vis('#vaultGate') && /signed in, but the reports could not be loaded/i.test(await text('#vgMsg')),
+        await text('#vgMsg'));
+    chk(`${tag}: ${mode}: ...and does not show the request form`, !(await vis('#vgForm')));
+    chk(`${tag}: ${mode}: ...and keeps the sign-in`,
+        await p.evaluate(()=>localStorage.getItem('fx.vault.token')) === 'TOK-FROM-CODE');
+  }
+  MODE='ok';
+  await p.reload({waitUntil:'load'}); await p.waitForTimeout(1200);
+  chk(`${tag}: once the reports load again, straight in -- no code asked for`, !(await vis('#vaultGate')));
+
+  /* and the other side: a row deleted in the sheet does sign the device out */
+  MODE='unknown';
+  await p.reload({waitUntil:'load'}); await p.waitForTimeout(1200);
+  chk(`${tag}: a token the sheet no longer knows is forgotten`,
+      await p.evaluate(()=>localStorage.getItem('fx.vault.token')) === null);
+  chk(`${tag}: ...and the request form comes back`, await vis('#vgForm'));
+  chk(`${tag}: the way back in is named as the approval mail names it`,
+      /Sign in with a code/.test(await text('#vgSwitch')), await text('#vgSwitch'));
   chk(`${tag}: no page errors`, errs.length===0, errs[0]);
   await c.close();
 }
