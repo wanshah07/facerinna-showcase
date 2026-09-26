@@ -757,7 +757,7 @@ body.radial-theme{background:transparent}
 /* the painted section gradients would hide it, exactly as they hide the sky */
 body.radial-theme section,body.radial-theme .hero,body.radial-theme #range,
 body.radial-theme #heroes,body.radial-theme #evidence,body.radial-theme #game,
-body.radial-theme #clinic,body.radial-theme #qrcore,
+body.radial-theme #clinic,body.radial-theme #qrcore,body.radial-theme #contact,
 body.radial-theme .series-slide{background:transparent}
 
 
@@ -782,7 +782,7 @@ body.space-theme{
 /* the painted section gradients would hide the sky */
 body.space-theme section,body.space-theme .hero,body.space-theme #range,
 body.space-theme #heroes,body.space-theme #evidence,body.space-theme #game,
-body.space-theme #clinic,body.space-theme #qrcore,body.space-theme .series-slide{background:transparent}
+body.space-theme #clinic,body.space-theme #qrcore,body.space-theme #contact,body.space-theme .series-slide{background:transparent}
 body.space-theme .nav{background:rgba(11,14,26,.78);border-bottom-color:rgba(255,255,255,.10)}
 /* this rule is later in the sheet than the collapse rule and carries the
    same weight, so the folded bar needs the dark-sky case spelled out or the
@@ -987,6 +987,56 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .ev-card .ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;margin-bottom:11px;color:#fff}
 .ev-card h4{margin:0 0 3px;font-size:.98rem;font-weight:700;font-family:'Inter'}
 .ev-card p{margin:0;font-size:.82rem;color:var(--ink-2);line-height:1.5}
+
+/* CONTACT -- vanilla port of the 21st.dev "contact-with-globe" component.
+   Motion's fade-ups are the page's own .reveal; the shadcn Button is .btn;
+   the d3 globe is a canvas drawn from a border mesh carried in the file. */
+#contact{background:linear-gradient(180deg,#FFF,#EFF5FA)}
+.ct-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:40px;max-width:64rem;margin:0 auto;align-items:start}
+.ct-side h3,.ct-card h3{font-family:'Inter';font-weight:700;font-size:1.2rem;margin:0 0 4px;color:var(--ink)}
+.ct-side>p,.ct-card>p{margin:0;font-size:.9rem;color:var(--ink-2);line-height:1.55;max-width:24rem}
+.ct-links{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
+.ct-links a,.ct-links .ct-addr{display:flex;align-items:center;gap:12px;width:fit-content;max-width:100%;
+  font-size:.92rem;color:var(--ink-2);text-decoration:none;transition:color .2s}
+.ct-links a:hover{color:var(--ink)}
+.ct-ic{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;
+  background:var(--surface-2);border:1px solid var(--line);color:var(--muted);transition:all .2s}
+.ct-ic svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ct-links a:hover .ct-ic{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-deep)}
+.ct-links span:last-child{min-width:0;overflow-wrap:anywhere}
+/* the globe rises out of the column: only its upper part shows, and the
+   lower edge fades out, as in the original's h-52 window. A mask rather than
+   a painted gradient, so it fades into whichever backdrop theme is on. */
+.ct-globe{position:relative;margin-top:18px;aspect-ratio:1/.62;overflow:hidden;color:var(--brand-deep);
+  -webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent);
+          mask-image:linear-gradient(to bottom,#000 55%,transparent)}
+.ct-globe canvas{position:absolute;top:0;left:0;width:100%;aspect-ratio:1;display:block;
+  cursor:grab;touch-action:pan-y;opacity:0;transition:opacity 1s}
+.ct-globe canvas.on{opacity:1}
+.ct-globe canvas.drag{cursor:grabbing}
+.ct-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:30px;
+  box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:18px}
+.ct-dots{height:14px;background-image:radial-gradient(circle,currentColor .8px,transparent .8px);
+  background-size:6px 100%;color:var(--muted);opacity:.7;
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 10%,#000 90%,transparent);
+          mask-image:linear-gradient(to right,transparent,#000 10%,#000 90%,transparent)}
+.ct-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.ct-f{display:flex;flex-direction:column;gap:7px;min-width:0}
+.ct-f label{font-family:'Inter';font-size:.7rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.ct-f input,.ct-f textarea{width:100%;box-sizing:border-box;font:inherit;font-size:.92rem;color:var(--ink);
+  background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 14px;outline:none;
+  transition:border-color .2s,box-shadow .2s}
+.ct-f textarea{resize:vertical;min-height:112px}
+.ct-f input::placeholder,.ct-f textarea::placeholder{color:var(--muted);opacity:.8}
+.ct-f input:focus,.ct-f textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.ct-send{align-self:flex-start}
+.ct-send svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.ct-send:hover svg{transform:translateX(4px)}
+.ct-note{margin:0;font-size:.78rem;color:var(--muted);line-height:1.5}
+.ct-note a{color:inherit;display:inline-block;padding:6px 0;margin:-6px 0}
+.ct-status{margin:0;font-size:.85rem;color:var(--brand-deep);min-height:1.2em}
+@media (max-width:900px){.ct-grid{grid-template-columns:minmax(0,1fr)}.ct-side>p{max-width:none}}
+@media (max-width:560px){.ct-row{grid-template-columns:minmax(0,1fr)}.ct-card{padding:22px}}
 
 /* GAME */
 #game{background:linear-gradient(180deg,#EDF3FB,#FFF)}
@@ -1886,7 +1936,9 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
 /* The "reach us" column: one line each, and the WhatsApp button under them. */
 .footer .f-contact{margin:0;padding:0;font-style:normal}
 .footer .f-contact p{margin:0 0 8px;font-size:.9rem;color:#BCD2E6;line-height:1.5}
-.footer .f-contact a{display:inline;padding:0;margin:0;font-size:.9rem}
+/* padding for a thumb-sized hit box, cancelled by the margin so the lines sit where they did */
+.footer .f-contact a{display:inline-block;padding:6px 0;margin:-6px 0;font-size:.9rem}
+.footer .fine .fine-legal a{display:inline-block;padding:7px 0;margin:-7px 0}
 .footer .btn-wa{display:inline-flex;align-items:center;gap:9px;margin-top:6px;padding:10px 18px;
   border-radius:999px;background:var(--brand,#3FA6EE);color:#06243B;font-weight:700;font-size:.88rem;
   text-decoration:none;transition:.2s}
@@ -3063,6 +3115,56 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
   </div>
 </section>
 
+<!-- CONTACT -->
+<section id="contact">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">Contact</span>
+      <h2>Contact us</h2>
+      <p>Questions about our products, the clinical data or the clinic partnership? Write to us and the FACERINNA Malaysia team will get back to you.</p>
+    </div>
+    <div class="ct-grid">
+      <div class="ct-side reveal">
+        <h3>Get in touch</h3>
+        <p>Reach us on any channel below, or drop by the office in Kuala Lumpur.</p>
+        <ul class="ct-links">
+          <li><a href="mailto:info@facerinnamalaysia.com"><span class="ct-ic"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span><span>info@facerinnamalaysia.com</span></a></li>
+          <li><a href="tel:+60129449134"><span class="ct-ic"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span><span>+6012-9449134</span></a></li>
+          <li><a href="https://wa.me/message/YKYI736CG4FZH1" target="_blank" rel="noopener"><span class="ct-ic"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg></span><span>WhatsApp us</span></a></li>
+          <li><span class="ct-addr"><span class="ct-ic"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></span><span>Level 7, Menara Binjai, No. 2, Jalan Binjai, 50450 Kuala Lumpur</span></span></li>
+        </ul>
+        <!-- decorative: the same four details are the list above -->
+        <div class="ct-globe" aria-hidden="true"><canvas id="ctGlobe"></canvas></div>
+      </div>
+
+      <!-- No form handler anywhere: Send opens the visitor's own email app
+           with the message filled in, so nothing typed here is stored by this
+           site or passes through any script. -->
+      <form class="ct-card reveal" id="ctForm" novalidate>
+        <div>
+          <h3>Send a message</h3>
+          <p>Fill in the form and your email app opens with the message ready to send.</p>
+        </div>
+        <div class="ct-dots" role="separator" aria-hidden="true"></div>
+        <div class="ct-row">
+          <div class="ct-f"><label for="ctName">Full name</label>
+            <input id="ctName" name="name" type="text" autocomplete="name" placeholder="Your name" required maxlength="80"></div>
+          <div class="ct-f"><label for="ctOrg">Clinic or company</label>
+            <input id="ctOrg" name="org" type="text" autocomplete="organization" placeholder="Optional" maxlength="100"></div>
+        </div>
+        <div class="ct-f"><label for="ctEmail">Email address</label>
+          <input id="ctEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="120"></div>
+        <div class="ct-f"><label for="ctMsg">Message</label>
+          <textarea id="ctMsg" name="message" rows="4" placeholder="Type your message here" required maxlength="1500"></textarea></div>
+        <button class="btn btn-primary ct-send" type="submit">Send message
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+        <p class="ct-status" id="ctStatus" role="status" aria-live="polite"></p>
+        <p class="ct-note">Nothing you type is stored on this site. See the <a href="privacy.html">privacy notice</a>.</p>
+      </form>
+    </div>
+  </div>
+</section>
+
 <!-- BOOTH STAFF GUIDE -->
 <!-- Empty on purpose. The guide is not in this file: this page is public, and
      a passcode drawn over it does not stop anyone reading its source. The text
@@ -3209,6 +3311,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
         <a href="#evidence">Clinical Study</a>
         <a href="#clinic">Clinic Activation</a>
         <a href="#game">Games &amp; gifts</a>
+        <a href="#contact">Contact us</a>
       </div>
       <div>
         <h4>Evidence</h4>
@@ -5905,7 +6008,7 @@ function runCounter(el){
 const cIO=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){runCounter(e.target);cIO.unobserve(e.target);}});},{threshold:.6});
 document.querySelectorAll('[data-count]').forEach(el=>cIO.observe(el));
 
-const secs=['range','heroes','evidence','clinic','qrcore','talk','game'].map(id=>document.getElementById(id));
+const secs=['range','heroes','evidence','clinic','qrcore','talk','game','contact'].map(id=>document.getElementById(id));
 addEventListener('scroll',()=>{
   let cur='';secs.forEach(s=>{if(s&&scrollY>=s.offsetTop-120)cur=s.id;});
   document.querySelectorAll('.nav-lk').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+cur));
@@ -7702,6 +7805,132 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
      where its result screen is and where a plain number of a score lives,
      since the one on screen reads "4/5". -->
 <script>window.FX_GIFT={id:'skin-iq',result:'#gameResult',score:'#iqScoreRaw'};</script>
+<script>
+/* ── CONTACT: GLOBE AND MAIL COMPOSER ─────────────────────────────────
+   The globe is the "wireframesolid" variant of the 21st.dev component's
+   GlobeWireframe, redrawn on a canvas. The original fetches world-atlas
+   from a CDN and projects it with d3; this page has to work with the hall's
+   wifi off, so the country borders of world-atlas countries-110m (Natural
+   Earth, via world-atlas, ISC licence) travel inside the file: every border
+   and coast once, snapped to 0.2 degree, delta-encoded as base-64 varints
+   (about 17 KB). The orthographic projection is a dozen lines, so d3 and
+   topojson stay out too. It rests on Kuala Lumpur, turns slowly while it is
+   on screen, and stops dead when it is not, the tab is hidden, or the
+   visitor asked for reduced motion. */
+(function(){
+  const cv=document.getElementById('ctGlobe');
+  if(!cv||!cv.getContext) return;
+  const box=cv.parentNode, ctx=cv.getContext('2d');
+  const MESH='n4B_ECABFqwDBFBBEECEAGEvwDA._UkOCDJDJDLDDFBBADEFEABEEBBDFBFAFADBFAJBQCCBNDFAACBDCABFHHACBADCCDEBADDDFHCIDEBIBDCHFCGBCJCBCBAJFHJBFFFBDDBBLFDFFFAFAHEHEHADGLAFBDBFBBFCBEDCDKFGAECIDGHIBALDFGFCLBHCHADBCDADCBBADCDBFAHEHAHCFAHDJFJDFFBDAHADCDDAFCHEDEBIFGBEFIFEHAHHHCDEDGBEFEFEDEPAADHATAXGNGACLBLAAEHGDCBCDADEJABCBGJKHOACDEHIAIFGCIAIDIEKCIAKAMDKBEACODGJCEBIBIBATKFEREFKCGNEBILGAGGEAIRGJKFIHEHEDGJDJDJGFEJCJCA4BAmBSDQDKBKGMCOAQEQCGDICCEIAQJOICHMCECMAODYDOBKCOFPDUDaCICMFKEJGGCMAICIBKFMASDOCQABGKCODAJIIIAEKLGJEAMMIOBKDMLHDSDAJOIMFDHKFKIIIAKOAQBODAFHDIFBDTHNBJEBFJHDDJHPAHDAFLBLHJLDFALOBEJGHOCSDKDGDOBKDQBMABJCJIJOJIEGKFQFEQGMGEIAGHILIMKDKDQICSDKAICIBOFCDSBAHELIBIFOGKKGGIJMLMLDFOFIFQBGDEHIBEDCJHDHDPDLHRBTCPAJAHFNFNLLJKCQMUKQAIDJHEJEHMDQAKMCHGBLHVFJDLFHAAISIPALAFGAMDEHBBCHHDFBFDADBBBRANAFBJHDDJAJADBCBABABLDJBLFBADCBCEEEGCGBIBKJECCBCBABABEBBBAACBAACHEHEJEJEHDDALCHAJCJCHABCBGDAADTAhBAhBAdAdAdAdAJAdAbA.nawTIGOAABLFHABC.9Y4WJGACECYBQDCDLAJAJADA.jZsTEEEAEBDFDCDC.nduXFDNALEGEOCIDEB.pdoYDBTCBCUAGB.ne0YMDBDPBHCDEAEMAGA.xboXPCZCDGAEJGVALEEEWBKBUAIDBDMBGBOAOBQCUCQAMDCDFDPBLCbBVA.3iBuYOBDDRBPEICQC.1iB0YOBLBRAACMCEA.rRiQFHFHGEIBDDIBGCKDDFIAADEFDJFAFCCIBCLJFCIEJCLARABCGEDEIGKQGEKEEABB.lasUKDMDADIAGBHDPCFGHFPFBGNAIECIEKGBCDGCGB.zY0WKEWFODCDSCKFYDIDKJRDYHQBOHQBDFRLLEPKLBBFMDMFEBIJDHLEZIOJKFCBZEVGLEECPGNEABdBHEIISAUABECGOIDGDCNGTCGEJGJAHEDDTAjBCTCPCJEMENADKIKKEaCHFIFKIYESJBHUE.xdmXWASDNHLBJHLAFKAEGEIE.rmB6XQGUIQBOCBHHBHBTDNBNE.vpB8QKCBLIHDAFEDEDEBEAEEB.9gB6YSBcDIDEDRAPEVAKCLEAE.zmBmPDBPEDEHEBCJCDGACKBIBIBEBEFKDED._lBoXOBaAKDKDLBXFLHADZDFEXEGEGIIGJGiBC.1hB2XICMAAFFDfBZDPAAEUEtBBNCOKKCcBSFSBNKIEKBEDED.phB6WMDGJEFQFSDADRAIDDDRCRCLARDZBRADENCJALIIAOCOAOCTCTAPADEWENBREIIIEaGKBDFWEOFKGKDIJGEHKICKB.rf4WLGMEMBSCCDHDODBJPDJCFEXIACUA.phBgXOAGBHFPGEC.3egYGFADDHPBJCAGRAAIMAOCOACC._dmZGEMAFCYAMDSBQBIHMBNDRHRATCLEAEICRAJEHEIE.zcyZQCKCUAQEMAKBIEOCQCgBAEBeCWAWAaBWASDABZDXBHBWAXHPBRHTBFBfAOBFBIDJDNBFDNDCBQACBbFZCdBNCRABGSCDIGAaDNGPCIESCEEPEDEcAIBQEVCjBARCHELEBC.vXiVFBLBBGEGKAGBADAB.he2VGBFDNCHANEIEIEKDGBEB.lUyPECOBKFDBNEJE._T2OEDGBKAFDBANEBEEC.xwBoGCACBCBABDBDBDAAEAECCBCCAEB.3wBwGABDABCBAACCAEACB._wB0GABFACCEA.rxB6GABEBBBDCACCC.5xB-GABABDCACCACA._zB8SIBABFBFCFCKC.7vBkSGAEDHDJDFCAEIEGC.5oBkRDEJCBKNIDKJAPALETKJCRCNATELEJBCFFALBHDLBAGEKKCBCLDHHNFIFJFLDJDBDPFBDLDFAJBJDHDRBBCMEKEKEMCGEOGCCGECIGGLDDCDDHGBDDEJDFAAGCEHELBHEHEAEHEEGIGEGIAIBIGGBIEBEFCIEFAJBDBHCNBNCDENGOEYGIABFWCHGNEFEJENEGESCMECEKGKAUEIAQGQBGFGCQAABOBKCWDUAGBOCQDKA.11B-TGBIAIBKBBAHBFCDCJABAAE.sPwOFFJBJJKJBFMLFDBBDAHGBAFCDGHCFBBCNENCJCABNIJEJGICIIFEQEACJAAEGCKAAEBGEGACNEFAFEHBLEACDEHAAECCFGJBDABBDCBGBCACKACCBCFCACDCFGCCBGJCDBBEJCDGAEFCGEDKIGBAMGLGWMKGEEPIEGHIGILMKGPICGICSEKEQFcDkBJIFCFLFPBrBIHBQFAFCJMBIDCGFEGEYFICFGWKKAKDGIJGGGHGcDGFLAAFIDOCEIUEkBIGAJFOBGEUAOEMFKIJGGCeBMDmBLGGJGACLACGDIBCUKGIICaBCFJHGDEFBNKFDFTNMBEEMCCEIGFGGGLABGIKLIQIBGGAEFDHMBDGQEUCSFHIAKQCYAWCHEMIMASEcCCCaCIBYESACEKEYEQBLBWBCFKEcAYFIDDDJDZFHBMBQBICGFECQCgBBCDqBBAIWBQAQFEFFDOHODKKQDSCSBICQBFKME8CFIFaHoBCUBIDAFMDMCSAUBSCSJMEHGEEgBBWAcDhwDDYHaJAFGBBGcAUJJDRBAJDBHAHENEBEJCLBFEEELDEDFDwwDALDNAKFGHEBADBBRCbHJBNFPFBFNIbHDEJDLADFLJADMBBNHADJEDRDDLNBDJNJDGDQFWGOIGAEQCSOQKSIIOLBFHXJHMZDZPIFVDPACIPALDfCfDfTlBVQBEFKBGEMAOLAHHJALFPNNDFNLLLHFLFFAHELFBDBCAGGAAMBIIEMBIKEKCEGIPBHDPADKLGREDKBGDEFKJENCNALBHDGBAFFDJJADNFLCLADEFAPFLBJBLAJAFGJEJCLBJBNGBGLEHALEJJEFJFNCJAFEJAJENDTJJBDAHFHBAJFDTEHRDBTDIRFBAFFADEPCPADBNEFBBDPCFABFFBNFDHDABGLABIFAAKLIPBLAJIHEPGACZFAjBFBFIHEJBDDBCCEAELEFIDCAEIACGICIBCKBGJAHCLDHBFCAEFIFAJGGIBCIKKFCIUKQCWHMDKEQAMDECOACEPIKEBEICFGEEmBEECaEIESBEJKCODBFKCYIBBMHWZGGOFOCGBEDIBEFMCGF.mWmNCAHFIDGCMFLFHADABCCGLBDHDDHADDIBCHFJHCDAAGNEJEFGLGFKBCLADCAINGHFHDADJA.isB7CHKJCDDLAEIGCBMDITIHCPIBDDBBEAEHGKEIABCNADGHCDEMEGCQDCDCPKFIKMGKAIBIDKBSFSFGFGDCFQFCFHBCFIFILGCBFIABBKDBDFABCHCJAHIFEFKLEJDFBCHHDFCJAAiBAgB.2vBjBEDCDDDBGBEDEFEHCEEEDEBEBED.qvB5BFBFDDAJEDCAEIBGACGCAAFGCCCGEAGGACBADDFFBAB.swB1BCBGFEDBBBBDEDGBIACCD.-pBjCAGAECEEDADFF.oiBUIDICCIECMEIGEIEFCEGAAGAEIIGIEAEFADIBIDADHACFHBDJGJBDMHLBDFCJJFAJDPBELFDIFAFCLBBEHAHABODCFKAIAKGGCFIFGCGAGEEAKBICGOEECMMAIB.uoBbKBEHHEHAFAFACGMA.0nBlBFCBEKACBDD.goBWAFGAADAJDCBFEFDADGBMCIEE.umBIKCKGCBHJHBHCRAHBBHKHEEUEBDDADFHDILBDKJAHFBDEGIJDDCCEHGCKFDAJAPFADCCKBKDABGEGCIEQCEIIIDOB.ylBlDLGKCEBEDABFA.-lB1CGCKEBFPDLCAEICGD.-kBzCGCEFLBHADACGGACEED.8hB_BCDUACESFEFOBOFLDLEHAJAJCLEHCDBREBEHCGKMBIDEA.0gBJCHCFIAGFDNANJAJILIDGHIDIHOJIBIDIJGDKHEJMBEIAOBKJIFEDKLKAIFGHIDDJGBEA.9UjRBFJBDAFCHCJCLGJENMIBOHMBGEEGIEIAEFEFOFOBFFHAFEFAJAAW.tVpQHAFDHBBJDALCLILGBGCGDGBSEIKINEKICQMBEUFCDLFCEOESEIDKAKEAGQIQEQBOCKAMEMCSEWEWBQBOGECEEFCHGDDJGJENGA.0JzCDCNBBBDFCDBLAJCBIDCCAJFADGDEHABGFDHCDEFCDABCBAFCFBDABAAMDCAGCGBEAILAACFAABFABFBBFCBBHADEBEBGBIdADBBADABCCCAECCECCAEEGBABEBGGGGCCAIEKEGIEAEAECCAGAKCGEEAICGEGECIDIBGBIBEGACEBMGEDECACEAIAGAEAGHEBCCGAGCCDIFALEBDDDBDFBDAHBDAHDBAFBFCDCL.0KJkBTCFOJDNADGDABBHABADEHEHEDHDLDFADDFABBLEHBDOBGBCJCFCFCDCDCFOFEBGCGBKEAEEEECCAEBCBEECAGDEECKAWABMEEEGEIDKBGDGGGGIGBAFEDGAOHCACACAIBCEKEEBGA.gNPFIAkBIMECGAIIOAceGIGGAGAKAECAGCEAGEEAABBFAFBDBJFLFLHNHLLNJHPJHHLLBDBBHDBDDBAFDDBHDB.kHwDFBDDHLJDJABACDFDDDLBDCBAADJACCBIBEDCFGCEEAEAEADIAIBGDGCGFAAGDEEMMKCOCUEEFEACDEBOKGoBToBR.tWmGCFBDBBEBBDFCDAFAFBDEACKAIBCCDGACFCCEGBIACAIAGBCACDGCADEAEDBDFCDADABBDAACDBDFBCBC.qdqZWCSDYJBJVAbCPEHINCaG.kgB4YaDDD3BDSMICIB.srB6XaBkBDHHjBAPBTGGIMC.quByXaDLDPCRECCSA.2rB-WKEMAODCBPATCBA.gOmZUCQACBECKCQBDBNBJAABLBJCEEVA.4QiXYIDEWGiBGiBCQEUCGDFDjBDdFfHNJPJCHUHFBhBCBERCBGKCAGUIHC.2sB6QCJAJEJKRNEFPKJAFHGHHAIAKAKCIAOFKAOKEDEECEF.n4BsWCAIAODJDNAmwDABCjwDG.1YsIEAIAABLBAE.pYuIIDBHBCAGDE.tY8HEACHAFBABEDECG.jTlQMGIDGGIFBDNBDEHDFE.4E8YEEOAMBiBHZDFHHBDHLAVGIENCTIHIcEGDOA.-IyVEILEPDFHHDLCLALGFBFBBFRCBFJAFFJLPNEDDDJAFHANGFDJHHDFFGTJNDNGBKDYKGaIUKSOYUQIcMWEQAQISASCeHLBMF.yIgZNDdBdCBCNAJGeCQBKCYBUD.4HqYXDPCGEFCUCEDQB.zO6ZiBGkBAMEkBAwCA-BHRDnBB1BAGBkBCeDSCKBLFaEwBEeBGFnBFFBfBWAJHJFCLMFPAPDSFCHJAMJVAMDDDNANAMHADREFBODMFEHRBHELGEFLFaAOAZJbHbBLAJDNLVFFANDNBHFAFFHPHEFDJFJNANITAJGHKPMFGAKNKCGFEKMQEEECILDFBHBLEBGEGKAUBRGHEJBHCKKFEHGLMLCAGZGVAZAZBJERGaEUApBCVEAEmBGkBEEEZEIEkBGOCDEYCeCeAMDaGYDOAUDVGAE.yVlPGDKAABDFNAAGAECC.inB3CABADFHHBBCCEEGKEACKCGAECEBDBJFJB.iJhJDEFBDDFFIHEAAEGCCCEGDC.reiIDHBHALAFCFCDCHGHEDEFKBEDICICICGAGECGCKCCGCKCKAGCCBAFFFBFCBBDBHBEBABBDFBCBAABHAJAAFDAEBCDCBCAADNADHCBBBABLKDEHCFAHDFBFEHCJEFCLEHEDEDAJCFGJGDGDEECBCECAEDEAEDGJKJIDGHEBCCGFCFGBGFCFEDGACFIDIAEFEDAFCBDCDCHCDIHCBCAADCACFEBCDGFEHCFCDCFEAEDEDABDDBABGHGFEFEAGBGDEFEBBBEFCFGEAEEAEHGFEBGDGFIDK._RtJBHDJAJBBAHADMHBHGDAFJLNFTBLCCFBHCDFDJBJEDBCJGDGEEFJBHFBLBDJAFFDHKFKBDJLDFLJDDFEJGFDCHAZCDGAIFBDEAKIGCGAEEKEMAGECBEDCEEFEBMECBMEKCIGEDKAKIGAIGKAKBCFQGKAKEKGIIIDCCEAQKGEKBCKKMBGHEIMACBSPIBMHKDCDJPKBMBICIICIECGFAHHDHDJJNNGAKFEAKFIFGHDDCFDFLFFCFAJEFAFE.hRhICGCGAGDCDBDABEAKBCFEDBLCCMDGECBGEECIDGDEBECGTADMEAAEBCBGDEHADCFCDELCJIAIACAILBFDHDBBFAHADBFCCQJFHADEFCCEFGDICCAEGEAGCCCGKGICCCKAEaAEBGDEAIGCCBAEFAAIUBCEEBCFCAEDIACCIEEACGGCACHABIAGDCCCIBIBCCICKEEEBCGACBBDEBCDBDBHCFCDGDEBCCCCGACEGBCAGAACACAEEBGCEBGBCCCACDECEEEGGKCAEFEPGBAHFHCBSBAJIGMDQFGFBDMCUFOCOJOJIDIAEBENAFDPDFNNFLHHBADHCRDPAFDDBNJNBJHDBFJAPDHDJBLHHJBHCFBJBDHFJRJHFDFJFF.lSpGAEJEHARBDJADDL.3VvFGKDKCCBEEGAICGCEJQ._V3FJGAETKRMHGDICCJOHSJUDEDIHGFECGDIEIGGCDBBADEAEAEFGECIGIMEKKEGBICCIFCDGBGLGAGCEBGCIFFJCAGD.xXBDCDEDBHCBEBAJGBCECAECEEAEIEEBCAGBKCCAIDGAGEBCEBGGAIIEAAECIEEICACIBIGECEEEACBBDFBBDDDDDAFDFGBCDCBADADABCACDOAGAGHEAIAGACBBDBDAFCHCBABDFEBCDEJ.pYoCDEBECEBABEFCDABDDBBBABEDBBBBDABGBBDCBEDABADAABBCACCCACACBAAEECEDABEAEBEAEEGCECGAABEAGBCBED.9ZyCFCBCCCACDCDCBCBEBAABBBBCBCBCACCEDACCCCGBEACACBEACCCFEDED.5auDBEFEBEDCDGCAEACCAGCACAECCBCCEEACCAACCACBCACCCAEACCCAADABBDBDADCDADBABFCBBBABCB.pbiEACDCAEBCFBACBCBCDACCACACGEEEABCCEACAEAGACACCEACBCCCAEBCAEBCBEBCB.tbmEBBDADADCFCBCCECAACCA.7byFAHALCAEAEA.jcqEFCFADCFE.xb6FABADADABBBCBBDBDBABD.pW2DABFBEDAFDFEHECCGDEAIMEAECEEHIAGFABKAKAGDIBEEACOCMAJDEDIBIDCHEAEBHFADEDDBFBADBBGH.1S0CIDGFAFEAEDEDBJFBCBBFEFEAAFGJ.7R8BMBCCIAKBDJAFEFBDADDD.7Q6BEBIBKHCD.4CqNGECHDHDCBGCE.jZhBGIBEDDFECCBKEACIEGAEECIE.1U6FEBCBBBHAFAAECCIA.nY4FIAEBCDHABAFAFECCECCB.1ZoHIAIAKDEDICEDIFGDEAGBABGBIDABHAFBHCNBIGDCHCBCDGDAJCDCLCDCECJAFDFAABFBDAGECEECGCGAEC.mJ7GFEHCBGAEFAJMDEBCDIMAEBCAGIIIEACEGEGACBIAEBCDGAEDALBFAHCDBFDHJJ.mG3HAeKACkBGAQEEDGEEAECCB.kF9IEGEDCDEAGBGAIGAkBEBGHBFCDIAGGECCEGEEBEBIBGECCCGEAEEEGIIOIEBGACAGAENEHBJADDCDBABDDADGDGACEIABFBJBDFDBBDFDDFHJJHFHDJDDABDFCFBJCFBDCJDJBFDDADEDADEABBEAGBGCCAIFIFKFMHIDIBIBIDQAMBEDGDIFMBGHKAGECGCGAGDCAoBAIDYBSEIEGBEB.nFkEAEDIDEECEGEGCCGAECGAGBGDGFGHAFCFEBCDBDFABAHCDATABADADBBIIAEAEEEDGAEEBCDBBADCDABBLA.5DyEECCGCAIBGCCBCCoBCCGACFqBDsBOAiBViBVCDGDGBAFKCAXDFBFHBNADDFAFADCDBJDBDHDBBDBDABBBFHHADBDAFDBBBBGBBBABBHADADCCEBCBBAECCDEBCBEBABBBBDBDCBCBABBBABE.1CyIkBX.jFiFBEEGAKAIBGCEDGDE.uE8DEDBAADHHBFBFBBBFFDBFBDADHDFEBAFFDADJBFLDDADBHADGDIFGHAJAHABGAYBCAEDEBCAGECCEGACECCEAIFABCFBDCDFFBBBFAHBP.wEgEBAADBAFMDAFFHEFABBFAFDFALGDDFCDCJEJABBBFDDAJ.W4DAGLCAGFGBECG.qBgGOEeUiBSQDGFGE.4EqCDJBBBHCDBBGFADEDEDCDADADHCHCNAACFBFCFBPACIDIDCBEDACE.S-BHBBCBIBEEKDCAIAIDGACIA.K8BPFDDJBHCAEDICMEIBOBIAGSAEAEAEA.1BoDEBCDEBECECID.byBFAFCFALBHBJDBACIACAEDEDABCCGAEACCAAGACECBIDECECA.zCsCDCBDBABCAEDGBBBADACEBCACBEDEHABBBABBBBDDDEDEDCBCAEBCDCGGCACACACCAECE.3EuDDEDCDCACBCAC.tCsBBAJEJIHGFGCEACGGEE.xDkCDAFEFGBEAI.4FkBFAFCFFFJ.2HyCHEDEACCEAEFIBEACBCBGBEBAAECEAEECBECGEGIAAoBAEMAAUoBAmBAoBAEJBBCJCLEBGDDFHBDBAHDNADBHDJFFDFADFDBJAJAIBAAGAEFEBGCIDABBFAEDAFFDDHFAHEDBABFBABJABCFADBDCDGBCHBBDBHDBDBIDGDABGFEDCFIDCD.iEvBDEBBDDJKIGDGECGCCEGDIACECGAIFGEMBCHABEAE.uDnBJKFIFKAECECGCIEAOAAM.-CKACCK.oK7CEDCJABBHCHDDDJGBdHAH.oHvFFIHICgBUBAEAEAEAGAC.6KzDDFENEACBEHCLDDDFFGAICEBEDCBAFE.0MnDADAJCHAPCDDHDHFFHDLDLJDBFHDBAFEHCFADCCAJBFCBBDDBHDLFDDADEABF.gKrIAGBE.6D5BBI.2DtFBICIEKAEEICEGICECIBEBEBGDGCCCEBKBGFICC.iJbGBEGEA.gLqKCKGGEACDFDBF.wP7DCDCHCLCDAFBBDGBDCFADDDAHDLDLFTDNFLHBHDFCHEBGBIBIBICGECAEGIAGBEBGAKEGAGGAGCCCGAEGKGCGBEEBGIAGEEED.kLkKAFBD.1C0IABAPhBCAZHBDDCNlBABDAEWCCCEGEMMMGMCCEGICEBEAECGCAECAAMQIKCICEGMCAIGCECMCCEBCDMAGDGKGKAIGICSCQAGAIEMAEDGC.-CwJDSFEACHGAGGGCIBKCGMEGBADICCAFFADEDBHFDCFEAEFCAAHDDDBFDADADFBEJADBHCFBDCFDFGFADEFECIFEF.iQ2HCDCAABICIAGAGGIGGGCBCHFAAHCADBADDDADBDdGDKAC.kP-IEJGBABIFADABADEBADCBAGCGCCEDAFBFBADC.kMuKWKEMBIGCGGECMBCBGCGLGDCFFBBHIJMFEFBHEAAFGDFACDBBEHFADEHAIKGA.yOiJRCdUNGLE.0R6HEHGDIAGBEFCDEAABDFBDDBDHDABBBDCHBADAFDAFDBFADBADDBFAFBDBDIHQeKGUDI.wRkIEEAFBA.o0B9EGFBBDEAE.k0B7EBCAIGDAHBCBA.igB6DBMGIMCKBIDEIKDCFBLPHEFJBHDJCDGDKJEHACIJAAJFPBHAHGAEJCHGFGAGFDDFBBGHEBBDEAGFGDEBFBGAGEKEKGIDKAEBGFIBGECEIFGFIDIECEMIAGEGCEBAFGBBJAHMGCBGACEIBIHAJIHAHDF.qfsGCEIGABGABMGAGHEHMAEJFBDDMFKLGHIFCHBJ.6ekDBGEIDGCMDEDMBODIFFLFFAFCEMBKHMAEFAFIAICAAGGCBGCCCKIBEIAGGIAGMGIBBGECAEGCCFEBCHBHHJBLKCCHIBDHIDEBICAD.-fgHGEIAIAKGEDKBBFEDKBLJJHBHIJKNIFGHGRBRHFLFHHLJDGCIFE.23BvFCCEBBFFAFABEEEGB.8oBmNDADBDDCHFBBBDBFBDBADBBEBGDBBDAHBDDDAFCABDBACBCBCCECAACCGACFAFEIGMGGGGBIBBGQEEGGF.koBiMILCFALDFHBHDJAAGCGDMGAFK.ukByPDFHJEDGAIBIEIBKHBDHCNBFBHFPDJFJCFCDHCDCBFDHFLBNBPBLFDELAPGJALAVCJAFGDIHCLGLCLADGEKHINEHGBG.-c8GDQDAAFFGCEGCEIFCJAHABIDAHEDFIFFDDBGDAFCHCHBDFCLDAFFFNHJJHHJFADFBHDDBDFCNAHDJAPDAFHEDJBBHDBJKDMDMDEFKBMBGHODUDMAMBKNFHALMEEBELIGIWABIFGAGFGKKMAKKGKKKAGIGHGBGDKEEQBKAKIMJBHEFAFHCEJKHOFHDDJKDKDOFMBGDIBMBIACEBGCEGCAHABKBGAIAIACGFEKAIIMGIBIEEFDDMB.8cuGDGAGBEDGJACDDFDCABDCDA.4bwIGIGCIBEAEB.sZuJECIBKHGACFIBIDMBMB.qVsHHEBGHIRBPAPBEMQGBEDCAIJEDIFESDKAGACCGBOEAKGGGACCICEBEEBGEGICDGIAEEAEEEBEBEGGMCKAGCGCGFEHQD.mV0LEBGEEBEEGAACCEECGBBBEABJEBECEAGEIAKACB.gTqJKKBGFCBGBIEGDACIEMKDICCEICGECIICCCEBEA.mWyMDBJCBFMAMDSCEHCAGBADCF.iZoNABPFDDLBDFLCFBJFCBDB.kTkLAIHCLIHCJEHCDBFAHFHBBIAKFCCIHAEIIBKEHGBGHDBFBG.gO0LFICCBMGECDEFIAEAKIEAEDDDGFCCEHKBGFOAQCCC.mT6HREJCLCDMFCFBJFNEJIHCHKFOFBFEDD.oL6KAICECCCCCGCBMEEBKAKCGAMC.uOkMDGFABEBADCHCCGBCOCCBEBBBEDBDEBEBCF.uG0VOFQFAPEDRBJHCFPHTHFNGHKFJJJBDRFHLAFHJADKHKHO.-JqQHBDBADDAJABCDBDCHAJCJCHBFBDAAEDEGCAEBEBGKAMCCGIEBEICKE.-L4OHBFDJAHDAD.uKsOCCIBEAABCAABGBKABBLBNFDCCELECCKCBCBANEBEHBDFHHDCFADACCCEECBCCCCBGACABCCADEBEDCCCFEDAFCHABBDABBHBDADCFAFADBBEFCCEECCABEIKGAAEDI.iHqPJEHADAFBDEDBBADGHAAEHAABFCACHCDEDGACBGDEECBGGCQGMCKBABKA.kHgRTALACEOEMBEBBBCBEBCB.kH-OHBDFFFHBFAHBDBHCHEBCBCBA.qFiPADFACDDFBBHAFBHCNCBEJBBBFADCFCCCACCAGBCCIAICEBEBACBGECEEIBGECAIBGAEBBBCBEDEAIACCECEACAECCCEAKBCA.6ImOBGCEAEFGDEBEDA.oJkOABDBDCBLFAHELBDDNCHADADEBCECDCBDFEBEFCAEFE.0GoRBIMEQBKCCBGAIF.yGwRAIGGKEIHIACIICEBIDIA.0HiSAGDBFEAGMCMCMBKA.2EgQDBBCDBFBDDHBCBCDEBGF.gD8OJCBBJA.-BuPEBOBDFBHBBDCADHDAFECEDABCDBDCHGABFHDTCNDBFLAJEDBTEDEGGCUJKHGNEBGOEQDDMKDYICIKCADGAEDGDGAIDCBEAAGBCCGBKGACECKACCCICCBGEBEAGGBICADKBADKCGCKDGB.-I2NFFDFEFHCJDADJBHEHBFABGDECABCCCEEFEAECC.mIiLADNALCCGEDIAIAABEC.mIiNEBDFBBFADCLDGDFBDAFEBBCFGDDBGDEDAFHECFFAEJHAHEDIAIDEFGACEGACECACGCECGACCCA.qLmLDEEEFAHCHFNAHELABDHAHELAFKFGEIFEKKQAEIUBMIMCQASFODMCIBMGKAKF.4IkNCDIBBDLADDHDDEAC.qGsMBAAEFCAGAGCEBAAEEECACBEBADBBCFEB.8FsOCDEDDDDCHAHCDABBDCBDEDCDGDCBEDKDBBHEFEJEHGCCDEACHCBDDEACCAGACCEBEAAECACEIE.oD0OADDAHABDFAACFDFADC.4BwPCECC.agQICGBKCGDGB.iBiQECKOMGKB.5CiNEEEACDGACCGBCDDBAHBBADDBEFDFEDBBDDCDDBFCDBAIAGDCDECGEEAECGAEBEACAIDEOIMBOAKBIAQA.eoNAFJFLBADFDDHEFFFBFHBHHLAJAFBDDDADEDGHA.rCoRIAMFFHCFHJRFNCIKDKMIIGCFBFGAIB.6zBxGIFGFDBFCHGFEFIBCEAGBEDEB.2yBnDCDFADGGBCA.wyB_CABHIBGEACHED.oyBhDDAFABCCEGBCBCB.8xBvCCDCBHEFEDECAEBID.kxBlCEDBADCFECCGD.o3BvMBFFFHDBCDCGIDEJEAEIECIBGDGCCFEHKDGECGFIBCJIJAGEBCHIBGBGEGADJBFHABBADBB.g1BzNKGGEEIECAGIGCFCDIECDADDDFHDDCDFAJDBFFLHDDBJAFELAAEEGOKGCGE.kuB3MGACLDDAHDCHFBAFAFKBGDIAEGAKDGCGC.unBhKLFHBBDDDHBFAJCFBHAFFBCDDFBHAFAJGFCAGGCCCBCCIBGDKBGAGDGACDEBIFIAEEDDKGDCBAEDIBEBCCGCCAGAGEGAHEIIEGEICECCBIEGCCCCAGAKEGECEGGAECGGIEHECBECEEBCIGGCEEAAEGBAEEAECIDGFGAGBBGEIGCBCEGGEGBICAGHEGAGBGDIBCAGBGCEACCGFDDBDDBADBDDFABIFIBGDIFCAGBADKDGECGCECGEIBEAEAGAGCCBEEGCEAEEECFAFEBADEDAFADEHGECDGDBDCHCFCBEHBDEHKDIFGDABEFELECEDECCJGFEDIHEHAFBFGJAHBDDJAFBFDJFDDHDFBHDDDHAHABFDJAJDDDFDJEFCCGFBHHHCFCFAJEFGBIBEFEHCCEBIDFJBGECGCGAIHJFBDHHEAEFIFECCLGHAHGRBNDJBJA.yZsCBLDBHBFIBOGQGFGFEJ.miB2FHEAIGEKEGBCDDDBFJD.6mBwMNDFDLDGGBEIGFGHDLHFFJADDEHIBCDIBKGKDGACDNDFDJFDFKFEJGJIHBFFDEDEDAHDHDAHLHLJLNJNHJBFDDEFFNDJBDJFBBICELEFB.imB0HFPDHFIAIEKIGGBBF.qEyOBFEDHCHDAFBBEFKDEHMHIACBDBKDIDIDABBDDEJCDFIDBDDBDHFAACCGECDGDEDCBEHCDEHAFGJGFGDKDAJEDBFDDB.0E-LIADHCBBFHEFCNECGMBKC.4C4MEEGFBNDADBDCAMBGGB.2CmRDGBKCCEEIAECIEAFDDCBGBDDBCHHED.8DyRCFFHJGAEOE.d2QAGFGLCBCCGBCFDAIFGEKIIIAMAJJKAKABHJHMAABILIBGJCDMBAHFBEFHDNAPDFCFDJCFDFCOKKCPCBEKEFECGQA.xE4UBFMFNHbHHBNCbEKEVESCAEVCIGOCQFQEMBQGQB.mPiNGFEFEAEDHABHBDDBAD.iO8MCCIBEBCCDGCA.gNgNCEDGFEDCDC.4lBgEDGIAEDDHDG.qmBkDCCCGECAHGKAJDBBFDDFICC.wnB0CAFCFDJDKDDCHBDLGBGCGFEDDDAHFAEEIGEECEDIECEGAAIIFCDAD.ilB-CNJEGIGGIGKAHFFDF.omB2FBDEHDHFBAHCHEBGCMFBFEBBDHEBGDDFGHBFCAEEEDCADFGAEBKEDCQEKGAGDCCCB.kmByDBEGBIAADFDFDAGAE.onB6DCLHEADCFDBAGDAAGEAAEFIKAED.-f-BCAGFEHAFADADCFCBEJADFAJILIBEFIAIDGCGDE.2jBuBEEIE.qEmOCC.4I-SRBRDPBFGHECKFIGGIGYMGCBELE.qFmPCCEACCCACAACCCCACA.gM0FGLCHGFOJGDEFEDEDBBDCDCDGDEDEHEFADCDBFEDHLC.qsBoMHJAJDHCFFFLFRANLFEBIPBLDLBKFFRHDDECKFCDGKEEGKGIGUEKBMSGFOKGEGMBMGGKCGNBH.mtB4NIECLPBHJPGFJJABKGIKACOEIMJIDGB.spBuKGGEAGEGBCDFFDEFDBDFCAE.0QmFHBBDADJDPDJHDABAFDFBJABBBBBABDFCBBHABGAGBCBIBECAAGACAEECAECGEBCAMACAKBEACBECIKKEcE.sNkFBEBCBEDEFIBIHIDCFIBIAGFKDEFCBGACBGDCDIFIDGFACGAECE.lPrYEAQCOBMDGFAFADNDRBRBTBXANECEWCIEGEEEGEIE.1UhZWAWBGEGEKDBFDDTCVBNEDE.jXnWIAMACGACAIGGKCEDEDEDCFEDADBDBDLBJBNCGELBLBHEAEKE._ftWGAOAOBMAKAGFHCLALANBJCFG.pmB_WCCMBMAMCDDJBNAJE.3nB9WGCKBQDFANALE.lzBxYGEUBKBIDCDTBLEFCACHC.n4BvaKGSBMEABCAODMEECcCKDEAQDcBWDoBBcEqBBYDcCaEEEnBAfEJCZECEEEEEBERCFEPCYAYCODSEQEICDELEPCTCRATCFELCHEDMGBIDQCQCIDQAOCMCMEOCACBECEMCGDQCMEOAOAMCMCMCIAGAQAMAOAOAOAOBOCOAQBMCMCMCMBMCKCIBCDIDKEMDMBMBOAOCOAOBOBEGFCDENAFEBEBIGBOAMAMBKBGDMAOCOCMAKBOAIIIDMBMCIDOBMAMBIEECKDMCKBIDOCKCKCMCOAMCKCGECEAEDEDEBEBCBECEEEEECEBEBEGGECIEGEICEEGEGCKAGEGCKAGCGEICGDDBJDDBHCHBFBHBFBADADEDFBJBDBFDHDADCDGBIDIBEDCDEDEDCBCJEDADEDBDFFFBLBFDFBNDNBLBNBHDPARAPBPACDQAMDGDLBPAPBADADMDCBMDWBSBODSDYAaDQBUDIDGDMEQCSEUCSCaAYAUBGEOCaAUCSCUCYCOCFEDEAETATBTADECGECQEQCMCMEKEMCOAICOAQAMCMEKCOCKEIEECJECEICKCKCMEGEGEIEKBGBMAACGEKACDMAOCMAMAEDKCKCMCMCKCKCKCGEGDMCGDGDMCEEKCOAEDIEKAMCKAMBKAGDGBKAMCMAKAKAMCICKCKCICGGECMAEDIBKAIDGBKCEEKCKEKCMCGCKCICIBKEGEKBIECCIEICKCKAIAKBIBADKDGBMBGBIDKAICIEKBKBKAIBKAKJBBADJDHDCBKAADFDDDIDKAMCGEECEEGCEEEGGAMAKCKCGECEICIEKCECGCICKBICKCMBGEGGEBEFIBKAKAKAKAGAIAIBICMAIAMAGCEEICMIGBIBIDMFKAIAMCKCICICKCICIBEDIBMAGDMBMAKAIEICICKBKBKCIAIAKBKCKCKAMAICKACEAEGBCDEDEDIBMCOAIAOAIAOAKBIBBDGBMDKBOBMBMAKAGCKBIDIBMAMBEDMBIDKBMAMAMAMAKBKBMBGBBDDDDDDDFDLBFDNBDDFDHBDDBDBDADGDCDGDSBEDRBPBRAHFBDDDFDOBEDIDODMDQBWDGDcBCBIBcCWBSDvwDA.0K-KJDFCBEGACCGAKCHDCBBABABAACBABBBC.pF2GAEEEEEBEEIGGECCGAEEGGEGKGEKCGGGCIKBMEIAGIGKEGGIKCGIAGDKAKBEA.6H8GAkBAkBBICGBEEGMAKBKDGBGEECKCGBEDCCIBIAEC.mLoKBDDCBHCABBABEAADDNBCFOEEBAEECIACCACACCCAADBACAKDUKELBBTDKJDBADHBBBFDJCACDFBFBFBBDEDEHOEJGLINCFEFIJBBCFKJCB.yDsKMDEAKAMFGHIBODKFGEEEBIEEGGIAMBEDEAEBKBCB.gL4BDKFCBEDGFACGGACC.oN-DDDDFCBADGACCCBBDEFCDEDiBLIA.uN-DEBBDDBEDDD.wNyDCBCDGDEAKCKCKEEAECGA.wJLFBBA.0JkBECGBICIAGE.-FgOEABDEDBDBABBBBBF.uGiNCAACGCCAECEA.4GmNACCCBABCBCBCBABABDBACADEDABCBC.iGiNBCDCDC.qGsNBB.nTsDEAEABFHBBAEEAE';
+  const DIG='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const D2R=Math.PI/180, KL=[101.69,3.14], TILT=-20*D2R;
+  /* each line becomes [lambda, cos phi, sin phi] triples */
+  const lines=MESH.split('.').map(s=>{
+    const out=[];let i=0,x=0,y=0,n=0,sh=0,axis=0;
+    while(i<s.length){
+      const d=DIG.indexOf(s[i++]);n|=(d&31)<<sh;sh+=5;
+      if(d&32) continue;
+      const v=n&1?-(n+1)/2:n/2;n=0;sh=0;
+      if(axis===0){x+=v;axis=1;}
+      else{y+=v;axis=0;const p=y/5*D2R;out.push(x/5*D2R,Math.cos(p),Math.sin(p));}
+    }
+    return new Float32Array(out);
+  });
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)');
+  let rot=KL[0], size=0, dpr=1, seen=false, raf=0, last=0, drag=null;
+
+  function draw(now){
+    const w=cv.width;if(!w) return;
+    const R=w/2*.9, c=w/2, l0=rot*D2R, s0=Math.sin(TILT), c0=Math.cos(TILT);
+    const ink=getComputedStyle(box).color;
+    ctx.clearRect(0,0,w,w);
+    ctx.strokeStyle=ink;ctx.lineWidth=.7*dpr;ctx.lineJoin='round';
+    ctx.beginPath();
+    for(const L of lines){
+      let px=0,py=0,pz=-1;
+      for(let k=0;k<L.length;k+=3){
+        const dl=L[k]-l0,cp=L[k+1],sp=L[k+2],cd=Math.cos(dl);
+        const x=cp*Math.sin(dl), y=c0*sp-s0*cp*cd, z=s0*sp+c0*cp*cd;
+        if(k&&(z>=0)!==(pz>=0)){
+          /* crossing the horizon: end or start the stroke on the rim */
+          const t=pz/(pz-z);let hx=px+t*(x-px),hy=py+t*(y-py);const m=Math.hypot(hx,hy)||1;
+          hx/=m;hy/=m;
+          if(z>=0){ctx.moveTo(c+R*hx,c-R*hy);ctx.lineTo(c+R*x,c-R*y);}
+          else ctx.lineTo(c+R*hx,c-R*hy);
+        }else if(z>=0){
+          if(k&&pz>=0) ctx.lineTo(c+R*x,c-R*y); else ctx.moveTo(c+R*x,c-R*y);
+        }
+        px=x;py=y;pz=z;
+      }
+    }
+    ctx.stroke();
+    ctx.globalAlpha=.8;ctx.lineWidth=1.5*dpr;
+    ctx.beginPath();ctx.arc(c,c,R,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
+    /* the office */
+    const dl=(KL[0]-rot)*D2R,p=KL[1]*D2R,cp=Math.cos(p),sp=Math.sin(p),cd=Math.cos(dl);
+    const z=s0*sp+c0*cp*cd;
+    if(z>.05){
+      const X=c+R*cp*Math.sin(dl),Y=c-R*(c0*sp-s0*cp*cd);
+      const pulse=reduce.matches?0:(now/1600)%1;
+      ctx.fillStyle='#0E9AA3';
+      if(pulse){ctx.globalAlpha=(1-pulse)*.45*z;ctx.beginPath();ctx.arc(X,Y,(4+14*pulse)*dpr,0,Math.PI*2);ctx.fill();}
+      ctx.globalAlpha=Math.min(1,z*1.6);ctx.beginPath();ctx.arc(X,Y,4*dpr,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+  function running(){return seen&&!document.hidden&&(!reduce.matches||drag);}
+  function frame(now){
+    raf=0;
+    const dt=last?Math.min(now-last,64):0;last=now;
+    if(!drag&&!reduce.matches) rot-=dt*.012;           /* 12 degrees a second, westward like the original */
+    draw(now);
+    if(running()) raf=requestAnimationFrame(frame);
+  }
+  function kick(){if(!raf&&running()){last=0;raf=requestAnimationFrame(frame);}}
+  function fit(){
+    const s=Math.round(box.clientWidth);if(!s||s===size) return;
+    size=s;dpr=Math.min(devicePixelRatio||1,2);
+    cv.width=cv.height=Math.round(s*dpr);
+    draw(performance.now());cv.classList.add('on');
+  }
+  new ResizeObserver(fit).observe(box);
+  new IntersectionObserver(es=>{seen=es[0].isIntersecting;kick();},{threshold:.1}).observe(box);
+  document.addEventListener('visibilitychange',kick);
+  (reduce.addEventListener?reduce.addEventListener('change',()=>{draw(performance.now());kick();}):0);
+
+  /* sideways drag turns it; vertical movement is left to the page (pan-y) */
+  cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,id:e.pointerId};cv.classList.add('drag');
+    try{cv.setPointerCapture(e.pointerId);}catch(_){} kick();});
+  cv.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id) return;
+    rot-=(e.clientX-drag.x)*.5;drag.x=e.clientX;if(reduce.matches) draw(performance.now());});
+  const up=e=>{if(!drag||e.pointerId!==drag.id) return;drag=null;cv.classList.remove('drag');kick();};
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+
+  window.__ctGlobe={rot:()=>rot,lines:()=>lines.length,points:()=>lines.reduce((a,l)=>a+l.length/3,0),
+                    running:()=>!!raf,size:()=>cv.width};
+})();
+
+(function(){
+  const f=document.getElementById('ctForm');
+  if(!f) return;
+  const st=document.getElementById('ctStatus');
+  const TO='info@facerinnamalaysia.com';
+  const val=n=>f.elements[n].value.trim();
+  f.addEventListener('submit',e=>{
+    e.preventDefault();
+    const name=val('name'),org=val('org'),email=val('email'),msg=val('message');
+    const miss=!name?'ctName':!email?'ctEmail':!msg?'ctMsg':'';
+    if(miss){st.textContent='Please fill in your name, email and message.';document.getElementById(miss).focus();return;}
+    if(!f.elements.email.checkValidity()){st.textContent='Please check the email address.';f.elements.email.focus();return;}
+    const subject='Website enquiry from '+name+(org?' ('+org+')':'');
+    const body=msg+'\n\n'+name+(org?'\n'+org:'')+'\n'+email;
+    window.__ctLast='mailto:'+TO+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    location.href=window.__ctLast;
+    st.textContent='Your email app should open with the message ready to send. If nothing opens, write to '+TO+'.';
+  });
+})();
+</script>
+
 <script src="fx-gift.js"></script>
 </body>
 </html>
