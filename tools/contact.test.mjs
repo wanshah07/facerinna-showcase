@@ -50,9 +50,33 @@ console.log('\n── desktop 1440×900');
   chk('section #contact sits between #game and the footer', await p.evaluate(()=>{
     const s=document.getElementById('contact'),g=document.getElementById('game'),f=document.querySelector('footer.footer');
     return !!s && !!(g.compareDocumentPosition(s)&4) && !!(s.compareDocumentPosition(f)&4);}));
-  /* not in the header: one more link there puts the admin button on the TV
-     button at 1460 (layout-sweep). The footer and the WhatsApp button reach it. */
-  chk('header left as it was: no Contact link in the bar', await p.evaluate(()=>!document.querySelector('#navLinks a[href="#contact"]')));
+  /* the header: Contact is a call to action, dressed apart from both the plain
+     links and Play & Win, and the talk link is shortened to make room */
+  const nav=await p.evaluate(()=>{const c=document.querySelector('#navLinks a.nav-cta-contact'),
+    play=document.querySelector('#navLinks a.nav-cta[href="#game"]'),plain=document.querySelector('#navLinks a.nav-lk[href="#range"]');
+    const cs=e=>getComputedStyle(e);
+    return c&&{href:c.getAttribute('href'),text:c.textContent.trim(),icon:!!c.querySelector('svg'),
+      bg:cs(c).backgroundImage,playBg:cs(play).backgroundColor+'|'+cs(play).backgroundImage,plainBg:cs(plain).backgroundColor+'|'+cs(plain).backgroundImage,
+      color:cs(c).color,lk:c.classList.contains('nav-lk'),
+      last:[...document.querySelectorAll('#navLinks>a')].filter(a=>!a.id).pop()===c,
+      talk:document.querySelector('#navLinks a[href="#talk"]').textContent.trim()};});
+  chk('header has a Contact CTA pointing at #contact', !!nav&&nav.href==='#contact'&&nav.text==='Contact'&&nav.icon, nav);
+  chk('… filled with a gradient, unlike the plain links', !!nav&&/gradient/.test(nav.bg)&&!/gradient/.test(nav.plainBg), nav);
+  chk('… and unlike Play & Win', !!nav&&nav.bg!==nav.playBg&&!/gradient/.test(nav.playBg), nav);
+  chk('… white text, last of the links before the admin icon, not in the scrollspy', !!nav&&nav.color==='rgb(255, 255, 255)'&&nav.last&&!nav.lk, nav);
+  chk('talk link reads "Talk"', !!nav&&nav.talk==='Talk', nav&&nav.talk);
+  /* 1440 is under the full bar, so the links live behind the burger here */
+  if(await p.evaluate(()=>getComputedStyle(document.getElementById('burger')).display!=='none')){ await p.click('#burger'); await sleep(400); }
+  await p.click('#navLinks a.nav-cta-contact');
+  /* the page scrolls smoothly: wait for it to come to rest, or a jump back
+     to the top would be carried off by the tail of the glide */
+  await until(async()=>{const a=await p.evaluate(()=>scrollY);await sleep(150);return a===await p.evaluate(()=>scrollY)&&a>0;},6000);
+  /* the page's link handler writes the hash once the glide ends, and writing
+     it jumps there again, so leave only after that has happened */
+  await until(()=>p.evaluate(()=>location.hash==='#contact'),6000); await sleep(200);
+  chk('clicking it brings the Contact section up', await p.evaluate(()=>{const r=document.getElementById('contact').getBoundingClientRect();return r.top<innerHeight*.5&&r.bottom>0;}));
+  await p.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
+  await until(()=>p.evaluate(()=>scrollY<50)); await sleep(600);  /* let the globe see it left */
   chk('footer Explore has Contact us', await p.evaluate(()=>[...document.querySelectorAll('.footer a')].some(a=>a.getAttribute('href')==='#contact'&&/Contact us/.test(a.textContent))));
   chk('nav links still fit the bar at 1440', await p.evaluate(()=>{const n=document.getElementById('navLinks');
     const r=n.getBoundingClientRect();return n.scrollWidth<=n.clientWidth+1&&r.right<=innerWidth;}),
@@ -97,6 +121,25 @@ console.log('\n── desktop 1440×900');
   chk('still on the page after handing off', await p.evaluate(()=>location.pathname.endsWith('index.html')));
   chk('the form has no action and posts nowhere', await p.evaluate(()=>!document.getElementById('ctForm').getAttribute('action')));
   chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+
+console.log('\n── header at the edges of the full bar, and in the menu');
+for (const w of [1460,1520,1920]) {
+  const {c,p}=await open_(w,900);
+  const r=await p.evaluate(()=>{const g=id=>document.getElementById(id).getBoundingClientRect();
+    const cta=document.querySelector('#navLinks a.nav-cta-contact').getBoundingClientRect();
+    return {gap:Math.round(g('tvBtn').left-g('adminBtn').right),shown:cta.width>0&&cta.right<=innerWidth,burger:getComputedStyle(document.getElementById('burger')).display};});
+  chk(w+': full bar, Contact shown, admin clear of the TV button (gap '+r.gap+')', r.shown&&r.gap>=8&&r.burger==='none', r);
+  await c.close();
+}
+{
+  const {c,p}=await open_(1280,800);
+  await p.click('#burger'); await sleep(400);
+  const r=await p.evaluate(()=>{const a=document.querySelector('#navLinks a.nav-cta-contact').getBoundingClientRect();return {w:a.width,h:a.height,in:a.right<=innerWidth};});
+  chk('1280: Contact CTA is in the opened menu', r.w>60&&r.h>=28&&r.in, r);
+  await p.click('#navLinks a.nav-cta-contact'); await sleep(900);
+  chk('… tapping it closes the menu and lands on Contact', await p.evaluate(()=>!document.getElementById('navLinks').classList.contains('open')&&document.getElementById('contact').getBoundingClientRect().top<innerHeight*.5));
   await c.close();
 }
 

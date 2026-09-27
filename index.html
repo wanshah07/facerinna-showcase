@@ -250,9 +250,23 @@ body.space-theme .nav-trust-logo{background:rgba(255,255,255,.94);border-radius:
 .nav-links a.active{color:var(--brand-deep);background:var(--brand-soft)}
 .nav-cta{background:var(--navy);color:#fff !important;padding:9px 18px !important;font-weight:600}
 .nav-cta:hover{background:var(--brand-deep) !important}
+/* Contact: the brand-blue gradient of the page's primary buttons, with a lift
+   and an icon, so it reads as the call to action rather than a nav item.
+   Fixed hexes, not tokens: the dark sky lightens --brand-deep, and white on
+   that would fall below AA. */
+.nav-cta.nav-cta-contact{display:inline-flex;align-items:center;gap:7px;
+  background:linear-gradient(120deg,#2A76B8,#1E5E98);box-shadow:0 6px 16px rgba(46,124,190,.35)}
+.nav-cta.nav-cta-contact:hover{background:linear-gradient(120deg,#1E5E98,#16324F) !important;
+  box-shadow:0 8px 20px rgba(46,124,190,.45);transform:translateY(-1px)}
+.nav-cta-contact svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
 /* These sit after .nav-links a so they actually win — a media query adds no
    specificity, and the base rule is declared further down. Between 900px and
    1366px the row tightens instead of pushing the TV button off the edge. */
+/* 1460-1520: the full row, Contact CTA included, fits only with the items a
+   little tighter; below 1460 the burger takes over as before */
+@media(max-width:1520px){.nav-links{gap:2px}.nav-links a{padding:8px 8px}
+  .nav-cta{padding:9px 15px !important}}
 @media(max-width:1400px){.nav-links{gap:2px}.nav-links a{padding:8px 10px;font-size:.82rem}}
 @media(max-width:1240px){.nav-links a{padding:7px 7px;font-size:.75rem}
   .nav-cta{padding:8px 13px !important}.logo-img{height:27px}
@@ -2230,11 +2244,14 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
       <a href="#gallery" class="nav-lk">Gallery</a>
       <a href="#clinic" class="nav-lk">Clinic Activation</a>
       <a href="#qrcore" class="nav-lk">QR Code</a>
-      <a href="#talk" class="nav-lk">Dr. Peter's Talk</a>
+      <a href="#talk" class="nav-lk">Talk</a>
       <!-- A page of its own, not a section: nav-ext keeps it out of the
            scrollspy, which matches on "#"+id and would only ever clear it. -->
       <a href="events/" class="nav-ext">Events</a>
       <a href="#game" class="nav-cta">Play &amp; Win</a>
+      <!-- the one way in that is a conversation rather than a section, so it
+           is dressed as the primary action, apart from Play & Win's navy -->
+      <a href="#contact" class="nav-cta nav-cta-contact"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Contact</a>
       <a href="admin.html" class="nav-lk nav-admin" id="adminBtn" rel="nofollow" aria-label="Booth admin" title="Booth admin"><svg class="nav-admin-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.6"/><path d="M4.6 20.2a7.4 7.4 0 0 1 14.8 0"/></svg><span class="nav-admin-t">Admin</span></a>
     </nav>
     <button class="tv-btn" id="tvBtn" type="button" aria-label="Full screen TV mode" title="Full screen (TV mode)">⛶</button>
