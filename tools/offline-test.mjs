@@ -27,7 +27,7 @@ async function stop(){
 }
 const opened = async p => p.evaluate(()=>{
   const t=document.title||''; const h=document.body?document.body.scrollHeight:0;
-  return /PDM AGM/.test(t) && h>2000;
+  return /FACERINNA Malaysia Official Website/.test(t) && h>2000;
 });
 
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
