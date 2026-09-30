@@ -607,6 +607,10 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   chk('looking back at the screen is enough on its own',
       await until(async()=>(await shown('#talk'))===false, 5000));
   S.sectionRows.find(x=>x.id==='talk').mode='show';
+  /* past the floor again: the ask above may have landed under 50ms ago, and
+     a focus inside the floor is ignored by design -- which is what made this
+     fail about one run in five */
+  await sleep(120);
   await p.evaluate(()=>dispatchEvent(new Event('focus')));
   chk('...and so is coming back to the tab', await until(async()=>(await shown('#talk'))===true, 5000));
   await p.evaluate(()=>{ delete window.__boothAskFloorMs; });

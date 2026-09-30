@@ -2492,6 +2492,7 @@ function claim() {
       if (!j || j.ok !== true) {
         var why = (j && j.reason) || 'error';
         if (why === 'inactive') show('Gifts are not on right now', 'Ask the FACERINNA team at the counter.', null);
+        else if (why === 'nostock') show('Today\u2019s gifts are all given out', 'Thank you for playing! Ask the FACERINNA team at the counter.', null);
         else if (why === 'short') show('Not quite there', 'This run fell short. Play again!', null);
         else show('Could not fetch your code', 'Show this screen at the counter instead — your score is on it.', null);
         return;

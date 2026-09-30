@@ -401,11 +401,29 @@ $('gateForm').addEventListener('submit', function(e){
       say('Could not reach the booth script: ' + (err && err.message || err), true); });
     return;
   }
+  /* Signed in, but Counter was not ticked for this address: ask the script
+     again rather than signing in again, so an admin's tick is enough. */
+  if(stage === 'wait'){
+    go.disabled = true; go.textContent = 'One moment…';
+    post({ action:'whoami', token:token() }).then(function(j){
+      go.disabled = false; go.textContent = 'Open the counter';
+      if(!j || j.ok !== true){ drop(); stage = 'email'; $('gateCode').value=''; $('gateCode').classList.add('hidden');
+        go.textContent = 'Send me a code'; return say('This sign-in has ended. Sign in again.', true); }
+      if(!counterOk(j)) return say(NO_COUNTER, true);
+      show('gate', false); say(''); startCam();
+    }).catch(function(err){ go.disabled=false; go.textContent='Open the counter';
+      say('Could not reach the booth script: ' + (err && err.message || err), true); });
+    return;
+  }
   go.disabled = true; go.textContent = 'One moment…';
   post({ action:'redeem', email:addr, code:$('gateCode').value }).then(function(j){
     go.disabled = false; go.textContent = 'Open the counter';
     if(j && j.ok === true && j.token){
       keep(j.token);
+      if(!counterOk(j)){
+        stage = 'wait'; $('gateCode').value=''; $('gateCode').classList.add('hidden');
+        return say(NO_COUNTER, true);
+      }
       show('gate', false);
       say('');
       return startCam();
@@ -434,6 +452,11 @@ document.addEventListener('visibilitychange', function(){
   if(busy || $('camWrap').classList.contains('hidden')) return;
   if(live()){ running = true; loop(); } else { startCam(); }
 });
+
+/* A script from before roles sends no access list: everyone it signs in may
+   use the counter, as they always could. */
+function counterOk(j){ return !j || !Array.isArray(j.access) || j.role === 'admin' || j.access.indexOf('counter') >= 0; }
+var NO_COUNTER = 'You are signed in, but Counter is not ticked for this address. Ask an admin to tick it for you under People in the admin page, then tap Open the counter.';
 
 if(token()) startCam(); else gate('Sign in once and this screen stays signed in.');
 
