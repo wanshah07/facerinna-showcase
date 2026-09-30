@@ -303,9 +303,16 @@ check('...and ships with a bar for Facy Run and none for the rest',
     && Object.keys(c.gift_needs).length===1; })(), call({action:'config'}).gift_needs);
 check('a run cannot claim while it is off',
   call({action:'gift.claim',device:'dev1abcd',score:9000,game:'facy-run'}).reason==='inactive');
-check('it cannot be switched on with nothing on the wheel',
-  call({action:'admin.settings',token,settings:{gift_active:'yes',gift_products:''}}).ok===false);
-check('the wheel keeps its default products', call({action:'config'}).settings.gift_products.split('\n').length>=8);
+/* The wheel is the Gift stock tab since 30 Sept 2026, filled the first time
+   from the old product list, every product "not counted". */
+const stockRows = () => tabs['Gift stock'].rows.slice(1);
+check('the stock tab starts from the old product list, not counted',
+  stockRows().length>=8 && stockRows().every(r=>r[1]===''), stockRows());
+check('the product list is no longer in the public config', !('gift_products' in call({action:'config'}).settings));
+stockRows().forEach(r=>{ r[1]=0; });
+check('it cannot be switched on with nothing in stock',
+  call({action:'admin.settings',token,settings:{gift_active:'yes'}}).ok===false);
+stockRows().forEach(r=>{ r[1]=''; });
 r=call({action:'admin.settings',token,settings:{gift_active:'yes'}});
 check('an admin switches it on', r.ok===true && call({action:'config'}).settings.gift_active==='yes');
 check('a stranger cannot', call({action:'admin.settings',settings:{gift_active:'no'}}).ok===false
@@ -355,7 +362,7 @@ check('nonsense is not a claim', call({action:'admin.gift.redeem',token,claim:'a
 check('an unknown claim is refused',
   call({action:'admin.gift.redeem',token,claim:'00000000-0000-4000-8000-999999999999'}).ok===false);
 const s1=call({action:'admin.gift.redeem',token,claim:c1.claim});
-const wheel=call({action:'config'}).settings.gift_products.split('\n');
+const wheel=stockRows().map(r=>r[0]);
 check('an admin scan picks a product', s1.ok===true && s1.already===false && wheel.indexOf(s1.product)>=0, s1);
 check('...and says where on the wheel it is', s1.index===wheel.indexOf(s1.product) && s1.products.length===wheel.length);
 check('...written on the row before it was answered',

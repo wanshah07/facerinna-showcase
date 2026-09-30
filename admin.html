@@ -10,9 +10,13 @@
 <title>FACERINNA Booth — Admin</title>
 <style>
   /* The booth's admin. One page, no framework: a sign-in by e-mail link,
-     then three tabs -- Settings, Segments, Admins -- drawn like the training
-     dashboard the owner already uses: white cards on a pale ground, pill
-     tabs, a form on the left and the list on the right. */
+     then tabs -- Settings, Sections, Segments, People -- drawn like the
+     training dashboard the owner already uses: white cards on a pale ground,
+     pill tabs, a form on the left and the list on the right.
+
+     Since 30 Sept 2026 each person has a role. An admin sees every tab; a
+     staff member sees only the areas an admin ticked for them. The script
+     checks the same thing on every call; hiding a tab here is only manners. */
   :root{--ink:#1a2f4a;--ink2:#5b6b7f;--line:#e3e8ef;--bg:#f5f7fb;--card:#fff;--brand:#0A5480;--brand2:#2f7bd1;
     --ok:#1f9d61;--bad:#d64545;--soft:#eaf3fc;--radius:14px}
   *{box-sizing:border-box}
@@ -34,7 +38,7 @@
   @media(max-width:820px){.grid{grid-template-columns:1fr}}
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:0 1px 2px rgba(20,40,80,.04)}
   label{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin:10px 0 4px}
-  input[type=text],input[type=email],input[type=url],input[type=password],textarea,select{
+  input[type=text],input[type=email],input[type=url],input[type=password],input[type=number],input[type=search],textarea,select{
     width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
   textarea{min-height:84px;resize:vertical}
   input:focus,textarea:focus,select:focus{outline:2px solid #bcd6f5;border-color:var(--brand2)}
@@ -87,6 +91,41 @@
 .giftrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0}
 .giftrow span{font-size:14px}
 .giftrow input{max-width:130px}
+.stack{display:grid;gap:18px;align-content:start;min-width:0}
+/* a person whose areas fill one column only gets one column, not an empty
+   left-hand side */
+.grid.one{grid-template-columns:minmax(0,720px)}
+.stock .ctl .btn{padding:8px 12px}
+.saverow{grid-column:1/-1;position:sticky;bottom:0;z-index:4;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+  background:rgba(245,247,251,.94);backdrop-filter:blur(6px);padding:12px 0;border-top:1px solid var(--line)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{appearance:none;font:inherit;font-size:12.5px;font-weight:700;border-radius:999px;padding:5px 11px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink2);min-height:30px}
+.chip[aria-pressed="true"]{background:var(--soft);border-color:#bcd6f5;color:var(--brand)}
+.chip[aria-pressed="true"]::before{content:"\2713  ";}
+.chip:disabled{cursor:default;opacity:.65}
+.person{grid-template-columns:minmax(0,1fr) auto}
+.person .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.person .ctl select{width:auto}
+.person.off .t{opacity:.55}
+.pill.own{background:#fff6e5;color:#6b4d00}
+.pill.adm{background:#e8f6ef;color:#1f7a4d}
+.accessbox{display:grid;gap:6px;margin-top:6px}
+.accessbox label{display:flex;gap:10px;align-items:flex-start;margin:0;font-size:13.5px;font-weight:600;color:var(--ink)}
+.accessbox label span{display:block;font-weight:500;font-size:12px;color:var(--ink2)}
+.accessbox input{margin-top:3px}
+.accessbox.all label{opacity:.6}
+.stock{grid-template-columns:minmax(0,1fr) auto}
+.stock .count{font-weight:800;font-size:15px}
+.stock .count.out{color:var(--bad)}
+.stock .count.nc{color:var(--ink2);font-weight:600;font-size:13px}
+.stock .ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.stock .ctl input{width:118px}
+.stock.out .t{opacity:.6}
+.claim{grid-template-columns:minmax(0,1fr) auto}
+.claim .dev{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--ink2)}
+.pill.wait{background:#fff6e5;color:#6b4d00}
+.pill.gone{background:#f3f4f7;color:var(--ink2)}
 </style>
 </head>
 <body>
@@ -105,7 +144,7 @@
   <section class="login" id="viewLogin" hidden>
     <div class="card">
       <h1>Sign in</h1>
-      <p class="note">Only addresses listed in the <b>Admins</b> tab of the booth sheet can sign in. Enter yours and a link will be mailed to you. No password.</p>
+      <p class="note">Only people an admin has added can sign in. Enter your address and a link will be mailed to you. No password.</p>
       <form id="loginForm">
         <label for="loginEmail">Your e-mail</label>
         <input type="email" id="loginEmail" autocomplete="email" required placeholder="you@facerinna.com">
@@ -114,7 +153,7 @@
       </form>
       <div id="sentNote" hidden>
         <p><b>Check your inbox.</b> If that address is an admin, a sign-in link is on its way. It works once, for 20 minutes.</p>
-        <p class="note">Nothing arrived? Check spam, or the address is not in the Admins tab.</p>
+        <p class="note">Nothing arrived? Check spam, or ask an admin to add your address under People.</p>
         <button class="btn ghost sm" id="sendAgain" type="button">Use another address</button>
       </div>
       <p class="note" style="margin-top:18px"><a href="index.html">&larr; Back to the booth page</a></p>
@@ -128,58 +167,76 @@
       <button class="tab" id="tabSettings" role="tab" aria-selected="true" data-view="settings" type="button">⚙ Settings</button>
       <button class="tab" id="tabSections" role="tab" aria-selected="false" data-view="sections" type="button">▤ Sections</button>
       <button class="tab" id="tabSegments" role="tab" aria-selected="false" data-view="segments" type="button">▦ Segments</button>
-      <button class="tab" id="tabAdmins" role="tab" aria-selected="false" data-view="admins" type="button">👤 Admins</button>
+      <button class="tab" id="tabGifts" role="tab" aria-selected="false" data-view="gifts" type="button">🎁 Gifts</button>
+      <button class="tab" id="tabAdmins" role="tab" aria-selected="false" data-view="admins" type="button">👤 People</button>
     </div>
 
-    <!-- settings -->
-    <div id="viewSettings" class="grid">
-      <div class="card">
-        <h2>The page</h2>
-        <div class="radio">
-          <label><input type="radio" name="mode" id="modeOpen" value="open"><div>Open<span>Anyone can see the booth page.</span></div></label>
-          <label><input type="radio" name="mode" id="modeLocked" value="locked"><div>Locked<span>A passcode screen covers the page. Give the passcode to whoever should see it.</span></div></label>
-          <label><input type="radio" name="mode" id="modeHidden" value="hidden"><div>Hidden<span>A notice covers the page; nobody gets in.</span></div></label>
-        </div>
-        <label for="passcode">Passcode (for Locked)</label>
-        <div class="row"><input type="password" id="passcode" autocomplete="off" style="flex:1" placeholder="e.g. booth2026"><button class="btn ghost sm" type="button" id="showPass">Show</button></div>
-        <label for="lockMessage">Locked message</label>
-        <textarea id="lockMessage"></textarea>
-        <label for="hiddenMessage">Hidden message</label>
-        <textarea id="hiddenMessage"></textarea>
-        <h2 style="margin-top:20px">Welcome strip</h2>
-        <label class="check"><input type="checkbox" id="welcome"> Show “WELCOME TO FACERINNA BOOTH” under the hero</label>
-        <h2 style="margin-top:20px">At the counter</h2>
-        <p class="note">Open this on the phone that hands out the gifts and leave it open. It signs in once and then reads one visitor's code after another with the camera, without going back to a sign-in between them. Add it to the phone's home screen and it is one tap in the morning.</p>
-        <p><a class="btn" href="scan.html">Open the counter screen</a></p>
+    <!-- nothing ticked yet -->
+    <div class="card" id="noAccess" hidden>
+      <h2>Nothing to manage yet</h2>
+      <p class="note">You are signed in, but no area has been ticked for you. Ask an admin to open <b>People</b> and tick what you need.</p>
+    </div>
 
-        <h2 style="margin-top:20px">The gift at the end of a game</h2>
-        <p class="note">A game ends on a QR code once it scores enough. Scan it with this phone, signed in here, and the wheel picks the product. One gift per device, whichever game earned it. Leave it off on a day nobody is at the counter to scan.</p>
-        <label class="check"><input type="checkbox" id="giftActive"> Gift QR code is on</label>
-        <label>What each game has to score</label>
-        <p class="note">The games are scored on scales with nothing to do with each other, so each has its own figure. <b>Leave one empty and that game offers no gift</b> — the safe way round, since a figure set too low hands one to everybody. Watch an hour of real scores on the booth board, then fill these in. UV Card is not here: it deals a random number rather than scoring a run, and hands out its own prize already.</p>
-        <div id="giftPoints" class="giftrows"></div>
-        <label for="giftProducts">Products on the wheel — one per line</label>
-        <textarea id="giftProducts" style="min-height:120px" placeholder="One product name per line"></textarea>
-        <div class="row" style="margin-top:18px"><button class="btn" id="saveSettings" type="button">Save settings</button><span class="note" id="settingsState"></span></div>
+    <!-- settings: one card per area, so a person sees only the areas they hold -->
+    <div id="viewSettings" class="grid">
+      <div class="stack">
+        <div class="card" id="cardPage" data-area="page">
+          <h2>The page</h2>
+          <div class="radio">
+            <label><input type="radio" name="mode" id="modeOpen" value="open"><div>Open<span>Anyone can see the booth page.</span></div></label>
+            <label><input type="radio" name="mode" id="modeLocked" value="locked"><div>Locked<span>A passcode screen covers the page. Give the passcode to whoever should see it.</span></div></label>
+            <label><input type="radio" name="mode" id="modeHidden" value="hidden"><div>Hidden<span>A notice covers the page; nobody gets in.</span></div></label>
+          </div>
+          <label for="passcode">Passcode (for Locked)</label>
+          <div class="row"><input type="password" id="passcode" autocomplete="off" style="flex:1" placeholder="e.g. booth2026"><button class="btn ghost sm" type="button" id="showPass">Show</button></div>
+          <label for="lockMessage">Locked message</label>
+          <textarea id="lockMessage"></textarea>
+          <label for="hiddenMessage">Hidden message</label>
+          <textarea id="hiddenMessage"></textarea>
+          <h2 style="margin-top:20px">Welcome strip</h2>
+          <label class="check"><input type="checkbox" id="welcome"> Show “WELCOME TO FACERINNA BOOTH” under the hero</label>
+        </div>
+        <div class="card" id="cardGift" data-area="gift">
+          <h2>The gift at the end of a game</h2>
+          <p class="note">A game ends on a QR code once it scores enough. Scan it with the counter phone and the wheel picks the product. One gift per device, whichever game earned it. Leave it off on a day nobody is at the counter to scan.</p>
+          <label class="check"><input type="checkbox" id="giftActive"> Gift QR code is on</label>
+          <label>What each game has to score</label>
+          <p class="note">The games are scored on scales with nothing to do with each other, so each has its own figure. <b>Leave one empty and that game offers no gift</b> — the safe way round, since a figure set too low hands one to everybody. Watch an hour of real scores on the booth board, then fill these in. UV Card is not here: it deals a random number rather than scoring a run, and hands out its own prize already.</p>
+          <div id="giftPoints" class="giftrows"></div>
+          <p class="note" id="giftStockNote">The products on the wheel, and how many are left, are under <b>🎁 Gifts</b>.</p>
+          <!-- only for a booth script from before stock, which still reads the wheel from here -->
+          <div id="legacyProducts" hidden>
+            <label for="giftProducts">Products on the wheel — one per line</label>
+            <textarea id="giftProducts" style="min-height:120px" placeholder="One product name per line"></textarea>
+          </div>
+        </div>
       </div>
-      <div class="card" style="margin-bottom:18px">
-        <h2>Privacy notice</h2>
-        <p class="note">These four fill in the privacy page at <a href="privacy.html">/privacy.html</a>. Until they are filled the page says so in place of each one, rather than inventing an answer.</p>
-        <label for="privEntity">Legal entity (the company named in the notice)</label>
-        <input type="text" id="privEntity" placeholder="e.g. FACERINNA Sdn. Bhd. (1234567-A)">
-        <label for="privEmail">Contact e-mail for access or deletion requests</label>
-        <input type="email" id="privEmail" placeholder="e.g. privacy@facerinna.com">
-        <label for="privAddress">Registered address</label>
-        <textarea id="privAddress" style="min-height:64px"></textarea>
-        <label for="privRetention">How long the data is kept</label>
-        <input type="text" id="privRetention" placeholder="e.g. 24 months after the event">
+      <div class="stack">
+        <div class="card" id="cardCounter" data-area="counter">
+          <h2>At the counter</h2>
+          <p class="note">Open this on the phone that hands out the gifts and leave it open. It signs in once and then reads one visitor's code after another with the camera, without going back to a sign-in between them. Add it to the phone's home screen and it is one tap in the morning.</p>
+          <p><a class="btn" href="scan.html">Open the counter screen</a></p>
+        </div>
+        <div class="card" id="cardPrivacy" data-area="privacy">
+          <h2>Privacy notice</h2>
+          <p class="note">These four fill in the privacy page at <a href="privacy.html">/privacy.html</a>. Until they are filled the page says so in place of each one, rather than inventing an answer.</p>
+          <label for="privEntity">Legal entity (the company named in the notice)</label>
+          <input type="text" id="privEntity" placeholder="e.g. FACERINNA Sdn. Bhd. (1234567-A)">
+          <label for="privEmail">Contact e-mail for access or deletion requests</label>
+          <input type="email" id="privEmail" placeholder="e.g. privacy@facerinna.com">
+          <label for="privAddress">Registered address</label>
+          <textarea id="privAddress" style="min-height:64px"></textarea>
+          <label for="privRetention">How long the data is kept</label>
+          <input type="text" id="privRetention" placeholder="e.g. 24 months after the event">
+        </div>
+        <div class="card" id="cardAbout" data-area="page">
+          <h2>What this does</h2>
+          <p class="note"><b>Locked</b> and <b>Hidden</b> draw a screen over the booth page; they do not take the file off the server, so treat them as a closed door, not a safe. The reports vault is gated by its own script and is not affected.</p>
+          <p class="note">Changes reach the page on its next load. A phone that is offline keeps showing what it last saw.</p>
+          <p class="note">Games, the events page and the vault are not covered by the lock; only the booth home page is.</p>
+        </div>
       </div>
-      <div class="card">
-        <h2>What this does</h2>
-        <p class="note"><b>Locked</b> and <b>Hidden</b> draw a screen over the booth page; they do not take the file off the server, so treat them as a closed door, not a safe. The reports vault is gated by its own script and is not affected.</p>
-        <p class="note">Changes reach the page on its next load. A phone that is offline keeps showing what it last saw.</p>
-        <p class="note">Games, the events page and the vault are not covered by the lock; only the booth home page is.</p>
-      </div>
+      <div class="saverow" id="saveRow"><button class="btn" id="saveSettings" type="button">Save settings</button><span class="note" id="settingsState"></span></div>
     </div>
 
     <!-- sections -->
@@ -233,16 +290,70 @@
       </div>
     </div>
 
-    <!-- admins -->
-    <div id="viewAdmins" class="grid" hidden>
-      <div class="card">
-        <h2>Who can sign in</h2>
-        <div class="list" id="adminList"></div>
+    <!-- gifts: the stock on the wheel, and who has earned one -->
+    <div id="viewGifts" class="grid" hidden>
+      <div class="stack">
+        <div class="card" data-gift-area="stock">
+          <h2>＋ Add a product</h2>
+          <form id="stockForm" novalidate>
+            <label for="stockName">Product</label>
+            <input type="text" id="stockName" maxlength="120" placeholder="e.g. Ceramide B5 Balancing Toner">
+            <label for="stockQty">How many there are</label>
+            <input type="number" id="stockQty" min="0" max="100000" step="1" inputmode="numeric" placeholder="e.g. 24">
+            <div class="row" style="margin-top:14px"><button class="btn" id="stockAdd" type="submit">Add to the wheel</button></div>
+          </form>
+          <p class="note" style="margin-top:14px">Each gift handed out takes one off its product. A product at <b>0</b> leaves the wheel by itself and comes back as soon as you restock it. When every product is at 0 the games stop giving out new codes.</p>
+          <p class="note"><b>Add</b> restocks: it adds to what is left, so gifts handed out while you were typing are not undone. <b>Set</b> is for correcting a count after counting the boxes.</p>
+        </div>
+        <div class="card" data-gift-area="claims">
+          <h2>Letting a device play again</h2>
+          <p class="note">One gift per device. To let a visitor's phone earn another, find them under <b>Claims</b> and tap <b>Let play again</b>; their next good run gives them a new code.</p>
+          <p class="note">The old row stays, marked reset. A code that phone had not spent yet stops working, so the old QR and a new one cannot be two gifts.</p>
+        </div>
       </div>
-      <div class="card">
-        <h2>Adding or removing an admin</h2>
-        <p class="note">Open the booth Google Sheet, tab <b>Admins</b>. One row per person: <code>email</code>, <code>active</code> (yes or no), <code>name</code>. Set active to <b>no</b> and every session that address holds stops working on its next call. That is the only place this list is edited, on purpose: a page that could add admins to itself would be one stolen session away from adding a stranger.</p>
-        <p class="note" id="quota"></p>
+      <div class="stack">
+        <div data-gift-area="stock">
+          <h2 style="margin:4px 0 10px">Stock on the wheel</h2>
+          <div class="list" id="stockList"></div>
+        </div>
+        <div data-gift-area="claims">
+          <h2 style="margin:4px 0 10px">Claims</h2>
+          <input type="search" id="claimSearch" placeholder="Search by name, game, product or device" aria-label="Search claims" style="margin-bottom:10px">
+          <div class="list" id="claimList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- people -->
+    <div id="viewAdmins" class="grid" hidden>
+      <div class="stack">
+        <div class="card" id="teamAddCard">
+          <h2>＋ Add a person</h2>
+          <form id="teamForm" novalidate>
+            <label for="teamEmail">E-mail</label>
+            <input type="email" id="teamEmail" autocomplete="off" placeholder="name@example.com" required maxlength="120">
+            <label for="teamName">Name or note</label>
+            <input type="text" id="teamName" maxlength="60" placeholder="e.g. Aina, counter">
+            <label>Role</label>
+            <div class="radio">
+              <label><input type="radio" name="teamRole" value="staff" checked><div>Staff<span>Only the areas ticked below.</span></div></label>
+              <label><input type="radio" name="teamRole" value="admin"><div>Admin<span>Everything, including this People tab.</span></div></label>
+            </div>
+            <label>Access</label>
+            <div class="accessbox" id="teamAccess"></div>
+            <div class="row" style="margin-top:16px"><button class="btn" id="teamAdd" type="submit">Add person</button></div>
+            <p class="note" id="teamState"></p>
+          </form>
+        </div>
+        <div class="card">
+          <h2>How it works</h2>
+          <p class="note" id="teamNote">An <b>admin</b> has every area and can change who has access. A <b>staff</b> member has only the areas ticked for them; tap an area on their card to tick or untick it. A change takes effect on that person's next action, on every device they are signed in on.</p>
+          <p class="note">Nobody can change their own access here, and the <b>owner</b> (the account the booth script runs as) always has everything. Each change records who made it and when, in the <code>updated</code> and <code>by</code> columns of the <b>Admins</b> tab in the booth sheet.</p>
+          <p class="note" id="quota"></p>
+        </div>
+      </div>
+      <div>
+        <div class="list" id="adminList"></div>
       </div>
     </div>
   </section>
@@ -260,7 +371,26 @@ var ADMIN_API = (typeof window.__BOOTH_API === 'string') ? window.__BOOTH_API
   : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
 var KEY = 'fx.admin.token';
 var $ = function(id){ return document.getElementById(id); };
-var state = { token:null, email:'', data:null, editing:null };
+var state = { token:null, email:'', data:null, editing:null, me:null, perms:null, legacy:false };
+
+/* The areas a person can be given. The script sends its own list; this copy
+   is only for a script from before roles, which sends none. */
+var PERMS = [
+  ['counter','Counter','Scan gift codes at the counter and spin the wheel'],
+  ['guide','Staff guide','Read the booth staff guide'],
+  ['page','Page & passcode','Open, lock or hide the booth page, its passcode and the welcome strip'],
+  ['gift','Gift settings','Turn the gift on or off, the points per game and the products on the wheel'],
+  ['sections','Sections','Show, lock or hide each part of the booth page'],
+  ['segments','Segments','Add, edit, order and delete extra segments'],
+  ['privacy','Privacy notice','The details the privacy page shows']
+];
+var AREA_KEYS = {
+  page: ['page_mode','passcode','lock_message','hidden_message','welcome'],
+  gift: ['gift_active','gift_points'],
+  privacy: ['privacy_entity','privacy_email','privacy_address','privacy_retention']
+};
+function perms(){ return state.perms || PERMS; }
+function can(area){ var m=state.me; return !!m && (m.role==='admin' || (m.access||[]).indexOf(area)>=0); }
 
 function toast(msg, bad){ var t=$('toast'); t.textContent=msg; t.className='toast on'+(bad?' bad':''); clearTimeout(toast._t); toast._t=setTimeout(function(){ t.className='toast'; }, 2600); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -312,8 +442,18 @@ function enter(token, email){
 function refresh(){
   return api('admin.get').then(function(d){
     state.data = d; state.email = d.email; $('whoEmail').textContent = d.email;
-    fillSettings(d.settings); fillSections(d.sections); renderSections(d.section_rows);
-    renderSegments(d.segments); renderAdmins(d.admins, d.quota);
+    /* A script from before roles sends no `me`: everyone it lets in is an
+       admin, and it cannot change the list, so People stays read-only. */
+    state.legacy = !d.me;
+    state.me = d.me || { email:d.email, role:'admin', access:PERMS.map(function(p){ return p[0]; }), owner:false };
+    state.perms = d.perms || null;
+    applyAccess();
+    fillSettings(d.settings || {}); fillSections(d.sections);
+    if(can('sections')) renderSections(d.section_rows);
+    if(can('segments')) renderSegments(d.segments);
+    if(state.me.role==='admin') renderAdmins(d.admins, d.quota);
+    if(!state.legacy && can('stock')) renderStock(d.stock);
+    if(!state.legacy && can('claims')) renderClaims(d.claims);
   }).catch(function(err){
     if(/signed out|no longer/.test(err.message)){ toast('Signed out: '+err.message, true); state.token=null; try{ localStorage.removeItem(KEY); }catch(e){} toLogin(); }
     else toast('Could not load: '+err.message, true);
@@ -321,12 +461,39 @@ function refresh(){
 }
 
 /* tabs */
+function pick(b){
+  document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', String(x===b)); });
+  ['settings','sections','segments','gifts','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), !!b && v===b.dataset.view); });
+}
 document.querySelectorAll('.tab').forEach(function(b){
-  b.addEventListener('click', function(){
-    document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', String(x===b)); });
-    ['settings','sections','segments','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), v===b.dataset.view); });
-  });
+  b.addEventListener('click', function(){ pick(b); });
 });
+/* Show this person the tabs and cards of the areas they hold, and nothing
+   else. Stay on the tab they were on if they still have it. */
+function applyAccess(){
+  var areasOnSettings = ['page','gift','privacy','counter'];
+  [].forEach.call(document.querySelectorAll('#viewSettings [data-area]'), function(c){ c.hidden = !can(c.dataset.area); });
+  show('saveRow', can('page') || can('gift') || can('privacy'));
+  var tabs = { settings: areasOnSettings.some(can), sections: can('sections'), segments: can('segments'),
+               gifts: !state.legacy && (can('stock') || can('claims')),
+               admins: state.me && state.me.role==='admin' };
+  [].forEach.call(document.querySelectorAll('#viewGifts [data-gift-area]'), function(c){ c.hidden = !can(c.dataset.giftArea); });
+  show('legacyProducts', state.legacy); show('giftStockNote', !state.legacy);
+  ['viewSettings','viewGifts'].forEach(function(v){
+    var stacks = [].slice.call($(v).querySelectorAll(':scope > .stack'));
+    stacks.forEach(function(st){ st.hidden = ![].some.call(st.children, function(c){ return !c.hidden; }); });
+    $(v).classList.toggle('one', stacks.filter(function(st){ return !st.hidden; }).length < 2);
+  });
+  var cur = document.querySelector('.tab[aria-selected="true"]'), first = null;
+  [].forEach.call(document.querySelectorAll('.tab'), function(b){
+    b.hidden = !tabs[b.dataset.view];
+    if(!b.hidden && !first) first = b;
+  });
+  pick(cur && !cur.hidden ? cur : first);
+  show('noAccess', !first);
+  document.querySelector('.tabs').hidden = !first;
+  renderTeamAccess();
+}
 
 /* sections */
 function renderSections(rows){
@@ -426,13 +593,19 @@ function fillSettings(s){
 $('showPass').addEventListener('click', function(){ var p=$('passcode'); p.type = p.type==='password' ? 'text' : 'password'; this.textContent = p.type==='password' ? 'Show' : 'Hide'; });
 $('saveSettings').addEventListener('click', function(){
   var mode = document.querySelector('input[name=mode]:checked'); mode = mode ? mode.value : 'open';
-  var settings = { page_mode:mode, passcode:$('passcode').value, lock_message:$('lockMessage').value,
-                   hidden_message:$('hiddenMessage').value, welcome: $('welcome').checked ? 'show' : 'hide',
-                   privacy_entity:$('privEntity').value, privacy_email:$('privEmail').value,
-                   privacy_address:$('privAddress').value, privacy_retention:$('privRetention').value,
-                   gift_active: $('giftActive').checked ? 'yes' : 'no', gift_points: giftLines(),
-                   gift_products:$('giftProducts').value };
-  if(mode==='locked' && !settings.passcode.trim()){ toast('Set a passcode before locking the page', true); $('passcode').focus(); return; }
+  var all = { page_mode:mode, passcode:$('passcode').value, lock_message:$('lockMessage').value,
+              hidden_message:$('hiddenMessage').value, welcome: $('welcome').checked ? 'show' : 'hide',
+              privacy_entity:$('privEntity').value, privacy_email:$('privEmail').value,
+              privacy_address:$('privAddress').value, privacy_retention:$('privRetention').value,
+              gift_active: $('giftActive').checked ? 'yes' : 'no', gift_points: giftLines(),
+              gift_products:$('giftProducts').value };
+  /* only the areas this person holds: the script refuses the whole save if
+     one key outside them comes along */
+  var settings = {};
+  Object.keys(AREA_KEYS).forEach(function(a){ if(can(a)) AREA_KEYS[a].forEach(function(k){ settings[k] = all[k]; }); });
+  /* a script from before stock still reads the wheel from this setting */
+  if(state.legacy) settings.gift_products = all.gift_products;
+  if(can('page') && mode==='locked' && !settings.passcode.trim()){ toast('Set a passcode before locking the page', true); $('passcode').focus(); return; }
   $('saveSettings').disabled = true; $('settingsState').textContent = 'Saving…';
   api('admin.settings', { settings:settings }).then(function(r){
     fillSettings(r.settings); $('settingsState').textContent = 'Saved. The page picks it up on its next load.'; toast('Settings saved');
@@ -506,17 +679,266 @@ $('segForm').addEventListener('submit', function(e){
   }).catch(function(err){ toast(err.message, true); }).finally(function(){ $('segSave').disabled = false; });
 });
 
-/* admins */
-function renderAdmins(list, quota){
-  var box=$('adminList'); box.innerHTML='';
-  (list||[]).forEach(function(a){
-    var el=document.createElement('div'); el.className='item'; el.style.gridTemplateColumns='minmax(0,1fr) auto';
-    el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(a.email)+'</div><div class="m">'+esc(a.name||'')+'</div></div>'+
-      '<span class="pill'+(a.active?'':' off')+'">'+(a.active?'active':'inactive')+'</span>';
-    box.appendChild(el);
+/* gifts: stock and claims */
+function when(iso){
+  if(!iso) return '';
+  var d = new Date(iso); if(isNaN(d)) return '';
+  return d.toLocaleString([], { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+function renderStock(list){
+  var box=$('stockList'); box.textContent='';
+  if(!list || !list.length){ box.appendChild(el('div','empty','No products yet. Add one on the left.')); return; }
+  var on = list.filter(function(x){ return x.on_wheel; }).length;
+  box.appendChild(el('p','note', on+' of '+list.length+' on the wheel right now.'));
+  list.forEach(function(x){
+    var out = x.quantity===0, nc = x.quantity===null;
+    var card = el('div','item stock'+(out?' out':'')); card.dataset.product = x.product;
+    var main = el('div');
+    main.appendChild(el('div','t', x.product)).style.textTransform='none';
+    main.appendChild(el('div','count'+(out?' out':'')+(nc?' nc':''),
+      nc ? 'Not counted — stays on the wheel until you set a number' : out ? 'Out of stock · off the wheel' : x.quantity+' left'));
+    if(x.updated) main.appendChild(el('div','m', 'Changed '+when(x.updated)+(x.by ? ' by '+x.by : '')));
+    var ctl = el('div','ctl');
+    var n = document.createElement('input'); n.type='number'; n.min='0'; n.step='1'; n.inputMode='numeric';
+    n.className='stockn'; n.placeholder = nc ? 'count' : 'how many'; n.setAttribute('aria-label','How many, for '+x.product);
+    ctl.appendChild(n);
+    if(!nc){ var add = el('button','btn sm stockadd','Add'); add.type='button'; ctl.appendChild(add); }
+    var set = el('button','btn ghost sm stockset', nc ? 'Set count' : 'Set'); set.type='button'; ctl.appendChild(set);
+    var rm = el('button','ic stockrm','🗑'); rm.type='button'; rm.title='Remove '+x.product; rm.setAttribute('aria-label','Remove '+x.product);
+    main.appendChild(ctl);
+    card.appendChild(main); card.appendChild(rm);
+    box.appendChild(card);
   });
+}
+function stockCall(action, body, card, msg){
+  if(card) busyCard(card, true);
+  return api(action, body).then(function(r){ state.data.stock = r.stock; renderStock(r.stock); if(msg) toast(msg(r)); return r; })
+    .catch(function(err){ toast(err.message, true); if(card) busyCard(card, false); });
+}
+$('stockList').addEventListener('click', function(e){
+  var card = e.target.closest('.stock'); if(!card) return;
+  var name = card.dataset.product, n = card.querySelector('.stockn'), v = n ? n.value.trim() : '';
+  if(e.target.closest('.stockrm')){
+    if(!confirm('Take '+name+' off the list? It leaves the wheel now.')) return;
+    stockCall('admin.stock.remove', { product:name }, card, function(){ return name+' removed'; });
+    return;
+  }
+  var isAdd = !!e.target.closest('.stockadd'), isSet = !!e.target.closest('.stockset');
+  if(!isAdd && !isSet) return;
+  if(!/^\d+$/.test(v) || (isAdd && +v===0)){ toast(isAdd ? 'Type how many to add' : 'Type how many there are', true); n.focus(); return; }
+  stockCall('admin.stock.set', isAdd ? { product:name, add:+v } : { product:name, quantity:+v }, card, function(r){
+    var x = r.stock.filter(function(s){ return s.product===name; })[0];
+    return name+': '+(x && x.quantity===0 ? 'out of stock, off the wheel' : (x ? x.quantity : v)+' left'+(x && x.on_wheel ? ', on the wheel' : ''));
+  });
+});
+$('stockForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var name = $('stockName').value.trim(), q = $('stockQty').value.trim();
+  if(!name){ toast('Type the product name', true); $('stockName').focus(); return; }
+  if(!/^\d+$/.test(q)){ toast('Type how many there are', true); $('stockQty').focus(); return; }
+  if((state.data.stock||[]).some(function(x){ return x.product.toLowerCase()===name.toLowerCase(); })){ toast(name+' is already on the list; restock it there', true); return; }
+  $('stockAdd').disabled = true;
+  stockCall('admin.stock.set', { product:name, quantity:+q }, null, function(){ return name+' added'+(+q>0 ? ' to the wheel' : ' (0, so not on the wheel yet)'); })
+    .then(function(r){ if(r){ $('stockName').value=''; $('stockQty').value=''; } })
+    .finally(function(){ $('stockAdd').disabled = false; });
+});
+
+function renderClaims(list){
+  state.claims = list || [];
+  var box=$('claimList'); box.textContent='';
+  var q = ($('claimSearch').value||'').trim().toLowerCase();
+  var rows = state.claims.filter(function(c){
+    return !q || [c.name,c.game,c.product,c.device].join(' ').toLowerCase().indexOf(q)>=0;
+  });
+  if(!rows.length){ box.appendChild(el('div','empty', state.claims.length ? 'Nothing matches that.' : 'No gifts earned yet.')); return; }
+  rows.slice(0, 120).forEach(function(c){
+    var card = el('div','item claim'); card.dataset.device = c.device;
+    var main = el('div');
+    main.appendChild(el('div','t', c.name || 'No name')).style.textTransform='none';
+    main.appendChild(el('div','m', (c.game||'game')+' · '+c.score+' points · earned '+when(c.created)));
+    var tags = el('div','pills');
+    if(c.reset) tags.appendChild(el('span','pill gone','Reset '+when(c.reset)+(c.reset_by?' by '+c.reset_by:'')));
+    if(c.redeemed) tags.appendChild(el('span','pill','Gave '+c.product+' · '+when(c.redeemed)));
+    else if(!c.reset) tags.appendChild(el('span','pill wait','Waiting at the counter'));
+    main.appendChild(tags);
+    main.appendChild(el('div','dev','Device '+c.device));
+    card.appendChild(main);
+    if(!c.reset){
+      var b = el('button','btn ghost sm claimreset','Let play again'); b.type='button'; card.appendChild(b);
+    } else card.appendChild(el('span'));
+    box.appendChild(card);
+  });
+}
+$('claimSearch').addEventListener('input', function(){ renderClaims(state.claims); });
+$('claimList').addEventListener('click', function(e){
+  var b = e.target.closest('.claimreset'); if(!b) return;
+  var card = b.closest('.claim'), c = (state.claims||[]).filter(function(x){ return x.device===card.dataset.device && !x.reset; })[0];
+  var who = c && c.name ? c.name+'’s device' : 'this device';
+  var extra = c && !c.redeemed ? ' The code it has not used yet stops working.' : '';
+  if(!confirm('Let '+who+' play for a gift again?'+extra)) return;
+  b.disabled = true;
+  api('admin.claims.reset', { device:card.dataset.device }).then(function(r){
+    state.data.claims = r.claims; renderClaims(r.claims); toast(who.charAt(0).toUpperCase()+who.slice(1)+' can earn a gift again');
+  }).catch(function(err){ toast(err.message, true); b.disabled = false; });
+});
+
+/* people */
+function el(tag, cls, text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+function shortLabel(k){ var f=perms().filter(function(p){ return p[0]===k; })[0]; return f ? f[1] : k; }
+
+/* the ticks in the Add form: counter and guide to begin with, the usual
+   pair for somebody working the counter */
+function renderTeamAccess(){
+  var box=$('teamAccess'); if(!box) return;
+  var had = {}; [].forEach.call(box.querySelectorAll('input'), function(i){ had[i.value]=i.checked; });
+  var first = !box.childElementCount;
+  box.textContent='';
+  perms().forEach(function(p){
+    var lab=el('label'), inp=document.createElement('input'), div=el('div', null, p[1]);
+    inp.type='checkbox'; inp.value=p[0];
+    inp.checked = first ? (p[0]==='counter' || p[0]==='guide') : !!had[p[0]];
+    div.appendChild(el('span', null, p[2]));
+    lab.appendChild(inp); lab.appendChild(div); box.appendChild(lab);
+  });
+  roleChanged();
+}
+function roleChanged(){
+  var admin = (document.querySelector('input[name=teamRole]:checked')||{}).value === 'admin';
+  var box=$('teamAccess'); box.classList.toggle('all', admin);
+  [].forEach.call(box.querySelectorAll('input'), function(i){ i.disabled = admin; if(admin) i.checked = true; });
+}
+[].forEach.call(document.querySelectorAll('input[name=teamRole]'), function(r){ r.addEventListener('change', function(){
+  if(this.value==='staff') [].forEach.call($('teamAccess').querySelectorAll('input'), function(i){ i.checked = i.value==='counter' || i.value==='guide'; });
+  roleChanged();
+}); });
+
+function saveTeam(person, done){
+  return api('admin.team.save', { person:person }).then(function(r){
+    state.data.admins = r.admins; renderAdmins(r.admins, state.data.quota); if(done) done(true); return r;
+  }).catch(function(err){
+    toast(/unknown action/.test(err.message) ? 'Update the booth-admin script to manage people here.' : err.message, true);
+    if(done) done(false);
+  });
+}
+$('teamForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var email = $('teamEmail').value.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('Enter a valid e-mail address', true); $('teamEmail').focus(); return; }
+  if((state.data.admins||[]).some(function(a){ return a.email===email; })){ toast(email+' is already on the list; change them there', true); return; }
+  var role = (document.querySelector('input[name=teamRole]:checked')||{}).value==='admin' ? 'admin' : 'staff';
+  var access = role==='admin' ? [] : [].map.call($('teamAccess').querySelectorAll('input:checked'), function(i){ return i.value; });
+  $('teamAdd').disabled = true; $('teamState').textContent = 'Adding…';
+  saveTeam({ email:email, name:$('teamName').value.trim(), role:role, access:access, active:true }, function(ok){
+    $('teamAdd').disabled = false; $('teamState').textContent = '';
+    if(!ok) return;
+    toast(email+' added. They sign in at admin.html or the counter screen with a code sent to that address.');
+    $('teamEmail').value=''; $('teamName').value='';
+  });
+});
+
+function renderAdmins(list, quota){
+  var box=$('adminList'); box.textContent='';
+  var me = state.me || {};
+  (list||[]).forEach(function(a){
+    var fixed = state.legacy || a.owner || a.email===me.email;
+    var card = el('div', 'item person'+(a.active?'':' off')); card.dataset.email = a.email;
+    var main = el('div');
+    main.appendChild(el('div', 't', a.email)).style.textTransform='none';
+    var meta = el('div', 'm', a.name || '');
+    main.appendChild(meta);
+    var side = el('div', 'icons');
+    var tags = el('div', 'pills');
+    if(a.owner) tags.appendChild(el('span', 'pill own', 'owner'));
+    if(a.email===me.email) tags.appendChild(el('span', 'pill', 'you'));
+    tags.appendChild(el('span', 'pill'+(a.role==='admin'?' adm':''), a.role==='admin' ? 'admin' : 'staff'));
+    tags.appendChild(el('span', 'pill'+(a.active?'':' off'), a.active ? 'active' : 'turned off'));
+    main.appendChild(tags);
+
+    if(!state.legacy){
+      /* the areas, one chip each: pressed means ticked */
+      var chips = el('div', 'pills');
+      if(a.role==='admin') chips.appendChild(el('span', 'note', 'Every area, and People.'));
+      else perms().forEach(function(p){
+        var c = el('button', 'chip', p[1]); c.type='button';
+        c.dataset.area = p[0];
+        c.setAttribute('aria-pressed', String((a.access||[]).indexOf(p[0])>=0));
+        c.title = p[2];
+        c.disabled = fixed;
+        chips.appendChild(c);
+      });
+      main.appendChild(chips);
+      if(!fixed){
+        var ctl = el('div', 'ctl');
+        var sel = document.createElement('select'); sel.className='teamrole';
+        sel.setAttribute('aria-label', 'Role of '+a.email);
+        [['staff','Staff'],['admin','Admin']].forEach(function(o){ var op=document.createElement('option'); op.value=o[0]; op.textContent=o[1]; if(a.role===o[0]) op.selected=true; sel.appendChild(op); });
+        ctl.appendChild(sel);
+        var onb = el('button', 'btn ghost sm teamactive', a.active ? 'Turn off' : 'Turn back on'); onb.type='button';
+        ctl.appendChild(onb);
+        var rm = el('button', 'btn danger sm teamremove', 'Remove'); rm.type='button';
+        ctl.appendChild(rm);
+        main.appendChild(ctl);
+      } else if(a.email===me.email && !a.owner){
+        main.appendChild(el('div', 'm', 'Another admin can change your access.'));
+      }
+    }
+    card.appendChild(main); card.appendChild(side);
+    box.appendChild(card);
+  });
+  if(state.legacy){
+    var add = $('teamAddCard'); if(add) add.remove();
+    $('teamNote').textContent = 'This list comes from the Admins tab of the booth sheet. Update the booth-admin script to add people and choose their access here.';
+  }
   $('quota').textContent = quota ? 'Sign-in mails left today: '+quota+'.' : '';
 }
+function personOf(card){ return (state.data.admins||[]).filter(function(a){ return a.email===card.dataset.email; })[0]; }
+function busyCard(card, on){ [].forEach.call(card.querySelectorAll('button,select'), function(x){ x.disabled = on; }); }
+$('adminList').addEventListener('click', function(e){
+  var card = e.target.closest('.person'); if(!card) return;
+  var a = personOf(card); if(!a) return;
+  var chip = e.target.closest('.chip');
+  if(chip && !chip.disabled){
+    var on = chip.getAttribute('aria-pressed')!=='true';
+    var access = (a.access||[]).filter(function(k){ return k!==chip.dataset.area; });
+    if(on) access.push(chip.dataset.area);
+    chip.setAttribute('aria-pressed', String(on));
+    busyCard(card, true);
+    saveTeam({ email:a.email, role:'staff', access:access, active:a.active }, function(ok){
+      if(ok) toast((on?'Ticked ':'Unticked ')+shortLabel(chip.dataset.area)+' for '+a.email);
+      else { chip.setAttribute('aria-pressed', String(!on)); busyCard(card, false); }
+    });
+    return;
+  }
+  if(e.target.closest('.teamactive')){
+    busyCard(card, true);
+    saveTeam({ email:a.email, role:a.role, access:a.access, active:!a.active }, function(ok){
+      if(ok) toast(a.email+(a.active ? ' is turned off. Their sign-ins stop working now.' : ' is turned back on.'));
+      else busyCard(card, false);
+    });
+    return;
+  }
+  if(e.target.closest('.teamremove')){
+    if(!confirm('Remove '+a.email+'? They are signed out everywhere and have to be added again to come back.')) return;
+    busyCard(card, true);
+    api('admin.team.remove', { email:a.email }).then(function(r){
+      state.data.admins = r.admins; renderAdmins(r.admins, state.data.quota); toast(a.email+' removed');
+    }).catch(function(err){ toast(err.message, true); busyCard(card, false); });
+  }
+});
+$('adminList').addEventListener('change', function(e){
+  var sel = e.target.closest('.teamrole'); if(!sel) return;
+  var card = sel.closest('.person'), a = personOf(card); if(!a) return;
+  var role = sel.value;
+  if(role==='admin' && !confirm('Make '+a.email+' an admin? Admins can do everything, including changing who has access.')){ sel.value=a.role; return; }
+  busyCard(card, true);
+  /* staff again starts from what they held before being made admin: nothing
+     is remembered for an admin, so it is the usual counter pair */
+  var access = role==='admin' ? [] : ['counter','guide'];
+  saveTeam({ email:a.email, role:role, access:access, active:a.active }, function(ok){
+    if(ok) toast(a.email+' is now '+(role==='admin'?'an admin':'staff'));
+    else { sel.value=a.role; busyCard(card, false); }
+  });
+});
 
 /* ---- start ------------------------------------------------------------ */
 function start(){

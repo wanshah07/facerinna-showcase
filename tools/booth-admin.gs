@@ -46,7 +46,9 @@
  *        Execute as:      Me
  *        Who has access:  Anyone
  *   4. Send me the /exec URL. It goes into admin.html and index.html.
- *   5. To add an admin: type their address in the Admins tab, active = yes.
+ *   5. To add someone: admin.html -> People, or a row in the Admins tab
+ *      (email, active = yes). A row with no role is a full admin; set role
+ *      to staff and list the areas under access to give less.
  *
  *   Re-deploy after ANY edit: Deploy -> Manage deployments -> pencil ->
  *   Version: New version.
@@ -74,9 +76,13 @@ var SESSION_DAYS = 30;    /* a session lasts this long after signing in */
 var FROM_NAME    = 'FACERINNA Booth';
 
 var T_ADMINS = 'Admins', T_SETTINGS = 'Settings', T_SEGMENTS = 'Segments',
-    T_SESSIONS = 'Admin sessions', T_SECTIONS = 'Sections', T_GIFTS = 'Gifts';
+    T_SESSIONS = 'Admin sessions', T_SECTIONS = 'Sections', T_GIFTS = 'Gifts',
+    T_STOCK = 'Gift stock';
 
-var ADMIN_HEADERS    = ['email', 'active', 'name', 'added'];
+/* One row per person who can sign in. role and access came later (30 Sept
+   2026) and sit after the first four columns, so a sheet from before them
+   still reads: a row with no role is an admin, which is what every row was. */
+var ADMIN_HEADERS    = ['email', 'active', 'name', 'added', 'role', 'access', 'updated', 'by'];
 var SETTING_HEADERS  = ['key', 'value', 'updated', 'by'];
 var SEGMENT_HEADERS  = ['id', 'order', 'after', 'eyebrow', 'title', 'description',
                         'thumbnail_url', 'embed_url', 'link_url', 'link_label', 'visible', 'updated', 'by'];
@@ -87,7 +93,15 @@ var SECTION_HEADERS  = ['id', 'label', 'mode', 'passcode', 'message', 'updated',
 /* One row per device that earned a gift. `claim` is the secret in the QR code;
    `redeemed` and `product` are written the moment an admin scans it, and never
    again -- that row IS the one-gift-per-device rule. */
-var GIFT_HEADERS     = ['claim', 'device', 'game', 'score', 'name', 'created', 'redeemed', 'product', 'by'];
+var GIFT_HEADERS     = ['claim', 'device', 'game', 'score', 'name', 'created', 'redeemed', 'product', 'by',
+                        'reset', 'reset_by'];
+/* The wheel. One row per product; quantity is how many are left. A product at
+   0 is off the wheel and comes back when it is restocked. A blank quantity is
+   "not counted" -- how the products from before stock arrive -- and stays on
+   the wheel until somebody sets a count. */
+var STOCK_HEADERS    = ['product', 'quantity', 'updated', 'by'];
+var STOCK_MAX        = 40;       /* products on the wheel at most */
+var STOCK_MAX_QTY    = 100000;
 
 /* The settings the page understands, and what they are until somebody sets
    them. Anything else posted to admin.settings is dropped, so a typo cannot
@@ -130,7 +144,60 @@ var SETTING_KEYS = {
                  '10% Niacinamide 3% TXA Bright Dark Spot Serum\n' +
                  '5% B5 Intensive Barrier Cream'
 };
-var PRIVATE_SETTINGS = { passcode: true };
+/* gift_products is only where the Gift stock tab takes its first list from;
+   after that the tab is the wheel, so the setting would only mislead. */
+var PRIVATE_SETTINGS = { passcode: true, gift_products: true };
+
+/* ------------------------------------------------------------------ roles
+
+   Two roles. An ADMIN can do everything, including the People tab: adding
+   someone, choosing what they may touch, turning them off. A STAFF member can
+   do only the areas an admin has ticked for them -- the counter phone needs
+   the counter and nothing else, and a colleague editing segments has no
+   business reading the passcode.
+
+   Every check is made on the script, on every call, from the live row, so an
+   untick in the People tab (or in the sheet) takes effect on that person's
+   next request. The page hiding a tab is manners; this is the lock.
+
+   The OWNER is the account this script runs as. The owner is always an admin
+   and cannot be changed from the page, and nobody can change their own row
+   there, so a stolen session cannot lock the owner out or promote itself. */
+var PERMS = [
+  ['counter',  'Counter',         'Scan gift codes at the counter and spin the wheel'],
+  ['guide',    'Staff guide',     'Read the booth staff guide'],
+  ['page',     'Page & passcode', 'Open, lock or hide the booth page, its passcode and the welcome strip'],
+  ['gift',     'Gift rules',      'Turn the gift on or off and the points each game needs'],
+  ['stock',    'Gift stock',      'The products on the wheel and how many of each are left'],
+  ['claims',   'Gift claims',     'See who earned a gift, and let a device play for one again'],
+  ['sections', 'Sections',        'Show, lock or hide each part of the booth page'],
+  ['segments', 'Segments',        'Add, edit, order and delete extra segments'],
+  ['privacy',  'Privacy notice',  'The details the privacy page shows']
+];
+var PERM_KEYS = PERMS.map(function (p) { return p[0]; });
+function permLabel_(k) { for (var i = 0; i < PERMS.length; i++) if (PERMS[i][0] === k) return PERMS[i][1]; return k; }
+
+/* Which area each setting belongs to. A key missing here cannot be saved. */
+var SETTING_AREA = {
+  page_mode: 'page', passcode: 'page', lock_message: 'page', hidden_message: 'page', welcome: 'page',
+  gift_active: 'gift', gift_points: 'gift', gift_products: 'stock',
+  privacy_entity: 'privacy', privacy_email: 'privacy', privacy_address: 'privacy', privacy_retention: 'privacy'
+};
+
+/* The admin actions that need one area. admin.settings is checked key by key,
+   admin.get is filtered, and admin.team.* needs the admin role. */
+var ACTION_AREA = {
+  'admin.guide': 'guide',
+  'admin.gift.redeem': 'counter',
+  'admin.section.set': 'sections',
+  'admin.segment.save': 'segments',
+  'admin.segment.delete': 'segments',
+  'admin.segment.order': 'segments',
+  'admin.stock.set': 'stock',
+  'admin.stock.remove': 'stock',
+  'admin.claims.reset': 'claims'
+};
+var TEAM_MAX = 200;
 var GIFT_MAX_SCORE = 100000;
 
 /* The games that keep a score, so can have a bar to clear. UV Card is absent
@@ -164,6 +231,7 @@ function setUp() {
   tab_(book, T_SESSIONS, SESSION_HEADERS);
   tab_(book, T_SECTIONS, SECTION_HEADERS);
   tab_(book, T_GIFTS,    GIFT_HEADERS);
+  headers_(T_GIFTS, GIFT_HEADERS);
 
   /* A row per section, so the sheet shows every one there is and the admin
      page has something to list before anything has been changed. */
@@ -176,7 +244,8 @@ function setUp() {
 
   /* You are the first admin, so you can sign in the moment this is deployed. */
   var me = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
-  if (me && !adminRow_(me)) sheet_(T_ADMINS).appendRow([me, 'yes', 'owner', now_()]);
+  teamHeaders_();
+  if (me && !adminRow_(me)) sheet_(T_ADMINS).appendRow([me, 'yes', 'owner', now_(), 'admin', '', now_(), 'setUp']);
 
   /* Defaults are written as rows, so the sheet shows every key there is. */
   var have = settings_();
@@ -184,6 +253,7 @@ function setUp() {
     if (!(k in have)) sheet_(T_SETTINGS).appendRow([k, SETTING_KEYS[k], now_(), 'setUp']);
   });
 
+  stockTab_();   /* after the settings rows: its first list is gift_products */
   Logger.log('ok. admin: ' + me + '. mail quota left today: ' + MailApp.getRemainingDailyQuota());
   return 'ok';
 }
@@ -250,10 +320,38 @@ function adminRow_(email) {
     if (String(rows[i].email || '').trim().toLowerCase() === email) return rows[i];
   return null;
 }
+/* Anyone on the list and active can sign in; what they may then do is
+   their role and access. The name is kept from when every row was an admin. */
 function isAdmin_(email) {
   var r = adminRow_(email);
   return !!(r && yes_(r.active));
 }
+function owner_() {
+  try { return String(Session.getEffectiveUser().getEmail() || '').trim().toLowerCase(); }
+  catch (e) { return ''; }
+}
+/* A row as a person: role, the areas they hold, and whether they are the owner.
+   A blank role is an admin (the rows from before roles); anything that is not
+   plainly "admin" is staff, so a typo in the sheet grants less, not more. */
+function person_(r) {
+  var email = String(r.email || '').trim().toLowerCase();
+  var own = !!email && email === owner_();
+  var raw = String(r.role == null ? '' : r.role).trim().toLowerCase();
+  var role = (own || raw === '' || raw === 'admin') ? 'admin' : 'staff';
+  var access = [];
+  if (role === 'admin') access = PERM_KEYS.slice();
+  else String(r.access || '').toLowerCase().split(/[\s,;]+/).forEach(function (k) {
+    if (PERM_KEYS.indexOf(k) >= 0 && access.indexOf(k) < 0) access.push(k);
+  });
+  return { email: email, name: String(r.name || ''), active: yes_(r.active), role: role,
+           access: access, owner: own };
+}
+function can_(me, area) { return !!me && (me.role === 'admin' || me.access.indexOf(area) >= 0); }
+function refuse_(area) {
+  return json_({ ok: false, reason: 'forbidden', area: area,
+                 error: 'Your access does not include ' + permLabel_(area) + '. Ask an admin to tick it for you.' });
+}
+function iso_(v) { var d = new Date(v); return (v && isFinite(d.getTime())) ? d.toISOString() : ''; }
 
 /* ---------------------------------------------------------------- sessions */
 
@@ -279,9 +377,10 @@ function live_(s) {
 function auth_(b) {
   var s = findSession_(b && b.token);
   if (!s || s.kind !== 'session' || !live_(s)) return null;
-  if (!isAdmin_(s.email)) return null;
+  var row = adminRow_(s.email);
+  if (!row || !yes_(row.active)) return null;
   sheet_(T_SESSIONS).getRange(s._row, 7).setValue(now_());
-  return String(s.email).toLowerCase();
+  return person_(row);
 }
 
 /* Ask for a link. The answer is the same whether or not the address is an
@@ -320,11 +419,16 @@ function exchange_(b) {
   return json_({ ok: true, token: token, email: String(s.email).toLowerCase(),
                  expires: new Date(Date.now() + SESSION_DAYS * 86400000).toISOString() });
 }
+/* preview: whether the booth page should show this person what visitors
+   cannot -- locked and hidden sections, with a ribbon. Counter staff do not
+   get that: a locked section is locked for them too. */
 function whoami_(b) {
-  var email = auth_(b);
-  if (!email) return json_({ ok: false, error: 'signed out' });
+  var me = auth_(b);
+  if (!me) return json_({ ok: false, error: 'signed out' });
   var s = findSession_(b.token);
-  return json_({ ok: true, email: email, expires: new Date(s.expires).toISOString() });
+  return json_({ ok: true, email: me.email, role: me.role, access: me.access, owner: me.owner,
+                 preview: can_(me, 'page') || can_(me, 'sections'),
+                 expires: new Date(s.expires).toISOString() });
 }
 function logout_(b) {
   var s = findSession_(b && b.token);
@@ -435,7 +539,8 @@ function codeRedeem_(b) {
   if (!isAdmin_(email)) return json_({ ok: false, reason: 'revoked' });
 
   var token = addSession_('session', email, SESSION_DAYS * 24 * 60);
-  return json_({ ok: true, token: token, email: email,
+  var who = person_(adminRow_(email));
+  return json_({ ok: true, token: token, email: email, role: who.role, access: who.access,
                  expires: new Date(Date.now() + SESSION_DAYS * 86400000).toISOString() });
 }
 
@@ -746,18 +851,45 @@ function missCount_(add) {
   } catch (e) { return 1; }
 }
 
-function adminGet_(email) {
-  var all = settings_(), settings = {};
-  Object.keys(SETTING_KEYS).forEach(function (k) { settings[k] = (k in all) ? all[k] : SETTING_KEYS[k]; });
-  var admins = rows_(T_ADMINS, ADMIN_HEADERS).map(function (r) {
-    return { email: String(r.email || ''), active: yes_(r.active), name: String(r.name || '') };
-  }).filter(function (a) { return a.email; });
-  var quota = 0; try { quota = MailApp.getRemainingDailyQuota(); } catch (e) {}
-  return json_({ ok: true, email: email, settings: settings, segments: segments_(),
-                 admins: admins, sections: SECTIONS, section_rows: sectionRows_(), quota: quota });
+/* Only what this person may see: a setting outside their areas is not sent
+   at all -- the passcode above all -- and the People list goes to admins. */
+function settingsFor_(me) {
+  var all = settings_(), out = {};
+  Object.keys(SETTING_KEYS).forEach(function (k) {
+    if (can_(me, SETTING_AREA[k])) out[k] = (k in all) ? all[k] : SETTING_KEYS[k];
+  });
+  return out;
 }
-function adminSettings_(b, email) {
+function teamList_() {
+  return rows_(T_ADMINS, ADMIN_HEADERS).map(function (r) {
+    var p = person_(r);
+    return { email: p.email, name: p.name, active: p.active, role: p.role, access: p.access,
+             owner: p.owner, added: iso_(r.added), updated: iso_(r.updated), by: String(r.by || '') };
+  }).filter(function (a) { return a.email; });
+}
+function adminGet_(me) {
+  var out = { ok: true, email: me.email, settings: settingsFor_(me), sections: SECTIONS,
+              me: { email: me.email, name: me.name, role: me.role, access: me.access, owner: me.owner },
+              perms: PERMS };
+  if (can_(me, 'segments')) out.segments = segments_();
+  if (can_(me, 'sections')) out.section_rows = sectionRows_();
+  if (can_(me, 'stock')) out.stock = stockPublic_();
+  if (can_(me, 'claims')) out.claims = claimsList_();
+  if (me.role === 'admin') {
+    out.admins = teamList_();
+    var quota = 0; try { quota = MailApp.getRemainingDailyQuota(); } catch (e) {}
+    out.quota = quota;
+  }
+  return json_(out);
+}
+function adminSettings_(b, me) {
+  var email = me.email;
   var s = (b && b.settings) || {};
+  /* Every key asked for has to be in one of this person's areas, or nothing
+     is written: a half-applied save is the worse of the two. */
+  var keys = Object.keys(s).filter(function (k) { return k in SETTING_KEYS; });
+  for (var i = 0; i < keys.length; i++)
+    if (!can_(me, SETTING_AREA[keys[i]])) return refuse_(SETTING_AREA[keys[i]]);
   var now = settings_();
 
   /* What the sheet WOULD hold, worked out in full before a cell is touched.
@@ -786,8 +918,8 @@ function adminSettings_(b, email) {
   if (next.page_mode === 'locked' && !pass)
     return json_({ ok: false, changed: [], error: 'set a passcode before locking the page' });
   /* a wheel with nothing on it cannot be spun, so it cannot be switched on */
-  if (yes_(next.gift_active) && !giftProducts_(next.gift_products).length)
-    return json_({ ok: false, changed: [], error: 'list at least one product before switching the gift on' });
+  if (yes_(next.gift_active) && !yes_(now.gift_active) && !wheel_().length)
+    return json_({ ok: false, changed: [], error: 'put at least one product in stock before switching the gift on' });
   /* Clearing the site passcode while something leans on it would leave that
      thing locked with no way in, so say which one rather than let it happen. */
   if (!pass) {
@@ -800,7 +932,7 @@ function adminSettings_(b, email) {
   }
 
   changed.forEach(function (k) { setSetting_(k, next[k], email); });
-  return json_({ ok: true, changed: changed, settings: settings_(), public: publicSettings_() });
+  return json_({ ok: true, changed: changed, settings: settingsFor_(me), public: publicSettings_() });
 }
 
 /* ------------------------------------------------------------------- gifts
@@ -822,7 +954,125 @@ function giftProducts_(raw) {
     .split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 40);
 }
 function giftTab_() {
-  return tab_(SpreadsheetApp.openById(SHEET_ID), T_GIFTS, GIFT_HEADERS);
+  tab_(SpreadsheetApp.openById(SHEET_ID), T_GIFTS, GIFT_HEADERS);
+  return headers_(T_GIFTS, GIFT_HEADERS);
+}
+/* The claim a device holds now: a reset one no longer counts, so the device
+   can earn another. */
+function giftLive_(rows, device) {
+  for (var i = 0; i < rows.length; i++)
+    if (String(rows[i].device || '').trim() === device && !rows[i].reset) return rows[i];
+  return null;
+}
+
+/* ------------------------------------------------------------------- stock */
+
+function stockTab_() {
+  var book = SpreadsheetApp.openById(SHEET_ID);
+  var fresh = !book.getSheetByName(T_STOCK);
+  var sh = tab_(book, T_STOCK, STOCK_HEADERS);
+  if (fresh) {
+    /* the first time: the products the wheel already had, not counted */
+    var t = now_();
+    giftProducts_(settings_().gift_products).forEach(function (p) {
+      sh.appendRow([cell_(p), '', t, 'the product list before stock']);
+    });
+  }
+  return sh;
+}
+/* blank is "not counted"; anything else is a whole number, and something
+   that is not a number reads as none left -- less on the wheel, not more */
+function qty_(v) {
+  var s = String(v == null ? '' : v).trim();
+  if (s === '') return null;
+  var n = Math.floor(Number(s));
+  return isFinite(n) && n > 0 ? n : 0;
+}
+function stock_() {
+  stockTab_();
+  return rows_(T_STOCK, STOCK_HEADERS).map(function (r) {
+    return { product: String(r.product || '').trim(), quantity: qty_(r.quantity), _row: r._row,
+             updated: iso_(r.updated), by: String(r.by || '') };
+  }).filter(function (x) { return x.product; });
+}
+function wheel_() {
+  return stock_().filter(function (x) { return x.quantity === null || x.quantity > 0; }).slice(0, STOCK_MAX);
+}
+function stockPublic_() {
+  return stock_().map(function (x) {
+    return { product: x.product, quantity: x.quantity, on_wheel: x.quantity === null || x.quantity > 0,
+             updated: x.updated, by: x.by };
+  });
+}
+function stockFind_(rows, name) {
+  var k = String(name || '').trim().toLowerCase();
+  for (var i = 0; i < rows.length; i++) if (rows[i].product.toLowerCase() === k) return rows[i];
+  return null;
+}
+
+/* Body: {action:'admin.stock.set', product, quantity}   -- set the count
+         {action:'admin.stock.set', product, add}        -- restock by this many
+   Back: {ok:true, stock:[...]}
+   add is the safe way to restock while the counter is giving gifts out: a
+   count typed from a page loaded ten minutes ago would undo what was handed
+   over since. A product not on the list yet is added. */
+function stockSet_(b, me) {
+  var name = String((b && b.product) || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  if (!name) return json_({ ok: false, error: 'enter a product name' });
+  var rows = stock_(), row = stockFind_(rows, name), q;
+  if (b && 'add' in b) {
+    var d = Math.floor(Number(b.add));
+    if (!isFinite(d) || !d) return json_({ ok: false, error: 'enter how many to add' });
+    if (!row) return json_({ ok: false, error: 'that product is not on the list' });
+    q = Math.min(STOCK_MAX_QTY, Math.max(0, (row.quantity || 0) + d));
+  } else {
+    var raw = String(b.quantity == null ? '' : b.quantity).trim();
+    if (raw === '') return json_({ ok: false, error: 'enter how many there are' });
+    q = Math.floor(Number(raw));
+    if (!isFinite(q) || q < 0 || q > STOCK_MAX_QTY)
+      return json_({ ok: false, error: 'enter a count from 0 to ' + STOCK_MAX_QTY });
+  }
+  var sh = stockTab_(), t = now_();
+  if (row) {
+    sh.getRange(row._row, 2).setValue(q);
+    sh.getRange(row._row, 3).setValue(t);
+    sh.getRange(row._row, 4).setValue(me.email);
+  } else {
+    if (rows.length >= STOCK_MAX) return json_({ ok: false, error: 'the wheel holds ' + STOCK_MAX + ' products at most' });
+    sh.appendRow([cell_(name), q, t, me.email]);
+  }
+  return json_({ ok: true, stock: stockPublic_() });
+}
+function stockRemove_(b, me) {
+  var row = stockFind_(stock_(), b && b.product);
+  if (!row) return json_({ ok: false, error: 'that product is not on the list' });
+  sheet_(T_STOCK).deleteRow(row._row);
+  return json_({ ok: true, stock: stockPublic_() });
+}
+
+/* ------------------------------------------------------------------ claims */
+
+function claimsList_() {
+  return giftRows_().map(function (r) {
+    return { device: String(r.device || ''), game: String(r.game || ''), score: r.score,
+             name: String(r.name || ''), created: iso_(r.created), redeemed: iso_(r.redeemed),
+             product: String(r.product || ''), by: String(r.by || ''),
+             reset: iso_(r.reset), reset_by: String(r.reset_by || '') };
+  }).reverse().slice(0, 300);
+}
+/* Body: {action:'admin.claims.reset', device}
+   Let a device earn a gift again. Its rows stay -- the record of what was
+   handed out is kept -- and are stamped reset, so the device lookup passes
+   over them. A code it had not spent yet dies with the reset: otherwise the
+   old QR and a new one would be two gifts. */
+function claimsReset_(b, me) {
+  var device = String((b && b.device) || '').trim();
+  if (!/^[A-Za-z0-9_-]{6,40}$/.test(device)) return json_({ ok: false, error: 'not a device id' });
+  var live = giftRows_().filter(function (r) { return String(r.device || '').trim() === device && !r.reset; });
+  if (!live.length) return json_({ ok: false, error: 'that device has no gift to reset' });
+  var sh = sheet_(T_GIFTS), t = now_();
+  live.forEach(function (r) { sh.getRange(r._row, 10).setValue(t); sh.getRange(r._row, 11).setValue(me.email); });
+  return json_({ ok: true, reset: live.length, claims: claimsList_() });
 }
 function giftRows_() {
   /* the tab is made on first use rather than by setUp, so a script deployed
@@ -863,8 +1113,10 @@ function giftClaim_(b) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return json_({ ok: false, reason: 'busy' });
   try {
-    var have = giftFind_(giftRows_(), 'device', device);
+    var have = giftLive_(giftRows_(), device);
     if (have) return json_(giftPublic_(have));
+    /* nothing left to give: no code, rather than one the counter cannot honour */
+    if (!wheel_().length) return json_({ ok: false, reason: 'nostock' });
     var claim = Utilities.getUuid();
     sheet_(T_GIFTS).appendRow([claim, device, game, score, name, now_(), '', '', '']);
     return json_({ ok: true, claim: claim, redeemed: false, product: '' });
@@ -882,22 +1134,33 @@ function giftRedeem_(b, email) {
   var row = giftFind_(giftRows_(), 'claim', claim);
   if (!row) return json_({ ok: false, error: 'no such claim' });
 
-  var products = giftProducts_(settings_().gift_products);
+  var wheel = wheel_();
+  var products = wheel.map(function (x) { return x.product; });
   if (row.redeemed) {
     var idx = products.indexOf(String(row.product));
     return json_({ ok: true, already: true, product: String(row.product), index: idx,
                    products: products, at: row.redeemed, score: row.score, name: String(row.name || '') });
   }
-  if (!products.length) return json_({ ok: false, error: 'no products on the wheel' });
+  if (row.reset) return json_({ ok: false, error: 'This code was cancelled when the device was reset. The visitor can play again for a new one.' });
+  if (!wheel.length) return json_({ ok: false, error: 'Every product on the wheel is out of stock. Restock it in the admin page.' });
 
   /* Math.random on the script, not on the phone: the spin is decided here and
-     the wheel is told where to stop. */
-  var pick = Math.floor(Math.random() * products.length);
+     the wheel is told where to stop. Only what is in stock is on the wheel,
+     and the one it lands on is taken off the count in the same call. */
+  var pick = Math.floor(Math.random() * wheel.length);
+  var chosen = wheel[pick], left = null;
   var sh = sheet_(T_GIFTS);
   sh.getRange(row._row, 7).setValue(now_());
-  sh.getRange(row._row, 8).setValue(products[pick]);
+  sh.getRange(row._row, 8).setValue(chosen.product);
   sh.getRange(row._row, 9).setValue(email);
-  return json_({ ok: true, already: false, product: products[pick], index: pick,
+  if (chosen.quantity !== null) {
+    left = chosen.quantity - 1;
+    var st = sheet_(T_STOCK);
+    st.getRange(chosen._row, 2).setValue(left);
+    st.getRange(chosen._row, 3).setValue(now_());
+    st.getRange(chosen._row, 4).setValue(email);
+  }
+  return json_({ ok: true, already: false, product: chosen.product, index: pick, left: left,
                  products: products, score: row.score, name: String(row.name || '') });
 }
 
@@ -931,17 +1194,29 @@ var GUIDE = [
   { t: 'p', s: 'The product is picked by the booth script, not by the phone that scans. Nobody at the counter can steer the wheel.' },
 
   { t: 'h', s: 'The counter phone has to be signed in' },
-  { t: 'p', s: 'Once, on that phone: open *my.facerinna.com/admin.html*, enter an address that is on the Admins tab with active set to yes, and open the mailed link on that same phone. It stays signed in after that.' },
+  { t: 'p', s: 'Once, on that phone: open *my.facerinna.com/scan.html* (or the *Counter* icon on its home screen), enter an address an admin has added under *People* with *Counter* ticked, and type the code that is mailed to it. It stays signed in after that.' },
   { t: 'p', s: 'A phone that is not signed in gets a sign-in card instead of a wheel, and nothing is spent.' },
 
   { t: 'h', s: 'Turning the gift on, and off' },
-  { t: 'p', s: 'In the admin page, under *Facy Run gift*:' },
+  { t: 'p', s: 'In the admin page, under *The gift at the end of a game*:' },
   { t: 'ul', items: [
     '*Gift QR code is on* -- untick it and runs stop showing the QR code. Codes already issued still redeem, so nobody is left holding a dead code.',
-    '*Points a run needs* -- 6,000 to begin with. About 14,950 are reachable in a run, so 6,000 asks for a good run, not a perfect one.',
-    '*Products on the wheel* -- one per line. Delete a line to take a product off the wheel, add one to put it on.'
+    '*What each game has to score* -- 6,000 for Facy Run to begin with. About 14,950 are reachable in a run, so 6,000 asks for a good run, not a perfect one.'
   ] },
-  { t: 'p', s: 'A saved change reaches the booth screens within three minutes, or at once if a screen is reopened. Ticking the gift on with no products is refused: the wheel cannot spin on nothing.' },
+  { t: 'p', s: 'A saved change reaches the booth screens within three minutes, or at once if a screen is reopened.' },
+
+  { t: 'h', s: 'The wheel is the stock' },
+  { t: 'p', s: 'In the admin page, *Gifts*, then *Stock on the wheel*: one line per product with how many are left. Each gift handed out takes one off that product\'s count.' },
+  { t: 'ul', items: [
+    'A product at *0* leaves the wheel by itself. Restock it and it is back on the next spin.',
+    'Use *Add* to restock (it adds to what is left, so gifts handed out meanwhile are not undone). Use *Set* only to correct a count after counting the boxes.',
+    'When every product is at 0 the games stop giving out new codes, so nobody is handed a code the counter cannot honour.',
+    'A product showing *not counted* stays on the wheel until you set a number for it.'
+  ] },
+
+  { t: 'h', s: 'Letting a device play again' },
+  { t: 'p', s: 'One gift per device, until you say otherwise. In the admin page, *Gifts*, then *Claims*: find the visitor by name, game or time, and tap *Let play again*. That device can earn a new gift on its next run.' },
+  { t: 'p', s: 'The old row stays in the Gifts tab, marked with when and by whom it was reset. A code that device had not spent yet stops working, so the old QR and a new one cannot be two gifts.' },
 
   { t: 'h', s: 'One gift per device' },
   { t: 'p', s: 'The limit is per device, not per run. A visitor who plays again on the same phone gets the same code back, already spent. A different phone is a different device, which is the honest limit a booth can hold without asking anyone for a name.' },
@@ -955,8 +1230,10 @@ var GUIDE = [
     ['created', 'when the code was issued'],
     ['redeemed', 'when it was scanned, blank until then'],
     ['product', 'what the wheel gave'],
-    ['by', 'which admin scanned it']
+    ['by', 'which admin scanned it'],
+    ['reset, reset_by', 'when the device was let play again, and by whom']
   ] },
+  { t: 'p', s: 'The *Gift stock* tab has one row per product: its name and how many are left.' },
   { t: 'p', s: 'To clear a test claim of your own, delete its row.' },
 
   { t: 'h', s: 'The two scripts, and which is which' },
@@ -967,7 +1244,7 @@ var GUIDE = [
   ] },
   { t: 'ol', items: [
     'Open the project, select everything in the editor, delete it, paste the whole file, save.',
-    'For booth admin only: Run, then setUp. It adds only what is missing, which is the Gifts tab and the three gift rows on Settings.',
+    'For booth admin only: Run, then setUp. It adds only what is missing: new tabs, new columns and new settings rows.',
     'Deploy, Manage deployments, the pencil, Version: *New version*, Deploy.'
   ] },
   { t: 'note', s: 'New version, never New deployment. A new deployment mints a different address, and both pages would still be pointing at the old one.' },
@@ -984,6 +1261,76 @@ var GUIDE = [
 /* A read, so it runs before the lock: nothing here writes. */
 function guide_(email) {
   return json_({ ok: true, you: email, title: GUIDE_TITLE, blocks: GUIDE });
+}
+
+/* ------------------------------------------------------------------ people
+
+   admin.team.save   {person:{email, name, role, access:[...], active}}
+   admin.team.remove {email}
+   Back: {ok:true, admins:[...]}
+
+   Admins only. Nobody changes their own row here, and the owner's row is not
+   changed here at all: both are what stop a borrowed session from locking the
+   owner out or raising itself. Every write stamps updated and by. */
+/* A tab from before a column was added has fewer headings; name the new ones
+   so the sheet reads properly. A heading somebody changed by hand is kept. */
+function headers_(name, headers) {
+  var sh = sheet_(name);
+  var have = sh.getRange(1, 1, 1, headers.length).getValues()[0];
+  headers.forEach(function (h, i) {
+    if (!String(have[i] || '').trim()) sh.getRange(1, i + 1).setValue(h);
+  });
+  return sh;
+}
+function teamHeaders_() { return headers_(T_ADMINS, ADMIN_HEADERS); }
+function teamGuard_(me, email) {
+  if (me.role !== 'admin') return json_({ ok: false, reason: 'forbidden', error: 'Only an admin can change who has access.' });
+  if (!email) return json_({ ok: false, error: 'enter a valid e-mail address' });
+  if (email === me.email) return json_({ ok: false, error: 'You cannot change your own access. Ask another admin.' });
+  if (email === owner_()) return json_({ ok: false, error: 'The owner always has full access and is changed only in the sheet.' });
+  return null;
+}
+function teamSave_(b, me) {
+  var p = (b && b.person) || {};
+  var email = email_(p.email);
+  var stop = teamGuard_(me, email); if (stop) return stop;
+
+  var role = String(p.role || '').toLowerCase() === 'admin' ? 'admin' : 'staff';
+  var access = [];
+  if (role === 'staff') [].concat(p.access || []).forEach(function (k) {
+    k = String(k).toLowerCase();
+    if (PERM_KEYS.indexOf(k) >= 0 && access.indexOf(k) < 0) access.push(k);
+  });
+  /* the order PERMS lists them, so the sheet reads the same way every time */
+  access.sort(function (a, c) { return PERM_KEYS.indexOf(a) - PERM_KEYS.indexOf(c); });
+  var active = (p.active === false || /^(no|n|false|0|off)$/i.test(String(p.active))) ? 'no' : 'yes';
+
+  var sh = teamHeaders_();
+  var row = adminRow_(email);
+  var t = now_();
+  if (row) {
+    var name = ('name' in p) ? cell_(String(p.name || '').replace(/\s+/g, ' ').trim().slice(0, 60)) : row.name;
+    sh.getRange(row._row, 2).setValue(active);
+    sh.getRange(row._row, 3).setValue(name);
+    sh.getRange(row._row, 5).setValue(role);
+    sh.getRange(row._row, 6).setValue(access.join(', '));
+    sh.getRange(row._row, 7).setValue(t);
+    sh.getRange(row._row, 8).setValue(me.email);
+  } else {
+    if (rows_(T_ADMINS, ADMIN_HEADERS).length >= TEAM_MAX)
+      return json_({ ok: false, error: 'the list is full (' + TEAM_MAX + ' people)' });
+    sh.appendRow([email, active, cell_(String(p.name || '').replace(/\s+/g, ' ').trim().slice(0, 60)),
+                  t, role, access.join(', '), t, me.email]);
+  }
+  return json_({ ok: true, admins: teamList_() });
+}
+function teamRemove_(b, me) {
+  var email = email_(b && b.email);
+  var stop = teamGuard_(me, email); if (stop) return stop;
+  var row = adminRow_(email);
+  if (!row) return json_({ ok: false, error: 'that address is not on the list' });
+  sheet_(T_ADMINS).deleteRow(row._row);
+  return json_({ ok: true, admins: teamList_() });
 }
 
 function doPost(e) {
@@ -1006,21 +1353,28 @@ function doPost(e) {
 
     /* the admin ones: every write takes the lock */
     if (action.indexOf('admin.') !== 0) return json_({ ok: false, error: 'unknown action' });
-    var email = auth_(b);
-    if (!email) return json_({ ok: false, error: 'signed out' });
-    if (action === 'admin.get') return adminGet_(email);
+    var me = auth_(b);
+    if (!me) return json_({ ok: false, error: 'signed out' });
+    var email = me.email;
+    if (ACTION_AREA[action] && !can_(me, ACTION_AREA[action])) return refuse_(ACTION_AREA[action]);
+    if (action === 'admin.get') return adminGet_(me);
     if (action === 'admin.guide') return guide_(email);
 
     var lock = LockService.getScriptLock();
     if (!lock.tryLock(10000)) return json_({ ok: false, error: 'busy, try again' });
     try {
       switch (action) {
-        case 'admin.settings':        return adminSettings_(b, email);
+        case 'admin.settings':        return adminSettings_(b, me);
         case 'admin.segment.save':    return saveSegment_(b, email);
         case 'admin.segment.delete':  return deleteSegment_(b, email);
         case 'admin.segment.order':   return orderSegments_(b, email);
         case 'admin.section.set':     return setSection_(b, email);
         case 'admin.gift.redeem':     return giftRedeem_(b, email);
+        case 'admin.team.save':       return teamSave_(b, me);
+        case 'admin.stock.set':       return stockSet_(b, me);
+        case 'admin.stock.remove':    return stockRemove_(b, me);
+        case 'admin.claims.reset':    return claimsReset_(b, me);
+        case 'admin.team.remove':     return teamRemove_(b, me);
         default: return json_({ ok: false, error: 'unknown action' });
       }
     } finally { lock.releaseLock(); }
