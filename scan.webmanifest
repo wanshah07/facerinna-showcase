@@ -1,0 +1,17 @@
+{
+  "id": "./scan.html",
+  "name": "FACERINNA Booth Counter",
+  "short_name": "Counter",
+  "description": "The booth counter screen: scan a visitor's gift code and spin the wheel.",
+  "start_url": "./scan.html",
+  "scope": "./scan.html",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#0B1620",
+  "theme_color": "#0B1620",
+  "icons": [
+    {"src": "counter-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "counter-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
