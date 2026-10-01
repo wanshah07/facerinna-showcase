@@ -997,9 +997,14 @@ function markLane(){
   S.lane = n;
 }
 function jump(){
-  if (!S.running || !S.grounded) return;
+  if (!S.running) return;
+  /* A tap a moment before he lands still counts: on a phone the press is
+     often a few frames early, and a jump that silently does nothing reads
+     as a broken button. */
+  if (!S.grounded){ S.jumpBuf = 0.15; return; }
   S.vy = JUMP_V;
   S.grounded = false;
+  S.jumpBuf = 0;
 }
 
 document.addEventListener('keydown', function(e){
@@ -1206,7 +1211,7 @@ function startGame(){
   clearField();
   S.running = true; S.over = false;
   S.lane = 1; S.targetX = 0; S.x = 0;
-  S.y = 0; S.vy = 0; S.grounded = true;
+  S.y = 0; S.vy = 0; S.grounded = true; S.jumpBuf = 0;
   S.speed = 14; S.dist = 0; S.score = 0; S.drops = 0; S.bonus = 0;
   S.shield = 0; S.spawnZ = -46; S.shake = 0;
   shieldBubble.visible = false;
@@ -1337,7 +1342,11 @@ function tick(){
     // jump
     S.y += S.vy*dt;
     S.vy += GRAVITY*dt;
-    if (S.y <= 0){ S.y = 0; S.vy = 0; S.grounded = true; }
+    S.jumpBuf = Math.max(0, (S.jumpBuf||0) - dt);
+    if (S.y <= 0){
+      S.y = 0; S.vy = 0; S.grounded = true;
+      if (S.jumpBuf > 0) jump();
+    }
 
     // shield timer
     if (S.shield > 0){

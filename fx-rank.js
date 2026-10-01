@@ -205,6 +205,8 @@
       'border:0;cursor:pointer;font:inherit;font-size:15px;line-height:1;font-weight:800;' +
       'color:rgba(255,255,255,.7);background:rgba(255,255,255,.10)}' +
     '.fxr-x:hover{background:rgba(255,255,255,.20);color:#fff}' +
+    /* a finger needs ~44px; the pad around the dot is invisible */
+    '.fxr-x::after{content:"";position:absolute;inset:-9px}' +
     '.fxr-row{display:flex;align-items:center;gap:10px;padding:7px 0;font-weight:700;' +
       'font-size:14px;color:rgba(255,255,255,.86);border-top:1px solid rgba(255,255,255,.10)}' +
     '.fxr-row:first-of-type{border-top:0}' +

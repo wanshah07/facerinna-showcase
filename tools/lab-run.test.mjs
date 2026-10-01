@@ -88,6 +88,28 @@ chk('and he is off the ground a moment later', air.y>0.2, {y:+air.y.toFixed(2)})
 await until(()=>__peek().grounded===true);
 chk('then back down', (await p.evaluate(()=>__peek().grounded))===true);
 
+/* --- a tap just before he lands still jumps ---
+   On a phone the press often arrives a few frames early. It used to be
+   dropped because he was not on the ground yet, and the button felt dead. */
+await p.waitForTimeout(300);
+await p.evaluate(()=>__set({y:0.04,vy:-2,grounded:false}));
+await p.mouse.down(); await p.mouse.up();
+await until(()=>__peek().vy>0 || __peek().y>0.2);
+const buf=await p.evaluate(()=>__peek());
+chk('a tap a moment before landing jumps on touchdown', buf.vy>0||buf.y>0.2,
+    {y:+buf.y.toFixed(2), vy:+buf.vy.toFixed(2)});
+await until(()=>__peek().grounded===true);
+/* but not one from long before: a tap at the top of a jump is not a second
+   jump half a second later */
+await p.waitForTimeout(300);
+await p.evaluate(()=>__set({y:2.2,vy:0,grounded:false}));
+await p.mouse.down(); await p.mouse.up();
+await until(()=>__peek().grounded===true);
+await p.waitForTimeout(400);
+const late=await p.evaluate(()=>__peek());
+chk('a tap high in the air does not bounce him again later', late.grounded&&late.y===0,
+    {y:+late.y.toFixed(2), grounded:late.grounded});
+
 /* --- A TAP MUST BE A JUMP AND NOTHING ELSE ---
    This was the bug: 14px of wander in any direction counted as a slide, and
    a thumb landing on glass wanders further than that. So a tap slid him

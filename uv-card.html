@@ -43,7 +43,8 @@
     .sp{display:none}
   }
   .back{justify-self:start;color:#CFE3FF;text-decoration:none;font-weight:700;font-size:13px;
-    letter-spacing:.06em;opacity:.8;padding:6px 8px 6px 0}
+    letter-spacing:.06em;opacity:.8;padding:6px 8px 6px 0;position:relative}
+  .back::after{content:'';position:absolute;inset:-8px -4px -8px -8px}
   .ttl{font-weight:900;font-size:13px;letter-spacing:.34em;text-transform:uppercase;
     color:#DDD1FF;text-shadow:0 0 18px rgba(170,120,255,.55)}
   .hint{text-align:center;font-size:14px;font-weight:700;color:#BFD8F5;
