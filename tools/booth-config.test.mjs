@@ -56,6 +56,14 @@ function handle(b){
       return b.passcode===S.passcode ? {ok:true} : {ok:false,error:'wrong passcode'};
     }
     case 'login': if(S.admins.some(a=>a.email===String(b.email).toLowerCase())) S.mails.push(b.email); return {ok:true,sent:true};
+    case 'code': { const e=String(b.email).toLowerCase();
+      if(S.admins.some(a=>a.email===e)){ S.mails.push(e); S.codes=S.codes||{}; S.codes[e]={code:'482913',tries:0}; }
+      return {ok:true,sent:true}; }
+    case 'redeem': { const e=String(b.email).toLowerCase(), r=(S.codes||{})[e];
+      if(!r) return {ok:false,reason:'nocode'};
+      if(String(b.code)!==r.code){ r.tries++; return {ok:false,reason:'badcode',left:5-r.tries}; }
+      delete S.codes[e]; const t='33333333-3333-4333-8333-333333333333'; S.tokens[t]=e;
+      return {ok:true,token:t,email:e,role:'admin',access:[]}; }
     case 'exchange': { const e=S.links[b.key]; if(!e) return {ok:false,error:'that link is not valid'}; delete S.links[b.key];
       const t='33333333-3333-4333-8333-333333333333'; S.tokens[t]=e; return {ok:true,token:t,email:e}; }
     case 'whoami': return auth() ? {ok:true,email:auth()} : {ok:false,error:'signed out'};
@@ -188,9 +196,25 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   const c=await ctx(); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto(BASE+'/admin.html',{waitUntil:'load'}); await sleep(300);
   chk('admin: connected, so no warning; the sign-in form shows', await p.evaluate(()=>document.getElementById('notConfigured').hidden && !document.getElementById('viewLogin').hidden && document.getElementById('app').hidden));
+  /* Signing in is by a mailed code, the counter screen's way. */
+  await p.fill('#loginEmail','stranger@elsewhere.test'); await p.click('#loginBtn');
+  chk('admin: any address gets the same answer, so the form cannot list the admins',
+      await until(()=>p.evaluate(()=>!document.getElementById('codeStep').hidden && /If that address is on the admin list/.test(document.getElementById('loginSay').textContent))));
+  chk('admin: ...but nothing is mailed to an address that is not on the list', !S.mails.includes('stranger@elsewhere.test'));
+  await p.click('#sendAgain');
+  chk('admin: "use another address" goes back to the address', await p.evaluate(()=>document.getElementById('codeStep').hidden && !document.getElementById('loginEmail').readOnly));
   await p.fill('#loginEmail','Wan@facerinna.test'); await p.click('#loginBtn');
-  chk('admin: asking for a link posts the address and says check your inbox', await until(()=>p.evaluate(()=>!document.getElementById('sentNote').hidden)) && S.posted.some(x=>x.action==='login' && x.email==='Wan@facerinna.test'));
-  chk('admin: the stand-in would have mailed it', S.mails.includes('Wan@facerinna.test') || S.mails.includes('wan@facerinna.test'));
+  chk('admin: asking for a code posts the address and asks for the code', await until(()=>p.evaluate(()=>!document.getElementById('codeStep').hidden)) && S.posted.some(x=>x.action==='code' && x.email==='Wan@facerinna.test'));
+  chk('admin: the stand-in would have mailed it', S.mails.includes('wan@facerinna.test'));
+  await p.fill('#loginCode','111111'); await p.click('#loginBtn');
+  chk('admin: a wrong code says so, with the tries left', await until(()=>p.evaluate(()=>/not right.*4 more tries/.test(document.getElementById('loginErr').textContent))));
+  chk('admin: ...and stays signed out', await p.evaluate(()=>document.getElementById('app').hidden));
+  await p.fill('#loginCode','482913'); await p.click('#loginBtn');
+  chk('admin: the right code signs in', await until(()=>p.evaluate(()=>!document.getElementById('app').hidden)));
+  chk('admin: ...and keeps the session', await p.evaluate(()=>localStorage.getItem('fx.admin.token')==='33333333-3333-4333-8333-333333333333'));
+  await p.click('#signOut'); await sleep(200);
+  chk('admin: signing out goes back to the address step', await p.evaluate(()=>!document.getElementById('viewLogin').hidden && document.getElementById('codeStep').hidden));
+  S.tokens['33333333-3333-4333-8333-333333333333']=undefined;
 
   /* the link is opened -- from the mail, so a fresh load, not a hash change
      on the page already open (that would be a same-document navigation and

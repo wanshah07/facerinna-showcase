@@ -149,18 +149,19 @@
   <section class="login" id="viewLogin" hidden>
     <div class="card">
       <h1>Sign in</h1>
-      <p class="note">Only people an admin has added can sign in. Enter your address and a link will be mailed to you. No password.</p>
+      <p class="note" id="loginLead">Only people an admin has added can sign in. Enter your address and a six-digit code will be mailed to you. No password.</p>
       <form id="loginForm">
         <label for="loginEmail">Your e-mail</label>
         <input type="email" id="loginEmail" autocomplete="email" required placeholder="you@facerinna.com">
-        <div class="row" style="margin-top:14px"><button class="btn" id="loginBtn" type="submit">Send me a sign-in link</button></div>
+        <div id="codeStep" hidden>
+          <label for="loginCode">The code from the e-mail</label>
+          <input type="text" id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="6 digits">
+        </div>
+        <div class="row" style="margin-top:14px"><button class="btn" id="loginBtn" type="submit">Send me a code</button>
+          <button class="btn ghost sm" id="sendAgain" type="button" hidden>Use another address</button></div>
+        <p class="note" id="loginSay" hidden></p>
         <p class="note" id="loginErr" style="color:var(--bad)" hidden></p>
       </form>
-      <div id="sentNote" hidden>
-        <p><b>Check your inbox.</b> If that address is an admin, a sign-in link is on its way. It works once, for 20 minutes.</p>
-        <p class="note">Nothing arrived? Check spam, or ask an admin to add your address under People.</p>
-        <button class="btn ghost sm" id="sendAgain" type="button">Use another address</button>
-      </div>
       <p class="note" style="margin-top:18px"><a href="index.html">&larr; Back to the booth page</a></p>
     </div>
   </section>
@@ -431,19 +432,63 @@ function api(action, body){
 }
 
 /* ---- sign in ---------------------------------------------------------- */
-function toLogin(){ show('viewLogin', true); show('app', false); show('who', false); show('sentNote', false); show('loginForm', true); }
+/* Signing in is the counter screen's way: an address an admin has added
+   under People, a six-digit code mailed to it, typed in here. The script
+   mails only addresses on the list, and answers every address the same way,
+   so the form cannot be used to find out who is on it. A code works once,
+   for ten minutes, five tries. (Sign-in links already in somebody's inbox
+   still work until they run out.) */
+var loginStage = 'email';
+function loginErr(t){ $('loginErr').textContent = t || ''; show('loginErr', !!t); }
+function loginSay(t){ $('loginSay').textContent = t || ''; show('loginSay', !!t); }
+function toEmailStep(){
+  loginStage = 'email';
+  $('loginEmail').readOnly = false; $('loginCode').value = ''; $('loginCode').required = false;
+  show('codeStep', false); show('sendAgain', false);
+  $('loginBtn').textContent = 'Send me a code';
+}
+function toLogin(){ show('viewLogin', true); show('app', false); show('who', false); toEmailStep(); loginSay(''); loginErr(''); }
+/* the code answers with a reason, not an error, so it is read here and not by api() */
+function redeem(email, code){
+  var ctl = ('AbortController' in window) ? new AbortController() : null;
+  var timer = ctl && setTimeout(function(){ ctl.abort(); }, 20000);
+  return fetch(ADMIN_API, { method:'POST', body:JSON.stringify({ action:'redeem', email:email, code:code }),
+                            signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ return r.json(); })
+    .finally(function(){ if(timer) clearTimeout(timer); });
+}
 $('loginForm').addEventListener('submit', function(e){
   e.preventDefault();
-  var email = $('loginEmail').value.trim();
-  $('loginBtn').disabled = true; show('loginErr', false);
-  api('login', { email:email }).then(function(){
-    show('loginForm', false); show('sentNote', true);
-  }).catch(function(err){
-    $('loginErr').textContent = err.message === 'not connected' ? 'This page is not connected to the script yet.' : err.message;
-    show('loginErr', true);
-  }).finally(function(){ $('loginBtn').disabled = false; });
+  var email = $('loginEmail').value.trim(), btn = $('loginBtn');
+  if(!ADMIN_API){ loginErr('This page is not connected to the script yet.'); return; }
+  btn.disabled = true; loginErr('');
+  if(loginStage === 'email'){
+    api('code', { email:email }).then(function(){
+      loginStage = 'code';
+      $('loginEmail').readOnly = true;
+      show('codeStep', true); show('sendAgain', true); $('loginCode').required = true;
+      btn.textContent = 'Sign in';
+      loginSay('If that address is on the admin list, a code is on its way. It lasts ten minutes. Nothing arrived? Check spam, or ask an admin to add you under People.');
+      $('loginCode').focus();
+    }).catch(function(err){ loginErr(err.message); })
+      .finally(function(){ btn.disabled = false; });
+    return;
+  }
+  redeem(email, $('loginCode').value).then(function(j){
+    if(j && j.ok === true && j.token){ loginSay(''); return enter(j.token, j.email); }
+    var why = (j && j.reason) || '';
+    loginErr(why === 'badcode'     ? 'That code is not right.' + (j.left ? ' ' + j.left + ' more ' + (j.left===1?'try':'tries') + '.' : '')
+           : why === 'codeexpired' ? 'That code has run out. Ask for another.'
+           : why === 'toomany'     ? 'Too many wrong tries. Ask for a new code.'
+           : why === 'revoked'     ? 'That address is no longer on the admin list.'
+           : why === 'nocode'      ? 'No code has been sent to that address yet. Ask for one.'
+           : (j && j.error) || 'That did not work. Try again.');
+    if(why === 'codeexpired' || why === 'toomany' || why === 'nocode' || why === 'revoked'){ toEmailStep(); loginSay(''); }
+    else { $('loginCode').select(); }
+  }).catch(function(err){ loginErr('Could not reach the booth script: ' + (err && err.message || err)); })
+    .finally(function(){ btn.disabled = false; });
 });
-$('sendAgain').addEventListener('click', function(){ show('sentNote', false); show('loginForm', true); });
+$('sendAgain').addEventListener('click', function(){ toEmailStep(); loginSay(''); loginErr(''); $('loginEmail').focus(); });
 $('signOut').addEventListener('click', function(){
   var t = state.token;
   state.token = null; try{ localStorage.removeItem(KEY); }catch(e){}
