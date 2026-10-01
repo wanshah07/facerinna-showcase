@@ -322,6 +322,89 @@ val,_,_=cv2.QRCodeDetector().detectAndDecode(big); print(val)`, file],{encoding:
   await c.close();
 }
 
+/* ------------------------------------------ 6a. the bricks are climbable
+   A full jump used to peak at 82px: under the 96px a row-7 platform needs
+   and the 128px of a row-6 one, so nobody could stand on a brick. And a
+   phone tap held the jump for 120ms, which cut it to a 64px hop. Now a full
+   jump clears both rows, and on glass every jump is a full one. */
+console.log('\nthe bricks can be climbed, and a phone tap is a full jump');
+{
+  const {c,p,errs}=await open_({width:1440,height:900},false,'');
+  const r=await p.evaluate(()=>{
+    const F=window.__facy, TILE=F.TILE, out={};
+    const settle=()=>{ for(let i=0;i<40;i++) F.step(); };
+    F.start(); F.keys.left=F.keys.right=F.keys.jump=false; settle();
+    const S=F.S(); const feet0=S.py+S.h; F.touch(false); F.keys.jump=true; let apex=S.py;
+    for(let i=0;i<70;i++){ F.step(); apex=Math.min(apex,S.py); } F.keys.jump=false; settle();
+    out.hold=Math.round(feet0-(apex+S.h));
+    /* walk onto a row-6 platform: find one with ground in front, stand two
+       tiles short, run at it and jump */
+    const T=F.map; let col=-1;
+    for(let c2=12;c2<F.COLS-10 && col<0;c2++) if(T(c2,6)===2 && !T(c2-1,6) && T(c2-2,10)===1 && T(c2-1,10)===1 && !T(c2-2,6) && !T(c2-2,7) && !T(c2-1,7)) col=c2;
+    out.col=col;
+    F.start(); F.keys.left=F.keys.right=F.keys.jump=false;
+    const P=F.S(); P.px=(col-2)*TILE; P.py=10*TILE-P.h; P.vx=0; P.vy=0; settle();
+    F.keys.right=true; F.keys.jump=true;
+    let onTop=false; for(let i=0;i<90 && !onTop;i++){ F.step(); if(P.onGround && Math.abs(P.py+P.h-6*TILE)<2) onTop=true; }
+    F.keys.right=F.keys.jump=false;
+    out.row6=onTop;
+    return out;
+  });
+  chk('a full jump clears a row-6 platform with room to spare ('+r.hold+'px, 128 needed)', r.hold>=136, r);
+  chk('a run and a jump land Facy on top of the bricks', r.col>0 && r.row6, r);
+  await c.close();
+}
+for(const how of ['canvas','pad']){
+  const {c,p,errs}=await open_({width:844,height:390},true,'');
+  await p.evaluate(()=>{ const F=window.__facy; F.start(); F.keys.left=F.keys.right=F.keys.jump=false; });
+  await p.waitForTimeout(700);
+  const feet0=await p.evaluate(()=>{ const S=window.__facy.S(); return S.py+S.h; });
+  if(how==='canvas') await p.touchscreen.tap(422, 120);
+  else { const bx=await p.$eval('#jump', e=>{ const R=e.getBoundingClientRect(); return [R.x+R.width/2, R.y+R.height/2]; }); await p.touchscreen.tap(bx[0], bx[1]); }
+  let apex=1e9; for(let i=0;i<30;i++){ apex=Math.min(apex, await p.evaluate(()=>window.__facy.S().py)); await p.waitForTimeout(30); }
+  const h=await p.evaluate(a=>{ const S=window.__facy.S(); return Math.round(a-(0+S.h)); }, feet0)-apex;
+  chk('phone: a quick tap on the '+(how==='canvas'?'screen':'jump button')+' is a full jump ('+h+'px), not a hop', h>=128, h);
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+
+/* ------------------------------------------ 6b. the real packaging
+   The three choices at a gate are the products themselves: the site's own
+   packshots, carried in the page (the booth plays offline), each with a
+   short name under its bubble. And no UV ray hovers among them -- one used
+   to sit on the middle choice at the Acne gate, so picking it cost a life. */
+console.log('\nthe real packaging in the bubbles');
+{
+  const {c,p,errs}=await open_({width:1280,height:720},false,'');
+  await p.waitForTimeout(300);
+  const r=await p.evaluate(()=>{
+    const F=window.__facy, names=new Set();
+    F.GATES.forEach(g=>{ names.add(g.right); g.wrong.forEach(w=>names.add(w)); });
+    const out={names:[...names], missing:[], undecoded:[], external:[]};
+    names.forEach(n=>{ const pk=F.PACK[n];
+      if(!pk) { out.missing.push(n); return; }
+      if(!(pk.img.complete && pk.img.naturalWidth>0)) out.undecoded.push(n);
+      if(!/^data:image\/webp;base64,/.test(pk.src)) out.external.push(n); });
+    const m=document.createElement('canvas').getContext('2d'); m.font='bold 9px system-ui,sans-serif';
+    out.wide=Object.keys(F.PACK).filter(k=>F.PACK[k].label.some(l=>m.measureText(l).width>66));
+    out.widest=Math.max(...Object.keys(F.PACK).flatMap(k=>F.PACK[k].label.map(l=>m.measureText(l).width)));
+    const g=document.getElementById('stage').getContext('2d'), orig=g.drawImage; let drawn=0;
+    g.drawImage=function(img){ if(img && /^data:image\/webp/.test(img.src||'')) drawn++; return orig.apply(this, arguments); };
+    F.start(); F.teleport(21); F.draw(); g.drawImage=orig;
+    out.drawn=drawn;
+    out.raysInGates=F.ents().filter(e=>e.kind==='ray' && [24,66,96,124,186].some(k=>e.x/F.TILE>=k && e.x/F.TILE<=k+7)).length;
+    return out;
+  });
+  chk('every product a gate offers has its packaging ('+r.names.length+' products)', r.names.length===10 && r.missing.length===0, r.missing);
+  chk('...carried inside the page, so it works with the wifi off', r.external.length===0, r.external);
+  chk('...and every picture decodes', r.undecoded.length===0, r.undecoded);
+  chk('a gate on screen draws its three packshots', r.drawn===3, r.drawn);
+  chk('every label line fits, unsqueezed (widest '+Math.round(r.widest)+'px of 66)', r.wide.length===0, r.wide);
+  chk('no UV ray hovers inside a gate', r.raysInGates===0, r.raysInGates);
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+
 /* ---------------------------------------------------- 7. the wiring */
 console.log('\nthe wiring');
 const src=fs.readFileSync(path.join(ROOT,'facy-run.html'),'utf8');
