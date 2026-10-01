@@ -96,6 +96,9 @@
 .gamerows .check{margin-top:6px;min-height:36px}
 .gamerows .check input{width:20px;height:20px;flex:0 0 auto}
 .gamerows .off span{color:#8095ab;text-decoration:line-through}
+.gamerows .check b{margin-left:auto;font-size:11px;letter-spacing:.06em;padding:3px 8px;border-radius:999px;
+  background:#e3f6ee;color:#11734d;text-decoration:none}
+.gamerows .off b{background:#fde8e6;color:#b03a2e}
 .stack{display:grid;gap:18px;align-content:start;min-width:0}
 /* a person whose areas fill one column only gets one column, not an empty
    left-hand side */
@@ -204,10 +207,11 @@
         </div>
         <div class="card" id="cardGames" data-area="games">
           <h2>Games on the booth page</h2>
-          <p class="note">Untick a game to take it off the booth page: off the wheel, off the ranking board and out of the chat. Anyone who opens it from an old link or a QR code sees a “resting” card with the way back, and it gives no gift while it is off. Tick it again to bring it back. Then press <b>Save settings</b>.</p>
+          <p class="note"><b>Ticked = ON</b> (visitors see it). <b>Unticked = OFF</b>. Untick a game to take it off the booth page: off the wheel, off the ranking board and out of the chat. Anyone who opens it from an old link or a QR code sees a “resting” card with the way back, and it gives no gift while it is off. Tick it again to bring it back. Then press <b>Save settings</b>.</p>
           <p class="note warn" id="gamesOld" hidden>The booth script running now is from before game switches, so it would not keep this. Paste the new <b>booth-admin.gs</b> into the script and deploy, then reload this page.</p>
           <div id="gameToggles" class="gamerows"></div>
           <p class="note" id="gamesCount"></p>
+          <p class="note">Signed in on this device, you still see every game on the booth page, the off ones greyed with an “OFF” label. To see it as a visitor does, open it in a private window.</p>
         </div>
         <div class="card" id="cardGift" data-area="gift">
           <h2>The gift at the end of a game</h2>
@@ -653,7 +657,8 @@ function gameToggles(raw){
     var inp = document.createElement('input'); inp.type = 'checkbox';
     inp.setAttribute('data-game', g[0]); inp.checked = off.indexOf(g[0]) < 0; inp.disabled = old;
     var lab = document.createElement('span'); lab.textContent = g[1];
-    row.appendChild(inp); row.appendChild(lab); box.appendChild(row);
+    var st = document.createElement('b');
+    row.appendChild(inp); row.appendChild(lab); row.appendChild(st); box.appendChild(row);
     inp.addEventListener('change', gamesCount);
   });
   gamesCount();
@@ -664,7 +669,10 @@ function gamesOffValue(){
 }
 function gamesCount(){
   var all = $('gameToggles').querySelectorAll('input[data-game]');
-  var on = [].filter.call(all, function(i){ i.parentNode.classList.toggle('off', !i.checked); return i.checked; }).length;
+  var on = [].filter.call(all, function(i){
+    i.parentNode.classList.toggle('off', !i.checked);
+    var st = i.parentNode.querySelector('b'); if(st) st.textContent = i.checked ? 'ON' : 'OFF';
+    return i.checked; }).length;
   $('gamesCount').textContent = on === all.length ? 'All ' + all.length + ' games are on.'
     : !on ? 'Every game is off: the booth page says the games are resting.'
     : on + ' of ' + all.length + ' games on.';
