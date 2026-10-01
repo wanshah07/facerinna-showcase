@@ -124,7 +124,7 @@ console.log('\nthe admin page');
   await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));
   await until(()=>p.evaluate(()=>document.querySelectorAll('#gameToggles input').length===8));
   const v = await p.evaluate(()=>({ shown:!document.getElementById('cardGames').hidden,
-    names:[...document.querySelectorAll('#gameToggles label')].map(l=>l.textContent),
+    names:[...document.querySelectorAll('#gameToggles label span')].map(l=>l.textContent),
     on:[...document.querySelectorAll('#gameToggles input')].filter(i=>i.checked).length,
     note:document.getElementById('gamesCount').textContent }));
   chk('the Games card is on the Settings tab', v.shown, v);
@@ -133,6 +133,7 @@ console.log('\nthe admin page');
   await p.click('#gameToggles input[data-game="uv-card"]');
   await p.click('#gameToggles input[data-game="deep-lab"]');
   chk('unticking counts down at once', /6 of 8 games on/.test(await p.textContent('#gamesCount')));
+  chk('...and each row says ON or OFF in words', await p.evaluate(()=>[...document.querySelectorAll('#gameToggles label b')].map(x=>x.textContent).join())==='ON,ON,ON,OFF,ON,OFF,ON,ON');
   chk('...and strikes the name through', await p.evaluate(()=>getComputedStyle(document.querySelector('#gameToggles input[data-game="uv-card"]').nextSibling).textDecorationLine==='line-through'));
   await p.click('#saveSettings');
   await until(()=>setting('games_off')==='deep-lab,uv-card' || setting('games_off')==='uv-card,deep-lab');
@@ -255,6 +256,14 @@ console.log('\nthe booth page, for an admin');
   await until(()=>p.evaluate(()=>(document.getElementById('boothRibbon')||{}).textContent||'').then(t=>/off/.test(t)));
   const w = await wheel(p);
   chk('an admin sees every game', w.ids.length===8, w.ids);
+  const marks = await p.evaluate(()=>[...document.querySelectorAll('#gameRing .cg-item')].map(el=>({id:el.dataset.game,
+    off:el.classList.contains('cg-adminoff'), label:getComputedStyle(el,'::after').content,
+    grey:getComputedStyle(el.querySelector('.cg-card')).filter})));
+  chk('...the off ones greyed and labelled, so the switch is plainly working',
+      marks.filter(m=>m.off).map(m=>m.id).join()==='uv-card,facy-run' &&
+      marks.filter(m=>m.off).every(m=>/OFF/.test(m.label) && /grayscale/.test(m.grey)), marks);
+  chk('...and the ones that are on look as they always did',
+      marks.filter(m=>!m.off).every(m=>m.label==='none' && m.grey==='none'), marks.filter(m=>!m.off));
   chk('...and the ribbon says which are off for visitors', /UV Card, Facy Run are off/.test(w.ribbon), w.ribbon);
   chk('no page errors', errs.length===0, errs);
   await c.close();

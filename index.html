@@ -2198,6 +2198,14 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
 .booth-sec-hidden,.booth-link-hidden{display:none!important}
 /* a game the admin switched off: off the wheel, and the quiz with it */
 .cg-item.cg-off,.games-off-skin-iq #skinIQ{display:none!important}
+/* An admin still sees an off game, so they can check it, but greyed and
+   labelled: without this a switched-off game looked exactly like one that
+   was on, and the switch looked broken. */
+.cg-item.cg-adminoff .cg-card{filter:grayscale(1) brightness(.62)}
+.cg-item.cg-adminoff::after{content:'OFF \00B7  hidden from visitors';position:absolute;left:50%;top:14px;
+  transform:translateX(-50%);z-index:5;white-space:nowrap;pointer-events:none;
+  background:#C0392B;color:#fff;font:800 11px/1 Inter,system-ui,sans-serif;letter-spacing:.08em;
+  padding:7px 11px;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 .games-rest{text-align:center;color:var(--muted);font-weight:600;margin:8px auto 0;max-width:520px}
 /* A locked one keeps its place on the page and shows a card instead of its
    contents. The contents are still in the published file -- this is a closed
@@ -7731,9 +7739,11 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     return String(st && st.games_off || '').toLowerCase().split(/[\s,;]+/).filter(function(id){ return GAME_NAMES[id]; });
   }
   function applyGames(off, isAdmin){
-    if(isAdmin) off=[];                      /* an admin sees every game; the ribbon says which are off */
-    window.__fxGamesOff=off.slice();
     var items=[].slice.call(document.querySelectorAll('#gameRing .cg-item[data-game]'));
+    /* an admin sees every game, the off ones greyed with a label; the ribbon says the same */
+    items.forEach(function(el){ el.classList.toggle('cg-adminoff', !!isAdmin && off.indexOf(el.dataset.game)>=0); });
+    if(isAdmin) off=[];
+    window.__fxGamesOff=off.slice();
     var on=[];
     items.forEach(function(el){
       var gone=off.indexOf(el.dataset.game)>=0;
