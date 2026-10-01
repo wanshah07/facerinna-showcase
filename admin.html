@@ -91,6 +91,11 @@
 .giftrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0}
 .giftrow span{font-size:14px}
 .giftrow input{max-width:130px}
+.note.warn{color:#7a4a00;background:#fff4dc;padding:8px 10px;border-radius:8px}
+.gamerows{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:4px 14px;margin:6px 0 4px}
+.gamerows .check{margin-top:6px;min-height:36px}
+.gamerows .check input{width:20px;height:20px;flex:0 0 auto}
+.gamerows .off span{color:#8095ab;text-decoration:line-through}
 .stack{display:grid;gap:18px;align-content:start;min-width:0}
 /* a person whose areas fill one column only gets one column, not an empty
    left-hand side */
@@ -195,6 +200,13 @@
           <textarea id="hiddenMessage"></textarea>
           <h2 style="margin-top:20px">Welcome strip</h2>
           <label class="check"><input type="checkbox" id="welcome"> Show “WELCOME TO FACERINNA BOOTH” under the hero</label>
+        </div>
+        <div class="card" id="cardGames" data-area="games">
+          <h2>Games on the booth page</h2>
+          <p class="note">Untick a game to take it off the booth page: off the wheel, off the ranking board and out of the chat. Anyone who opens it from an old link or a QR code sees a “resting” card with the way back, and it gives no gift while it is off. Tick it again to bring it back. Then press <b>Save settings</b>.</p>
+          <p class="note warn" id="gamesOld" hidden>The booth script running now is from before game switches, so it would not keep this. Paste the new <b>booth-admin.gs</b> into the script and deploy, then reload this page.</p>
+          <div id="gameToggles" class="gamerows"></div>
+          <p class="note" id="gamesCount"></p>
         </div>
         <div class="card" id="cardGift" data-area="gift">
           <h2>The gift at the end of a game</h2>
@@ -363,6 +375,13 @@
 <script>
 (function(){
 "use strict";
+/* Every game on the booth page. The script sends its own list; this copy is
+   only for the moment before it lands. */
+var GAMES = [
+  ['match-lab','Match Lab'], ['pack-match','Pack Match'], ['shelf-shot','Shelf Shot'],
+  ['deep-lab','Deep Lab'], ['lab-run','Lab Run'], ['uv-card','UV Card'],
+  ['skin-iq','Skin IQ Challenge'], ['facy-run','Facy Run']
+];
 /* The fourth Apps Script project, deployed 16 Sept 2026. A test points this
    at its own server by setting window.__BOOTH_API first -- including to ''
    to check what the page does with no script at all, which is why this is a
@@ -386,6 +405,7 @@ var PERMS = [
 ];
 var AREA_KEYS = {
   page: ['page_mode','passcode','lock_message','hidden_message','welcome'],
+  games: ['games_off'],
   gift: ['gift_active','gift_points'],
   privacy: ['privacy_entity','privacy_email','privacy_address','privacy_retention']
 };
@@ -471,9 +491,11 @@ document.querySelectorAll('.tab').forEach(function(b){
 /* Show this person the tabs and cards of the areas they hold, and nothing
    else. Stay on the tab they were on if they still have it. */
 function applyAccess(){
-  var areasOnSettings = ['page','gift','privacy','counter'];
+  var areasOnSettings = ['page','games','gift','privacy','counter'];
   [].forEach.call(document.querySelectorAll('#viewSettings [data-area]'), function(c){ c.hidden = !can(c.dataset.area); });
-  show('saveRow', can('page') || can('gift') || can('privacy'));
+  /* a script from before the game switches would drop the setting unsaid */
+  if(state.legacy) $('cardGames').hidden = true;
+  show('saveRow', can('page') || (can('games') && !state.legacy) || can('gift') || can('privacy'));
   var tabs = { settings: areasOnSettings.some(can), sections: can('sections'), segments: can('segments'),
                gifts: !state.legacy && (can('stock') || can('claims')),
                admins: state.me && state.me.role==='admin' };
@@ -574,6 +596,34 @@ function giftLines(){
   });
   return out.join('\n');
 }
+function gameToggles(raw){
+  var off = String(raw || '').toLowerCase().split(/[\s,;]+/);
+  var list = (state.data && state.data.games) || GAMES;
+  /* a script without the switch sends no list, and would drop the setting */
+  var old = !!state.data && !state.data.games;
+  show('gamesOld', old);
+  var box = $('gameToggles'); box.textContent = '';
+  list.forEach(function(g){
+    var row = document.createElement('label'); row.className = 'check';
+    var inp = document.createElement('input'); inp.type = 'checkbox';
+    inp.setAttribute('data-game', g[0]); inp.checked = off.indexOf(g[0]) < 0; inp.disabled = old;
+    var lab = document.createElement('span'); lab.textContent = g[1];
+    row.appendChild(inp); row.appendChild(lab); box.appendChild(row);
+    inp.addEventListener('change', gamesCount);
+  });
+  gamesCount();
+}
+function gamesOffValue(){
+  return [].filter.call($('gameToggles').querySelectorAll('input[data-game]'), function(i){ return !i.checked; })
+    .map(function(i){ return i.getAttribute('data-game'); }).join(',');
+}
+function gamesCount(){
+  var all = $('gameToggles').querySelectorAll('input[data-game]');
+  var on = [].filter.call(all, function(i){ i.parentNode.classList.toggle('off', !i.checked); return i.checked; }).length;
+  $('gamesCount').textContent = on === all.length ? 'All ' + all.length + ' games are on.'
+    : !on ? 'Every game is off: the booth page says the games are resting.'
+    : on + ' of ' + all.length + ' games on.';
+}
 function fillSettings(s){
   var mode = s.page_mode==='locked' ? 'modeLocked' : s.page_mode==='hidden' ? 'modeHidden' : 'modeOpen';
   $(mode).checked = true;
@@ -587,6 +637,7 @@ function fillSettings(s){
   $('privRetention').value = s.privacy_retention || '';
   $('giftActive').checked = /^(yes|y|true|1|on)$/i.test(String(s.gift_active||'no'));
   giftRows(s.gift_points || '');
+  gameToggles(s.games_off || '');
   $('giftProducts').value = s.gift_products || '';
   $('settingsState').textContent = '';
 }
@@ -597,12 +648,14 @@ $('saveSettings').addEventListener('click', function(){
               hidden_message:$('hiddenMessage').value, welcome: $('welcome').checked ? 'show' : 'hide',
               privacy_entity:$('privEntity').value, privacy_email:$('privEmail').value,
               privacy_address:$('privAddress').value, privacy_retention:$('privRetention').value,
+              games_off: gamesOffValue(),
               gift_active: $('giftActive').checked ? 'yes' : 'no', gift_points: giftLines(),
               gift_products:$('giftProducts').value };
   /* only the areas this person holds: the script refuses the whole save if
      one key outside them comes along */
   var settings = {};
   Object.keys(AREA_KEYS).forEach(function(a){ if(can(a)) AREA_KEYS[a].forEach(function(k){ settings[k] = all[k]; }); });
+  if(state.legacy || !(state.data && state.data.games)) delete settings.games_off;
   /* a script from before stock still reads the wheel from this setting */
   if(state.legacy) settings.gift_products = all.gift_products;
   if(can('page') && mode==='locked' && !settings.passcode.trim()){ toast('Set a passcode before locking the page', true); $('passcode').focus(); return; }

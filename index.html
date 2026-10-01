@@ -2196,6 +2196,9 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
 #segModal iframe{width:100%;height:100%;border:0;border-radius:12px;background:#fff}
 /* A hidden section, its divider and its links in the nav and the footer. */
 .booth-sec-hidden,.booth-link-hidden{display:none!important}
+/* a game the admin switched off: off the wheel, and the quiz with it */
+.cg-item.cg-off,.games-off-skin-iq #skinIQ{display:none!important}
+.games-rest{text-align:center;color:var(--muted);font-weight:600;margin:8px auto 0;max-width:520px}
 /* A locked one keeps its place on the page and shows a card instead of its
    contents. The contents are still in the published file -- this is a closed
    door, not a safe. */
@@ -2974,15 +2977,15 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
   <div class="wrap">
     <div class="sec-head center reveal">
       <span class="eyebrow">Interactive · Booth Engagement</span>
-      <h2>Eight games, one booth<button class="ghelp" type="button" id="guideBtn"
+      <h2><span id="gameHeadline">Eight games, one booth</span><button class="ghelp" type="button" id="guideBtn"
         aria-label="Booth staff guide" title="Booth staff guide">?</button></h2>
-      <p>Eight challenges built for the booth — five 3D arcade games, Facy Run, the UV Card lucky draw and the Skin IQ quiz, all on the spinning lab wheel. Score well and claim your reward at the booth.</p>
+      <p id="gameIntro">Eight challenges built for the booth — five 3D arcade games, Facy Run, the UV Card lucky draw and the Skin IQ quiz, all on the spinning lab wheel. Score well and claim your reward at the booth.</p>
     </div>
     <div class="cg-wrap reveal">
       <div class="cg" id="gameGallery" role="region" aria-roledescription="carousel"
            aria-label="Circular 3D gallery of the eight booth games">
         <div class="cg-ring" id="gameRing">
-          <div class="cg-item" role="group" aria-label="Match Lab">
+          <div class="cg-item" role="group" aria-label="Match Lab" data-game="match-lab">
             <a class="cg-card" href="match-lab.html" data-art="0">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">01</span>
@@ -2994,7 +2997,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
               </div>
             </a>
           </div>
-          <div class="cg-item" role="group" aria-label="Pack Match">
+          <div class="cg-item" role="group" aria-label="Pack Match" data-game="pack-match">
             <a class="cg-card" href="pack-match.html" data-art="1">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">02</span>
@@ -3006,7 +3009,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
               </div>
             </a>
           </div>
-          <div class="cg-item" role="group" aria-label="Shelf Shot">
+          <div class="cg-item" role="group" aria-label="Shelf Shot" data-game="shelf-shot">
             <a class="cg-card" href="shelf-shot.html" data-art="2">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">03</span>
@@ -3018,7 +3021,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
               </div>
             </a>
           </div>
-          <div class="cg-item" role="group" aria-label="Deep Lab">
+          <div class="cg-item" role="group" aria-label="Deep Lab" data-game="deep-lab">
             <a class="cg-card" href="deep-lab.html" data-art="3">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">04</span>
@@ -3030,7 +3033,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
               </div>
             </a>
           </div>
-          <div class="cg-item" role="group" aria-label="Lab Run">
+          <div class="cg-item" role="group" aria-label="Lab Run" data-game="lab-run">
             <a class="cg-card" href="lab-run.html" data-art="4">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">05</span>
@@ -3042,7 +3045,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
               </div>
             </a>
           </div>
-          <div class="cg-item" role="group" aria-label="UV Card">
+          <div class="cg-item" role="group" aria-label="UV Card" data-game="uv-card">
             <a class="cg-card" href="uv-card.html" data-art="6">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">06</span>
@@ -3054,7 +3057,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
               </div>
             </a>
           </div>
-          <div class="cg-item" role="group" aria-label="Skin IQ Challenge">
+          <div class="cg-item" role="group" aria-label="Skin IQ Challenge" data-game="skin-iq">
             <a class="cg-card" href="#skinIQ" id="iqCard" data-art="5">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">07</span>
@@ -3066,7 +3069,7 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
               </div>
             </a>
           </div>
-          <div class="cg-item" role="group" aria-label="Facy Run">
+          <div class="cg-item" role="group" aria-label="Facy Run" data-game="facy-run">
             <a class="cg-card" href="facy-run.html" data-art="7">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
               <span class="cg-num">08</span>
@@ -5318,12 +5321,24 @@ const GALLERY_DOCS = [
 (function(){
   const stage=document.getElementById('gameGallery'), ring=document.getElementById('gameRing');
   if(!stage||!ring) return;
-  const items=[].slice.call(ring.querySelectorAll('.cg-item'));
-  const count=items.length;
-  if(!count) return;
-  const step=360/count;
-  ring.style.setProperty('--cg-step', step+'deg');
-  items.forEach((el,i)=>el.style.setProperty('--i', i));
+  const every=[].slice.call(ring.querySelectorAll('.cg-item'));
+  if(!every.length) return;
+  /* The wheel is laid out from the games that are on. The admin page can
+     switch any of them off, and that answer arrives after this has run, so
+     the layout is a function the booth config calls again: the cards that
+     are left close up round the ring and number themselves from 01. */
+  let items=every, count=every.length, step=360/count;
+  function layout(){
+    items=every.filter(el=>!el.classList.contains('cg-off'));
+    count=items.length;
+    step=360/Math.max(1,count);
+    ring.style.setProperty('--cg-step', step+'deg');
+    items.forEach((el,i)=>{
+      el.style.setProperty('--i', i);
+      const num=el.querySelector('.cg-num'); if(num) num.textContent=String(i+1).padStart(2,'0');
+    });
+    if(count) fitRadius();
+  }
   /* The stylesheet's radius was drawn for six cards. With more on the wheel
      the chord between neighbours shrinks below a card's width and they
      overlap, so the radius grows to whatever keeps a small gap; re-read on
@@ -5333,11 +5348,12 @@ const GALLERY_DOCS = [
     const w=parseFloat(cs.getPropertyValue('--cg-w'))||320;
     stage.style.removeProperty('--cg-r');
     const r0=parseFloat(cs.getPropertyValue('--cg-r'))||365;
-    const need=(w/2+22)/Math.sin(Math.PI/count);
+    /* one or two cards have no chord to keep apart: the stylesheet's radius */
+    const need=count>2 ? (w/2+22)/Math.sin(Math.PI/count) : 0;
     if(need>r0) stage.style.setProperty('--cg-r', Math.ceil(need)+'px');
   }
-  fitRadius();
-  addEventListener('resize', fitRadius);
+  layout();
+  addEventListener('resize', function(){ if(count) fitRadius(); });
 
   /* ---- posters ------------------------------------------------------
      One gradient plate per game in a colour drawn from the brand range,
@@ -5415,6 +5431,7 @@ const GALLERY_DOCS = [
   function start(){ if(raf===0) raf=requestAnimationFrame(frame); }
   paint();
   start();
+  window.__cgLayout=function(){ layout(); paint(); start(); };
 
   function pointX(e){ return e.touches ? e.touches[0].clientX : e.clientX; }
   stage.addEventListener('pointerdown', function(e){
@@ -6296,7 +6313,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   const modal=document.getElementById('rankModal');
   if(!btn || !modal) return;
 
-  const GAMES=[
+  const ALL_GAMES=[
     {id:'match-lab',  name:'Match Lab',  unit:'pts'},
     {id:'pack-match', name:'Pack Match', unit:'pts'},
     {id:'shelf-shot', name:'Shelf Shot', unit:'pts'},
@@ -6317,11 +6334,24 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
   const ORDS=['','first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth'];
   const many=n=>WORDS[n]||String(n);
   const nth=n=>ORDS[n]||(n+'th');
-  const HOWMANY=many(GAMES.length);
-  btn.textContent='\u{1F3C6} Booth ranking \u2014 all '+HOWMANY+' games';
-  modal.setAttribute('aria-label','Booth ranking across the '+HOWMANY+' games');
+  /* Only the games that are on: a game the admin switched off has no card on
+     the wheel, so a column for it on the board would be a game nobody can
+     play. The booth config calls this again when that list arrives. */
+  let GAMES=ALL_GAMES, HOWMANY='';
   const rhead=modal.querySelector('.rank-head h3');
-  if(rhead) rhead.textContent=HOWMANY.charAt(0).toUpperCase()+HOWMANY.slice(1)+' games, one board';
+  function setGames(off){
+    off=off||[];
+    GAMES=ALL_GAMES.filter(g=>off.indexOf(g.id)<0);
+    HOWMANY=many(GAMES.length);
+    const games=GAMES.length===1?' game':' games';
+    btn.textContent='\u{1F3C6} Booth ranking \u2014 '+(GAMES.length===1?'':'all ')+HOWMANY+games;
+    modal.setAttribute('aria-label','Booth ranking across the '+HOWMANY+games);
+    if(rhead) rhead.textContent=HOWMANY.charAt(0).toUpperCase()+HOWMANY.slice(1)+games+', one board';
+    btn.parentNode.hidden=!GAMES.length;
+    if(modal.classList.contains('open')) fill();
+  }
+  setGames([]);
+  window.__rankSetGames=setGames;
 
   /* Locked-down and private browsers throw on localStorage rather than
      returning null, and the board is a nicety — the page must not care. */
@@ -7109,7 +7139,19 @@ function launchConfetti(){
       setChips(['Clinical proof','Find my routine','Visit the booth']);return;
     }
     if(m.indexOf('game')>=0||m.indexOf('play')>=0||m.indexOf('main')>=0||m.indexOf('quiz')>=0||m.indexOf('bubble')>=0){
-      bot('Eight games at this booth 🎮<br><br>🏃 <b>Facy Run</b> — run Prof Facy through skin types, concerns and ingredients; 6,000 points earns a gift → <a href="facy-run.html">play here</a><br>🧠 <b>Skin IQ Challenge</b> — 5 questions, score 4+ for a reward → <a href="#game">play here</a><br>🎯 Match Lab, 📦 Pack Match, 🛒 Shelf Shot, 🌊 Deep Lab &amp; 🏃 Lab Run — five 3D arcade challenges on our spinning game wheel → <a href="#game">see them all</a><br>🔦 <b>UV Card</b> — pick a brochure, slide the UV light, reveal your number → <a href="uv-card.html">play here</a>');
+      {
+        /* only the games that are on: the admin page can switch any of them off */
+        const off=window.__fxGamesOff||[], on=id=>off.indexOf(id)<0;
+        const arcade=[['match-lab','🎯 Match Lab'],['pack-match','📦 Pack Match'],['shelf-shot','🛒 Shelf Shot'],['deep-lab','🌊 Deep Lab'],['lab-run','🏃 Lab Run']].filter(g=>on(g[0])).map(g=>g[1]);
+        const lines=[];
+        if(on('facy-run')) lines.push('🏃 <b>Facy Run</b> — run Prof Facy through skin types, concerns and ingredients; 6,000 points earns a gift → <a href="facy-run.html">play here</a>');
+        if(on('skin-iq')) lines.push('🧠 <b>Skin IQ Challenge</b> — 5 questions, score 4+ for a reward → <a href="#game">play here</a>');
+        if(arcade.length) lines.push((arcade.length===1?arcade[0]:arcade.slice(0,-1).join(', ')+' &amp; '+arcade[arcade.length-1])+' — '+(arcade.length===1?'a 3D arcade challenge':['','','two','three','four','five'][arcade.length]+' 3D arcade challenges')+' on our spinning game wheel → <a href="#game">see '+(arcade.length===1?'it':'them all')+'</a>');
+        if(on('uv-card')) lines.push('🔦 <b>UV Card</b> — pick a brochure, slide the UV light, reveal your number → <a href="uv-card.html">play here</a>');
+        const n=8-off.length, W=['No','One','Two','Three','Four','Five','Six','Seven','Eight'];
+        bot(n ? W[n]+(n===1?' game':' games')+' at this booth 🎮<br><br>'+lines.join('<br>')
+              : 'The games are resting right now 🎮 Ask the FACERINNA team at the booth.');
+      }
       setChips(['Hero products','Visit the booth']);return;
     }
     if(m.indexOf('booth')>=0||m.indexOf('sample')>=0||m.indexOf('prize')>=0||m.indexOf('reward')>=0||m.indexOf('visit')>=0){
@@ -7677,6 +7719,48 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     });
   }
 
+  /* ---- the games: each one on or off ---------------------------------
+     Like the sections, nothing is removed, only classed, so switching one
+     back on reaches a screen that is already open. The wheel, the ranking
+     board and the headline all count the games that are left. */
+  var GAME_NAMES={'match-lab':'Match Lab','pack-match':'Pack Match','shelf-shot':'Shelf Shot',
+    'deep-lab':'Deep Lab','lab-run':'Lab Run','uv-card':'UV Card','skin-iq':'Skin IQ Challenge','facy-run':'Facy Run'};
+  var NUM=['No','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
+  var introAll=null;
+  function gamesOff(st){
+    return String(st && st.games_off || '').toLowerCase().split(/[\s,;]+/).filter(function(id){ return GAME_NAMES[id]; });
+  }
+  function applyGames(off, isAdmin){
+    if(isAdmin) off=[];                      /* an admin sees every game; the ribbon says which are off */
+    window.__fxGamesOff=off.slice();
+    var items=[].slice.call(document.querySelectorAll('#gameRing .cg-item[data-game]'));
+    var on=[];
+    items.forEach(function(el){
+      var gone=off.indexOf(el.dataset.game)>=0;
+      el.classList.toggle('cg-off', gone);
+      if(!gone) on.push(GAME_NAMES[el.dataset.game]);
+    });
+    html.classList.toggle('games-off-skin-iq', off.indexOf('skin-iq')>=0);
+    if(window.__cgLayout) window.__cgLayout();
+    if(window.__rankSetGames) window.__rankSetGames(off);
+    var head=document.getElementById('gameHeadline'), intro=document.getElementById('gameIntro');
+    var n=on.length, word=NUM[n]||String(n);
+    if(head) head.textContent = n===1 ? 'One game, one booth' : word+' games, one booth';
+    if(intro){
+      if(introAll===null) introAll=intro.textContent;
+      /* The full sentence names all eight, so it only stands while all eight do. */
+      intro.textContent = !off.length ? introAll
+        : !n ? 'The games are resting right now. Ask the FACERINNA team at the booth.'
+        : (n===1 ? on[0] : on.slice(0,-1).join(', ')+' and '+on[n-1]) +
+          ' \u2014 built for the booth. Score well and claim your reward at the booth.';
+    }
+    var gal=document.getElementById('gameGallery');
+    if(gal){
+      gal.setAttribute('aria-label','Circular 3D gallery of the '+word.toLowerCase()+' booth game'+(n===1?'':'s'));
+      var wrap=gal.closest('.cg-wrap'); if(wrap) wrap.hidden=!n;
+    }
+  }
+
   /* ---- the segments ---- */
   var modal=null;
   function closeModal(){ if(modal){ modal.remove(); modal=null; document.body.style.overflow=''; } }
@@ -7743,14 +7827,18 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     html.classList.toggle('booth-no-welcome', st.welcome==='hide');
     var unlocked=false; try{ unlocked = sessionStorage.getItem(UNLOCKED)==='1'; }catch(e){}
     var states = cfg.section_states || [];
+    var off = gamesOff(st);
+    var notes = states.map(function(x){ return x.label+' is '+x.mode; });
+    if(off.length) notes.push(off.map(function(id){ return GAME_NAMES[id]; }).join(', ')+(off.length===1?' is':' are')+' off');
     if(st.page_mode==='hidden' || (st.page_mode==='locked' && !unlocked)){
       if(isAdmin){ unveil(); ribbon('Admin preview: the page is '+st.page_mode+' for visitors.'); }
       else { ribbon(''); drawVeil(st); }
-    } else if(isAdmin && states.length){
+    } else if(isAdmin && notes.length){
       unveil();
-      ribbon('Admin preview: ' + states.map(function(x){ return x.label+' is '+x.mode; }).join(', ') + ' for visitors.');
+      ribbon('Admin preview: ' + notes.join(', ') + ' for visitors.');
     } else { unveil(); ribbon(''); }
     applySections(states, isAdmin);
+    applyGames(off, isAdmin);
     drawSegments(cfg.segments);
   }
   window.__boothApply = apply;   /* the tests, and nothing else */

@@ -133,6 +133,11 @@ var SETTING_KEYS = {
 
      A bare number with no lines is read as the figure for every game, so the
      single number this setting used to hold still means what it meant. */
+  /* The games an admin has switched off, comma separated: "uv-card,deep-lab".
+     Empty means every game is on, which is how the page has always been. An
+     off game leaves the wheel on the booth page, and its own page shows a
+     resting card to anybody who opens it from an old link or a QR code. */
+  games_off:     '',
   gift_active:   'no',
   gift_points:   'facy-run = 6000',
   gift_products: 'Niacinamide Brightening Serum Sunscreen SPF50 PA++++\n' +
@@ -167,6 +172,7 @@ var PERMS = [
   ['counter',  'Counter',         'Scan gift codes at the counter and spin the wheel'],
   ['guide',    'Staff guide',     'Read the booth staff guide'],
   ['page',     'Page & passcode', 'Open, lock or hide the booth page, its passcode and the welcome strip'],
+  ['games',    'Games',           'Turn each game on or off on the booth page'],
   ['gift',     'Gift rules',      'Turn the gift on or off and the points each game needs'],
   ['stock',    'Gift stock',      'The products on the wheel and how many of each are left'],
   ['claims',   'Gift claims',     'See who earned a gift, and let a device play for one again'],
@@ -180,6 +186,7 @@ function permLabel_(k) { for (var i = 0; i < PERMS.length; i++) if (PERMS[i][0] 
 /* Which area each setting belongs to. A key missing here cannot be saved. */
 var SETTING_AREA = {
   page_mode: 'page', passcode: 'page', lock_message: 'page', hidden_message: 'page', welcome: 'page',
+  games_off: 'games',
   gift_active: 'gift', gift_points: 'gift', gift_products: 'stock',
   privacy_entity: 'privacy', privacy_email: 'privacy', privacy_address: 'privacy', privacy_retention: 'privacy'
 };
@@ -206,6 +213,30 @@ var GIFT_MAX_SCORE = 100000;
    own prize already. */
 var GIFT_GAMES = ['match-lab', 'pack-match', 'shelf-shot', 'deep-lab',
                   'lab-run', 'facy-run', 'skin-iq'];   /* the same ceiling booth-scores.gs applies */
+
+/* Every game on the booth page, in the order the wheel shows them. The id is
+   what games_off holds, what the scores and gifts call the game, and what the
+   page matches against; the label is what an admin reads. */
+var GAMES = [
+  ['match-lab',  'Match Lab'],
+  ['pack-match', 'Pack Match'],
+  ['shelf-shot', 'Shelf Shot'],
+  ['deep-lab',   'Deep Lab'],
+  ['lab-run',    'Lab Run'],
+  ['uv-card',    'UV Card'],
+  ['skin-iq',    'Skin IQ Challenge'],
+  ['facy-run',   'Facy Run']
+];
+/* Read the setting the way a person might have typed it into the sheet:
+   any separator, any case, unknown names dropped, each game once. */
+function gamesOff_(raw) {
+  var known = {}, seen = {}, out = [];
+  GAMES.forEach(function (g) { known[g[0]] = true; });
+  String(raw == null ? '' : raw).toLowerCase().split(/[\s,;]+/).forEach(function (id) {
+    if (known[id] && !seen[id]) { seen[id] = true; out.push(id); }
+  });
+  return out;
+}
 
 /* Where a segment may be placed: after one of these sections, or at the end.
    Sent to the admin page so its menu cannot drift from the real page. */
@@ -427,7 +458,7 @@ function whoami_(b) {
   if (!me) return json_({ ok: false, error: 'signed out' });
   var s = findSession_(b.token);
   return json_({ ok: true, email: me.email, role: me.role, access: me.access, owner: me.owner,
-                 preview: can_(me, 'page') || can_(me, 'sections'),
+                 preview: can_(me, 'page') || can_(me, 'sections') || can_(me, 'games'),
                  expires: new Date(s.expires).toISOString() });
 }
 function logout_(b) {
@@ -594,6 +625,7 @@ function publicSettings_() {
   /* a lock with no passcode would lock everyone out, the admin included */
   if (out.page_mode === 'locked' && !String(all.passcode || '').trim()) out.page_mode = 'open';
   out.welcome = yes_(out.welcome) || out.welcome === '' ? 'show' : 'hide';
+  out.games_off = gamesOff_(out.games_off).join(',');
   return out;
 }
 
@@ -786,7 +818,7 @@ function config_() {
   var set = publicSettings_();
   return json_({ ok: true, settings: set, segments: publicSegments_(),
                  sections: SECTIONS, section_states: publicSections_(),
-                 gift_games: GIFT_GAMES, gift_needs: giftNeeds_(set.gift_points),
+                 games: GAMES, gift_games: GIFT_GAMES, gift_needs: giftNeeds_(set.gift_points),
                  at: Date.now() });
 }
 /* One door-opener for three kinds of door: the whole page, one section of it,
@@ -868,7 +900,7 @@ function teamList_() {
   }).filter(function (a) { return a.email; });
 }
 function adminGet_(me) {
-  var out = { ok: true, email: me.email, settings: settingsFor_(me), sections: SECTIONS,
+  var out = { ok: true, email: me.email, settings: settingsFor_(me), sections: SECTIONS, games: GAMES,
               me: { email: me.email, name: me.name, role: me.role, access: me.access, owner: me.owner },
               perms: PERMS };
   if (can_(me, 'segments')) out.segments = segments_();
@@ -908,6 +940,7 @@ function adminSettings_(b, me) {
     if (k === 'welcome') v = yes_(v) ? 'show' : 'hide';
     if (k === 'gift_active') v = yes_(v) ? 'yes' : 'no';
     if (k === 'gift_points') v = String(v == null ? '' : v).slice(0, 600);
+    if (k === 'games_off') v = gamesOff_(v).join(',');
     if (k === 'passcode') v = v.slice(0, 64);
     else if (k === 'gift_products') v = v.slice(0, 2000);
     else v = v.slice(0, 400);
@@ -1101,6 +1134,10 @@ function giftClaim_(b) {
   /* No figure for this game is not "everything qualifies": it is no gift. */
   if (!need) return json_({ ok: false, reason: 'nogame' });
   if (!active) return json_({ ok: false, reason: 'inactive' });
+  /* A game switched off gives nothing, even to a phone that still had it open
+     when it went off: the page hiding it is manners, this is the lock. */
+  if (gamesOff_(all.games_off).indexOf(String(b.game || '').toLowerCase()) >= 0)
+    return json_({ ok: false, reason: 'gameoff' });
 
   var device = String(b.device || '').trim();
   if (!/^[A-Za-z0-9_-]{6,40}$/.test(device)) return json_({ ok: false, reason: 'device' });

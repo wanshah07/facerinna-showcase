@@ -3076,6 +3076,8 @@ function giftCheck(){
           var why = (j && j.reason) || 'error';
           if(why==='inactive' || why==='nogame') giftShow('Gifts are not on right now', 'Ask the FACERINNA team at the counter.', null);
           else if(why==='short') giftShow('Gift at '+(j.need||need)+' points', 'This run fell short. Play again!', null);
+          else if(why==='nostock') giftShow('Today\u2019s gifts are all given out', 'Thank you for playing! Ask the FACERINNA team at the counter.', null);
+          else if(why==='gameoff') giftShow('This game is resting', 'It gives no gift while it is off. Ask the FACERINNA team at the counter.', null);
           else giftShow('Could not fetch your code', 'Show this screen at the counter instead — your score is on it.', null);
           return;
         }
@@ -3120,5 +3122,6 @@ window.__facy = {
 </script>
 <script>window.FX_RANK={id:'facy-run',name:'Facy Run',result:'#over',score:'#finalScore'};</script>
 <script src="fx-rank.js"></script>
+<script src="fx-games.js" data-game="facy-run"></script>
 </body>
 </html>
