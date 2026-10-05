@@ -22,7 +22,7 @@ console.log('set up');
 check('a Media tab with its columns', tabs['Media'] && tabs['Media'].rows[0].join()==='id,kind,name,label,event,on,file_id,target,mime,bytes,created,by,updated', tabs['Media'] && tabs['Media'].rows[0]);
 let cfg = call({ action:'config' });
 check('the public config starts with no media', Array.isArray(cfg.media) && cfg.media.length===0, cfg.media);
-check('qr_builtin shows the built-in codes until told otherwise', cfg.settings.qr_builtin==='show' && cfg.settings.active_event==='');
+check('no event chosen, and nothing built into the page is left out', cfg.settings.active_event==='' && Array.isArray(cfg.builtin_off) && cfg.builtin_off.length===0, cfg.builtin_off);
 
 console.log('\nnaming');
 let r = up({ kind:'qr', event:'AGM Penang 2026', target:'https://wa.me/message/YKYI736CG4FZH1', filename:'IMG_2231.png' });
@@ -136,11 +136,47 @@ check('delete removes it from the library and the page', r.ok && !r.media.some(x
 check('...and puts the Drive file in the bin', Object.values(DRIVE.files).find(f=>f.name.startsWith('poster-agm-penang-2026-cara')).trashed===true);
 check('...nothing left to delete twice', A({ action:'admin.media.delete', id }).ok===false);
 
-console.log('\nthe built-in codes');
-r = A({ action:'admin.settings', settings:{ qr_builtin:false } });
-check('they can be hidden', r.ok && call({ action:'config' }).settings.qr_builtin==='hide', r);
-r = A({ action:'admin.settings', settings:{ qr_builtin:true } });
-check('...and shown again', call({ action:'config' }).settings.qr_builtin==='show');
+console.log('\nwhat is built into the page');
+let lib = A({ action:'admin.get' }).media;
+const BI = ['builtin-qr-registration','builtin-qr-more-info','builtin-qr-whatsapp','builtin-poster-session-talk'];
+check('the three codes and the session poster head the list', BI.every((id,i)=>lib[i].id===id && lib[i].builtin===true), lib.slice(0,4).map(x=>x.id));
+check('...each with the page\'s own picture to show', lib.slice(0,4).every(x=>/^(media|docs)\/[\w.-]+\.(png|webp)$/.test(x.thumb)), lib.slice(0,4).map(x=>x.thumb));
+check('...on, for every event, until somebody changes them', lib.slice(0,4).every(x=>x.on && x.live && x.event===''), lib.slice(0,4));
+const tabRows = () => tabs['Media'].rows.filter(r=>String(r[0]).startsWith('builtin-'));
+check('...and no rows written just for listing them', tabRows().length===0);
+const files0 = JSON.stringify(DRIVE.files);
+r = A({ action:'admin.media.set', id:'builtin-qr-whatsapp', on:false });
+check('a built-in code can be hidden', r.ok && call({ action:'config' }).builtin_off.join()==='builtin-qr-whatsapp', call({ action:'config' }).builtin_off);
+check('...which writes its row then', tabRows().length===1 && tabRows()[0][5]==='no', tabRows());
+check('...and touches nothing in Drive', JSON.stringify(DRIVE.files)===files0);
+r = A({ action:'admin.media.set', id:'builtin-qr-whatsapp', on:true });
+check('...and shown again', r.ok && call({ action:'config' }).builtin_off.length===0 && tabRows().length===1);
+A({ action:'admin.settings', settings:{ active_event:'AGM Penang 2026' } });
+r = A({ action:'admin.media.set', id:'builtin-poster-session-talk', event:'AGM Penang 2026' });
+check('the session poster tied to the AGM shows at the AGM', r.ok && !call({ action:'config' }).builtin_off.includes('builtin-poster-session-talk'));
+A({ action:'admin.settings', settings:{ active_event:'Pharmacy Day' } });
+check('...and is locked off the page at any other event', call({ action:'config' }).builtin_off.includes('builtin-poster-session-talk'));
+lib = A({ action:'admin.get' }).media;
+check('...admin sees it as locked', lib.find(x=>x.id==='builtin-poster-session-talk').locked===true);
+A({ action:'admin.settings', settings:{ active_event:'' } });
+check('no event chosen: it is back', !call({ action:'config' }).builtin_off.includes('builtin-poster-session-talk'));
+r = A({ action:'admin.media.delete', id:'builtin-qr-registration' });
+check('a built-in piece cannot be deleted, only hidden', r.ok===false && /turn it off/.test(r.error), r);
+check('the public config never lists them as media', !call({ action:'config' }).media.some(x=>/^builtin-/.test(x.id)));
+A({ action:'admin.media.set', id:'builtin-poster-session-talk', event:'' });
+r = A({ action:'admin.media.set', for_event:'', on:false });
+check('"all off" for every event takes the built-ins with it', r.ok && BI.every(id=>call({ action:'config' }).builtin_off.includes(id)), call({ action:'config' }).builtin_off);
+A({ action:'admin.media.set', for_event:'', on:true });
+check('...and "all on" brings them back', call({ action:'config' }).builtin_off.length===0, call({ action:'config' }).builtin_off);
+{
+  /* the old all-or-nothing switch, left at hide: the three codes start hidden */
+  const H2 = load(), o2 = H2.signIn(OWNER);
+  H2.call({ token:o2.token, action:'admin.settings', settings:{ qr_builtin:'hide' } });
+  const off = H2.call({ action:'config' }).builtin_off;
+  check('a "hide" left by the old switch starts the three codes hidden, not the poster', off.join()==='builtin-qr-registration,builtin-qr-more-info,builtin-qr-whatsapp', off);
+  H2.call({ token:o2.token, action:'admin.media.set', id:'builtin-qr-more-info', on:true });
+  check('...and each can be turned back on from the list', !H2.call({ action:'config' }).builtin_off.includes('builtin-qr-more-info'));
+}
 
 console.log(bad ? `\n${bad} failed` : '\nall passed');
 process.exit(bad?1:0);

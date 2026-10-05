@@ -56,14 +56,22 @@ async function asPerson(token, w=1280, h=900){
   return {c,p,errs};
 }
 const own = H.signIn(OWNER);
-const rows = () => H.tabs['Media'].rows.slice(1).filter(r=>r[0]);
+const rows = () => H.tabs['Media'].rows.slice(1).filter(r=>r[0] && !String(r[0]).startsWith('builtin-'));
 
 console.log('── the admin tab');
 {
   const {c,p,errs}=await asPerson(own.token);
   chk('the owner has the QR & posters tab', await p.evaluate(()=>[...document.querySelectorAll('.tab')].filter(t=>!t.hidden).map(t=>t.dataset.view).includes('media')));
   await p.click('#tabMedia');
-  chk('it opens on an empty library', await p.evaluate(()=>/Nothing uploaded/.test(document.getElementById('mediaList').textContent)));
+  const bi=await p.evaluate(()=>[...document.querySelectorAll('#mediaList .item')].map(x=>({id:x.dataset.id, t:x.textContent, img:(x.querySelector('img')||{}).naturalWidth||0, del:!!x.querySelector('[data-act="del"]')})));
+  chk('it opens listing what is built into the page: three codes and the session poster', bi.length===4 && /Registration/.test(bi[0].t) && /More Info/.test(bi[1].t) && /WhatsApp/.test(bi[2].t) && /Session poster/.test(bi[3].t) && bi.every(x=>/built into the page/.test(x.t)), bi.map(x=>x.t));
+  chk('...each showing its own picture', await until(()=>p.evaluate(()=>[...document.querySelectorAll('#mediaList .item img')].length===4 && [...document.querySelectorAll('#mediaList .item img')].every(i=>i.complete && i.naturalWidth>100))));
+  chk('...with hide and tie-to-event, but no delete', bi.every(x=>!x.del));
+  await p.evaluate(()=>document.querySelector('#mediaList .item[data-id="builtin-qr-more-info"] button[data-act="toggle"]').click());
+  chk('hiding the More Info code from the list reaches the page config', await until(()=>JSON.stringify(H.call({action:'config'}).builtin_off)==='["builtin-qr-more-info"]'));
+  chk('...and the list says Off', await until(()=>p.evaluate(()=>/Off/.test(document.querySelector('#mediaList .item[data-id="builtin-qr-more-info"]').textContent))));
+  await p.evaluate(()=>document.querySelector('#mediaList .item[data-id="builtin-qr-more-info"] button[data-act="toggle"]').click());
+  chk('...and back on', await until(()=>H.call({action:'config'}).builtin_off.length===0));
   await p.setInputFiles('#mediaFiles',[QR,POSTER]);
   await p.fill('#mediaUpEvent','AGM Penang 2026');
   await p.click('#mediaUp');
@@ -74,7 +82,7 @@ console.log('── the admin tab');
   chk('the poster is named from its file', r2[2]==='poster-agm-penang-2026-talk-poster-1-01', r2[2]);
   chk('the poster was shrunk to a JPEG under the limit', r2[8]==='image/jpeg' && r2[9]>1000 && r2[9]<2500000, [r2[8],r2[9]]);
   chk('both are in Drive and public (no event is chosen yet)', Object.values(H.DRIVE.files).length===2 && Object.values(H.DRIVE.files).every(f=>f.access==='ANYONE_WITH_LINK'));
-  chk('the list shows them under their event, as Live', await p.evaluate(()=>{ const t=document.getElementById('mediaList').textContent; return /AGM Penang 2026/.test(t) && /qr-agm-penang-2026-whatsapp-01/.test(t) && (t.match(/Live/g)||[]).length===2; }));
+  chk('the list shows them under their event, as Live', await p.evaluate(()=>{ const t=document.getElementById('mediaList').textContent; return /AGM Penang 2026/.test(t) && /qr-agm-penang-2026-whatsapp-01/.test(t) && [...document.querySelectorAll('#mediaList .item')].filter(x=>!/built into the page/.test(x.textContent)).every(x=>/Live/.test(x.textContent)); }));
   chk('...with no field to type a name into', await p.evaluate(()=>!document.querySelector('#viewMedia input[name*="name" i], #viewMedia #mediaName')));
 
   await p.setInputFiles('#mediaFiles',[QR]);
@@ -131,7 +139,7 @@ console.log('\n── who sees it');
 }
 
 console.log('\n── the booth page');
-const CFG = (media, st={}, states=[]) => ({ ok:true, settings:{ page_mode:'open', welcome:'show', games_off:'', qr_builtin:'show', active_event:'AGM Penang 2026', ...st }, segments:[], section_states:states, media, at:Date.now() });
+const CFG = (media, st={}, states=[], off=[]) => ({ ok:true, builtin_off:off, settings:{ page_mode:'open', welcome:'show', games_off:'', active_event:'AGM Penang 2026', ...st }, segments:[], section_states:states, media, at:Date.now() });
 const LH = n => 'https://lh3.googleusercontent.com/d/drv00000'+n+'=';
 const QRS = [{id:'a',kind:'qr',name:'qr-agm-whatsapp-01',label:'whatsapp',url:LH(1)+'s800',link:'https://wa.me/message/X'},
              {id:'b',kind:'qr',name:'qr-agm-code-01',label:'code',url:LH(2)+'s800'}];
@@ -152,14 +160,18 @@ for(const [tag,w,h] of [['phone',390,844],['tablet',820,1180],['tablet sideways'
   const fit=await p.evaluate(()=>{ const r=document.querySelector('#eventposters img').getBoundingClientRect(); return {l:r.left,r:r.right,w:innerWidth}; });
   chk(`${tag}: the poster is inside the screen`, fit.l>=0 && fit.r<=fit.w+1, fit);
 
-  await p.evaluate(m=>window.__boothApply(m,false), CFG([...QRS,...POS],{qr_builtin:'hide'}));
+  await p.evaluate(m=>window.__boothApply(m,false), CFG([...QRS,...POS],{},[],['builtin-qr-more-info']));
   k=await cards();
-  chk(`${tag}: the built-in codes can be hidden, the uploaded stay`, k.slice(0,3).every(x=>!x.shown) && k.slice(3).every(x=>x.shown), k.map(x=>x.shown));
-  await p.evaluate(m=>window.__boothApply(m,false), CFG([],{qr_builtin:'hide'}));
+  chk(`${tag}: one built-in code hidden, the other two and the uploaded stay`, k.map(x=>x.shown).join()==='true,false,true,true,true', k.map(x=>x.shown));
+  await p.evaluate(m=>window.__boothApply(m,false), CFG([],{},[],['builtin-poster-session-talk']));
+  chk(`${tag}: hiding the session poster takes its talk section off the page`, await p.evaluate(()=>getComputedStyle(document.getElementById('talk')).display==='none' && getComputedStyle(document.getElementById('qrcore')).display!=='none'));
+  await p.evaluate(m=>window.__boothApply(m,true), CFG([],{},[],['builtin-poster-session-talk','builtin-qr-registration']));
+  chk(`${tag}: an admin previewing still sees everything`, await p.evaluate(()=>getComputedStyle(document.getElementById('talk')).display!=='none' && [...document.querySelectorAll('#qrcore .qr-card')].every(c=>getComputedStyle(c).display!=='none')));
+  await p.evaluate(m=>window.__boothApply(m,false), CFG([],{},[],['builtin-qr-registration','builtin-qr-more-info','builtin-qr-whatsapp']));
   chk(`${tag}: hide them with nothing uploaded and the whole section goes, not an empty heading`, await p.evaluate(()=>getComputedStyle(document.getElementById('qrcore')).display==='none'));
   chk(`${tag}: ...and its menu link`, await p.evaluate(()=>[...document.querySelectorAll('a[href="#qrcore"]')].every(a=>getComputedStyle(a).display==='none')));
-  await p.evaluate(m=>window.__boothApply(m,false), CFG([],{qr_builtin:'show'}));
-  chk(`${tag}: no media: back to the page as it was`, await p.evaluate(()=>!document.getElementById('eventposters') && !document.querySelector('.booth-media') && document.querySelectorAll('#qrcore .qr-card').length===3 && getComputedStyle(document.getElementById('qrcore')).display!=='none'));
+  await p.evaluate(m=>window.__boothApply(m,false), CFG([]));
+  chk(`${tag}: no media: back to the page as it was`, await p.evaluate(()=>!document.getElementById('eventposters') && !document.querySelector('.booth-media') && document.querySelectorAll('#qrcore .qr-card').length===3 && getComputedStyle(document.getElementById('qrcore')).display!=='none' && getComputedStyle(document.getElementById('talk')).display!=='none' && [...document.querySelectorAll('#qrcore .qr-card')].every(c=>getComputedStyle(c).display!=='none')));
   chk(`${tag}: no page errors`, errs.length===0, errs[0]);
   await c.close();
 }

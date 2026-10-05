@@ -70,6 +70,9 @@
   .item .mname{text-transform:none;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;word-break:break-all}
   .item .mthumb{object-fit:contain;background:#fff}
   .item .mthumb.ph{display:grid;place-items:center;font-size:20px;color:var(--ink2)}
+  .item .mname.bi{font-family:inherit;font-size:13.5px;word-break:normal;overflow-wrap:anywhere}
+  .bitag{color:var(--brand);font-weight:700}
+  .item.hidden .mthumb{opacity:.45}
   .mgroup .btn.sm{min-height:36px}
   #mediaFiles{display:block;width:100%;min-height:44px;padding:8px;box-sizing:border-box;border:1px dashed var(--line);border-radius:10px;background:var(--soft);font:inherit;font-size:13px}
 
@@ -327,7 +330,6 @@
           <label for="mediaEvent">Event now</label>
           <input type="text" id="mediaEvent" list="mediaEvents" maxlength="60" autocomplete="off" placeholder="e.g. AGM Penang 2026">
           <datalist id="mediaEvents"></datalist>
-          <label class="check" style="margin-top:14px"><input type="checkbox" id="qrBuiltin"> Show the three built-in codes (registration, this site, WhatsApp)</label>
           <div class="row" style="margin-top:14px">
             <button class="btn" id="mediaEventSave" type="button">Save</button>
             <button class="btn ghost" id="mediaEventClear" type="button">No event chosen</button>
@@ -349,6 +351,7 @@
             <div class="row" style="margin-top:14px"><button class="btn" id="mediaUp" type="submit">Upload</button></div>
           </form>
           <p class="note" id="mediaProgress" role="status" style="margin-top:12px"></p>
+          <p class="note">The three codes and Dr. Peter's session poster that are written into the page are in the list too, marked <b>built into the page</b>: hide them, or tie them to an event, like anything uploaded. They cannot be deleted. Hiding the session poster takes its whole talk section off the page.</p>
           <p class="note">You do not name anything. A QR code is named for where it leads (<b>qr-agm-penang-2026-whatsapp-01</b>); a poster from its file name. Pictures are shrunk here first, so a phone photo is fine.</p>
         </div>
       </div>
@@ -907,7 +910,6 @@ function renderMedia(list, events, settings){
   state.media = list || []; state.events = events || [];
   var dl = $('mediaEvents'); dl.innerHTML = state.events.map(function(e){ return '<option value="'+esc(e)+'">'; }).join('');
   if(document.activeElement !== $('mediaEvent')) $('mediaEvent').value = set.active_event || '';
-  $('qrBuiltin').checked = (set.qr_builtin || 'show') !== 'hide';
   box.innerHTML = '';
   if(!state.media.length){ box.innerHTML = '<div class="empty">Nothing uploaded yet. Choose a picture on the left.</div>'; return; }
   var groups = {}, order = [];
@@ -924,13 +926,17 @@ function renderMedia(list, events, settings){
     items.forEach(function(m){
       var el = document.createElement('div'); el.className = 'item'+(m.live ? '' : ' hidden'); el.dataset.id = m.id;
       var state_ = m.live ? '<b>Live</b>' : m.locked ? '<i>&#128274; Locked &mdash; another event is on</i>' : '<i>Off</i>';
-      el.innerHTML = (m.url ? '<img class="thumb mthumb" src="'+esc(m.url)+'" alt="">' : '<div class="thumb mthumb ph">'+(m.locked?'&#128274;':'&#9208;')+'</div>')+
-        '<div><div class="t mname">'+esc(m.name)+'</div><div class="m">'+(m.kind==='qr' ? 'QR code' : 'Poster')+
+      /* a built-in piece is the page's own picture: always there to show, never deleted */
+      var pic = m.url || m.thumb;
+      var who = m.builtin ? m.label : m.name;
+      el.innerHTML = (pic ? '<img class="thumb mthumb" src="'+esc(pic)+'" alt="">' : '<div class="thumb mthumb ph">'+(m.locked?'&#128274;':'&#9208;')+'</div>')+
+        '<div><div class="t mname'+(m.builtin?' bi':'')+'">'+esc(who)+'</div><div class="m">'+(m.kind==='qr' ? 'QR code' : 'Poster')+
+          (m.builtin ? ' · <span class="bitag">built into the page</span>' : '')+
           (m.kind==='qr' && m.target ? ' · '+esc(hostOf(m.target)) : '')+' · '+state_+'</div></div>'+
         '<div class="icons">'+
-          '<button class="ic" type="button" data-act="toggle" title="'+(m.on?'Turn off':'Turn on')+'" aria-label="'+(m.on?'Turn off ':'Turn on ')+esc(m.name)+'">'+(m.on?'⏸':'▶')+'</button>'+
-          '<button class="ic" type="button" data-act="move" title="Move to another event" aria-label="Move '+esc(m.name)+' to another event">✎</button>'+
-          '<button class="ic" type="button" data-act="del" title="Delete" aria-label="Delete '+esc(m.name)+'">🗑</button></div>';
+          '<button class="ic" type="button" data-act="toggle" title="'+(m.on?'Hide it (turn off)':'Show it (turn on)')+'" aria-label="'+(m.on?'Turn off ':'Turn on ')+esc(who)+'">'+(m.on?'⏸':'▶')+'</button>'+
+          '<button class="ic" type="button" data-act="move" title="Tie to an event: locked at every other event" aria-label="Tie '+esc(who)+' to an event">✎</button>'+
+          (m.builtin ? '' : '<button class="ic" type="button" data-act="del" title="Delete" aria-label="Delete '+esc(who)+'">🗑</button>')+'</div>';
       box.appendChild(el);
     });
   });
@@ -954,7 +960,7 @@ $('mediaList').addEventListener('click', function(e){
   var m = (state.media||[]).filter(function(x){ return x.id===it.dataset.id; })[0]; if(!m) return;
   if(act==='toggle') api('admin.media.set', { id:m.id, on:!m.on }).then(function(r){ mediaDone(r, m.name+(m.on?' off':' on')); }).catch(function(err){ toast(err.message, true); });
   else if(act==='move'){
-    var to = prompt('Which event is '+m.name+' for? Leave empty for every event.', m.event || '');
+    var to = prompt('Which event is '+(m.builtin ? m.label : m.name)+' for? At any other event it is locked off the page. Leave empty for every event.', m.event || '');
     if(to === null) return;
     api('admin.media.set', { id:m.id, event:to }).then(function(r){ mediaDone(r, 'Moved'); }).catch(function(err){ toast(err.message, true); });
   } else if(act==='del'){
@@ -963,9 +969,8 @@ $('mediaList').addEventListener('click', function(e){
   }
 });
 function saveEvent(ev){
-  var qr = $('qrBuiltin').checked ? 'show' : 'hide';
   $('mediaEventSave').disabled = true;
-  return api('admin.settings', { settings:{ active_event:ev, qr_builtin:qr } }).then(function(r){
+  return api('admin.settings', { settings:{ active_event:ev } }).then(function(r){
     state.data.settings = Object.assign(state.data.settings||{}, r.settings||{});
     if(r.media) { state.data.media = r.media; }
     return refresh().then(function(){
