@@ -814,12 +814,42 @@ function giftNeeds_(raw) {
   return out;
 }
 
+/* Every phone asks for this the moment the page opens, and again every few
+   minutes while it stays open. Answered from the sheet it costs three
+   spreadsheet opens and three reads, and Apps Script runs only about thirty
+   requests at once, so a hundred phones arriving together (a poster QR code
+   on a busy afternoon) queued behind one another and the slow ones timed out.
+
+   The answer changes only when an admin saves something, so it is kept for
+   CONFIG_SECS and thrown away by every admin write (see doPost). What this
+   cannot see is a cell edited by hand in the sheet: that shows up within
+   CONFIG_SECS, the same backstop booth-scores.gs uses for its board. If the
+   cache is missing or throws, this is the old, slower path and nothing else
+   changes. It holds only what config_ already hands to anybody who asks:
+   never the passcode, the admin list or a hidden segment. */
+var CONFIG_KEY  = 'config.v1';
+var CONFIG_SECS = 20;
+function configCache_() { try { return CacheService.getScriptCache(); } catch (e) { return null; } }
+function dropConfig_() {
+  var c = configCache_();
+  if (c) { try { c.remove(CONFIG_KEY); } catch (e) {} }
+}
+function configText_(text) {
+  return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.JSON);
+}
 function config_() {
+  var cache = configCache_();
+  if (cache) {
+    try { var hit = cache.get(CONFIG_KEY); if (hit) return configText_(hit); } catch (e) {}
+  }
   var set = publicSettings_();
-  return json_({ ok: true, settings: set, segments: publicSegments_(),
+  var text = JSON.stringify({ ok: true, settings: set, segments: publicSegments_(),
                  sections: SECTIONS, section_states: publicSections_(),
                  games: GAMES, gift_games: GIFT_GAMES, gift_needs: giftNeeds_(set.gift_points),
                  at: Date.now() });
+  /* a script cache value may not pass 100KB; past that, do without */
+  if (cache && text.length < 90000) { try { cache.put(CONFIG_KEY, text, CONFIG_SECS); } catch (e) {} }
+  return configText_(text);
 }
 /* One door-opener for three kinds of door: the whole page, one section of it,
    or one segment. A section or segment with no passcode of its own falls back
@@ -1414,7 +1444,13 @@ function doPost(e) {
         case 'admin.team.remove':     return teamRemove_(b, me);
         default: return json_({ ok: false, error: 'unknown action' });
       }
-    } finally { lock.releaseLock(); }
+    } finally {
+      /* Whatever was just saved, the next phone to ask must see it. Dropped
+         before the lock is let go, so no reader can refill it with the old
+         sheet in between. */
+      dropConfig_();
+      lock.releaseLock();
+    }
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
   }

@@ -61,6 +61,9 @@ const own = H.signIn(OWNER);
   chk('the public config says so', H.call({action:'config'}).settings.games_off==='uv-card,deep-lab');
   /* a person typing straight into the sheet is read the same way */
   H.tabs['Settings'].rows.find(x=>x[0]==='games_off')[1]='Deep-Lab  FACY-RUN, x';
+  /* a hand edit reaches the page when the script's cached copy of the config
+     runs out (twenty seconds); an admin save drops it at once, a typed cell cannot */
+  H.CACHE.clear();
   chk('...and so is the sheet, edited by hand', H.call({action:'config'}).settings.games_off==='deep-lab,facy-run');
   H.call({action:'admin.settings', token:own.token, settings:{games_off:'uv-card,deep-lab'}});
 
