@@ -73,19 +73,27 @@ async function open_(vp, mob, api){
 
 /* ------------------------------------------------ 1. it opens everywhere */
 console.log('it opens on a phone, a tablet, a desk and a TV');
-for(const [tag,vp,mob] of [['phone',{width:390,height:844},true],['phone landscape',{width:844,height:390},true],
+for(const [tag,vp,mob] of [['phone',{width:390,height:844},true],['phone landscape',{width:844,height:390},true],['tablet upright',{width:820,height:1180},true],
                            ['tablet',{width:1024,height:768},true],['desk',{width:1440,height:900},false],['TV',{width:1920,height:1080},false]]){
   const {c,p,errs}=await open_(vp,mob,'');
   const r=await p.evaluate(()=>{
     const F=window.__facy, cv=document.getElementById('stage');
     const pad=getComputedStyle(document.getElementById('ctl')).display!=='none';
-    return {pad, intro:!document.getElementById('intro').classList.contains('hidden'),
+    const hint=document.getElementById('touchHint'), keys=document.getElementById('keys');
+    const padTop=Math.min(...[...document.querySelectorAll('#ctl button')].map(b=>b.getBoundingClientRect().top));
+    return {pad, hint:getComputedStyle(hint).display!=='none', keysShown:getComputedStyle(keys).display!=='none',
+      gameBottom:F.view.oy+F.view.h*F.view.scale, padTop, intro:!document.getElementById('intro').classList.contains('hidden'),
       cvw:cv.width, cvh:cv.height, view:{w:F.view.w,h:F.view.h,scale:F.view.scale},
       sw:document.documentElement.scrollWidth, W:innerWidth};
   });
   chk(`${tag}: the intro is up and the canvas is the screen`, r.intro && r.cvw>0 && r.cvh>0, r);
   chk(`${tag}: ${mob?'the touch pad is there':'no touch pad on a pointer device'}`, r.pad===mob, r.pad);
-  chk(`${tag}: the world is scaled to fit, never stretched`, r.view.scale>0 && r.view.w>=480 && r.view.w<=1000, r.view);
+  chk(`${tag}: the world is scaled to fit, never stretched`, r.view.scale>0 && r.view.w>=360 && r.view.w<=1000, r.view);
+  chk(`${tag}: ${mob?'the intro says how to use the pad, not the keyboard':'the intro shows the keys'}`, mob ? (r.hint && !r.keysShown) : (!r.hint && r.keysShown), r);
+  if(mob && r.W<r.H){
+    chk(`${tag}: held upright the world is not shrunk below life size`, r.view.scale>=(r.W<500?1.0:1.0), r.view);
+    chk(`${tag}: ...and not blown up so far that the pad lands on the ground`, r.view.scale<=1.55 && r.padTop>=r.gameBottom-2, {scale:r.view.scale,padTop:r.padTop,gameBottom:r.gameBottom});
+  }
   chk(`${tag}: no sideways scroll`, r.sw<=r.W+1, {sw:r.sw,W:r.W});
   if(mob){
     /* the ranking puts a Booth button bottom-left and a Ranking button

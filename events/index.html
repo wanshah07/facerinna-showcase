@@ -104,6 +104,9 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .feed.stale .dot{background:var(--gold)}
 .refresh{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
   border-radius:999px;padding:5px 11px;font:inherit;font-size:.76rem;cursor:pointer;transition:.2s}
+/* the pill is small to look at; the tap area runs past it, unseen */
+.refresh{position:relative}
+.refresh::after{content:"";position:absolute;inset:-9px}
 .refresh:hover{border-color:var(--brand);color:var(--brand-deep)}
 
 /* ---- intro ---- */

@@ -47,6 +47,17 @@
   #ctl button.on{background:rgba(63,166,238,.75);border-color:#fff}
   #jump{width:clamp(78px,14vw,104px)!important;height:clamp(78px,14vw,104px)!important;background:rgba(63,166,238,.55)!important}
   @media(hover:none) and (pointer:coarse){ #ctl{display:flex} }
+  /* a bigger target than the drawn circle, so a thumb that lands near still counts */
+  #ctl button{position:relative}
+  #ctl button::after{content:"";position:absolute;inset:-8px;border-radius:50%}
+  /* held upright there is a whole empty half-screen under the game: the pad gets the room */
+  @media(hover:none) and (pointer:coarse) and (orientation:portrait){
+    #ctl button{width:clamp(72px,21vw,96px);height:clamp(72px,21vw,96px);font-size:32px}
+    #jump{width:clamp(96px,29vw,132px)!important;height:clamp(96px,29vw,132px)!important}
+  }
+  .touchhint{display:none;margin:0 0 18px;font-size:14px;line-height:1.5;color:rgba(255,255,255,.85)}
+  .touchhint b{color:#9FD3F7}
+  @media(hover:none) and (pointer:coarse){ .touchhint{display:block} #keys{display:none} }
   /* screens */
   .screen{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;
     text-align:center;padding:24px;background:linear-gradient(180deg,rgba(8,22,34,.86),rgba(8,22,34,.97));
@@ -81,6 +92,70 @@
   #toast.bad{background:#FFE3E8}
   #toast.good{background:#E3FBF2}
 </style>
+<style>
+/* A screen is centred while it fits. Held on its side, or with a long gift panel, it is taller than
+   the phone and a centred box overflows at BOTH ends -- and the top is above anything a finger can
+   scroll to. Spacers either side do the centring and give way instead, so it always starts at the
+   top and scrolls. The padding keeps it off a notch when the phone is turned. */
+.screen{justify-content:flex-start;overflow-y:auto;overscroll-behavior:contain;
+  padding-left:max(22px,env(safe-area-inset-left));padding-right:max(22px,env(safe-area-inset-right))}
+.screen::before,.screen::after{content:"";flex:1 0 0%}
+
+/* The top row is five pills and 335px wide at its widest; a 320px phone cannot hold that, and the page
+   scrolled sideways. Smaller type and gaps first, and it may wrap rather than push past the edge. */
+.hud{flex-wrap:wrap;row-gap:6px;
+  padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+@media(max-width:380px){
+  .hud{font-size:13px;padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+  .hud .l,.hud .r{gap:6px}
+  .pill{padding:4px 9px}
+}
+/* the Booth link is a pill 25px tall: a finger needs more, so the tap area runs past it, unseen */
+#boothLink{position:relative}
+#boothLink::after{content:"";position:absolute;inset:-10px}
+/* the touch pad stays off a notch held sideways */
+#ctl{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+/* Play again and Booth are what a finished run is for. Pinned to the bottom of the scrolling result so
+   a tall result (the score, the breakdown, a gift panel) can never push them off a short screen; on a
+   narrow phone they stop above the two round corner buttons rather than under them. */
+.screen .actions{position:sticky;bottom:0;z-index:2;width:100%;padding:10px 0 max(10px,env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg,rgba(8,22,34,0),rgba(8,22,34,.94) 30%)}
+@media(max-width:560px){ .screen .actions{bottom:60px} }
+/* a phone on its side has about 300-400px of height: say the same thing in less of it */
+@media(max-height:440px){
+  .screen{padding-top:10px;padding-bottom:10px}
+  .eyebrow{margin-bottom:4px}
+  h1{font-size:26px;margin-bottom:4px}
+  .sub{font-size:13px;line-height:1.35;margin-bottom:8px}
+  .keys{display:none}
+  .touchhint{font-size:12px;line-height:1.35;margin:0 0 8px}
+  .final{font-size:38px;margin:0 0 2px}
+  .line{margin-bottom:6px}
+  .brk{display:none}
+  #gift{padding:10px 14px;margin:4px auto 6px}
+  #gift h3{font-size:15px}
+  #gift p{font-size:12px;margin-bottom:6px}
+  .btn{padding:10px 20px;font-size:15px}
+}
+</style>
+<style>
+/* What is last on a screen must clear the safe area and, on a narrow phone, the two round corner buttons
+   (Booth, Ranking). The padding at the foot of a scrolling flex box is not kept on every phone, so it is a
+   spacer. The Start button is pinned above those buttons so a long screen cannot push it out of reach. */
+.screen::after{content:"";flex:1 0 calc(6px + env(safe-area-inset-bottom,0px))}
+@media(max-width:560px){
+  .screen::after{flex:1 0 calc(64px + env(safe-area-inset-bottom,0px))}
+  #start,#startBtn,#playBtn{position:sticky;bottom:calc(60px + env(safe-area-inset-bottom,0px));z-index:2}
+}
+.lvb .t{font-size:10px}
+/* the top of a start screen clears the notch on a phone held upright */
+.screen{padding-top:max(24px,calc(12px + env(safe-area-inset-top,0px)))}
+/* held on its side there is little height: the Start button stays in view and the rest scrolls under it */
+@media(max-height:440px){
+  .screen .btn{min-height:40px}
+  #start,#startBtn,#playBtn{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:2}
+}
+</style>
 </head>
 <body>
 <canvas id="stage" aria-label="Facy Run"></canvas>
@@ -98,7 +173,8 @@
   <p class="eyebrow">Facerinna · Booth game 08</p>
   <h1>Facy Run</h1>
   <p class="sub">Run Prof Facy through three zones — <b>Skin Types</b>, <b>Skin Concerns</b> and <b>Ingredients</b>. Bump the <b>?</b> blocks, grab the capsules, pick the right product at each signpost and stomp the breakouts. Reach the flag before the clock does.</p>
-  <div class="keys"><span class="key">← → move</span><span class="key">↑ / Space / W jump</span><span class="key">hold for a higher jump</span></div>
+  <div class="keys" id="keys"><span class="key">← → move</span><span class="key">↑ / Space / W jump</span><span class="key">hold for a higher jump</span></div>
+  <p class="touchhint" id="touchHint">Hold <b>◀ ▶</b> to run &middot; tap <b>▲</b> or the screen to jump &middot; hold it for a higher jump</p>
   <button class="btn" id="start" type="button">Start</button>
   <a class="btn ghost" href="index.html#game">Booth</a>
 </div>
@@ -115,7 +191,7 @@
     <div id="claimCode"></div>
     <button class="btn" id="claimBtn" type="button" style="display:none">Claim my gift</button>
   </div>
-  <div>
+  <div class="actions">
     <button class="btn" id="again" type="button">Play again</button>
     <a class="btn ghost" id="boothBtn" href="index.html#game">Booth</a>
   </div>
@@ -2823,7 +2899,12 @@ function fit(){
      leaves the element the old shape, and only this puts it right */
   cv.style.width = W + 'px'; cv.style.height = H + 'px';
   var aspect = W/H;
-  view.w = Math.max(480, Math.min(1000, Math.round(view.h*aspect)));
+  /* A phone held upright is 390 wide: at 480 of world that is 0.8x, a Facy the size of a
+     grain of rice and a sky twice the height of the game. Upright, show 360 of world
+     instead -- still more than a full jump (about 143px) ahead of her -- so she and the
+     bricks are a third bigger and a thumb can tell what it is aiming at. */
+  var minW = aspect < 1 ? Math.max(360, Math.round(W/1.5)) : 480;   /* and no more than 1.5x on a tablet, or the pad lands on the ground */
+  view.w = Math.max(minW, Math.min(1000, Math.round(view.h*aspect)));
   view.scale = Math.min(W/view.w, H/view.h);
   view.ox = Math.round((W - view.w*view.scale)/2); view.oy = Math.round((H - view.h*view.scale)/2);
   g.imageSmoothingEnabled = false;
@@ -3039,6 +3120,15 @@ function giftConfig(){
     return giftCfg;
   }).catch(function(){ return giftCfg; });
 }
+/* The rules the booth page last saved on this phone, for when the script cannot
+   be reached (see fx-gift.js for the reasoning). */
+function giftRemembered(){
+  try {
+    var c = (JSON.parse(read('fx.booth.config') || 'null') || {}).cfg;
+    if(c && c.settings) return { gift_active: c.settings.gift_active, gift_needs: c.gift_needs || {} };
+  } catch(e){}
+  return null;
+}
 function giftShow(title, text, claim){
   el.giftTitle.textContent = title; el.giftText.textContent = text;
   el.claimBtn.style.display = 'none';
@@ -3056,7 +3146,14 @@ function giftCheck(){
   giftHide(); lastClaim = null;
   if(!API) return;
   giftConfig().then(function(cfg){
-    if(!cfg || !/^(yes|y|true|1|on)$/i.test(String(cfg.gift_active||'no'))) return;
+    if(!cfg) cfg = giftRemembered();
+    if(!cfg){
+      /* the gift desk cannot be reached and this phone never heard its rules:
+         say only where to go, nothing about whether a gift is owed */
+      giftShow('Gifts cannot be checked right now', 'We could not reach the gift desk. If your score earns a gift, show this screen to the FACERINNA team at the counter.', null);
+      return;
+    }
+    if(!/^(yes|y|true|1|on)$/i.test(String(cfg.gift_active||'no'))) return;
     var need = (cfg.gift_needs || {})['facy-run'];
     if(!need) return;                     /* no figure set for this game */
     if(S.score < need){

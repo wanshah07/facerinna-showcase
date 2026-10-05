@@ -161,10 +161,15 @@
 
   var css = document.createElement('style');
   css.textContent =
-    '.fxr-gate{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;' +
-      'justify-content:center;align-items:center;text-align:center;padding:24px;' +
+    /* Spacers either side centre it when it fits and give way when it does not, so a short
+       screen (a phone on its side, a keyboard up) scrolls from the top instead of losing it; the
+       padding keeps it off a notch. */
+    '.fxr-gate{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;overflow-y:auto;' +
+      'justify-content:flex-start;align-items:center;text-align:center;' +
+      'padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));' +
       'background:linear-gradient(180deg,rgba(8,22,34,.82),rgba(8,22,34,.96));' +
       'backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}' +
+    '.fxr-gate::before,.fxr-gate::after{content:"";flex:1 0 0%}' +
     '.fxr-gate.hidden{display:none}' +
     '.fxr-eyebrow{font-size:11px;letter-spacing:.42em;text-transform:uppercase;' +
       'font-weight:800;color:#54C1F5;margin:0 0 10px}' +
@@ -185,8 +190,13 @@
     /* The board is a popup in the free bottom-right corner rather than a panel
        inside the result screen: the games size those screens themselves, and a
        block dropped into one pushed their buttons off small phones. */
-    '.fxr-pop{position:fixed;right:14px;bottom:66px;z-index:80;width:min(330px,calc(100vw - 28px));' +
-      'text-align:left;color:#fff;border-radius:18px;padding:15px 16px 13px;overflow:hidden;' +
+    /* held to what is left once the notch, the home bar and the two corner buttons are allowed for,
+       and it scrolls inside that rather than running off the top of a short screen */
+    '.fxr-pop{position:fixed;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(66px + env(safe-area-inset-bottom,0px));' +
+      'z-index:80;width:min(330px,calc(100vw - 28px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)));' +
+      'max-height:calc(100vh - 78px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));' +
+      'max-height:calc(100dvh - 78px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;' +
+      'text-align:left;color:#fff;border-radius:18px;padding:15px 16px 13px;overflow-x:hidden;' +
       'background:linear-gradient(180deg,rgba(12,32,50,.94),rgba(8,22,34,.97));' +
       'border:1.5px solid rgba(255,255,255,.16);box-shadow:0 18px 44px rgba(4,14,24,.5);' +
       '-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);' +
@@ -217,7 +227,7 @@
     '.fxr-sc{flex:none;font-variant-numeric:tabular-nums}' +
     '.fxr-note{margin:10px 0 0;font-size:12px;font-weight:700;color:rgba(255,255,255,.55)}' +
     /* the way back to the popup once it has gone; sits under it, never behind */
-    '.fxr-show{position:fixed;right:14px;bottom:14px;z-index:76;border:0;cursor:pointer;' +
+    '.fxr-show{position:fixed;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:76;border:0;cursor:pointer;' +
       'font:inherit;font-weight:800;font-size:13px;letter-spacing:.04em;' +
       'padding:10px 15px;border-radius:99px;color:#EAF6FF;display:none;' +
       'background:rgba(8,22,34,.62);border:1.5px solid rgba(255,255,255,.22);' +
@@ -230,7 +240,7 @@
        one that is free in all five */
     /* above the name gate (z-index 70) on purpose: someone who opens a game by
        mistake, or does not want to give a name, must still have a way out */
-    '.fxr-back{position:fixed;left:14px;bottom:14px;z-index:75;border:0;cursor:pointer;' +
+    '.fxr-back{position:fixed;left:calc(14px + env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:75;border:0;cursor:pointer;' +
       'font:inherit;font-weight:800;font-size:13px;letter-spacing:.04em;' +
       'padding:10px 16px;border-radius:99px;color:#EAF6FF;' +
       'background:rgba(8,22,34,.62);border:1.5px solid rgba(255,255,255,.22);' +
@@ -243,7 +253,9 @@
        empty on a result screen, and only borrowed for ten seconds mid-game by
        someone who asked to see the board. */
     '@media(orientation:portrait){' +
-      '.fxr-pop{top:12px;bottom:auto;left:12px;right:12px;width:auto;' +
+      '.fxr-pop{top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;left:calc(12px + env(safe-area-inset-left,0px));right:calc(12px + env(safe-area-inset-right,0px));width:auto;' +
+        'max-height:calc(100vh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));' +
+        'max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));' +
         'transform:translateY(-14px) scale(.97)}' +
       '.fxr-pop.on{transform:none}' +
     '}' +
