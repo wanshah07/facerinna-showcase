@@ -17,17 +17,17 @@ const rowOf = e => tabs['Admins'].rows.find(r => String(r[0]).toLowerCase() === 
 console.log('the owner');
 const own = signIn(OWNER);
 check('the owner signs in with a code', own && own.ok && own.token, own);
-check('...and the sign-in says: admin, every area', own.role==='admin' && own.access.length===10, own);
+check('...and the sign-in says: admin, every area', own.role==='admin' && own.access.length===11, own);
 let g = call({ action:'admin.get', token:own.token });
 check('admin.get: me is the owner, an admin', g.me && g.me.owner===true && g.me.role==='admin', g.me);
-check('admin.get: the ten areas come with it', Array.isArray(g.perms) && g.perms.map(p=>p[0]).join()==='counter,guide,page,games,gift,stock,claims,sections,segments,privacy', g.perms);
+check('admin.get: the eleven areas come with it', Array.isArray(g.perms) && g.perms.map(p=>p[0]).join()==='counter,guide,page,games,gift,stock,claims,sections,segments,media,privacy', g.perms);
 check('admin.get: an admin gets the passcode, the list and the quota', 'passcode' in g.settings && g.admins.length===1 && g.quota===100, Object.keys(g));
 check('the Admins tab names all eight columns', tabs['Admins'].rows[0].join()==='email,active,name,added,role,access,updated,by', tabs['Admins'].rows[0]);
 
 console.log('\na row from before roles');
 tabs['Admins'].rows.push(['old@clinic.test','yes','Old hand','']);
 const old = signIn('old@clinic.test');
-check('a row with no role is an admin, as every row was', old.ok && old.role==='admin' && old.access.length===10, old);
+check('a row with no role is an admin, as every row was', old.ok && old.role==='admin' && old.access.length===11, old);
 check('...and gets the People list', (call({ action:'admin.get', token:old.token }).admins||[]).length===2);
 
 console.log('\nadding a staff member');

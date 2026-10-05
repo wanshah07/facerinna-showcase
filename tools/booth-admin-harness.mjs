@@ -46,7 +46,24 @@ export function load(){
                       sleep(){},
                       DigestAlgorithm: { SHA_256: 'SHA-256' },
                       computeDigest: (alg, str) => Array.from(crypto.createHash('sha256').update(String(str)).digest()),
-                      base64Encode: bytes => Buffer.from(bytes).toString('base64') };
+                      base64Encode: bytes => Buffer.from(bytes).toString('base64'),
+                      base64Decode: str => Array.from(Buffer.from(String(str), 'base64')),
+                      newBlob: (bytes, mime, name) => ({ bytes, mime, name }) };
+  /* Drive: files with the one thing the script asks of them -- who can open
+     them. DRIVE.files is the whole store, so a test can read what the public
+     could and could not fetch. */
+  const DRIVE = { files: {}, folders: [], failShare: false, n: 0 };
+  const mkFile = (blob) => { const id = 'drv' + String(++DRIVE.n).padStart(6,'0');
+    const f = { id, name: blob.name, mime: blob.mime, bytes: blob.bytes.length, access: 'PRIVATE', trashed: false,
+      getId: () => id,
+      setSharing: (a, p) => { if(DRIVE.failShare) throw new Error('Sharing outside the domain is not allowed'); f.access = a; },
+      setTrashed: t => { f.trashed = t; } };
+    DRIVE.files[id] = f; return f; };
+  const DriveApp = {
+    Access: { ANYONE_WITH_LINK: 'ANYONE_WITH_LINK', PRIVATE: 'PRIVATE' }, Permission: { VIEW: 'VIEW', NONE: 'NONE' },
+    getFoldersByName: n => { const hit = DRIVE.folders.filter(x => x.name === n); let i = 0; return { hasNext: () => i < hit.length, next: () => hit[i++] }; },
+    createFolder: n => { const fo = { name: n, createFile: mkFile }; DRIVE.folders.push(fo); return fo; },
+    getFileById: id => { if(!DRIVE.files[id]) throw new Error('no file '+id); return DRIVE.files[id]; } };
   const PROPS={};
   const PropertiesService = { getScriptProperties: () => ({
     getProperty: k => (k in PROPS ? PROPS[k] : null),
@@ -77,5 +94,5 @@ export function load(){
     return call({ action:'redeem', email, code });
   };
   m.setUp();
-  return { m, call, signIn, tabs, mails, PROPS, CACHE };
+  return { m, call, signIn, tabs, mails, PROPS, CACHE, DRIVE };
 }

@@ -2247,6 +2247,49 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
   }catch(e){}
 })();
 </script>
+<style>
+/* ---- the phone audit: type, taps, and a phone held on its side ---- */
+/* Nothing is set below 10px: 7 and 8px lettering cannot be read at arm's length. */
+.nav-trust-note,.wa-lbl,.halal-lbl,.cf-card .cf-tag,.thumb .tag-best,.fan-open,.fan-list .fan-cap i{font-size:10px}
+.fan-cap i{font-size:clamp(.625rem,.72vw,.68rem)}
+.nav-trust-note{letter-spacing:.08em}
+.offer-eyebrow,.flyer-below .offer-eyebrow{font-size:clamp(.625rem,1.05vh,.74rem)}
+/* A finger needs about 40px. Where the drawing is smaller, the tap area runs past it unseen. */
+.chat-head .x{width:40px;height:40px}
+.cchip{min-height:36px}
+.chat-input button{flex:0 0 40px}
+.ghelp{position:relative}
+.ghelp::after{content:"";position:absolute;inset:-8px}
+.rf-chip{min-height:36px}
+.flyer-actions .btn{min-height:40px}
+/* Held on its side a phone offers 300-400px of height. The three round buttons on the right (WhatsApp,
+   halal, chat) stack to about 300px and ran up over the header's own buttons, and the chat window
+   was too short to hold its header, its message list and its input, so its close button was cut off. */
+@media(max-height:520px){
+  .wa-lbl,.halal-lbl,.chips-row{display:none}
+  .chat-fab{width:48px;height:48px;right:16px}
+  .chat-fab svg{width:34px;height:34px}
+  .halal-fab{right:16px;width:48px;bottom:calc(var(--fab-bottom,22px) + 58px)}
+  .halal-badge{width:48px;height:48px}
+  .halal-badge img{height:30px}
+  .wa-fab{right:16px;width:48px;bottom:calc(var(--fab-bottom,22px) + 116px)}
+  .wa-badge{width:48px;height:48px}
+  .wa-badge svg{width:28px;height:28px}
+  .chat-panel{top:auto;bottom:12px;right:12px;height:calc(100vh - 24px);height:calc(100dvh - 24px);max-height:none}
+  .chat-head{padding:7px 12px}
+  .chat-head .av{width:32px;height:32px}
+  .chat-head .av svg{width:26px;height:26px}
+  .chat-msgs{min-height:0}
+}
+
+/* QR codes and posters uploaded in the admin for the event now running */
+.ep-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),320px));gap:24px;justify-content:center}
+.ep-card{margin:0;text-align:center}
+.ep-card a{display:block;border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md);background:var(--surface);border:1px solid var(--line)}
+.ep-card img{display:block;width:100%;height:auto}
+.ep-card figcaption{margin-top:10px;font-size:.84rem;color:var(--ink-2);line-height:1.4}
+.qr-card.booth-media .qr-slot{padding:8px}
+</style>
 </head>
 <body>
 
@@ -5496,7 +5539,10 @@ const GALLERY_DOCS = [
     {a:'#2A1B5E', b:'#8D6BF0', ic:'🔦'},
     {a:'#0E4B7E', b:'#7EC8F5', ic:'🏃‍♂️'}
   ];
-  ring.querySelectorAll('.cg-art').forEach(function(cv){
+  /* Eight 600x800 canvases with a 230px emoji each cost a long job if drawn together at
+     load, and the gallery is well below the fold. Paint them one per turn once the page
+     has settled, so a touch never waits behind all eight. */
+  const paintArt=function(cv){
     const spec=ART[+cv.parentNode.dataset.art]||ART[0];
     const g=cv.getContext('2d'); if(!g) return;
     const w=cv.width, h=cv.height;
@@ -5515,7 +5561,13 @@ const GALLERY_DOCS = [
     g.textAlign='center'; g.textBaseline='middle';
     g.fillText(spec.ic, w*0.5, h*0.40);
     g.restore();
-  });
+  };
+  (function(){
+    const todo=Array.prototype.slice.call(ring.querySelectorAll('.cg-art'));
+    const next=function(){ const cv=todo.shift(); if(!cv) return; paintArt(cv); setTimeout(next,0); };
+    const go=function(){ setTimeout(next,0); };
+    if(document.readyState==='complete') go(); else addEventListener('load',function(){ setTimeout(go,300); },{once:true});
+  })();
 
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const AUTO=0.10;                       // degrees per frame while idle
@@ -7947,6 +7999,61 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     });
   }
 
+
+  /* ---- QR codes and posters from the admin ------------------------------
+     The script lists only what is live for the event now running; anything
+     locked or off is not in the config at all. They are drawn after the
+     built-in codes, and apply() is idempotent, so a re-draw replaces them. */
+  function mediaOk(m){ return m && /^https:\/\/lh3\.googleusercontent\.com\/d\/[\w-]+=[sw]\d+$/.test(String(m.url||'')); }
+  /* applySections() has just cleared every hide class, so only the nodes made here need to go */
+  function clearMedia(){
+    [].slice.call(document.querySelectorAll('.booth-media')).forEach(function(n){ n.remove(); });
+  }
+  function drawMedia(cfg, isAdmin){
+    clearMedia();
+    var list=(cfg.media||[]).filter(mediaOk), st=cfg.settings||{};
+    var qrs=list.filter(function(m){ return m.kind==='qr'; }), posters=list.filter(function(m){ return m.kind==='poster'; });
+    var grid=document.querySelector('#qrcore .qr-grid');
+    if(grid){
+      qrs.forEach(function(m){
+        var card=document.createElement('div'); card.className='qr-card booth-media';
+        var img='<img src="'+esc(m.url)+'" alt="QR code: '+esc(m.label||'scan')+'" loading="lazy" decoding="async">';
+        var slot=(m.link ? '<a class="qr-tap" href="'+esc(m.link)+'" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">'+img+'</a>' : img);
+        card.innerHTML='<div class="qr-slot">'+slot+'</div><h4>'+esc((m.label||'Scan').replace(/^./, function(c){ return c.toUpperCase(); }))+'</h4>'+
+          (m.link ? '<p><a class="qr-link" href="'+esc(m.link)+'" target="_blank" rel="noopener">Open the link &#8599;</a></p>' : '');
+        grid.appendChild(card);
+      });
+      if(st.qr_builtin==='hide' && !isAdmin){
+        [].slice.call(grid.children).forEach(function(c){ if(!c.classList.contains('booth-media')) c.classList.add('booth-sec-hidden'); });
+        if(!qrs.length){
+          var q=document.getElementById('qrcore'); q.classList.add('booth-sec-hidden');
+          var d=q.nextElementSibling; if(d && d.querySelector && d.querySelector('.divider-line')) d.classList.add('booth-sec-hidden');
+          linksTo('qrcore').forEach(function(a){ a.classList.add('booth-link-hidden'); });
+        }
+      }
+    }
+    var talk=document.getElementById('talk');
+    if(posters.length && talk){
+      var sec=document.createElement('section'); sec.id='eventposters'; sec.className='booth-media sec-tight';
+      sec.innerHTML='<div class="wrap"><div class="sec-head center"><span class="eyebrow">Posters</span><h2>On show at this event</h2></div>'+
+        '<div class="ep-grid">'+posters.map(function(m){
+          var cap=(m.label||'').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+          return '<figure class="ep-card"><a href="'+esc(m.url.replace(/=w\d+$/, '=w2400'))+'" target="_blank" rel="noopener">'+
+            '<img src="'+esc(m.url)+'" alt="Poster: '+esc(cap||'poster')+'" loading="lazy" decoding="async"></a>'+(cap ? '<figcaption>'+esc(cap)+'</figcaption>' : '')+'</figure>';
+        }).join('')+'</div></div>';
+      var div=document.createElement('div'); div.className='wrap booth-media'; div.innerHTML='<div class="divider-line"></div>';
+      var after=talk.nextElementSibling;                       /* the divider under the talk belongs to it */
+      var ref=(after && after.querySelector && after.querySelector('.divider-line')) ? after.nextSibling : talk.nextSibling;
+      talk.parentNode.insertBefore(sec, ref); talk.parentNode.insertBefore(div, sec.nextSibling);
+    }
+    /* a picture Drive will not hand over (deleted, or locked between two polls)
+       takes its card with it, rather than leaving a broken image on the page */
+    [].slice.call(document.querySelectorAll('.booth-media img')).forEach(function(im){
+      im.addEventListener('error', function(){ var c=im.closest('.qr-card,.ep-card'); if(c) c.remove();
+        var s=document.getElementById('eventposters'); if(s && !s.querySelector('.ep-card')){ var d=s.nextElementSibling; s.remove(); if(d && d.classList.contains('booth-media')) d.remove(); } });
+    });
+  }
+
   /* ---- apply ---- */
   var lastKey=null;
   function apply(cfg, isAdmin){
@@ -7969,6 +8076,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     applySections(states, isAdmin);
     applyGames(off, isAdmin);
     drawSegments(cfg.segments);
+    drawMedia(cfg, isAdmin);
   }
   window.__boothApply = apply;   /* the tests, and nothing else */
 
