@@ -94,6 +94,25 @@ console.log('\nreduced motion');
   await c.close();
 }
 
+/* The lettering loops by sliding its track left by half its length. Half the
+   track has to cover the band, or on a wide monitor the end of the line runs out
+   and leaves bare navy on the right -- which a 1610px screen showed with four
+   copies of the line. Checked at the very end of the loop, where it is worst. */
+console.log('\nthe lettering reaches the right-hand edge on any screen');
+for(const w of [390,1280,1610,1920,2560,3840]){
+  const {c,p,errs}=await open(w,900);
+  const r=await p.evaluate(()=>{ const band=document.querySelector('#top .hero-marquee'), t=band.querySelector('.marquee-track');
+    const an=t.getAnimations()[0]; an.pause(); an.currentTime=parseFloat(getComputedStyle(t).animationDuration)*1000*0.999;
+    const B=band.getBoundingClientRect(), last=t.lastElementChild.getBoundingClientRect();
+    const one=t.children[0].getBoundingClientRect().width;
+    return { band:Math.round(B.right), end:Math.round(last.right), n:t.children.length, speed:Math.round((t.scrollWidth/2)/parseFloat(getComputedStyle(t).animationDuration)), one:Math.round(one) }; });
+  chk(`${w}px: at the end of the loop the line still runs past the right edge`, r.end>=r.band, r);
+  chk(`${w}px: an even number of copies, so the two halves match`, r.n%2===0, r.n);
+  chk(`${w}px: same speed as it was tuned at (four copies in 18s)`, Math.abs(r.speed-Math.round(2*r.one/18))<=2, r);
+  chk(`${w}px: no page errors`, errs.length===0, errs[0]);
+  await c.close();
+}
+
 await b.close(); srv.close();
 console.log(bad ? '\n'+bad+' FAILED' : '\nall passed');
 process.exit(bad?1:0);

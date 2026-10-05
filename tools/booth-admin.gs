@@ -155,8 +155,9 @@ var SETTING_KEYS = {
   /* The event the booth is running now. A QR code or poster tagged with another
      event is locked: private in Drive and left out of the page's config, so it is
      not merely hidden. Empty means no event is chosen and nothing is locked for
-     that reason. qr_builtin is whether the three codes written into the page
-     (registration, this site, WhatsApp) still show beside the uploaded ones. */
+     that reason. qr_builtin is the old all-or-nothing switch for the three codes
+     written into the page; they are listed one by one now (BUILTIN_MEDIA), and a
+     "hide" left here only sets where they start. */
   active_event:  '',
   qr_builtin:    'show',
   gift_active:   'no',
@@ -840,7 +841,38 @@ function slug_(v) {
 function sameEvent_(a, b) { return slug_(a) === slug_(b); }
 
 function mediaRows_() {
-  return rows_(T_MEDIA, MEDIA_HEADERS).filter(function (r) { return String(r.id || '').trim() && String(r.file_id || '').trim(); });
+  return rows_(T_MEDIA, MEDIA_HEADERS).filter(function (r) { return String(r.id || '').trim() && String(r.file_id || '').trim() && !isBuiltin_(r.id); });
+}
+
+/* The three codes and the session poster written into the page itself. They
+   have no Drive file -- their pictures are part of the published page -- so for
+   them "off" or "locked to another event" means the page leaves them out, the
+   same closed door (not a safe) as a hidden section. Each gets a row in the
+   Media tab the first time somebody changes it; until then it is on, at every
+   event. thumb is the page's own copy of the picture, for the admin list. */
+var BUILTIN_MEDIA = [
+  { id: 'builtin-qr-registration', kind: 'qr', label: 'Registration', thumb: 'media/builtin-qr-registration.png' },
+  { id: 'builtin-qr-more-info', kind: 'qr', label: 'More Info', thumb: 'media/builtin-qr-more-info.png' },
+  { id: 'builtin-qr-whatsapp', kind: 'qr', label: 'WhatsApp', thumb: 'media/builtin-qr-whatsapp.png' },
+  { id: 'builtin-poster-session-talk', kind: 'poster', label: 'Session poster: Dr. Peter Ch\'ng (talk section)', thumb: 'docs/talk-poster-1.webp' }
+];
+function isBuiltin_(id) { return /^builtin-/.test(String(id || '')); }
+function builtins_() {
+  var have = {};
+  rows_(T_MEDIA, MEDIA_HEADERS).forEach(function (r) { if (isBuiltin_(r.id)) have[String(r.id)] = r; });
+  /* the switch these codes had before they were listed one by one */
+  var oldHide = String(settings_().qr_builtin || '') === 'hide';
+  return BUILTIN_MEDIA.map(function (b) {
+    var r = have[b.id];
+    return { id: b.id, kind: b.kind, name: b.id.replace(/^builtin-/, ''), label: b.label, thumb: b.thumb, builtin: true,
+             event: r ? String(r.event || '') : '', on: r ? r.on : ((oldHide && b.kind === 'qr') ? 'no' : 'yes'),
+             _row: r ? r._row : 0, created: r ? r.created : '', by: r ? r.by : '' };
+  });
+}
+/* the built-in pieces the page should leave out right now */
+function builtinOff_(active) {
+  var cur = active == null ? settings_().active_event : active;
+  return builtins_().filter(function (b) { return !mediaLive_(b, cur); }).map(function (b) { return b.id; });
 }
 function mediaLive_(r, active) {
   if (!yes_(r.on)) return false;
@@ -865,7 +897,13 @@ function publicMedia_(active) {
 }
 function mediaList_() {
   var cur = settings_().active_event;
-  return mediaRows_().map(function (r) {
+  var fixed = builtins_().map(function (b) {
+    var live = mediaLive_(b, cur);
+    return { id: b.id, kind: b.kind, name: b.name, label: b.label, event: b.event, on: yes_(b.on), live: live,
+             locked: yes_(b.on) && !live, builtin: true, thumb: b.thumb, target: '', bytes: 0, url: '',
+             created: iso_(b.created), by: String(b.by || '') };
+  });
+  return fixed.concat(mediaRows_().map(function (r) {
     var live = mediaLive_(r, cur);
     return { id: String(r.id), kind: String(r.kind), name: String(r.name), label: String(r.label || ''),
              event: String(r.event || ''), on: yes_(r.on), live: live,
@@ -873,11 +911,11 @@ function mediaList_() {
              target: String(r.target || ''), bytes: Number(r.bytes) || 0,
              url: live ? mediaUrl_(String(r.file_id), String(r.kind)) : '',
              created: iso_(r.created), by: String(r.by || '') };
-  });
+  }));
 }
 function mediaEvents_() {
   var seen = {}, out = [];
-  mediaRows_().forEach(function (r) {
+  builtins_().concat(mediaRows_()).forEach(function (r) {
     var e = String(r.event || '').trim();
     if (e && !seen[slug_(e)]) { seen[slug_(e)] = true; out.push(e); }
   });
@@ -977,8 +1015,13 @@ function mediaUpload_(b, by) {
 /* Turn one item on or off, move it to another event, or do that for a whole
    event at once: { id, on, event } or { for_event, on }. */
 function mediaSet_(b, by) {
-  var sh = sheet_(T_MEDIA), rows = mediaRows_(), hit = 0;
+  var sh = sheet_(T_MEDIA), rows = builtins_().concat(mediaRows_()), hit = 0;
   var patch = function (r) {
+    if (!r._row) {
+      /* a built-in piece changed for the first time: it gets its row now */
+      sh.appendRow([r.id, r.kind, r.name, cell_(r.label), '', yes_(r.on) ? 'yes' : 'no', '', '', '', '', now_(), by, now_()]);
+      r._row = sh.getLastRow();
+    }
     var on = ('on' in b) ? (yes_(b.on) ? 'yes' : 'no') : (yes_(r.on) ? 'yes' : 'no');
     var ev = ('event' in b && b.id) ? eventName_(b.event) : String(r.event || '');
     sh.getRange(r._row, 5, 1, 2).setValues([[cell_(ev), on]]);
@@ -999,6 +1042,7 @@ function mediaSet_(b, by) {
 }
 function mediaDelete_(b, by) {
   var sh = sheet_(T_MEDIA), id = String((b && b.id) || '');
+  if (isBuiltin_(id)) return json_({ ok: false, error: 'that one is built into the page: turn it off instead' });
   var rows = mediaRows_();
   for (var i = 0; i < rows.length; i++) if (String(rows[i].id) === id) {
     try { DriveApp.getFileById(String(rows[i].file_id)).setTrashed(true); } catch (e) { /* already gone */ }
@@ -1065,7 +1109,8 @@ function config_() {
   var text = JSON.stringify({ ok: true, settings: set, segments: publicSegments_(),
                  sections: SECTIONS, section_states: publicSections_(),
                  games: GAMES, gift_games: GIFT_GAMES, gift_needs: giftNeeds_(set.gift_points),
-                 media: publicMedia_(set.active_event), at: Date.now() });
+                 media: publicMedia_(set.active_event), builtin_off: builtinOff_(set.active_event),
+                 at: Date.now() });
   /* a script cache value may not pass 100KB; past that, do without */
   if (cache && text.length < 90000) { try { cache.put(CONFIG_KEY, text, CONFIG_SECS); } catch (e) {} }
   return configText_(text);
@@ -1519,7 +1564,7 @@ var GUIDE = [
     '*Event now* is the one switch. Every code or poster tagged with another event is locked at once: its Drive file goes private and it leaves the page. Switch back and they return.',
     'Each item can also be turned off on its own, moved to another event, or deleted.',
     'Items with no event show at every event.',
-    '*Show the three built-in codes* decides whether registration, this site and WhatsApp (written into the page) still show beside the uploaded ones.'
+    'The three codes written into the page (Registration, More Info, WhatsApp) and Dr. Peter\'s session poster are in the same list, marked *built into the page*. Turn them off or tie them to an event like the rest; they cannot be deleted. Turning the session poster off takes the whole talk section off the page.'
   ] },
 
   { t: 'h', s: 'One gift per device' },
