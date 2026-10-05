@@ -155,9 +155,19 @@ for(const [tag,w,h] of [['phone',390,844],['tablet',820,1180],['tablet sideways'
   let k=await cards();
   chk(`${tag}: the uploaded codes follow the built-in three`, k.length===5 && k.slice(0,3).every(x=>!x.media&&x.shown) && k.slice(3).every(x=>x.media&&x.shown), k);
   chk(`${tag}: a code with a link says where (and is not a made-up address)`, k[3].h4==='Whatsapp' && k[3].link==='https://wa.me/message/X' && k[4].link==='', k.slice(3));
-  chk(`${tag}: the poster has its own section, under the talk`, await p.evaluate(()=>{ const s=document.getElementById('eventposters'); const t=document.getElementById('talk'); return !!s && s.querySelectorAll('figure').length===1 && !!(t.compareDocumentPosition(s)&Node.DOCUMENT_POSITION_FOLLOWING) && /Dermocosmetic Talk/.test(s.textContent) && /=w2400$/.test(s.querySelector('a').href); }));
+  chk(`${tag}: the poster has its own section, under the talk, built like the session poster`, await p.evaluate(()=>{ const s=document.getElementById('eventposters'); const t=document.getElementById('talk');
+    return !!s && !!(t.compareDocumentPosition(s)&Node.DOCUMENT_POSITION_FOLLOWING) && !!s.querySelector('.flyer-strip .flyer-head .eyebrow') && !!s.querySelector('.flyer-strip .flyer-frame img.flyer-thumb')
+      && !!s.querySelector('.flyer-actions .ep-view') && /Dermocosmetic Talk/.test(s.textContent) && /=w2400$/.test(s.querySelector('.flyer-actions a').href); }));
+  const sz=await p.evaluate(()=>{ const a=document.querySelector('#talk .flyer-frame').getBoundingClientRect(), b=document.querySelector('#eventposters .flyer-frame').getBoundingClientRect();
+    const sa=document.querySelector('#talk .flyer-strip').getBoundingClientRect(), sb=document.querySelector('#eventposters .flyer-strip').getBoundingClientRect();
+    return { talk:Math.round(a.width), poster:Math.round(b.width), stripTalk:Math.round(sa.width), stripPoster:Math.round(sb.width) }; });
+  chk(`${tag}: the frame is the same width as Dr. Peter's, and so is the card around it`, sz.talk===sz.poster && sz.stripTalk===sz.stripPoster && sz.poster>200, sz);
+  chk(`${tag}: ...and the same two buttons`, await p.evaluate(()=>{ const f=s=>[...document.querySelectorAll(s+' .flyer-actions .btn')].map(b=>b.className.replace(/\s*(ep-view)?\s*$/,'').trim()).join('|'); return f('#talk')===f('#eventposters'); }));
+  await p.evaluate(()=>document.querySelector('#eventposters .ep-view').click());
+  chk(`${tag}: Open the poster opens the reader on the uploaded picture`, await until(()=>p.evaluate(()=>{ const m=document.getElementById('bookModal')||document.querySelector('.book-modal'); const im=document.getElementById('pagerImg'); return !!im && /lh3\.googleusercontent\.com\/d\/drv00000\d=w2400$/.test(im.src) && !!document.querySelector('.open, [aria-modal="true"]'); })));
+  await p.keyboard.press('Escape');
   chk(`${tag}: no sideways scroll`, await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
-  const fit=await p.evaluate(()=>{ const r=document.querySelector('#eventposters img').getBoundingClientRect(); return {l:r.left,r:r.right,w:innerWidth}; });
+  const fit=await p.evaluate(()=>{ const r=document.querySelector('#eventposters .flyer-thumb').getBoundingClientRect(); return {l:r.left,r:r.right,w:innerWidth}; });
   chk(`${tag}: the poster is inside the screen`, fit.l>=0 && fit.r<=fit.w+1, fit);
 
   await p.evaluate(m=>window.__boothApply(m,false), CFG([...QRS,...POS],{},[],['builtin-qr-more-info']));
@@ -185,11 +195,49 @@ for(const [tag,w,h] of [['phone',390,844],['tablet',820,1180],['tablet sideways'
     {id:'y',kind:'poster',name:'q',label:'elsewhere',url:'https://evil.example/poster.png'},
     {id:'z',kind:'qr',name:'r',label:'"><script>window.__owned=2</script>',url:LH(5)+'s800',link:'https://wa.me/x" onmouseover="window.__owned=3'}]));
   await sleep(300);
-  chk('a hostile label is plain text: nothing ran', await p.evaluate(()=>!window.__owned && !!document.querySelector('#eventposters figcaption')));
+  chk('a hostile label is plain text: nothing ran', await p.evaluate(()=>!window.__owned && !![...document.querySelectorAll('#eventposters h2, #eventposters .flyer-note')].length));
   chk('a picture that is not on Drive\'s picture host is not drawn at all', await p.evaluate(()=>![...document.images].some(i=>/evil\.example/.test(i.src))));
   await p.evaluate(m=>window.__boothApply(m,false), CFG([{id:'w',kind:'poster',name:'p',label:'Hidden section',url:LH(6)+'w1800'}],{},[{id:'qrcore',label:'QR Code',mode:'hidden'}]));
   chk('an admin-hidden QR section stays hidden when media are drawn', await p.evaluate(()=>getComputedStyle(document.getElementById('qrcore')).display==='none'));
   await c.close();
+}
+
+console.log('\n── the real thing: the script, the page, a visitor and an admin');
+{
+  /* WhatsApp and the session poster switched off in the admin tab, then the booth page loaded
+     the way a person loads it: from the script's own config, no helper call */
+  const call=o=>H.call({token:own.token,...o});
+  call({action:'admin.media.set',id:'builtin-qr-whatsapp',on:false});
+  call({action:'admin.media.set',id:'builtin-poster-session-talk',on:false});
+  const open=async(admin)=>{
+    const c=await b.newContext({viewport:{width:1280,height:900}});
+    await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; if(t) try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, admin?own.token:null]);
+    await c.route(u=>u.hostname==='lh3.googleusercontent.com', r=>r.fulfill({contentType:'image/png',body:ONE_PX}));
+    const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+    await p.goto(BASE+'/index.html',{waitUntil:'load'});
+    await until(()=>p.evaluate(()=>/ee/.test(localStorage.getItem('fx.booth.config')||'')) , 8000);
+    await sleep(900);
+    return {c,p,errs};
+  };
+  const seen=p=>p.evaluate(()=>{ const vis=e=>!!e && getComputedStyle(e).display!=='none';
+    const wa=document.querySelector('[data-media="builtin-qr-whatsapp"]'), talk=document.getElementById('talk');
+    return { waShown:vis(wa), talkShown:vis(talk), regShown:vis(document.querySelector('[data-media="builtin-qr-registration"]')),
+      waMarked:!!wa && wa.classList.contains('booth-preview-off'), talkMarked:talk.classList.contains('booth-preview-off'),
+      badge:getComputedStyle(wa,'::after').content, ribbon:(document.getElementById('boothRibbon')||{}).textContent||'' }; });
+  const v=await open(false); let r=await seen(v.p);
+  chk('a visitor does not see the WhatsApp code or the session poster that are off', !r.waShown && !r.talkShown && r.regShown, r);
+  chk('...and no ribbon, no marker: they see a page that simply does not have them', !r.waMarked && !r.talkMarked && !r.ribbon, r);
+  chk('no page errors', v.errs.length===0, v.errs[0]); await v.c.close();
+  const a=await open(true); r=await seen(a.p);
+  chk('an admin signed in on the same browser still sees them (preview), but marked', r.waShown && r.talkShown && r.waMarked && r.talkMarked, r);
+  chk('...each says "Off for visitors" on its face', /Off for visitors/.test(r.badge), r.badge);
+  chk('...the ribbon names them', /WhatsApp/.test(r.ribbon) && /session poster/.test(r.ribbon) && /off/.test(r.ribbon), r.ribbon);
+  chk('...and the code that is on is not marked', await a.p.evaluate(()=>!document.querySelector('[data-media="builtin-qr-registration"]').classList.contains('booth-preview-off')));
+  call({action:'admin.media.set',id:'builtin-qr-whatsapp',on:true}); call({action:'admin.media.set',id:'builtin-poster-session-talk',on:true});
+  await a.p.evaluate(()=>window.__boothRefresh(true)); await sleep(600);
+  r=await seen(a.p);
+  chk('switched back on, the markers and the ribbon go', !r.waMarked && !r.talkMarked && !r.ribbon, r);
+  await a.c.close();
 }
 
 await b.close(); srv.close(); fs.rmSync(tmp,{recursive:true,force:true});

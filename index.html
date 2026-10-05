@@ -2283,12 +2283,35 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
 }
 
 /* QR codes and posters uploaded in the admin for the event now running */
-.ep-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),320px));gap:24px;justify-content:center}
-.ep-card{margin:0;text-align:center}
-.ep-card a{display:block;border-radius:14px;overflow:hidden;box-shadow:var(--shadow-md);background:var(--surface);border:1px solid var(--line)}
-.ep-card img{display:block;width:100%;height:auto}
-.ep-card figcaption{margin-top:10px;font-size:.84rem;color:var(--ink-2);line-height:1.4}
 .qr-card.booth-media .qr-slot{padding:8px}
+/* an uploaded poster is laid out exactly like the session poster above it: the same
+   strip, the same frame (620px on a desk, the full width of a phone), the same two
+   buttons. These are the session poster's own rules, shared rather than copied. */
+.eventposter .sec-head{margin-bottom:20px}
+.eventposter .sec-head h2{font-size:clamp(1.4rem,2.2vw,1.85rem);margin:.35rem 0 .3rem}
+.eventposter .sec-head p{font-size:.94rem}
+.eventposter{--flyer-oh:300px}
+body:not(.slides) .eventposter .flyer-frame{max-width:min(100%, 620px)}
+body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--flyer-oh)) * 0.8))}
+@media(min-width:901px){
+  body.slides .eventposter .flyer-strip{
+    display:grid;align-items:start;
+    grid-template-columns:minmax(0,1fr) minmax(210px,280px);
+    grid-template-rows:auto auto 1fr;
+    grid-template-areas:"frame head" "frame below" "frame note";
+    column-gap:clamp(16px,2vw,28px)}
+  body.slides .eventposter .flyer-head{grid-area:head;margin:0 0 10px;text-align:left}
+  body.slides .eventposter .flyer-frame{grid-area:frame;margin-inline:auto}
+  body.slides .eventposter .flyer-below{grid-area:below;flex-direction:column;align-items:stretch;margin-top:0}
+  body.slides .eventposter .flyer-note{grid-area:note;margin:12px 0 0;max-width:none;text-align:left}
+  body.slides .eventposter{--flyer-oh:200px}
+}
+/* An admin previewing the page sees everything, as with sections and games, so a code or
+   poster that is OFF for visitors says so on its face instead of looking switched on. */
+.booth-preview-off{position:relative;opacity:.55;outline:2px dashed #c0392b;outline-offset:-2px}
+.booth-preview-off::after{content:"Off for visitors";position:absolute;top:10px;right:10px;z-index:3;
+  background:#c0392b;color:#fff;font:700 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.04em;
+  padding:6px 10px;border-radius:999px;pointer-events:none}
 </style>
 </head>
 <body>
@@ -8034,16 +8057,20 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   /* applySections() has just cleared every hide class, so only the nodes made here need to go */
   function clearMedia(){
     [].slice.call(document.querySelectorAll('.booth-media')).forEach(function(n){ n.remove(); });
+    [].slice.call(document.querySelectorAll('.booth-preview-off')).forEach(function(n){ n.classList.remove('booth-preview-off'); });
   }
+  var BUILTIN_NAMES={'builtin-qr-registration':'the Registration code','builtin-qr-more-info':'the More Info code',
+    'builtin-qr-whatsapp':'the WhatsApp code','builtin-poster-session-talk':'the session poster'};
   function drawMedia(cfg, isAdmin){
     clearMedia();
     var list=(cfg.media||[]).filter(mediaOk), st=cfg.settings||{};
     var qrs=list.filter(function(m){ return m.kind==='qr'; }), posters=list.filter(function(m){ return m.kind==='poster'; });
     /* the built-in codes an admin has turned off, or tied to another event.
        An admin previewing the page still sees them, as with every section. */
-    var off=isAdmin ? [] : (cfg.builtin_off||[]);
+    var off=cfg.builtin_off||[];
     off.forEach(function(id){
       var el=document.querySelector('[data-media="'+String(id).replace(/[^\w-]/g,'')+'"]'); if(!el) return;
+      if(isAdmin){ el.classList.add('booth-preview-off'); return; }
       el.classList.add('booth-sec-hidden');
       if(el.tagName==='SECTION'){
         var nx=el.nextElementSibling; if(nx && nx.querySelector && nx.querySelector('.divider-line')) nx.classList.add('booth-sec-hidden');
@@ -8061,7 +8088,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
         grid.appendChild(card);
       });
       /* every code off and none uploaded: the whole section goes, not an empty heading */
-      if(![].some.call(grid.children, function(c){ return !c.classList.contains('booth-sec-hidden'); })){
+      if(!isAdmin && ![].some.call(grid.children, function(c){ return !c.classList.contains('booth-sec-hidden'); })){
         var q=document.getElementById('qrcore'); q.classList.add('booth-sec-hidden');
         var d=q.nextElementSibling; if(d && d.querySelector && d.querySelector('.divider-line')) d.classList.add('booth-sec-hidden');
         linksTo('qrcore').forEach(function(a){ a.classList.add('booth-link-hidden'); });
@@ -8069,23 +8096,42 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     }
     var talk=document.getElementById('talk');
     if(posters.length && talk){
-      var sec=document.createElement('section'); sec.id='eventposters'; sec.className='booth-media sec-tight';
-      sec.innerHTML='<div class="wrap"><div class="sec-head center"><span class="eyebrow">Posters</span><h2>On show at this event</h2></div>'+
-        '<div class="ep-grid">'+posters.map(function(m){
-          var cap=(m.label||'').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
-          return '<figure class="ep-card"><a href="'+esc(m.url.replace(/=w\d+$/, '=w2400'))+'" target="_blank" rel="noopener">'+
-            '<img src="'+esc(m.url)+'" alt="Poster: '+esc(cap||'poster')+'" loading="lazy" decoding="async"></a>'+(cap ? '<figcaption>'+esc(cap)+'</figcaption>' : '')+'</figure>';
-        }).join('')+'</div></div>';
-      var div=document.createElement('div'); div.className='wrap booth-media'; div.innerHTML='<div class="divider-line"></div>';
-      var after=talk.nextElementSibling;                       /* the divider under the talk belongs to it */
-      var ref=(after && after.querySelector && after.querySelector('.divider-line')) ? after.nextSibling : talk.nextSibling;
-      talk.parentNode.insertBefore(sec, ref); talk.parentNode.insertBefore(div, sec.nextSibling);
+      var ev=String(st.active_event||'').replace(/[<>]/g,'');
+      window.__DOCASSETS=window.__DOCASSETS||{};
+      var ref=talk.nextSibling, after=talk.nextElementSibling;   /* the divider under the talk belongs to it */
+      if(after && after.querySelector && after.querySelector('.divider-line')) ref=after.nextSibling;
+      posters.forEach(function(m, i){
+        var cap=(m.label||'').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+        var full=m.url.replace(/=w\d+$/, '=w2400'), key='uploaded/'+String(m.id).replace(/[^\w-]/g,'')+'-';
+        window.__DOCASSETS[key+'1.webp']=full;               /* the reader finds the picture through docAsset */
+        var sec=document.createElement('section'); sec.className='booth-media eventposter sec-tight';
+        if(i===0) sec.id='eventposters';
+        sec.innerHTML='<div class="wrap"><div class="sec-head"><span class="eyebrow">'+esc(ev ? ev+' · Poster' : 'Poster')+'</span>'+
+          '<h2>'+esc(cap||'Poster')+'</h2></div>'+
+          '<div class="flyer-strip">'+
+            '<div class="flyer-head"><span class="eyebrow">Event Poster</span><h4>'+esc(ev ? 'On show at '+ev : 'On show at this booth')+'</h4></div>'+
+            '<div class="flyer-frame"><img class="flyer-thumb" src="'+esc(m.url)+'" alt="Poster: '+esc(cap||'poster')+'" draggable="false" loading="lazy" decoding="async"></div>'+
+            '<div class="flyer-below"><div class="flyer-actions">'+
+              '<button class="btn btn-primary ep-view" type="button">&#128269; Open the poster</button>'+
+              '<a class="btn btn-ghost" href="'+esc(full)+'" target="_blank" rel="noopener">&#11015; Download poster</a></div></div>'+
+            '<p class="flyer-note">The poster at print size &mdash; open it to zoom, or take the picture.</p>'+
+          '</div></div>';
+        var div=document.createElement('div'); div.className='wrap booth-media'; div.innerHTML='<div class="divider-line"></div>';
+        talk.parentNode.insertBefore(sec, ref); talk.parentNode.insertBefore(div, sec.nextSibling);
+        var open=function(){ if(window.__openBook) window.__openBook({ name:cap||'Poster', read:'page', pages:1, pagePath:key, url:full }); };
+        sec.querySelector('.ep-view').addEventListener('click', open);
+        sec.querySelector('.flyer-thumb').addEventListener('click', open);
+        ref=div.nextSibling;                                   /* the next poster goes after this one */
+      });
     }
     /* a picture Drive will not hand over (deleted, or locked between two polls)
        takes its card with it, rather than leaving a broken image on the page */
     [].slice.call(document.querySelectorAll('.booth-media img')).forEach(function(im){
-      im.addEventListener('error', function(){ var c=im.closest('.qr-card,.ep-card'); if(c) c.remove();
-        var s=document.getElementById('eventposters'); if(s && !s.querySelector('.ep-card')){ var d=s.nextElementSibling; s.remove(); if(d && d.classList.contains('booth-media')) d.remove(); } });
+      im.addEventListener('error', function(){
+        var c=im.closest('.qr-card,.eventposter'); if(!c) return;
+        var d=c.classList.contains('eventposter') ? c.nextElementSibling : null;
+        c.remove(); if(d && d.classList.contains('booth-media')) d.remove();
+      });
     });
   }
 
@@ -8101,6 +8147,8 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     var off = gamesOff(st);
     var notes = states.map(function(x){ return x.label+' is '+x.mode; });
     if(off.length) notes.push(off.map(function(id){ return GAME_NAMES[id]; }).join(', ')+(off.length===1?' is':' are')+' off');
+    var bo=(cfg.builtin_off||[]).filter(function(id){ return BUILTIN_NAMES[id]; });
+    if(bo.length) notes.push(bo.map(function(id){ return BUILTIN_NAMES[id]; }).join(', ')+(bo.length===1?' is':' are')+' off (marked on the page)');
     if(st.page_mode==='hidden' || (st.page_mode==='locked' && !unlocked)){
       if(isAdmin){ unveil(); ribbon('Admin preview: the page is '+st.page_mode+' for visitors.'); }
       else { ribbon(''); drawVeil(st); }
