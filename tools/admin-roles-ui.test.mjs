@@ -58,7 +58,7 @@ const own = H.signIn(OWNER);
 console.log('\n── the owner');
 {
   const {c,p,errs}=await asPerson(own.token);
-  chk('every tab: settings, sections, segments, gifts, people', await tabsShown(p)==='settings,sections,segments,gifts,admins', await tabsShown(p));
+  chk('every tab: settings, sections, segments, QR & posters, gifts, people', await tabsShown(p)==='settings,sections,segments,media,gifts,admins', await tabsShown(p));
   await p.click('#tabAdmins');
   chk('the owner card: owner and you, every area, no controls', await p.evaluate(o=>{
     const card=document.querySelector(`#adminList .person[data-email="${o}"]`);

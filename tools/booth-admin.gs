@@ -53,6 +53,12 @@
  *   Re-deploy after ANY edit: Deploy -> Manage deployments -> pencil ->
  *   Version: New version.
  *
+ *   QR codes and posters (5 Oct 2026) store their pictures in Drive, which is
+ *   a new permission for this script. After pasting this version, run setUp
+ *   once from the editor and allow Drive when Google asks (it also adds the
+ *   Media tab), THEN deploy the new version. Without that, uploads fail with
+ *   an authorisation error and everything else carries on as before.
+ *
  * WHAT "LOCKED" AND "HIDDEN" MEAN
  *   The page is a public file. Locking it draws a passcode screen over it and
  *   hiding it draws a notice over it; neither removes the file from the
@@ -77,7 +83,7 @@ var FROM_NAME    = 'FACERINNA Booth';
 
 var T_ADMINS = 'Admins', T_SETTINGS = 'Settings', T_SEGMENTS = 'Segments',
     T_SESSIONS = 'Admin sessions', T_SECTIONS = 'Sections', T_GIFTS = 'Gifts',
-    T_STOCK = 'Gift stock';
+    T_STOCK = 'Gift stock', T_MEDIA = 'Media';
 
 /* One row per person who can sign in. role and access came later (30 Sept
    2026) and sit after the first four columns, so a sheet from before them
@@ -100,6 +106,14 @@ var GIFT_HEADERS     = ['claim', 'device', 'game', 'score', 'name', 'created', '
    "not counted" -- how the products from before stock arrive -- and stays on
    the wheel until somebody sets a count. */
 var STOCK_HEADERS    = ['product', 'quantity', 'updated', 'by'];
+/* QR codes and posters an admin uploaded. The picture itself lives in Drive
+   (file_id); the row says what it is, which event it is for and whether it is
+   on. `name` is made here, never typed: kind-event-label-number. */
+var MEDIA_HEADERS    = ['id', 'kind', 'name', 'label', 'event', 'on', 'file_id', 'target', 'mime', 'bytes',
+                        'created', 'by', 'updated'];
+var MEDIA_FOLDER     = 'FACERINNA booth media';
+var MEDIA_MAX_BYTES  = 2500000;        /* one picture, after the page has shrunk it */
+var MEDIA_MAX_ITEMS  = 120;
 var STOCK_MAX        = 40;       /* products on the wheel at most */
 var STOCK_MAX_QTY    = 100000;
 
@@ -138,6 +152,13 @@ var SETTING_KEYS = {
      off game leaves the wheel on the booth page, and its own page shows a
      resting card to anybody who opens it from an old link or a QR code. */
   games_off:     '',
+  /* The event the booth is running now. A QR code or poster tagged with another
+     event is locked: private in Drive and left out of the page's config, so it is
+     not merely hidden. Empty means no event is chosen and nothing is locked for
+     that reason. qr_builtin is whether the three codes written into the page
+     (registration, this site, WhatsApp) still show beside the uploaded ones. */
+  active_event:  '',
+  qr_builtin:    'show',
   gift_active:   'no',
   gift_points:   'facy-run = 6000',
   gift_products: 'Niacinamide Brightening Serum Sunscreen SPF50 PA++++\n' +
@@ -178,6 +199,7 @@ var PERMS = [
   ['claims',   'Gift claims',     'See who earned a gift, and let a device play for one again'],
   ['sections', 'Sections',        'Show, lock or hide each part of the booth page'],
   ['segments', 'Segments',        'Add, edit, order and delete extra segments'],
+  ['media',    'QR & posters',    'Upload QR codes and posters, and lock the ones not used at the current event'],
   ['privacy',  'Privacy notice',  'The details the privacy page shows']
 ];
 var PERM_KEYS = PERMS.map(function (p) { return p[0]; });
@@ -186,7 +208,7 @@ function permLabel_(k) { for (var i = 0; i < PERMS.length; i++) if (PERMS[i][0] 
 /* Which area each setting belongs to. A key missing here cannot be saved. */
 var SETTING_AREA = {
   page_mode: 'page', passcode: 'page', lock_message: 'page', hidden_message: 'page', welcome: 'page',
-  games_off: 'games',
+  games_off: 'games', active_event: 'media', qr_builtin: 'media',
   gift_active: 'gift', gift_points: 'gift', gift_products: 'stock',
   privacy_entity: 'privacy', privacy_email: 'privacy', privacy_address: 'privacy', privacy_retention: 'privacy'
 };
@@ -200,6 +222,9 @@ var ACTION_AREA = {
   'admin.segment.save': 'segments',
   'admin.segment.delete': 'segments',
   'admin.segment.order': 'segments',
+  'admin.media.upload': 'media',
+  'admin.media.set': 'media',
+  'admin.media.delete': 'media',
   'admin.stock.set': 'stock',
   'admin.stock.remove': 'stock',
   'admin.claims.reset': 'claims'
@@ -284,6 +309,8 @@ function setUp() {
     if (!(k in have)) sheet_(T_SETTINGS).appendRow([k, SETTING_KEYS[k], now_(), 'setUp']);
   });
 
+  tab_(book, T_MEDIA, MEDIA_HEADERS);
+  headers_(T_MEDIA, MEDIA_HEADERS);
   stockTab_();   /* after the settings rows: its first list is gift_products */
   Logger.log('ok. admin: ' + me + '. mail quota left today: ' + MailApp.getRemainingDailyQuota());
   return 'ok';
@@ -790,6 +817,198 @@ function orderSegments_(b, by) {
   return json_({ ok: true, segments: segments_() });
 }
 
+
+/* ------------------------------------------------------- QR codes and posters
+
+   An admin uploads a picture of a QR code or a poster. It is stored in Drive,
+   named here, and tagged with the event it is for. Whether the public can see
+   it is decided in ONE place, mediaLive_: the row is on, and its event is the
+   current one (or it names no event). Everything that follows from "live"
+   follows from that function -- the config lists only live items, and
+   syncMedia_ sets the Drive file to "anyone with the link" when it is live and
+   to private when it is not, so a locked poster is locked at the source and
+   its link stops working, not just left out of the page. */
+
+function eventName_(v) {
+  /* letters, digits, spaces and a little punctuation; no markup in a name that
+     is shown on a page and in a file name */
+  return String(v == null ? '' : v).replace(/[^\w .,'&()\/-]/g, ' ').replace(/\s+/g, ' ').replace(/^[-=+@ ]+/, '').trim().slice(0, 60);
+}
+function slug_(v) {
+  return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+}
+function sameEvent_(a, b) { return slug_(a) === slug_(b); }
+
+function mediaRows_() {
+  return rows_(T_MEDIA, MEDIA_HEADERS).filter(function (r) { return String(r.id || '').trim() && String(r.file_id || '').trim(); });
+}
+function mediaLive_(r, active) {
+  if (!yes_(r.on)) return false;
+  var ev = String(r.event || '').trim(), cur = String(active == null ? settings_().active_event : active || '').trim();
+  if (!ev || !cur) return true;
+  return sameEvent_(ev, cur);
+}
+function mediaUrl_(id, kind) {
+  return 'https://lh3.googleusercontent.com/d/' + id + (kind === 'qr' ? '=s800' : '=w1800');
+}
+/* what the public page gets: live items only, and nothing that names the file's
+   owner, the admin who uploaded it or the other events there are */
+function publicMedia_(active) {
+  var cur = active == null ? settings_().active_event : active;
+  return mediaRows_().filter(function (r) { return mediaLive_(r, cur); })
+    .map(function (r) {
+      var o = { id: String(r.id), kind: String(r.kind), name: String(r.name), label: String(r.label || ''),
+                url: mediaUrl_(String(r.file_id), String(r.kind)) };
+      if (r.kind === 'qr' && /^https:\/\//i.test(String(r.target || ''))) o.link = String(r.target);
+      return o;
+    });
+}
+function mediaList_() {
+  var cur = settings_().active_event;
+  return mediaRows_().map(function (r) {
+    var live = mediaLive_(r, cur);
+    return { id: String(r.id), kind: String(r.kind), name: String(r.name), label: String(r.label || ''),
+             event: String(r.event || ''), on: yes_(r.on), live: live,
+             locked: yes_(r.on) && !live,            /* switched on, but for another event */
+             target: String(r.target || ''), bytes: Number(r.bytes) || 0,
+             url: live ? mediaUrl_(String(r.file_id), String(r.kind)) : '',
+             created: iso_(r.created), by: String(r.by || '') };
+  });
+}
+function mediaEvents_() {
+  var seen = {}, out = [];
+  mediaRows_().forEach(function (r) {
+    var e = String(r.event || '').trim();
+    if (e && !seen[slug_(e)]) { seen[slug_(e)] = true; out.push(e); }
+  });
+  var cur = String(settings_().active_event || '').trim();
+  if (cur && !seen[slug_(cur)]) out.push(cur);
+  return out.sort();
+}
+
+function mediaFolder_() {
+  var it = DriveApp.getFoldersByName(MEDIA_FOLDER);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(MEDIA_FOLDER);
+}
+/* Make every file's sharing agree with its row. Called after anything that can
+   change what is live. A file already in the right state is left alone. */
+function syncMedia_() {
+  var cur = settings_().active_event;
+  mediaRows_().forEach(function (r) { shareFile_(String(r.file_id), mediaLive_(r, cur)); });
+}
+function shareFile_(fileId, live) {
+  var f = DriveApp.getFileById(fileId);
+  if (live) f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  else f.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+}
+
+/* The label a person would call it. A QR code is named for where it leads. */
+var QR_HOSTS = [
+  [/(^|\.)wa\.me$|(^|\.)whatsapp\.com$/, 'whatsapp'],
+  [/^docs\.google\.com$|^forms\.gle$|^forms\.google\.com$/, 'form'],
+  [/(^|\.)facerinna\.com$|github\.io$/, 'website'],
+  [/(^|\.)instagram\.com$/, 'instagram'], [/(^|\.)facebook\.com$|^fb\.me$/, 'facebook'],
+  [/(^|\.)tiktok\.com$/, 'tiktok'], [/(^|\.)linkedin\.com$/, 'linkedin'],
+  [/(^|\.)youtube\.com$|^youtu\.be$/, 'youtube'], [/(^|\.)shopee\./, 'shopee'], [/(^|\.)lazada\./, 'lazada']
+];
+function qrLabel_(target) {
+  var m = /^https:\/\/([^\/?#:]+)/i.exec(String(target || ''));
+  if (!m) return 'code';
+  var host = m[1].toLowerCase();
+  for (var i = 0; i < QR_HOSTS.length; i++) if (QR_HOSTS[i][0].test(host)) return QR_HOSTS[i][1];
+  var parts = host.replace(/^www\./, '').split('.');
+  return slug_(parts.length > 1 ? parts[parts.length - 2] : parts[0]) || 'code';
+}
+function fileLabel_(filename) {
+  var base = String(filename || '').replace(/^.*[\\\/]/, '').replace(/\.[A-Za-z0-9]{2,5}$/, '');
+  base = base.replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return base.slice(0, 60);
+}
+/* kind-event-label-NN, the number counting what already has that stem */
+function mediaName_(kind, event, label, rows) {
+  var stem = [kind, slug_(event) || 'all', slug_(label)].filter(String).join('-');
+  var n = 1;
+  rows.forEach(function (r) { if (String(r.name).indexOf(stem + '-') === 0) n = Math.max(n, (Number(String(r.name).slice(stem.length + 1)) || 0) + 1); });
+  return stem + '-' + (n < 10 ? '0' + n : String(n));
+}
+
+var MEDIA_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
+function mediaUpload_(b, by) {
+  var kind = String(b.kind || '').toLowerCase();
+  if (kind !== 'qr' && kind !== 'poster') return json_({ ok: false, error: 'say whether it is a QR code or a poster' });
+  var mime = String(b.mime || '').toLowerCase();
+  if (!MEDIA_TYPES[mime]) return json_({ ok: false, error: 'a PNG, JPEG or WebP picture, please' });
+  var data = String(b.data || '').replace(/^data:[^,]*,/, '').replace(/\s/g, '');
+  if (!data || !/^[A-Za-z0-9+\/]+=*$/.test(data)) return json_({ ok: false, error: 'the picture did not arrive' });
+  var bytes;
+  try { bytes = Utilities.base64Decode(data); } catch (e) { return json_({ ok: false, error: 'the picture could not be read' }); }
+  if (!bytes || !bytes.length) return json_({ ok: false, error: 'the picture is empty' });
+  if (bytes.length > MEDIA_MAX_BYTES) return json_({ ok: false, error: 'the picture is over ' + Math.round(MEDIA_MAX_BYTES / 100000) / 10 + ' MB' });
+  var target = String(b.target || '').trim();
+  if (target && url_(target) === null) target = '';
+  if (kind !== 'qr') target = '';
+
+  var rows = mediaRows_();
+  if (rows.length >= MEDIA_MAX_ITEMS) return json_({ ok: false, error: 'the library is full (' + MEDIA_MAX_ITEMS + '); delete some first' });
+  var event = eventName_(b.event);
+  var label = kind === 'qr' ? qrLabel_(target) : (fileLabel_(b.filename) || 'poster');
+  if (kind === 'poster') label = slug_(label).split('-').slice(0, 4).join('-') || 'poster';
+  var name = mediaName_(kind, event, label, rows);
+
+  var blob = Utilities.newBlob(bytes, mime, name + '.' + MEDIA_TYPES[mime]);
+  var file;
+  try { file = mediaFolder_().createFile(blob); }
+  catch (e) { return json_({ ok: false, error: 'Drive refused the file: ' + String(e && e.message || e) }); }
+
+  var id = 'med-' + Utilities.getUuid().replace(/-/g, '').slice(-10);
+  var live = mediaLive_({ on: 'yes', event: event }, settings_().active_event);
+  try { shareFile_(file.getId(), live); }
+  catch (e) {
+    try { file.setTrashed(true); } catch (x) {}
+    return json_({ ok: false, error: 'Drive would not set the sharing (' + String(e && e.message || e) +
+      '). If your Google account blocks sharing outside it, a Workspace admin has to allow link sharing.' });
+  }
+  /* the display label for a poster is the filename a person gave it, tidied */
+  var shown = kind === 'poster' ? (fileLabel_(b.filename) || label) : label;
+  sheet_(T_MEDIA).appendRow([id, kind, name, cell_(shown), cell_(event), 'yes', file.getId(), cell_(target), mime, bytes.length, now_(), by, now_()]);
+  return json_({ ok: true, id: id, name: name, live: live, media: mediaList_(), events: mediaEvents_() });
+}
+
+/* Turn one item on or off, move it to another event, or do that for a whole
+   event at once: { id, on, event } or { for_event, on }. */
+function mediaSet_(b, by) {
+  var sh = sheet_(T_MEDIA), rows = mediaRows_(), hit = 0;
+  var patch = function (r) {
+    var on = ('on' in b) ? (yes_(b.on) ? 'yes' : 'no') : (yes_(r.on) ? 'yes' : 'no');
+    var ev = ('event' in b && b.id) ? eventName_(b.event) : String(r.event || '');
+    sh.getRange(r._row, 5, 1, 2).setValues([[cell_(ev), on]]);
+    sh.getRange(r._row, 13, 1, 1).setValue(now_());
+    hit++;
+  };
+  if (b.id) {
+    rows.forEach(function (r) { if (String(r.id) === String(b.id)) patch(r); });
+  } else if ('for_event' in b) {
+    var fe = String(b.for_event || '');
+    rows.forEach(function (r) { if (sameEvent_(r.event, fe) && (slug_(fe) || !String(r.event || '').trim())) patch(r); });
+  } else return json_({ ok: false, error: 'say which one' });
+  if (!hit) return json_({ ok: false, error: 'nothing matched' });
+  var out = { ok: true, changed: hit };
+  try { syncMedia_(); } catch (e) { out.media_error = String(e && e.message || e); }
+  out.media = mediaList_(); out.events = mediaEvents_();
+  return json_(out);
+}
+function mediaDelete_(b, by) {
+  var sh = sheet_(T_MEDIA), id = String((b && b.id) || '');
+  var rows = mediaRows_();
+  for (var i = 0; i < rows.length; i++) if (String(rows[i].id) === id) {
+    try { DriveApp.getFileById(String(rows[i].file_id)).setTrashed(true); } catch (e) { /* already gone */ }
+    sh.getRange(rows[i]._row, 1, 1, MEDIA_HEADERS.length)
+      .setValues([MEDIA_HEADERS.map(function (h) { return h === 'updated' ? now_() : h === 'by' ? by + ' (deleted)' : ''; })]);
+    return json_({ ok: true, media: mediaList_(), events: mediaEvents_() });
+  }
+  return json_({ ok: false, error: 'no such item' });
+}
+
 /* ------------------------------------------------------------- the actions */
 
 /* What each game has to score, worked out here so no page has to parse it.
@@ -846,7 +1065,7 @@ function config_() {
   var text = JSON.stringify({ ok: true, settings: set, segments: publicSegments_(),
                  sections: SECTIONS, section_states: publicSections_(),
                  games: GAMES, gift_games: GIFT_GAMES, gift_needs: giftNeeds_(set.gift_points),
-                 at: Date.now() });
+                 media: publicMedia_(set.active_event), at: Date.now() });
   /* a script cache value may not pass 100KB; past that, do without */
   if (cache && text.length < 90000) { try { cache.put(CONFIG_KEY, text, CONFIG_SECS); } catch (e) {} }
   return configText_(text);
@@ -935,6 +1154,7 @@ function adminGet_(me) {
               perms: PERMS };
   if (can_(me, 'segments')) out.segments = segments_();
   if (can_(me, 'sections')) out.section_rows = sectionRows_();
+  if (can_(me, 'media')) { out.media = mediaList_(); out.events = mediaEvents_(); }
   if (can_(me, 'stock')) out.stock = stockPublic_();
   if (can_(me, 'claims')) out.claims = claimsList_();
   if (me.role === 'admin') {
@@ -971,6 +1191,8 @@ function adminSettings_(b, me) {
     if (k === 'gift_active') v = yes_(v) ? 'yes' : 'no';
     if (k === 'gift_points') v = String(v == null ? '' : v).slice(0, 600);
     if (k === 'games_off') v = gamesOff_(v).join(',');
+    if (k === 'qr_builtin') v = yes_(v) ? 'show' : 'hide';
+    if (k === 'active_event') v = eventName_(v);
     if (k === 'passcode') v = v.slice(0, 64);
     else if (k === 'gift_products') v = v.slice(0, 2000);
     else v = v.slice(0, 400);
@@ -995,7 +1217,13 @@ function adminSettings_(b, me) {
   }
 
   changed.forEach(function (k) { setSetting_(k, next[k], email); });
-  return json_({ ok: true, changed: changed, settings: settingsFor_(me), public: publicSettings_() });
+  /* a different event changes what is locked: make Drive agree before answering */
+  var out = { ok: true, changed: changed, settings: settingsFor_(me), public: publicSettings_() };
+  if (changed.indexOf('active_event') >= 0) {
+    try { syncMedia_(); } catch (e) { out.media_error = String(e && e.message || e); }
+    if (can_(me, 'media')) out.media = mediaList_();
+  }
+  return json_(out);
 }
 
 /* ------------------------------------------------------------------- gifts
@@ -1285,6 +1513,15 @@ var GUIDE = [
   { t: 'p', s: 'One gift per device, until you say otherwise. In the admin page, *Gifts*, then *Claims*: find the visitor by name, game or time, and tap *Let play again*. That device can earn a new gift on its next run.' },
   { t: 'p', s: 'The old row stays in the Gifts tab, marked with when and by whom it was reset. A code that device had not spent yet stops working, so the old QR and a new one cannot be two gifts.' },
 
+  { t: 'h', s: 'QR codes and posters for an event' },
+  { t: 'p', s: 'In the admin page, *QR & posters*. Choose the event the booth is running, then upload the picture of each QR code or poster. The page names it for you (for example *qr-agm-penang-whatsapp-01*) and works out from the picture whether it is a QR code or a poster.' },
+  { t: 'ul', items: [
+    '*Event now* is the one switch. Every code or poster tagged with another event is locked at once: its Drive file goes private and it leaves the page. Switch back and they return.',
+    'Each item can also be turned off on its own, moved to another event, or deleted.',
+    'Items with no event show at every event.',
+    '*Show the three built-in codes* decides whether registration, this site and WhatsApp (written into the page) still show beside the uploaded ones.'
+  ] },
+
   { t: 'h', s: 'One gift per device' },
   { t: 'p', s: 'The limit is per device, not per run. A visitor who plays again on the same phone gets the same code back, already spent. A different phone is a different device, which is the honest limit a booth can hold without asking anyone for a name.' },
 
@@ -1435,6 +1672,9 @@ function doPost(e) {
         case 'admin.segment.save':    return saveSegment_(b, email);
         case 'admin.segment.delete':  return deleteSegment_(b, email);
         case 'admin.segment.order':   return orderSegments_(b, email);
+        case 'admin.media.upload':    return mediaUpload_(b, email);
+        case 'admin.media.set':       return mediaSet_(b, email);
+        case 'admin.media.delete':    return mediaDelete_(b, email);
         case 'admin.section.set':     return setSection_(b, email);
         case 'admin.gift.redeem':     return giftRedeem_(b, email);
         case 'admin.team.save':       return teamSave_(b, me);

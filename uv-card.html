@@ -31,7 +31,7 @@
   @supports(height:100dvh){body{height:100dvh}}
 
   .hud{flex:none;display:grid;grid-template-columns:1fr auto 1fr;grid-template-areas:"back ttl sp" "hint hint hint";
-    align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 14px 6px}
+    align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right,0px)) 6px max(14px,env(safe-area-inset-left,0px))}
   .back,.cards{grid-area:back}.ttl{grid-area:ttl}.sp{grid-area:sp}.hint{grid-area:hint}
   .cards{justify-self:start;appearance:none;border:0;background:rgba(196,181,253,.14);color:#DDD1FF;
     font:inherit;font-weight:800;font-size:13px;letter-spacing:.06em;padding:7px 12px 7px 9px;border-radius:999px;
@@ -44,6 +44,7 @@
   }
   .back{justify-self:start;color:#CFE3FF;text-decoration:none;font-weight:700;font-size:13px;
     letter-spacing:.06em;opacity:.8;padding:6px 8px 6px 0;position:relative}
+  #boothLink::after{content:"";position:absolute;inset:-10px}
   .back::after{content:'';position:absolute;inset:-8px -4px -8px -8px}
   .ttl{font-weight:900;font-size:13px;letter-spacing:.34em;text-transform:uppercase;
     color:#DDD1FF;text-shadow:0 0 18px rgba(170,120,255,.55)}
@@ -70,7 +71,7 @@
 
   /* ---- the four cards ------------------------------------------------ */
   .deck{position:absolute;inset:0;display:grid;place-content:center;gap:var(--gap,14px);
-    grid-template-columns:repeat(var(--cols,2),var(--cw,150px));padding:12px;
+    grid-template-columns:repeat(var(--cols,2),var(--cw,150px));padding:12px var(--padr,12px) var(--padb,12px) var(--padl,12px);
     visibility:hidden}
   .deck.on{visibility:visible}
   .card{position:relative;display:block;width:var(--cw,150px);aspect-ratio:585/1242;padding:0;
@@ -248,12 +249,26 @@ function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floo
 function setHint(t){ hint.textContent = t || ' '; }
 
 /* ---- layout ----------------------------------------------------------- */
+/* How much of each edge the phone keeps for itself (notch, home bar). CSS can say it; to size the
+   cards from it, ask the page what it works out to. */
+function safeInsets(){
+  var el = document.createElement('div');
+  el.style.cssText = 'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;' +
+    'padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+  document.body.appendChild(el);
+  var cs = getComputedStyle(el), o = { t:parseFloat(cs.paddingTop)||0, r:parseFloat(cs.paddingRight)||0,
+    b:parseFloat(cs.paddingBottom)||0, l:parseFloat(cs.paddingLeft)||0 };
+  document.body.removeChild(el); return o;
+}
 function layoutDeck(){
   var r = stage.getBoundingClientRect(); S.stageRect = r;
   var cols = r.width > r.height*1.15 ? 4 : 2, rows = 4/cols;
-  var pad = 24;
+  /* 12px of air each side as before, and the notch and the home bar on top of that where there are any */
+  var ins = safeInsets(), padL = Math.max(12, ins.l), padR = Math.max(12, ins.r), padB = 12 + ins.b;
+  deck.style.setProperty('--padl', padL+'px'); deck.style.setProperty('--padr', padR+'px'); deck.style.setProperty('--padb', padB+'px');
+  var pad = padL + padR;
   var byW = (r.width - pad - (cols-1)*GAP)/cols;
-  var byH = ((r.height - pad - (rows-1)*GAP)/rows)/RATIO;
+  var byH = ((r.height - 12 - padB - (rows-1)*GAP)/rows)/RATIO;
   var cw = Math.max(64, Math.floor(Math.min(byW, byH)));
   deck.style.setProperty('--cols', cols);
   deck.style.setProperty('--cw', cw+'px');

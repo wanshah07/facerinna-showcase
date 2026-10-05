@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#1a2f4a">
@@ -63,6 +63,16 @@
   .item .t{font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.01em}
   .item .m{font-size:12.5px;color:var(--ink2);margin-top:3px}
   .item .m b{color:var(--ok)} .item .m i{color:var(--ink2);font-style:normal}
+  .mgroup{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0 6px;font-size:14px}
+  .mgroup:first-child{margin-top:0}
+  .mgroup .m{color:var(--ink2);font-size:12.5px}
+  .pillnow{display:inline-block;background:var(--soft);color:var(--brand);border:1px solid #bcd6f5;border-radius:999px;padding:1px 9px;font-size:11.5px;font-weight:800}
+  .item .mname{text-transform:none;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;word-break:break-all}
+  .item .mthumb{object-fit:contain;background:#fff}
+  .item .mthumb.ph{display:grid;place-items:center;font-size:20px;color:var(--ink2)}
+  .mgroup .btn.sm{min-height:36px}
+  #mediaFiles{display:block;width:100%;min-height:44px;padding:8px;box-sizing:border-box;border:1px dashed var(--line);border-radius:10px;background:var(--soft);font:inherit;font-size:13px}
+
   .item.hidden .t{opacity:.55}
   .icons{display:flex;gap:4px}
   .ic{appearance:none;border:0;background:transparent;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:16px;color:var(--ink2)}
@@ -176,6 +186,7 @@
       <button class="tab" id="tabSettings" role="tab" aria-selected="true" data-view="settings" type="button">⚙ Settings</button>
       <button class="tab" id="tabSections" role="tab" aria-selected="false" data-view="sections" type="button">▤ Sections</button>
       <button class="tab" id="tabSegments" role="tab" aria-selected="false" data-view="segments" type="button">▦ Segments</button>
+      <button class="tab" id="tabMedia" role="tab" aria-selected="false" data-view="media" type="button">🖼 QR &amp; posters</button>
       <button class="tab" id="tabGifts" role="tab" aria-selected="false" data-view="gifts" type="button">🎁 Gifts</button>
       <button class="tab" id="tabAdmins" role="tab" aria-selected="false" data-view="admins" type="button">👤 People</button>
     </div>
@@ -307,6 +318,43 @@
       </div>
     </div>
 
+    <!-- QR codes and posters, per event -->
+    <div id="viewMedia" class="grid" hidden>
+      <div class="stack">
+        <div class="card">
+          <h2>The event now</h2>
+          <p class="note">Everything tagged with <b>another</b> event is locked the moment you save: its file goes private in Drive and it leaves the page. Switch back and it returns. A picture with no event shows at every event.</p>
+          <label for="mediaEvent">Event now</label>
+          <input type="text" id="mediaEvent" list="mediaEvents" maxlength="60" autocomplete="off" placeholder="e.g. AGM Penang 2026">
+          <datalist id="mediaEvents"></datalist>
+          <label class="check" style="margin-top:14px"><input type="checkbox" id="qrBuiltin"> Show the three built-in codes (registration, this site, WhatsApp)</label>
+          <div class="row" style="margin-top:14px">
+            <button class="btn" id="mediaEventSave" type="button">Save</button>
+            <button class="btn ghost" id="mediaEventClear" type="button">No event chosen</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>＋ Upload</h2>
+          <form id="mediaForm" novalidate>
+            <label for="mediaFiles">Pictures (PNG, JPEG or WebP). Several at once is fine.</label>
+            <input type="file" id="mediaFiles" accept="image/png,image/jpeg,image/webp" multiple>
+            <label for="mediaKind">What they are</label>
+            <select id="mediaKind">
+              <option value="auto">Work it out (a square picture that reads as a QR code is a QR code)</option>
+              <option value="qr">QR code</option>
+              <option value="poster">Poster</option>
+            </select>
+            <label for="mediaUpEvent">For which event</label>
+            <input type="text" id="mediaUpEvent" list="mediaEvents" maxlength="60" autocomplete="off" placeholder="blank = every event">
+            <div class="row" style="margin-top:14px"><button class="btn" id="mediaUp" type="submit">Upload</button></div>
+          </form>
+          <p class="note" id="mediaProgress" role="status" style="margin-top:12px"></p>
+          <p class="note">You do not name anything. A QR code is named for where it leads (<b>qr-agm-penang-2026-whatsapp-01</b>); a poster from its file name. Pictures are shrunk here first, so a phone photo is fine.</p>
+        </div>
+      </div>
+      <div><div class="list" id="mediaList"></div></div>
+    </div>
+
     <!-- gifts: the stock on the wheel, and who has earned one -->
     <div id="viewGifts" class="grid" hidden>
       <div class="stack">
@@ -406,6 +454,7 @@ var PERMS = [
   ['gift','Gift settings','Turn the gift on or off, the points per game and the products on the wheel'],
   ['sections','Sections','Show, lock or hide each part of the booth page'],
   ['segments','Segments','Add, edit, order and delete extra segments'],
+  ['media',    'QR & posters',    'Upload QR codes and posters, and lock the ones not used at the current event'],
   ['privacy','Privacy notice','The details the privacy page shows']
 ];
 var AREA_KEYS = {
@@ -423,12 +472,12 @@ function show(id, on){ $(id).hidden = !on; }
 
 /* Plain text body on purpose: no Content-Type header means no preflight,
    which Apps Script cannot answer. */
-function api(action, body){
+function api(action, body, ms){
   if(!ADMIN_API) return Promise.reject(new Error('not connected'));
   var payload = Object.assign({}, body||{}, { action:action });
   if(state.token && !('token' in payload)) payload.token = state.token;
   var ctl = ('AbortController' in window) ? new AbortController() : null;
-  var timer = ctl && setTimeout(function(){ ctl.abort(); }, 20000);
+  var timer = ctl && setTimeout(function(){ ctl.abort(); }, ms || 20000);
   return fetch(ADMIN_API, { method:'POST', body:JSON.stringify(payload), signal: ctl ? ctl.signal : undefined })
     .then(function(r){ return r.json(); })
     .then(function(j){ if(!j || j.ok!==true) throw new Error((j && j.error) || 'no answer'); return j; })
@@ -520,6 +569,7 @@ function refresh(){
     fillSettings(d.settings || {}); fillSections(d.sections);
     if(can('sections')) renderSections(d.section_rows);
     if(can('segments')) renderSegments(d.segments);
+    if(!state.legacy && can('media')) renderMedia(d.media, d.events, d.settings);
     if(state.me.role==='admin') renderAdmins(d.admins, d.quota);
     if(!state.legacy && can('stock')) renderStock(d.stock);
     if(!state.legacy && can('claims')) renderClaims(d.claims);
@@ -532,7 +582,7 @@ function refresh(){
 /* tabs */
 function pick(b){
   document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', String(x===b)); });
-  ['settings','sections','segments','gifts','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), !!b && v===b.dataset.view); });
+  ['settings','sections','segments','media','gifts','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), !!b && v===b.dataset.view); });
 }
 document.querySelectorAll('.tab').forEach(function(b){
   b.addEventListener('click', function(){ pick(b); });
@@ -545,7 +595,7 @@ function applyAccess(){
   /* a script from before the game switches would drop the setting unsaid */
   if(state.legacy) $('cardGames').hidden = true;
   show('saveRow', can('page') || (can('games') && !state.legacy) || can('gift') || can('privacy'));
-  var tabs = { settings: areasOnSettings.some(can), sections: can('sections'), segments: can('segments'),
+  var tabs = { settings: areasOnSettings.some(can), sections: can('sections'), segments: can('segments'), media: !state.legacy && can('media'),
                gifts: !state.legacy && (can('stock') || can('claims')),
                admins: state.me && state.me.role==='admin' };
   [].forEach.call(document.querySelectorAll('#viewGifts [data-gift-area]'), function(c){ c.hidden = !can(c.dataset.giftArea); });
@@ -791,6 +841,164 @@ function when(iso){
   var d = new Date(iso); if(isNaN(d)) return '';
   return d.toLocaleString([], { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
 }
+
+/* ---- QR codes and posters ---------------------------------------------
+   Each picture is shrunk and re-drawn here before it is sent (a phone photo of
+   a poster is 5MB; the script takes 2.5MB), which also strips whatever the
+   camera wrote into it. A picture that reads as a QR code and is roughly square
+   is a QR code; anything else is a poster -- a poster often has a QR code in a
+   corner, and that must not turn it into one. */
+var jsqrReady = null;
+function loadJsqr(){
+  if(window.jsQR) return Promise.resolve(window.jsQR);
+  return jsqrReady || (jsqrReady = new Promise(function(res){
+    var s = document.createElement('script'); s.src = 'jsqr.js';
+    s.onload = function(){ res(window.jsQR || null); }; s.onerror = function(){ res(null); };
+    document.head.appendChild(s);
+  }));
+}
+function readPicture(file){
+  return new Promise(function(res, rej){
+    var u = URL.createObjectURL(file), im = new Image();
+    im.onload = function(){ URL.revokeObjectURL(u); res(im); };
+    im.onerror = function(){ URL.revokeObjectURL(u); rej(new Error('that is not a picture')); };
+    im.src = u;
+  });
+}
+function drawn(im, longest){
+  var w = im.naturalWidth || im.width, h = im.naturalHeight || im.height, k = Math.min(1, longest / Math.max(w, h));
+  var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w*k)); c.height = Math.max(1, Math.round(h*k));
+  var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+  return c;
+}
+function readCode(im){
+  return loadJsqr().then(function(jsQR){
+    if(!jsQR) return null;
+    var c = drawn(im, 1000), d = c.getContext('2d').getImageData(0, 0, c.width, c.height);
+    var r = jsQR(d.data, c.width, c.height, { inversionAttempts:'attemptBoth' });
+    return r && r.data ? String(r.data).trim() : null;
+  }).catch(function(){ return null; });
+}
+function toBase64(canvas, mime, q){ return canvas.toDataURL(mime, q).split(',')[1] || ''; }
+function prepare(file, wanted){
+  return readPicture(file).then(function(im){
+    var w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
+    return readCode(im).then(function(text){
+      var square = w/h > 0.8 && w/h < 1.25;
+      var kind = wanted==='qr' || wanted==='poster' ? wanted : (text && square ? 'qr' : 'poster');
+      var target = kind==='qr' && text && /^https:\/\//i.test(text) ? text : '';
+      if(kind==='qr'){
+        var c = drawn(im, 800), data = toBase64(c, 'image/png');
+        return { kind:kind, mime:'image/png', data:data, target:target, filename:file.name };
+      }
+      var q = 0.86, cv = drawn(im, 2000), b64 = toBase64(cv, 'image/jpeg', q);
+      while(b64.length*0.75 > 2300000 && q > 0.4){ q -= 0.1; b64 = toBase64(cv, 'image/jpeg', q); }
+      return { kind:kind, mime:'image/jpeg', data:b64, target:'', filename:file.name };
+    });
+  });
+}
+function hostOf(u){ var m = /^https:\/\/([^\/?#]+)/i.exec(u||''); return m ? m[1].replace(/^www\./,'') : ''; }
+function renderMedia(list, events, settings){
+  var box = $('mediaList'), set = settings || {};
+  if(list === undefined){
+    box.innerHTML = '<div class="empty">This booth script is from before QR codes and posters. Paste the new <b>booth-admin.gs</b> in and re-deploy it (Deploy, Manage deployments, New version).</div>';
+    return;
+  }
+  state.media = list || []; state.events = events || [];
+  var dl = $('mediaEvents'); dl.innerHTML = state.events.map(function(e){ return '<option value="'+esc(e)+'">'; }).join('');
+  if(document.activeElement !== $('mediaEvent')) $('mediaEvent').value = set.active_event || '';
+  $('qrBuiltin').checked = (set.qr_builtin || 'show') !== 'hide';
+  box.innerHTML = '';
+  if(!state.media.length){ box.innerHTML = '<div class="empty">Nothing uploaded yet. Choose a picture on the left.</div>'; return; }
+  var groups = {}, order = [];
+  state.media.forEach(function(m){ var k = m.event || ''; if(!(k in groups)){ groups[k] = []; order.push(k); } groups[k].push(m); });
+  order.sort(function(a, b){ return a===''?1 : b===''?-1 : a.localeCompare(b); });
+  order.forEach(function(k){
+    var items = groups[k], current = k && set.active_event && k.toLowerCase()===String(set.active_event).toLowerCase();
+    var head = document.createElement('div'); head.className = 'mgroup'; head.dataset.event = k;
+    var on = items.filter(function(m){ return m.on; }).length;
+    head.innerHTML = '<div><b>'+esc(k || 'Every event')+'</b>'+(current ? ' <span class="pillnow">now</span>' : '')+
+      '<span class="m"> · '+items.length+' item'+(items.length===1?'':'s')+', '+on+' on</span></div>'+
+      '<div class="row"><button class="btn ghost sm" type="button" data-act="evon">All on</button><button class="btn ghost sm" type="button" data-act="evoff">All off</button></div>';
+    box.appendChild(head);
+    items.forEach(function(m){
+      var el = document.createElement('div'); el.className = 'item'+(m.live ? '' : ' hidden'); el.dataset.id = m.id;
+      var state_ = m.live ? '<b>Live</b>' : m.locked ? '<i>&#128274; Locked &mdash; another event is on</i>' : '<i>Off</i>';
+      el.innerHTML = (m.url ? '<img class="thumb mthumb" src="'+esc(m.url)+'" alt="">' : '<div class="thumb mthumb ph">'+(m.locked?'&#128274;':'&#9208;')+'</div>')+
+        '<div><div class="t mname">'+esc(m.name)+'</div><div class="m">'+(m.kind==='qr' ? 'QR code' : 'Poster')+
+          (m.kind==='qr' && m.target ? ' · '+esc(hostOf(m.target)) : '')+' · '+state_+'</div></div>'+
+        '<div class="icons">'+
+          '<button class="ic" type="button" data-act="toggle" title="'+(m.on?'Turn off':'Turn on')+'" aria-label="'+(m.on?'Turn off ':'Turn on ')+esc(m.name)+'">'+(m.on?'⏸':'▶')+'</button>'+
+          '<button class="ic" type="button" data-act="move" title="Move to another event" aria-label="Move '+esc(m.name)+' to another event">✎</button>'+
+          '<button class="ic" type="button" data-act="del" title="Delete" aria-label="Delete '+esc(m.name)+'">🗑</button></div>';
+      box.appendChild(el);
+    });
+  });
+}
+function mediaDone(r, msg){
+  state.data.media = r.media; state.data.events = r.events;
+  renderMedia(r.media, r.events, state.data.settings);
+  if(msg) toast(msg);
+  if(r.media_error) toast('Saved, but Drive said: '+r.media_error, true);
+}
+$('mediaList').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-act]'); if(!b) return;
+  var act = b.dataset.act, head = b.closest('.mgroup'), it = b.closest('.item');
+  if(head){
+    var ev = head.dataset.event, on = act==='evon';
+    api('admin.media.set', { for_event: ev, on: on }).then(function(r){ mediaDone(r, (ev||'Every event')+': '+(on?'all on':'all off')); })
+      .catch(function(err){ toast(err.message, true); });
+    return;
+  }
+  if(!it) return;
+  var m = (state.media||[]).filter(function(x){ return x.id===it.dataset.id; })[0]; if(!m) return;
+  if(act==='toggle') api('admin.media.set', { id:m.id, on:!m.on }).then(function(r){ mediaDone(r, m.name+(m.on?' off':' on')); }).catch(function(err){ toast(err.message, true); });
+  else if(act==='move'){
+    var to = prompt('Which event is '+m.name+' for? Leave empty for every event.', m.event || '');
+    if(to === null) return;
+    api('admin.media.set', { id:m.id, event:to }).then(function(r){ mediaDone(r, 'Moved'); }).catch(function(err){ toast(err.message, true); });
+  } else if(act==='del'){
+    if(!confirm('Delete '+m.name+'? Its file goes in the Drive bin and it leaves the page.')) return;
+    api('admin.media.delete', { id:m.id }).then(function(r){ mediaDone(r, 'Deleted'); }).catch(function(err){ toast(err.message, true); });
+  }
+});
+function saveEvent(ev){
+  var qr = $('qrBuiltin').checked ? 'show' : 'hide';
+  $('mediaEventSave').disabled = true;
+  return api('admin.settings', { settings:{ active_event:ev, qr_builtin:qr } }).then(function(r){
+    state.data.settings = Object.assign(state.data.settings||{}, r.settings||{});
+    if(r.media) { state.data.media = r.media; }
+    return refresh().then(function(){
+      toast(ev ? 'Event now: '+ev : 'No event chosen'); if(r.media_error) toast('Saved, but Drive said: '+r.media_error, true);
+    });
+  }).catch(function(err){ toast(err.message, true); }).finally(function(){ $('mediaEventSave').disabled = false; });
+}
+$('mediaEventSave').addEventListener('click', function(){ saveEvent($('mediaEvent').value.trim()); });
+$('mediaEventClear').addEventListener('click', function(){ $('mediaEvent').value = ''; saveEvent(''); });
+$('mediaForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var files = [].slice.call($('mediaFiles').files||[]);
+  if(!files.length){ toast('Choose a picture first', true); return; }
+  var ev = $('mediaUpEvent').value.trim() || (state.data.settings && state.data.settings.active_event) || '';
+  var wanted = $('mediaKind').value, done = [], failed = [], prog = $('mediaProgress');
+  $('mediaUp').disabled = true;
+  var next = function(i){
+    if(i >= files.length) return Promise.resolve();
+    prog.textContent = 'Uploading '+(i+1)+' of '+files.length+'…';
+    return prepare(files[i], wanted).then(function(p){
+      /* a poster is a few megabytes over hall wifi, and Drive takes its time: a minute and a half */
+      return api('admin.media.upload', { kind:p.kind, mime:p.mime, data:p.data, target:p.target, filename:p.filename, event:ev }, 90000)
+        .then(function(r){ done.push(r.name); state.data.media = r.media; state.data.events = r.events; });
+    }).catch(function(err){ failed.push(files[i].name+': '+err.message); }).then(function(){ return next(i+1); });
+  };
+  next(0).then(function(){
+    $('mediaFiles').value = '';
+    renderMedia(state.data.media, state.data.events, state.data.settings);
+    prog.textContent = (done.length ? 'Uploaded: '+done.join(', ')+'. ' : '') + (failed.length ? 'Not uploaded: '+failed.join('; ') : '');
+    toast(failed.length ? (done.length+' uploaded, '+failed.length+' failed') : done.length+' uploaded', !!failed.length);
+  }).finally(function(){ $('mediaUp').disabled = false; });
+});
+
 function renderStock(list){
   var box=$('stockList'); box.textContent='';
   if(!list || !list.length){ box.appendChild(el('div','empty','No products yet. Add one on the left.')); return; }

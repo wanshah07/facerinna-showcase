@@ -2373,6 +2373,19 @@ function settings() {
 }
 function on_(v) { return /^(yes|y|true|1|on)$/i.test(String(v || 'no')); }
 
+/* When the booth script cannot be reached, the rules it last gave this phone
+   are still on it: the booth page keeps them for its own offline use. A visitor
+   who has been on the booth page then still sees the right thing -- nothing on
+   a day gifts are off, the points still to earn, or the claim button. A phone
+   that never saw them gets the plain message below instead. */
+function remembered() {
+  try {
+    var c = (JSON.parse(read('fx.booth.config') || 'null') || {}).cfg;
+    if (c && c.settings) return { gift_active: c.settings.gift_active, gift_needs: c.gift_needs || {} };
+  } catch (e) {}
+  return null;
+}
+
 /* What this game must score is worked out by the booth script and handed
    over ready: the games are scored on scales with nothing to do with each
    other, the setting is a line per game, and a format parsed in two places
@@ -2464,7 +2477,16 @@ function offer(score) {
   if (!API) return Promise.resolve();
 
   return settings().then(function (cfg) {
-    if (!cfg || !on_(cfg.gift_active)) return;
+    if (!cfg) cfg = remembered();
+    if (!cfg) {
+      /* The gift desk cannot be reached and this phone has never heard what
+         it asks for, so say nothing about whether a gift is owed: only where
+         to go. The score is on this screen for the team to see. */
+      show('Gifts cannot be checked right now',
+           'We could not reach the gift desk. If your score earns a gift, show this screen to the FACERINNA team at the counter.', null);
+      return;
+    }
+    if (!on_(cfg.gift_active)) return;
     var need = needFor(cfg, CFG.id);
     if (need === null) return;              /* this game has no figure set */
     if (score < need) {
