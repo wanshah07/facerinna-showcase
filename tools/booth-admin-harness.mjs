@@ -52,6 +52,13 @@ export function load(){
     getProperty: k => (k in PROPS ? PROPS[k] : null),
     setProperty: (k,v) => { PROPS[k]=String(v); },
     deleteProperty: k => { delete PROPS[k]; } }) };
+  /* Apps Script's script cache: shared by every run, values forgotten after
+     their TTL. The test can reach the store to age an entry. */
+  const CACHE = new Map();
+  const CacheService = { getScriptCache: () => ({
+    get: k => { const e = CACHE.get(k); if(!e) return null; if(e.exp <= Date.now()){ CACHE.delete(k); return null; } return e.v; },
+    put: (k,v,secs) => { if(String(v).length > 100*1024) throw new Error('Argument too large: value'); CACHE.set(k,{v:String(v), exp:Date.now()+(secs||600)*1000}); },
+    remove: k => { CACHE.delete(k); } }) };
   const Session = { getEffectiveUser: () => ({ getEmail: () => OWNER }) };
   const Logger = { log(){} };
   const m = eval(`(() => { ${src}
@@ -70,5 +77,5 @@ export function load(){
     return call({ action:'redeem', email, code });
   };
   m.setUp();
-  return { m, call, signIn, tabs, mails, PROPS };
+  return { m, call, signIn, tabs, mails, PROPS, CACHE };
 }

@@ -3078,6 +3078,11 @@ function giftCheck(){
           else if(why==='short') giftShow('Gift at '+(j.need||need)+' points', 'This run fell short. Play again!', null);
           else if(why==='nostock') giftShow('Today\u2019s gifts are all given out', 'Thank you for playing! Ask the FACERINNA team at the counter.', null);
           else if(why==='gameoff') giftShow('This game is resting', 'It gives no gift while it is off. Ask the FACERINNA team at the counter.', null);
+          else if(why==='busy'){
+            /* many people claiming at once; nothing was spent, so leave the button for another go */
+            giftShow('Lots of people claiming right now', 'Wait a few seconds, then tap again. Your score is safe.', null);
+            el.claimBtn.style.display = 'inline-block'; el.claimBtn.disabled = false;
+          }
           else giftShow('Could not fetch your code', 'Show this screen at the counter instead — your score is on it.', null);
           return;
         }
