@@ -110,7 +110,10 @@ var STOCK_HEADERS    = ['product', 'quantity', 'updated', 'by'];
    (file_id); the row says what it is, which event it is for and whether it is
    on. `name` is made here, never typed: kind-event-label-number. */
 var MEDIA_HEADERS    = ['id', 'kind', 'name', 'label', 'event', 'on', 'file_id', 'target', 'mime', 'bytes',
-                        'created', 'by', 'updated'];
+                        'created', 'by', 'updated', 'shared'];
+/* shared is what Drive was last told for that file (link | private), so a change
+   only calls Drive for the files whose answer actually changed. */
+var MEDIA_SHARED_COL = 14;
 var MEDIA_FOLDER     = 'FACERINNA booth media';
 var MEDIA_MAX_BYTES  = 2500000;        /* one picture, after the page has shrunk it */
 var MEDIA_MAX_ITEMS  = 120;
@@ -835,13 +838,28 @@ function eventName_(v) {
      is shown on a page and in a file name */
   return String(v == null ? '' : v).replace(/[^\w .,'&()\/-]/g, ' ').replace(/\s+/g, ' ').replace(/^[-=+@ ]+/, '').trim().slice(0, 60);
 }
+/* Sheets turns "13/9" into a date and "2026" into a number as it is typed in. An
+   event name or label is text whatever it looks like, so anything Sheets would
+   read as a number or a date goes in with the leading apostrophe that says
+   "text" (Sheets keeps the apostrophe out of the value), and so does anything it
+   would read as a formula. */
+function textCell_(v) {
+  var s = String(v == null ? '' : v);
+  return /^[=+\-@\t\r]/.test(s) || /^[\d\s.,:\/\-]+$/.test(s) && /\d/.test(s) ? "'" + s : s;
+}
 function slug_(v) {
   return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 }
 function sameEvent_(a, b) { return slug_(a) === slug_(b); }
 
+/* The Media tab came with QR codes and posters. A script pasted in without running
+   setUp has none, and the config the WHOLE booth page lives on must not fail over
+   it: no tab reads as no media, and everything else carries on. */
+function mediaTab_() {
+  try { return rows_(T_MEDIA, MEDIA_HEADERS); } catch (e) { return []; }
+}
 function mediaRows_() {
-  return rows_(T_MEDIA, MEDIA_HEADERS).filter(function (r) { return String(r.id || '').trim() && String(r.file_id || '').trim() && !isBuiltin_(r.id); });
+  return mediaTab_().filter(function (r) { return String(r.id || '').trim() && String(r.file_id || '').trim() && !isBuiltin_(r.id); });
 }
 
 /* The three codes and the session poster written into the page itself. They
@@ -859,7 +877,7 @@ var BUILTIN_MEDIA = [
 function isBuiltin_(id) { return /^builtin-/.test(String(id || '')); }
 function builtins_() {
   var have = {};
-  rows_(T_MEDIA, MEDIA_HEADERS).forEach(function (r) { if (isBuiltin_(r.id)) have[String(r.id)] = r; });
+  mediaTab_().forEach(function (r) { if (isBuiltin_(r.id)) have[String(r.id)] = r; });
   /* the switch these codes had before they were listed one by one */
   var oldHide = String(settings_().qr_builtin || '') === 'hide';
   return BUILTIN_MEDIA.map(function (b) {
@@ -931,8 +949,14 @@ function mediaFolder_() {
 /* Make every file's sharing agree with its row. Called after anything that can
    change what is live. A file already in the right state is left alone. */
 function syncMedia_() {
-  var cur = settings_().active_event;
-  mediaRows_().forEach(function (r) { shareFile_(String(r.file_id), mediaLive_(r, cur)); });
+  var cur = settings_().active_event, sh = null;
+  mediaRows_().forEach(function (r) {
+    var want = mediaLive_(r, cur) ? 'link' : 'private';
+    if (String(r.shared || '') === want) return;       /* Drive already says so */
+    shareFile_(String(r.file_id), want === 'link');
+    if (!sh) sh = sheet_(T_MEDIA);
+    sh.getRange(r._row, MEDIA_SHARED_COL, 1, 1).setValue(want);
+  });
 }
 function shareFile_(fileId, live) {
   var f = DriveApp.getFileById(fileId);
@@ -1008,7 +1032,9 @@ function mediaUpload_(b, by) {
   }
   /* the display label for a poster is the filename a person gave it, tidied */
   var shown = kind === 'poster' ? (fileLabel_(b.filename) || label) : label;
-  sheet_(T_MEDIA).appendRow([id, kind, name, cell_(shown), cell_(event), 'yes', file.getId(), cell_(target), mime, bytes.length, now_(), by, now_()]);
+  headers_(T_MEDIA, MEDIA_HEADERS);
+  sheet_(T_MEDIA).appendRow([id, kind, name, textCell_(shown), textCell_(event), 'yes', file.getId(), cell_(target), mime, bytes.length, now_(), by, now_(),
+                             live ? 'link' : 'private']);
   return json_({ ok: true, id: id, name: name, live: live, media: mediaList_(), events: mediaEvents_() });
 }
 
@@ -1019,12 +1045,12 @@ function mediaSet_(b, by) {
   var patch = function (r) {
     if (!r._row) {
       /* a built-in piece changed for the first time: it gets its row now */
-      sh.appendRow([r.id, r.kind, r.name, cell_(r.label), '', yes_(r.on) ? 'yes' : 'no', '', '', '', '', now_(), by, now_()]);
+      sh.appendRow([r.id, r.kind, r.name, textCell_(r.label), '', yes_(r.on) ? 'yes' : 'no', '', '', '', '', now_(), by, now_(), '']);
       r._row = sh.getLastRow();
     }
     var on = ('on' in b) ? (yes_(b.on) ? 'yes' : 'no') : (yes_(r.on) ? 'yes' : 'no');
     var ev = ('event' in b && b.id) ? eventName_(b.event) : String(r.event || '');
-    sh.getRange(r._row, 5, 1, 2).setValues([[cell_(ev), on]]);
+    sh.getRange(r._row, 5, 1, 2).setValues([[textCell_(ev), on]]);
     sh.getRange(r._row, 13, 1, 1).setValue(now_());
     hit++;
   };
@@ -1261,7 +1287,7 @@ function adminSettings_(b, me) {
           (stranded.length ? stranded[0].label : lockedSegs[0].title) + ' is locked' });
   }
 
-  changed.forEach(function (k) { setSetting_(k, next[k], email); });
+  changed.forEach(function (k) { setSetting_(k, k === 'active_event' ? textCell_(next[k]) : next[k], email); });
   /* a different event changes what is locked: make Drive agree before answering */
   var out = { ok: true, changed: changed, settings: settingsFor_(me), public: publicSettings_() };
   if (changed.indexOf('active_event') >= 0) {

@@ -19,7 +19,7 @@ const up = o => A({ action:'admin.media.upload', mime:'image/png', data:PNG, ...
 const pub = () => call({ action:'config' }).media;
 
 console.log('set up');
-check('a Media tab with its columns', tabs['Media'] && tabs['Media'].rows[0].join()==='id,kind,name,label,event,on,file_id,target,mime,bytes,created,by,updated', tabs['Media'] && tabs['Media'].rows[0]);
+check('a Media tab with its columns', tabs['Media'] && tabs['Media'].rows[0].join()==='id,kind,name,label,event,on,file_id,target,mime,bytes,created,by,updated,shared', tabs['Media'] && tabs['Media'].rows[0]);
 let cfg = call({ action:'config' });
 check('the public config starts with no media', Array.isArray(cfg.media) && cfg.media.length===0, cfg.media);
 check('no event chosen, and nothing built into the page is left out', cfg.settings.active_event==='' && Array.isArray(cfg.builtin_off) && cfg.builtin_off.length===0, cfg.builtin_off);
@@ -176,6 +176,49 @@ check('...and "all on" brings them back', call({ action:'config' }).builtin_off.
   check('a "hide" left by the old switch starts the three codes hidden, not the poster', off.join()==='builtin-qr-registration,builtin-qr-more-info,builtin-qr-whatsapp', off);
   H2.call({ token:o2.token, action:'admin.media.set', id:'builtin-qr-more-info', on:true });
   check('...and each can be turned back on from the list', !H2.call({ action:'config' }).builtin_off.includes('builtin-qr-more-info'));
+}
+
+console.log('\nhardening: no Media tab, Drive calls, names that look like dates');
+{
+  /* a script pasted in without setUp has no Media tab: the page's config must still work */
+  const H3 = load(); delete H3.tabs['Media'];
+  const c3 = H3.call({ action:'config' });
+  check('no Media tab: the config still answers, with the page settings intact', c3.ok===true && c3.settings.page_mode==='open' && Array.isArray(c3.sections), c3);
+  check('...and simply no media, nothing built in left out', c3.media.length===0 && c3.builtin_off.length===0, { media:c3.media, off:c3.builtin_off });
+  const o3 = H3.signIn(OWNER);
+  check('...admin.get still opens too', H3.call({ token:o3.token, action:'admin.get' }).ok===true);
+}
+{
+  /* turning one item off should ask Drive about one file, not every file in the library */
+  const H4 = load(), o4 = H4.signIn(OWNER), A4 = x => H4.call({ token:o4.token, ...x });
+  for(let i=0;i<12;i++) A4({ action:'admin.media.upload', kind:'poster', mime:'image/png', data:PNG, filename:'P'+i+'.png', event: i<6 ? 'AGM' : 'Pharmacy Day' });
+  let calls=0; Object.values(H4.DRIVE.files).forEach(f=>{ const s0=f.setSharing; f.setSharing=(a,p)=>{ calls++; return s0(a,p); }; });
+  const one = A4({ action:'admin.get' }).media.find(x=>!x.builtin);
+  A4({ action:'admin.media.set', id:one.id, on:false });
+  check('one item off, twelve in the library: Drive is asked once', calls===1, calls);
+  calls=0; A4({ action:'admin.media.set', id:one.id, on:false });
+  check('...asked again to do what is already done: Drive is not asked at all', calls===0, calls);
+  calls=0; A4({ action:'admin.settings', settings:{ active_event:'AGM' } });
+  check('choosing an event asks Drive only about the files whose answer changed (the other six)', calls===6, calls);
+  check('...and each file\'s sharing is what the list says', A4({ action:'admin.get' }).media.filter(x=>!x.builtin).every(m=>{ const f=Object.values(H4.DRIVE.files).find(f=>f.name.startsWith(m.name)); return (f.access==='ANYONE_WITH_LINK')===m.live; }));
+  /* a row from before the column: Drive is told once, then remembered */
+  H4.tabs['Media'].rows.slice(1).forEach(r=>{ r[13]=''; });
+  calls=0; A4({ action:'admin.media.set', id:one.id, on:true });
+  check('rows from before the "shared" column are put right once', calls===12, calls);
+  calls=0; A4({ action:'admin.media.set', id:one.id, on:true });
+  check('...and then left alone', calls===0, calls);
+}
+{
+  /* Sheets turns "13/9" into a date as it is typed in; an event name is text */
+  const H5 = load(), o5 = H5.signIn(OWNER), A5 = x => H5.call({ token:o5.token, ...x });
+  const r5 = A5({ action:'admin.media.upload', kind:'poster', mime:'image/png', data:PNG, filename:'Day.png', event:'13/9' });
+  const row = H5.tabs['Media'].rows.find(x=>x[0]===r5.id);
+  check('an event that looks like a date is written as text (the apostrophe Sheets hides)', row[4]==="'13/9", row[4]);
+  check('...and reads back as the name that was typed', A5({ action:'admin.get' }).media.find(x=>x.id===r5.id).event==='13/9');
+  A5({ action:'admin.settings', settings:{ active_event:'13/9' } });
+  check('choosing it as the event: stored as text, and it matches', H5.call({ action:'config' }).settings.active_event==='13/9' && H5.call({ action:'config' }).media.some(x=>x.id===r5.id));
+  const r6 = A5({ action:'admin.media.upload', kind:'poster', mime:'image/png', data:PNG, filename:'2026.png', event:'2026' });
+  check('a name that is all digits stays text too', H5.tabs['Media'].rows.find(x=>x[0]===r6.id)[4]==="'2026");
 }
 
 console.log(bad ? `\n${bad} failed` : '\nall passed');

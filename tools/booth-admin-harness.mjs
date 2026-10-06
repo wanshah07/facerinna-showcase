@@ -21,8 +21,9 @@ export function load(){
                                  while(o.rows[ri].length<=ci) o.rows[ri].push('');
                                  o.rows[ri][ci]=v; };
       const range = {
+        /* as Sheets does: a leading apostrophe marks the cell as text and is not part of its value */
         getValues: () => { const out=[]; for(let i=r-1;i<r-1+(nr||1);i++){ const row=o.rows[i]||[]; const line=[];
-          for(let j=c-1;j<c-1+(nc||1);j++) line.push(row[j]===undefined?'':row[j]); out.push(line);} return out; },
+          for(let j=c-1;j<c-1+(nc||1);j++){ const v=row[j]===undefined?'':row[j]; line.push(typeof v==='string'&&v[0]==="'"?v.slice(1):v); } out.push(line);} return out; },
         setValue: v => { for(let i=r-1;i<r-1+(nr||1);i++) put(i,c-1,v); return range; },
         setValues: vals => { vals.forEach((row,i) => row.forEach((v,j) => put(r-1+i, c-1+j, v))); return range; },
         setFontWeight(){ return range; },
