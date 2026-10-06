@@ -341,9 +341,13 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   /* an admin sees the page whole */
   await p.evaluate(()=>localStorage.setItem('fx.admin.token','11111111-1111-4111-8111-111111111111'));
   await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1600);
-  chk('section: a signed-in admin sees them all, with a ribbon naming what a visitor would not see',
-      (await look(p,'game')).contents && (await look(p,'qrcore')).shown
+  chk('section: a signed-in admin sees what a visitor sees, and the ribbon names it',
+      (await look(p,'game')).lock && !(await look(p,'game')).contents && (await look(p,'qrcore')).shown
       && await p.evaluate(()=>/Games is locked/.test((document.getElementById('boothRibbon')||{}).textContent||'')));
+  await p.click('#boothPreviewBtn'); await sleep(400);
+  chk('section: "Show the hidden parts" shows them all, the locked one opened',
+      (await look(p,'game')).contents && !(await look(p,'game')).lock && (await look(p,'qrcore')).shown);
+  await p.evaluate(()=>sessionStorage.removeItem('fx.booth.preview'));
   await p.evaluate(()=>localStorage.removeItem('fx.admin.token'));
   sec('game').mode='show'; sec('talk').mode='show'; sec('talk').passcode='';
   chk('section: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);

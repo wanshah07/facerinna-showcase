@@ -2209,6 +2209,8 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
 #segModal iframe{width:100%;height:100%;border:0;border-radius:12px;background:#fff}
 /* A hidden section, its divider and its links in the nav and the footer. */
 .booth-sec-hidden,.booth-link-hidden{display:none!important}
+.booth-ribbon-btn{margin-left:8px;font:inherit;font-weight:700;border:1px solid currentColor;border-radius:999px;
+  padding:4px 12px;min-height:30px;background:transparent;color:inherit;cursor:pointer;pointer-events:auto}
 /* a game the admin switched off: off the wheel, and the quiz with it */
 .cg-item.cg-off,.games-off-skin-iq #skinIQ{display:none!important}
 /* An admin still sees an off game, so they can check it, but greyed and
@@ -7857,12 +7859,26 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
       setTimeout(function(){ try{ input.focus(); }catch(e){} }, 50);
     }
   }
-  function ribbon(text){
+  function ribbon(text, btn){
     var r=document.getElementById('boothRibbon');
     if(!text){ if(r) r.remove(); ribbonRoom(null); return; }
     if(!r){ r=document.createElement('div'); r.id='boothRibbon'; r.className='booth-ribbon'; document.body.appendChild(r); }
     r.textContent=text;
+    if(btn){
+      var b=document.createElement('button'); b.type='button'; b.className='booth-ribbon-btn'; b.id='boothPreviewBtn';
+      b.textContent=btn.label; b.addEventListener('click', btn.fn); r.appendChild(document.createTextNode(' ')); r.appendChild(b);
+    }
     ribbonRoom(r);
+  }
+  /* An admin signed in on this browser sees the page as a VISITOR does -- what is
+     off is off -- because a preview that showed everything read, to the person who
+     had just switched things off, as the switch not working. The ribbon says what
+     is hidden and offers the preview; the choice lasts while this tab is open. */
+  var PREVIEW='fx.booth.preview', lastCfg=null, lastAdmin=false;
+  function previewOn(){ try{ return sessionStorage.getItem(PREVIEW)==='1'; }catch(e){ return false; } }
+  function setPreview(on){
+    try{ if(on) sessionStorage.setItem(PREVIEW,'1'); else sessionStorage.removeItem(PREVIEW); }catch(e){}
+    lastKey=null; if(lastCfg) apply(lastCfg, lastAdmin);
   }
   /* How tall the ribbon is decides how far down everything pinned to the top
      of the screen has to start, and it is not a constant: the same sentence is
@@ -8139,7 +8155,9 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   var lastKey=null;
   function apply(cfg, isAdmin){
     if(!cfg || !cfg.settings) return;
-    var key=JSON.stringify(cfg); if(key===lastKey) return; lastKey=key;
+    var key=JSON.stringify(cfg)+'|'+(isAdmin?1:0)+'|'+(previewOn()?1:0); if(key===lastKey) return; lastKey=key;
+    lastCfg=cfg; lastAdmin=!!isAdmin;
+    var preview=!!isAdmin && previewOn();
     var st=cfg.settings;
     html.classList.toggle('booth-no-welcome', st.welcome==='hide');
     var unlocked=false; try{ unlocked = sessionStorage.getItem(UNLOCKED)==='1'; }catch(e){}
@@ -8148,18 +8166,21 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     var notes = states.map(function(x){ return x.label+' is '+x.mode; });
     if(off.length) notes.push(off.map(function(id){ return GAME_NAMES[id]; }).join(', ')+(off.length===1?' is':' are')+' off');
     var bo=(cfg.builtin_off||[]).filter(function(id){ return BUILTIN_NAMES[id]; });
-    if(bo.length) notes.push(bo.map(function(id){ return BUILTIN_NAMES[id]; }).join(', ')+(bo.length===1?' is':' are')+' off (marked on the page)');
+    if(bo.length) notes.push(bo.map(function(id){ return BUILTIN_NAMES[id]; }).join(', ')+(bo.length===1?' is':' are')+' off');
     if(st.page_mode==='hidden' || (st.page_mode==='locked' && !unlocked)){
       if(isAdmin){ unveil(); ribbon('Admin preview: the page is '+st.page_mode+' for visitors.'); }
       else { ribbon(''); drawVeil(st); }
     } else if(isAdmin && notes.length){
       unveil();
-      ribbon('Admin preview: ' + notes.join(', ') + ' for visitors.');
+      if(preview) ribbon('Admin preview, everything shown: ' + notes.join(', ') + ' for visitors (marked on the page).',
+                         { label:'Back to the visitor view', fn:function(){ setPreview(false); } });
+      else ribbon('Signed in as admin. You see what visitors see: ' + notes.join(', ') + '.',
+                  { label:'Show the hidden parts', fn:function(){ setPreview(true); } });
     } else { unveil(); ribbon(''); }
-    applySections(states, isAdmin);
-    applyGames(off, isAdmin);
+    applySections(states, preview);
+    applyGames(off, preview);
     drawSegments(cfg.segments);
-    drawMedia(cfg, isAdmin);
+    drawMedia(cfg, preview);
   }
   window.__boothApply = apply;   /* the tests, and nothing else */
 
@@ -8184,6 +8205,12 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
      nothing changed. */
   var POLL_MS = 180000;   /* 90s first; halved the script's load at Wan's ask */
   var adminFlag = false, lastAsk = 0;
+  var gotLive = false, retries = 0, retryT = 0, RETRY_MS = [3000, 8000, 20000, 45000];
+  function retrySoon(){
+    if(gotLive || retries >= RETRY_MS.length) return;
+    clearTimeout(retryT);
+    retryT = setTimeout(function(){ refresh(true); }, (window.__boothRetryMs || RETRY_MS)[retries++] || 45000);
+  }
 
   function refresh(force){
     /* A hidden tab is a tab nobody is looking at: it gets the config when it
@@ -8196,9 +8223,15 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
        -- so it skips the floor as well as the visibility check. */
     if(!force && now - lastAsk < (window.__boothAskFloorMs || 15000)) return Promise.resolve();
     lastAsk = now;
-    return post({ action:'config' }, 2500).then(function(j){
-      if(j && j.ok && j.settings){ remember(j); apply(j, adminFlag); }
-    }).catch(function(){ /* offline: the cached copy stands */ });
+    /* An Apps Script that has been idle takes a few seconds to wake. This used to
+       give up at 2.5s, and a phone opening the page for the first time then had no
+       settings at all -- every game and every poster showed -- until the next ask,
+       three minutes on. Now it waits 10s, and until a first answer has arrived it
+       asks again soon: 3s, 8s, 20s, 45s, then the ordinary rhythm. */
+    return post({ action:'config' }, 10000).then(function(j){
+      if(j && j.ok && j.settings){ gotLive=true; retries=0; remember(j); apply(j, adminFlag); }
+      else retrySoon();
+    }).catch(function(){ retrySoon(); /* offline: the cached copy stands meanwhile */ });
   }
   window.__boothRefresh = refresh;   /* the tests, and nothing else */
 

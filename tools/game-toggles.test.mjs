@@ -257,17 +257,26 @@ console.log('\nthe booth page, for an admin');
 {
   const {c,p,errs}=await open('/index.html', {admin:own.token});
   await until(()=>p.evaluate(()=>(document.getElementById('boothRibbon')||{}).textContent||'').then(t=>/off/.test(t)));
-  const w = await wheel(p);
-  chk('an admin sees every game', w.ids.length===8, w.ids);
+  /* An admin on the same browser sees what a visitor sees -- an off game is off --
+     because a page that still showed everything read as the switch not working.
+     The ribbon names what is off and offers the preview. */
+  let w = await wheel(p);
+  chk('an admin sees the page as a visitor does: the off games are not on the wheel', w.ids.length===6 && !w.ids.includes('uv-card') && !w.ids.includes('facy-run'), w.ids);
+  chk('...and the ribbon says which are off, with a button to show them', /UV Card, Facy Run are off/.test(w.ribbon) && /Show the hidden parts/.test(w.ribbon), w.ribbon);
+  await p.click('#boothPreviewBtn'); await sleep(400);
+  w = await wheel(p);
+  chk('the button shows every game', w.ids.length===8, w.ids);
   const marks = await p.evaluate(()=>[...document.querySelectorAll('#gameRing .cg-item')].map(el=>({id:el.dataset.game,
     off:el.classList.contains('cg-adminoff'), label:getComputedStyle(el,'::after').content,
     grey:getComputedStyle(el.querySelector('.cg-card')).filter})));
-  chk('...the off ones greyed and labelled, so the switch is plainly working',
+  chk('...the off ones greyed and labelled',
       marks.filter(m=>m.off).map(m=>m.id).join()==='uv-card,facy-run' &&
       marks.filter(m=>m.off).every(m=>/OFF/.test(m.label) && /grayscale/.test(m.grey)), marks);
   chk('...and the ones that are on look as they always did',
       marks.filter(m=>!m.off).every(m=>m.label==='none' && m.grey==='none'), marks.filter(m=>!m.off));
-  chk('...and the ribbon says which are off for visitors', /UV Card, Facy Run are off/.test(w.ribbon), w.ribbon);
+  chk('...and the ribbon offers the way back', /Back to the visitor view/.test(w.ribbon), w.ribbon);
+  await p.click('#boothPreviewBtn'); await sleep(400);
+  chk('back to the visitor view: the off games are gone again', (await wheel(p)).ids.length===6);
   chk('no page errors', errs.length===0, errs);
   await c.close();
 }

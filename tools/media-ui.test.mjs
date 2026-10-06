@@ -25,6 +25,8 @@ const srv=http.createServer((req,res)=>{
   const u=new URL(req.url,BASE);
   if(u.pathname==='/api'){
     let body=''; req.on('data',c=>body+=c); req.on('end',()=>{
+      /* a script that is slow to wake: the next few config asks get no answer */
+      if(globalThis.FAIL_CONFIG>0 && /"action":"config"/.test(body)){ globalThis.FAIL_CONFIG--; res.writeHead(503); res.end('waking up'); return; }
       let out; try{ out=H.call(JSON.parse(body||'{}')); }catch(e){ out={ok:false,error:String(e.message)}; }
       res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify(out));
     }); return;
@@ -82,7 +84,9 @@ console.log('── the admin tab');
   chk('the poster is named from its file', r2[2]==='poster-agm-penang-2026-talk-poster-1-01', r2[2]);
   chk('the poster was shrunk to a JPEG under the limit', r2[8]==='image/jpeg' && r2[9]>1000 && r2[9]<2500000, [r2[8],r2[9]]);
   chk('both are in Drive and public (no event is chosen yet)', Object.values(H.DRIVE.files).length===2 && Object.values(H.DRIVE.files).every(f=>f.access==='ANYONE_WITH_LINK'));
-  chk('the list shows them under their event, as Live', await p.evaluate(()=>{ const t=document.getElementById('mediaList').textContent; return /AGM Penang 2026/.test(t) && /qr-agm-penang-2026-whatsapp-01/.test(t) && [...document.querySelectorAll('#mediaList .item')].filter(x=>!/built into the page/.test(x.textContent)).every(x=>/Live/.test(x.textContent)); }));
+  /* the server has both rows the moment the second upload lands; the list redraws when
+     that answer gets back to the page, a beat later on a busy machine */
+  chk('the list shows them under their event, as Live', await until(()=>p.evaluate(()=>{ const t=document.getElementById('mediaList').textContent; return /AGM Penang 2026/.test(t) && /qr-agm-penang-2026-whatsapp-01/.test(t) && [...document.querySelectorAll('#mediaList .item')].filter(x=>!/built into the page/.test(x.textContent)).every(x=>/Live/.test(x.textContent)); })));
   chk('...with no field to type a name into', await p.evaluate(()=>!document.querySelector('#viewMedia input[name*="name" i], #viewMedia #mediaName')));
 
   await p.setInputFiles('#mediaFiles',[QR]);
@@ -176,11 +180,15 @@ for(const [tag,w,h] of [['phone',390,844],['tablet',820,1180],['tablet sideways'
   await p.evaluate(m=>window.__boothApply(m,false), CFG([],{},[],['builtin-poster-session-talk']));
   chk(`${tag}: hiding the session poster takes its talk section off the page`, await p.evaluate(()=>getComputedStyle(document.getElementById('talk')).display==='none' && getComputedStyle(document.getElementById('qrcore')).display!=='none'));
   await p.evaluate(m=>window.__boothApply(m,true), CFG([],{},[],['builtin-poster-session-talk','builtin-qr-registration']));
-  chk(`${tag}: an admin previewing still sees everything`, await p.evaluate(()=>getComputedStyle(document.getElementById('talk')).display!=='none' && [...document.querySelectorAll('#qrcore .qr-card')].every(c=>getComputedStyle(c).display!=='none')));
+  chk(`${tag}: an admin sees what a visitor sees: the talk and the code that are off are gone`, await p.evaluate(()=>getComputedStyle(document.getElementById('talk')).display==='none' && getComputedStyle(document.querySelector('[data-media="builtin-qr-registration"]')).display==='none'));
+  await p.evaluate(()=>{ sessionStorage.setItem('fx.booth.preview','1'); });
+  await p.evaluate(m=>window.__boothApply(m,true), CFG([],{},[],['builtin-poster-session-talk','builtin-qr-registration']));
+  chk(`${tag}: an admin who asks for the preview sees everything`, await p.evaluate(()=>getComputedStyle(document.getElementById('talk')).display!=='none' && [...document.querySelectorAll('#qrcore .qr-card')].every(c=>getComputedStyle(c).display!=='none')));
   await p.evaluate(m=>window.__boothApply(m,false), CFG([],{},[],['builtin-qr-registration','builtin-qr-more-info','builtin-qr-whatsapp']));
   chk(`${tag}: hide them with nothing uploaded and the whole section goes, not an empty heading`, await p.evaluate(()=>getComputedStyle(document.getElementById('qrcore')).display==='none'));
   chk(`${tag}: ...and its menu link`, await p.evaluate(()=>[...document.querySelectorAll('a[href="#qrcore"]')].every(a=>getComputedStyle(a).display==='none')));
   await p.evaluate(m=>window.__boothApply(m,false), CFG([]));
+  await p.evaluate(()=>sessionStorage.removeItem('fx.booth.preview'));
   chk(`${tag}: no media: back to the page as it was`, await p.evaluate(()=>!document.getElementById('eventposters') && !document.querySelector('.booth-media') && document.querySelectorAll('#qrcore .qr-card').length===3 && getComputedStyle(document.getElementById('qrcore')).display!=='none' && getComputedStyle(document.getElementById('talk')).display!=='none' && [...document.querySelectorAll('#qrcore .qr-card')].every(c=>getComputedStyle(c).display!=='none')));
   chk(`${tag}: no page errors`, errs.length===0, errs[0]);
   await c.close();
@@ -229,15 +237,37 @@ console.log('\n── the real thing: the script, the page, a visitor and an adm
   chk('...and no ribbon, no marker: they see a page that simply does not have them', !r.waMarked && !r.talkMarked && !r.ribbon, r);
   chk('no page errors', v.errs.length===0, v.errs[0]); await v.c.close();
   const a=await open(true); r=await seen(a.p);
-  chk('an admin signed in on the same browser still sees them (preview), but marked', r.waShown && r.talkShown && r.waMarked && r.talkMarked, r);
+  chk('an admin signed in on the same browser sees what a visitor sees: they are gone', !r.waShown && !r.talkShown && r.regShown, r);
+  chk('...and the ribbon names them, with a button to show them', /WhatsApp/.test(r.ribbon) && /session poster/.test(r.ribbon) && /Show the hidden parts/.test(r.ribbon), r.ribbon);
+  await a.p.click('#boothPreviewBtn'); await sleep(400); r=await seen(a.p);
+  chk('"Show the hidden parts": they come back, marked', r.waShown && r.talkShown && r.waMarked && r.talkMarked, r);
   chk('...each says "Off for visitors" on its face', /Off for visitors/.test(r.badge), r.badge);
-  chk('...the ribbon names them', /WhatsApp/.test(r.ribbon) && /session poster/.test(r.ribbon) && /off/.test(r.ribbon), r.ribbon);
   chk('...and the code that is on is not marked', await a.p.evaluate(()=>!document.querySelector('[data-media="builtin-qr-registration"]').classList.contains('booth-preview-off')));
-  call({action:'admin.media.set',id:'builtin-qr-whatsapp',on:true}); call({action:'admin.media.set',id:'builtin-poster-session-talk',on:true});
-  await a.p.evaluate(()=>window.__boothRefresh(true)); await sleep(600);
-  r=await seen(a.p);
-  chk('switched back on, the markers and the ribbon go', !r.waMarked && !r.talkMarked && !r.ribbon, r);
+  await a.p.reload({waitUntil:'load'}); await sleep(1500); r=await seen(a.p);
+  chk('the preview lasts while the tab is open (a reload keeps it)', r.waShown && r.waMarked, r);
+  await a.p.click('#boothPreviewBtn'); await sleep(400); r=await seen(a.p);
+  chk('"Back to the visitor view": gone again', !r.waShown && !r.talkShown, r);
   await a.c.close();
+  {
+    /* A phone opening the page for the first time, while the script is slow to wake:
+       the first two asks get nothing. It used to give up and show everything for
+       three minutes; now it asks again within seconds. */
+    globalThis.FAIL_CONFIG=2;
+    const c=await b.newContext({viewport:{width:390,height:844}});
+    await c.addInitScript(a=>{ window.__BOOTH_API=a; window.__boothRetryMs=[400,800,1500]; }, API);
+    const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+    const t0=Date.now(); await p.goto(BASE+'/index.html',{waitUntil:'load'});
+    const hid=await until(()=>p.evaluate(()=>getComputedStyle(document.getElementById('talk')).display==='none'), 10000);
+    chk('a slow script: the page asks again and hides what is off within seconds', hid && globalThis.FAIL_CONFIG===0, {hid, left:globalThis.FAIL_CONFIG, ms:Date.now()-t0});
+    chk('no page errors', errs.length===0, errs[0]);
+    await c.close();
+  }
+  const a2=await open(true);
+  call({action:'admin.media.set',id:'builtin-qr-whatsapp',on:true}); call({action:'admin.media.set',id:'builtin-poster-session-talk',on:true});
+  await a2.p.evaluate(()=>window.__boothRefresh(true)); await sleep(600);
+  r=await seen(a2.p);
+  chk('switched back on: nothing hidden, nothing marked, no ribbon', r.waShown && r.talkShown && !r.waMarked && !r.talkMarked && !r.ribbon, r);
+  await a2.c.close();
 }
 
 await b.close(); srv.close(); fs.rmSync(tmp,{recursive:true,force:true});
