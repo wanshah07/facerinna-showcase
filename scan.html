@@ -331,9 +331,11 @@ function fail(msg){
 function reveal(j){
   state.stage = 'done'; state.product = j.product; state.already = !!j.already;
   $('prize').textContent = j.product;
-  $('resTitle').textContent = j.already ? 'Already redeemed' : 'The wheel says';
+  $('resTitle').textContent = j.already ? 'Already redeemed' : j.spun ? 'Lucky Wheel prize' : 'The wheel says';
   $('resText').textContent = j.already
     ? 'This code was already used. The gift it got is above — do not hand out a second one.'
+    : j.spun
+    ? 'The visitor won this on the Lucky Wheel. Hand it over — the code is now spent and cannot be scanned again.'
     : 'Hand this product to the visitor. The code is now spent and cannot be scanned again.';
   $('resMeta').textContent = (j.name ? j.name+' · ' : '') + (j.score ? j.score+' points' : '') +
     (j.already && j.at ? ' · redeemed '+String(j.at).slice(0,16) : '');

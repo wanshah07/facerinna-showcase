@@ -3067,9 +3067,9 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
   <div class="wrap">
     <div class="sec-head center reveal">
       <span class="eyebrow">Interactive · Booth Engagement</span>
-      <h2><span id="gameHeadline">Eight games, one booth</span><button class="ghelp" type="button" id="guideBtn"
+      <h2><span id="gameHeadline">Nine games, one booth</span><button class="ghelp" type="button" id="guideBtn"
         aria-label="Booth staff guide" title="Booth staff guide">?</button></h2>
-      <p id="gameIntro">Eight challenges built for the booth — five 3D arcade games, Facy Run, the UV Card lucky draw and the Skin IQ quiz, all on the spinning lab wheel. Score well and claim your reward at the booth.</p>
+      <p id="gameIntro">Nine challenges built for the booth — five 3D arcade games, Facy Run, the UV Card lucky draw, the Skin IQ quiz and the Lucky Wheel, all on the spinning lab wheel. Score well, or spin once, and claim your reward at the booth.</p>
     </div>
     <div class="cg-wrap reveal">
       <div class="cg" id="gameGallery" role="region" aria-roledescription="carousel"
@@ -3168,6 +3168,18 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
                 <em>Run · Jump · Learn</em>
                 <p>Prof Facy runs three zones — Skin Types, Skin Concerns, Ingredients. Bump the ? blocks, pick the right product at each signpost, stomp the breakouts. Score 6,000 for a gift.</p>
                 <span class="cc-play">▶ Play Facy Run</span>
+              </div>
+            </a>
+          </div>
+          <div class="cg-item" role="group" aria-label="Lucky Wheel" data-game="lucky-wheel">
+            <a class="cg-card" href="lucky-wheel.html" data-art="8">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">09</span>
+              <div class="cg-cap">
+                <h4>Lucky Wheel</h4>
+                <em>One spin per phone</em>
+                <p>Spin once on your phone — the booth picks your gift from today’s stock. Show the code at the counter and collect it.</p>
+                <span class="cc-play">▶ Spin the wheel</span>
               </div>
             </a>
           </div>
@@ -5588,7 +5600,8 @@ const GALLERY_DOCS = [
     {a:'#14406E', b:'#6FB6F0', ic:'🏃'},
     {a:'#123256', b:'#8FD0F7', ic:'🧠'},
     {a:'#2A1B5E', b:'#8D6BF0', ic:'🔦'},
-    {a:'#0E4B7E', b:'#7EC8F5', ic:'🏃‍♂️'}
+    {a:'#0E4B7E', b:'#7EC8F5', ic:'🏃‍♂️'},
+    {a:'#5A2A0E', b:'#FFB15C', ic:'🎡'}
   ];
   /* Eight 600x800 canvases with a 230px emoji each cost a long job if drawn together at
      load, and the gallery is well below the fold. Paint them one per turn once the page
@@ -7378,7 +7391,10 @@ function launchConfetti(){
         if(on('skin-iq')) lines.push('🧠 <b>Skin IQ Challenge</b> — 5 questions, score 4+ for a reward → <a href="#game">play here</a>');
         if(arcade.length) lines.push((arcade.length===1?arcade[0]:arcade.slice(0,-1).join(', ')+' &amp; '+arcade[arcade.length-1])+' — '+(arcade.length===1?'a 3D arcade challenge':['','','two','three','four','five'][arcade.length]+' 3D arcade challenges')+' on our spinning game wheel → <a href="#game">see '+(arcade.length===1?'it':'them all')+'</a>');
         if(on('uv-card')) lines.push('🔦 <b>UV Card</b> — pick a brochure, slide the UV light, reveal your number → <a href="uv-card.html">play here</a>');
-        const n=8-off.length, W=['No','One','Two','Three','Four','Five','Six','Seven','Eight'];
+        if(on('lucky-wheel')) lines.push('🎡 <b>Lucky Wheel</b> — one spin per phone for a gift from today’s stock → <a href="lucky-wheel.html">spin here</a>');
+        /* counted from the wheel itself, so a game added there is counted here too */
+        const all=document.querySelectorAll('#gameRing .cg-item[data-game]').length||9;
+        const n=all-off.length, W=['No','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
         bot(n ? W[n]+(n===1?' game':' games')+' at this booth 🎮<br><br>'+lines.join('<br>')
               : 'The games are resting right now 🎮 Ask the FACERINNA team at the booth.');
       }
@@ -7968,7 +7984,8 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
      back on reaches a screen that is already open. The wheel, the ranking
      board and the headline all count the games that are left. */
   var GAME_NAMES={'match-lab':'Match Lab','pack-match':'Pack Match','shelf-shot':'Shelf Shot',
-    'deep-lab':'Deep Lab','lab-run':'Lab Run','uv-card':'UV Card','skin-iq':'Skin IQ Challenge','facy-run':'Facy Run'};
+    'deep-lab':'Deep Lab','lab-run':'Lab Run','uv-card':'UV Card','skin-iq':'Skin IQ Challenge','facy-run':'Facy Run',
+    'lucky-wheel':'Lucky Wheel'};
   var NUM=['No','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
   var introAll=null;
   function gamesOff(st){

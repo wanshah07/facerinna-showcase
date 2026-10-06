@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0B1620">
+<title>Facerinna — Lucky Wheel</title>
+<meta name="description" content="Spin the FACERINNA Lucky Wheel once on your phone and collect your gift at the booth counter.">
+<style>
+  /* The Lucky Wheel. One spin per phone while the booth's gift is on. Nothing
+     here chooses the prize: the booth script picks it from what is in stock,
+     takes it off the count, and says which slice it is; this page turns the
+     wheel to that slice and shows the code the counter scans. */
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:#0B1620;color:#EAF4FF;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{display:flex;flex-direction:column;align-items:center;text-align:center;
+    padding:calc(14px + env(safe-area-inset-top,0)) max(16px,env(safe-area-inset-right,0)) calc(28px + env(safe-area-inset-bottom,0)) max(16px,env(safe-area-inset-left,0))}
+  .top{width:100%;max-width:520px;display:flex;justify-content:flex-start;margin-bottom:6px}
+  .back{position:relative;display:inline-flex;align-items:center;min-height:36px;padding:6px 14px;border-radius:999px;
+    background:rgba(255,255,255,.1);color:#EAF4FF;text-decoration:none;font-weight:800;font-size:14px}
+  .back::after{content:"";position:absolute;inset:-8px}
+  .eyebrow{font-size:11px;letter-spacing:.38em;text-transform:uppercase;font-weight:800;color:#54C1F5;margin:6px 0 6px}
+  h1{font-size:clamp(26px,7vw,38px);margin:0 0 6px;letter-spacing:-.01em}
+  .sub{font-size:14.5px;line-height:1.55;color:rgba(255,255,255,.75);max-width:440px;margin:0 0 12px;font-weight:600}
+  #wheelWrap{position:relative;width:min(84vw,420px,44vh);aspect-ratio:1;margin:6px auto 14px}
+  #lwWheel{width:100%;height:100%;display:block;border-radius:50%;box-shadow:0 30px 60px rgba(0,0,0,.5)}
+  #pin{position:absolute;left:50%;top:-8px;transform:translateX(-50%);width:0;height:0;
+    border-left:17px solid transparent;border-right:17px solid transparent;border-top:32px solid #FFE066;
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,.4))}
+  #lwSpin{appearance:none;border:0;border-radius:999px;min-height:52px;padding:14px 38px;font:inherit;font-size:18px;font-weight:900;
+    cursor:pointer;color:#0b1620;background:linear-gradient(135deg,#FFE066,#FFA75C);box-shadow:0 12px 28px rgba(255,167,92,.35)}
+  #lwSpin[disabled]{opacity:.55;cursor:default}
+  #lwName{display:block;margin:0 auto 12px;width:min(80vw,280px);min-height:44px;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.25);
+    background:rgba(255,255,255,.08);color:#fff;font:inherit;font-size:16px;text-align:center}
+  #lwName::placeholder{color:rgba(255,255,255,.5)}
+  .card{background:#fff;color:#0b1620;border-radius:18px;padding:18px 20px;width:min(92vw,440px);margin:12px auto 0;
+    box-shadow:0 20px 50px rgba(0,0,0,.45)}
+  .card[hidden]{display:none}
+  .card h2{margin:0 0 8px;font-size:20px;line-height:1.3}
+  .card p{margin:0 0 10px;font-size:14px;line-height:1.55;color:#3f5670;font-weight:600}
+  #lwQR{display:none;width:min(220px,62vw);height:auto;image-rendering:pixelated;border-radius:10px;margin:4px auto 6px}
+  #lwCode{display:block;font:600 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#8095ab;word-break:break-all}
+  .fine{font-size:12px;color:rgba(255,255,255,.55);max-width:420px;margin:14px auto 0;line-height:1.5}
+  /* a phone on its side: the wheel gives up height so the name and the button stay clear of the home bar */
+  @media(max-height:560px){ h1{font-size:22px;margin-bottom:2px} .sub,.eyebrow,label.fine{display:none} #wheelWrap{width:min(56vw,40vh);margin:2px auto 8px}
+    #lwName{margin-bottom:8px;min-height:40px;padding:6px 12px} #lwSpin{min-height:46px;padding:10px 30px;font-size:16px} }
+  @media(prefers-reduced-motion:reduce){ #lwSpin{box-shadow:none} }
+</style>
+</head>
+<body>
+<div class="top"><a class="back" id="boothLink" href="index.html#game">‹ Booth</a></div>
+<p class="eyebrow">Facerinna · Booth game 09</p>
+<h1>Lucky Wheel</h1>
+<p class="sub">One spin per phone. The booth picks your gift from what is in stock today — then show the code at the FACERINNA counter.</p>
+
+<div id="wheelWrap"><canvas id="lwWheel" width="840" height="840" aria-label="The Lucky Wheel"></canvas><div id="pin" aria-hidden="true"></div></div>
+<label for="lwName" class="fine" style="margin:0 0 6px;display:block">Your name, for the counter (optional)</label>
+<input id="lwName" type="text" maxlength="18" autocomplete="given-name" placeholder="Your name">
+<button id="lwSpin" type="button">🎡 Spin the wheel</button>
+
+<div class="card" id="lwCard" hidden aria-live="polite">
+  <h2 id="lwTitle"></h2>
+  <p id="lwText"></p>
+  <canvas id="lwQR" aria-label="Your gift code"></canvas>
+  <span id="lwCode"></span>
+</div>
+<p class="fine">One gift per phone, across every booth game. The prize is chosen by the booth, not by this phone.</p>
+
+<!-- the QR encoder the games already use; it hangs nothing on this page -->
+<script>window.FX_GIFT = { id:'lucky-wheel', result:'#lwNoResult' };</script>
+<div id="lwNoResult" class="hidden" hidden></div>
+<script src="fx-gift.js"></script>
+<script>
+(function(){
+'use strict';
+var API = (typeof window.__BOOTH_API === 'string') ? window.__BOOTH_API
+  : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
+var REDEEM = (window.fxGift && window.fxGift.redeemUrl) || 'https://my.facerinna.com/redeem.html';
+var FAST = !!window.__LW_FAST || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+var $ = function(id){ return document.getElementById(id); };
+function read(k){ try { return localStorage.getItem(k) || ''; } catch(e){ return ''; } }
+function write(k,v){ try { localStorage.setItem(k, v); } catch(e){} }
+/* the same device id and name the other games keep: one gift per phone across all of them */
+function deviceId(){
+  var d = read('fx.device');
+  if (!d) { d = Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); write('fx.device', d); }
+  return d;
+}
+$('lwName').value = read('fx.player');
+function post(body, ms){
+  var ctl = ('AbortController' in window) ? new AbortController() : null;
+  var t = ctl && setTimeout(function(){ ctl.abort(); }, ms || 15000);
+  return fetch(API, { method:'POST', body:JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ return r.json(); }).finally(function(){ if (t) clearTimeout(t); });
+}
+
+/* ------------------------------------------------------------- the wheel */
+var cv = $('lwWheel'), g = cv.getContext('2d'), R = cv.width/2;
+var COLS = ['#3FA6EE','#6FDCC6','#F6C744','#FFA75C','#B9A6FF','#7ED957','#FFB3C7','#8FD0F7','#2E7CBE','#FFE066'];
+var products = [], angle = 0, pics = {}, landed = -1;
+function pic(name){
+  if (pics[name] !== undefined) return pics[name];
+  pics[name] = null;
+  var slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  var im = new Image();
+  im.onload = function(){ pics[name] = im; draw(); };
+  im.onerror = function(){ pics[name] = null; };
+  im.src = 'products/' + slug + '.webp';
+  return null;
+}
+function short(s){ var w = String(s).split(' '); return w.length > 3 ? w.slice(0,3).join(' ') : String(s); }
+function draw(){
+  var list = products.length ? products : ['?','?','?','?','?','?','?','?'];
+  var n = list.length, slice = 2*Math.PI/n;
+  g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,cv.width,cv.height);
+  g.save(); g.translate(R,R); g.rotate(angle);
+  for (var i = 0; i < n; i++){
+    var a0 = -Math.PI/2 + i*slice - slice/2;
+    g.beginPath(); g.moveTo(0,0); g.arc(0,0,R-8,a0,a0+slice); g.closePath();
+    g.fillStyle = COLS[i % COLS.length]; g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.65)'; g.lineWidth = 4; g.stroke();
+    g.save(); g.rotate(a0 + slice/2);
+    var im = products.length ? pic(list[i]) : null;
+    if (im){
+      var d = Math.min(R*0.42, (R-8)*Math.sin(slice/2)*1.6), a = a0 + slice/2 + angle;
+      g.save(); g.translate(R*0.58, 0); g.rotate(-a);
+      var k = Math.min(d/im.width, d/im.height);
+      g.drawImage(im, -im.width*k/2, -im.height*k/2, im.width*k, im.height*k);
+      g.restore();
+    } else {
+      g.fillStyle = '#0b1620';
+      g.font = products.length ? 'bold ' + (n > 8 ? 24 : 28) + 'px system-ui,sans-serif' : 'bold 64px system-ui,sans-serif';
+      g.textAlign = 'right'; g.textBaseline = 'middle';
+      var label = products.length ? short(list[i]) : '?';
+      if (label.length > 20) label = label.slice(0,19) + '…';
+      g.fillText(label, R - 34, 0);
+    }
+    g.restore();
+  }
+  g.beginPath(); g.arc(0,0,58,0,6.283); g.fillStyle = '#fff'; g.fill();
+  g.fillStyle = '#3FA6EE'; g.font = 'bold 28px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('FX', 0, 0);
+  g.restore();
+}
+var raf = 0;
+function idle(on){
+  cancelAnimationFrame(raf); raf = 0;
+  if (!on) return;
+  var last = performance.now();
+  (function turn(now){ angle -= (now - last) * 0.009; last = now; draw(); raf = requestAnimationFrame(turn); })(last);
+}
+function spinTo(index, done){
+  idle(false);
+  var n = products.length, slice = 2*Math.PI/n;
+  angle = ((angle % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);        /* carry on the same way into the answer */
+  var target = -index*slice - Math.PI*2*(FAST ? 2 : 5);
+  var from = angle, t0 = performance.now(), dur = FAST ? 700 : 4200;
+  (function tick(now){
+    var t = Math.min(1, (now - t0)/dur), e = 1 - Math.pow(1 - t, 3);
+    angle = from + (target - from)*e; draw();
+    if (t < 1) raf = requestAnimationFrame(tick); else { raf = 0; landed = index; done(); }
+  })(t0);
+}
+draw();
+
+/* ------------------------------------------------------------- the flow */
+var stage = 'ready', won = '';
+var GAME = { 'match-lab':'Match Lab','pack-match':'Pack Match','shelf-shot':'Shelf Shot','deep-lab':'Deep Lab',
+             'lab-run':'Lab Run','facy-run':'Facy Run','skin-iq':'Skin IQ' };
+function say(title, text, claim){
+  $('lwTitle').textContent = title; $('lwText').textContent = text;
+  var qr = $('lwQR');
+  if (claim && window.fxGift && window.fxGift.qrInto(qr, REDEEM + '?c=' + encodeURIComponent(claim))){
+    qr.style.display = 'block'; $('lwCode').textContent = claim;
+  } else { qr.style.display = 'none'; $('lwCode').textContent = ''; }
+  $('lwCard').hidden = false;
+  /* the prize is what they came for: bring it up, and the name box is done with */
+  if (stage === 'won'){ $('lwName').style.display = 'none'; var l = document.querySelector('label[for="lwName"]'); if (l) l.style.display = 'none'; }
+  try { $('lwCard').scrollIntoView({ behavior: FAST ? 'auto' : 'smooth', block: 'center' }); } catch(e){}
+}
+function ready(again){
+  var b = $('lwSpin'); b.disabled = false; b.style.display = again ? 'inline-block' : 'none';
+}
+/* Many phones spinning together: the booth script spends one gift at a time and
+   says "busy" to the ones it could not get to. Ask again, spaced out, for a minute. */
+function ask(tries, t0){
+  var name = $('lwName').value.trim().slice(0,18);
+  if (name) write('fx.player', name);
+  return post({ action:'gift.spin', device:deviceId(), name:name }, 15000).then(function(j){
+    if (j && j.ok === true) return j;
+    if (j && j.reason === 'busy' && Date.now() - t0 < 60000)
+      return new Promise(function(r){ setTimeout(r, Math.min(6000, 800*Math.pow(1.6, tries))*(0.5+Math.random())); })
+        .then(function(){ return ask(tries+1, t0); });
+    return j || { ok:false, reason:'error' };
+  }, function(){
+    /* no answer at all: three quick tries (about ten seconds), then say so */
+    if (tries < 3)
+      return new Promise(function(r){ setTimeout(r, 1500*(tries+1)); }).then(function(){ return ask(tries+1, t0); });
+    return { ok:false, reason:'network' };
+  });
+}
+function spin(){
+  if (stage === 'spinning') return;
+  stage = 'spinning'; $('lwCard').hidden = true;
+  var b = $('lwSpin'); b.disabled = true;
+  idle(true);
+  ask(0, Date.now()).then(function(j){
+    if (!j.ok){
+      idle(false); stage = j.reason === 'network' || j.reason === 'error' ? 'error' : 'closed';
+      var r = j.reason;
+      if (r === 'inactive') say('The gifts are not on right now', 'Ask the FACERINNA team at the counter.');
+      else if (r === 'nostock') say('Today’s gifts are all given out', 'Thank you for spinning! Ask the FACERINNA team at the counter.');
+      else if (r === 'gameoff') say('The Lucky Wheel is resting', 'Try another booth game, or ask the FACERINNA team at the counter.');
+      else if (r === 'busy') { stage = 'error'; say('Lots of people spinning right now', 'Wait a few seconds and spin again. Nothing has been used up.'); }
+      else say('No connection just now', 'We could not reach the booth. Try again in a moment, or ask the FACERINNA team at the counter.');
+      ready(stage === 'error');
+      return;
+    }
+    if (j.other){
+      idle(false); stage = 'won'; won = j.product || '';
+      if (j.redeemed) say('This phone has had its gift', 'It took home ' + (j.product || 'a gift') + ' already. One gift per phone across every booth game — thank you!');
+      else say('You already have a gift code', 'This phone earned a code in ' + (GAME[j.other] || 'another booth game') +
+        '. Show it at the FACERINNA counter — one gift per phone across every booth game.', j.claim);
+      ready(false); return;
+    }
+    products = j.products || [];
+    spinTo(j.index, function(){
+      stage = 'won'; won = j.product;
+      if (j.redeemed) say('Already collected: ' + j.product, 'This phone has had its gift. One gift per phone — thank you!');
+      else if (j.already) say('You won: ' + j.product, 'You already spun on this phone — this is your prize. Show this code at the FACERINNA counter to collect it.', j.claim);
+      else say('You won: ' + j.product, 'Show this code at the FACERINNA counter. Our team scans it and hands you your ' + j.product + '. One gift per phone.', j.claim);
+      ready(false);
+    });
+  });
+}
+$('lwSpin').addEventListener('click', spin);
+
+/* the tests, and nothing else */
+window.__lw = { stage:function(){ return stage; }, product:function(){ return won; }, landed:function(){ return landed; },
+                products:function(){ return products; } };
+})();
+if ('serviceWorker' in navigator)
+  addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
+</script>
+<script src="fx-games.js" data-game="lucky-wheel"></script>
+</body>
+</html>
