@@ -31,7 +31,7 @@ const WANT=[
   ['Match Lab','match-lab.html'], ['Pack Match','pack-match.html'],
   ['Shelf Shot','shelf-shot.html'], ['Deep Lab','deep-lab.html'],
   ['Lab Run','lab-run.html'], ['UV Card','uv-card.html'],
-  ['Skin IQ Challenge','#skinIQ'], ['Facy Run','facy-run.html'],
+  ['Skin IQ Challenge','#skinIQ'], ['Facy Run','facy-run.html'], ['Lucky Wheel','lucky-wheel.html'],
 ];
 
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});

@@ -257,8 +257,14 @@ var GAMES = [
   ['lab-run',    'Lab Run'],
   ['uv-card',    'UV Card'],
   ['skin-iq',    'Skin IQ Challenge'],
-  ['facy-run',   'Facy Run']
+  ['facy-run',   'Facy Run'],
+  ['lucky-wheel', 'Lucky Wheel']
 ];
+/* The Lucky Wheel is not scored: anybody may spin, once per device, while the
+   gift is on. The script picks the product from what is in stock -- the same
+   pick the counter wheel makes -- and takes it off the count AT THE SPIN, so
+   what the visitor's wheel landed on is what the counter hands over. */
+var LUCKY = 'lucky-wheel';
 /* Read the setting the way a person might have typed it into the sheet:
    any separator, any case, unknown names dropped, each game once. */
 function gamesOff_(raw) {
@@ -1442,7 +1448,17 @@ function claimsReset_(b, me) {
   if (!live.length) return json_({ ok: false, error: 'that device has no gift to reset' });
   var sh = sheet_(T_GIFTS), t = now_();
   live.forEach(function (r) { sh.getRange(r._row, 10).setValue(t); sh.getRange(r._row, 11).setValue(me.email); });
-  return json_({ ok: true, reset: live.length, claims: claimsList_() });
+  /* a Lucky Wheel spin never collected set a unit aside: it goes back on the shelf */
+  var back = 0;
+  live.forEach(function (r) {
+    if (!r.product || r.redeemed) return;
+    var st = stockFind_(stock_(), String(r.product));
+    if (st && st.quantity !== null) {
+      sheet_(T_STOCK).getRange(st._row, 2, 1, 3).setValues([[st.quantity + 1, now_(), me.email + ' (reset)']]);
+      back++;
+    }
+  });
+  return json_({ ok: true, reset: live.length, returned: back, claims: claimsList_() });
 }
 function giftRows_() {
   /* the tab is made on first use rather than by setUp, so a script deployed
@@ -1497,6 +1513,50 @@ function giftClaim_(b) {
   } finally { flushSheets_(); lock.releaseLock(); }
 }
 
+
+/* Body: {action:'gift.spin', device, name}
+   Back: {ok:true, claim, product, index, products}            a fresh spin
+         {ok:true, claim, product, index, products, already}   this device spun before
+         {ok:true, claim, product:'', other:game}             it already has a code from a game
+         {ok:false, reason}   inactive | gameoff | nostock | busy | device
+   One gift per device across every game, as gift.claim: a phone that already
+   holds a code is handed that code, never a second one. */
+function giftSpin_(b) {
+  var all = settings_();
+  if (!yes_((('gift_active' in all) ? all.gift_active : SETTING_KEYS.gift_active)))
+    return json_({ ok: false, reason: 'inactive' });
+  if (gamesOff_(all.games_off).indexOf(LUCKY) >= 0) return json_({ ok: false, reason: 'gameoff' });
+  var device = String((b && b.device) || '').trim();
+  if (!/^[A-Za-z0-9_-]{6,40}$/.test(device)) return json_({ ok: false, reason: 'device' });
+  var name = cell_(String(b.name || '').replace(/\s+/g, ' ').trim().slice(0, 18));
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return json_({ ok: false, reason: 'busy' });
+  try {
+    var wheel = wheel_(), products = wheel.map(function (x) { return x.product; });
+    var have = giftLive_(giftRows_(), device);
+    if (have) {
+      if (String(have.game) === LUCKY && have.product) {
+        var list = products.slice(), at = list.indexOf(String(have.product));
+        if (at < 0) { list.push(String(have.product)); at = list.length - 1; }   /* it may have just run out */
+        return json_({ ok: true, already: true, claim: String(have.claim), product: String(have.product),
+                       index: at, products: list, redeemed: !!have.redeemed });
+      }
+      return json_({ ok: true, other: String(have.game || ''), claim: String(have.claim),
+                     product: have.redeemed ? String(have.product || '') : '', redeemed: !!have.redeemed });
+    }
+    if (!wheel.length) return json_({ ok: false, reason: 'nostock' });
+    var pick = Math.floor(Math.random() * wheel.length), chosen = wheel[pick];
+    var claim = Utilities.getUuid();
+    /* product written now, redeemed left empty: the code is the visitor's and the
+       unit is set aside for it; the counter's scan only marks it handed over */
+    sheet_(T_GIFTS).appendRow([claim, device, LUCKY, 0, name, now_(), '', cell_(chosen.product), '', '', '', '']);
+    if (chosen.quantity !== null)
+      sheet_(T_STOCK).getRange(chosen._row, 2, 1, 3).setValues([[chosen.quantity - 1, now_(), 'lucky wheel']]);
+    return json_({ ok: true, claim: claim, product: chosen.product, index: pick, products: products });
+  } finally { flushSheets_(); lock.releaseLock(); }
+}
+
 /* Body: {action:'admin.gift.redeem', token, claim}
    Back: {ok:true, product, index, products, already, score, name}
    Under the admin lock already, from doPost. A claim scanned twice comes back
@@ -1524,6 +1584,18 @@ function giftRedeem_(b, email) {
                    products: again ? list : products, at: row.redeemed, score: row.score, name: String(row.name || '') });
   }
   if (row.reset) return json_({ ok: false, error: 'This code was cancelled when the device was reset. The visitor can play again for a new one.' });
+  if (row.product) {
+    /* A Lucky Wheel code: the visitor's own spin chose the product and took it off
+       the count. Scanning it hands that product over -- no second pick, no second
+       unit -- and the counter's wheel turns to it. */
+    var have = products.slice(), at = have.indexOf(String(row.product));
+    if (at < 0) { have.push(String(row.product)); at = have.length - 1; }
+    var gs = sheet_(T_GIFTS);
+    gs.getRange(row._row, 7, 1, 3).setValues([[now_(), String(row.product), email]]);
+    if (attempt) gs.getRange(row._row, 12, 1, 1).setValues([[attempt]]);
+    return json_({ ok: true, already: false, product: String(row.product), index: at, left: null,
+                   products: have, spun: true, score: row.score, name: String(row.name || '') });
+  }
   if (!wheel.length) return json_({ ok: false, error: 'Every product on the wheel is out of stock. Restock it in the admin page.' });
 
   /* Math.random on the script, not on the phone: the spin is decided here and
@@ -1576,6 +1648,15 @@ var GUIDE = [
   { t: 'h', s: 'The counter phone has to be signed in' },
   { t: 'p', s: 'Once, on that phone: open *my.facerinna.com/scan.html* (or the *Counter* icon on its home screen), enter an address an admin has added under *People* with *Counter* ticked, and type the code that is mailed to it. It stays signed in after that.' },
   { t: 'p', s: 'A phone that is not signed in gets a sign-in card instead of a wheel, and nothing is spent.' },
+
+  { t: 'h', s: 'The Lucky Wheel' },
+  { t: 'p', s: 'A game with no score: anybody may spin, once per phone, while the gift is on. The booth script picks the product from what is in stock and takes it off the count at the spin, so the phone shows what the visitor won and a code.' },
+  { t: 'ul', items: [
+    'Scan that code like any other. The counter wheel turns to the product the visitor already won -- hand that one over. There is no second pick and no second unit.',
+    'A phone that already earned a code from another game is shown that code instead of a spin: still one gift per phone.',
+    '*Let play again* on a Lucky Wheel spin that was never collected puts its unit back in stock.',
+    'Switch it off under *Games* like the others.'
+  ] },
 
   { t: 'h', s: 'Turning the gift on, and off' },
   { t: 'p', s: 'In the admin page, under *The gift at the end of a game*:' },
@@ -1739,6 +1820,7 @@ function doPost(e) {
     if (action === 'code')    return codeRequest_(b);
     if (action === 'redeem')  return codeRedeem_(b);
     if (action === 'gift.claim') return giftClaim_(b);
+    if (action === 'gift.spin')  return giftSpin_(b);
 
     /* the admin ones: every write takes the lock */
     if (action.indexOf('admin.') !== 0) return json_({ ok: false, error: 'unknown action' });

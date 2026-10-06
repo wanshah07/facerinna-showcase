@@ -48,12 +48,12 @@ const own = H.signIn(OWNER);
 {
   chk('setUp writes a games_off row, empty: every game on', setting('games_off')==='', H.tabs['Settings'].rows.map(r=>r[0]));
   const cfg = H.call({action:'config'});
-  chk('config lists the eight games in wheel order',
-      (cfg.games||[]).map(g=>g[0]).join()==='match-lab,pack-match,shelf-shot,deep-lab,lab-run,uv-card,skin-iq,facy-run', cfg.games);
+  chk('config lists the nine games in wheel order',
+      (cfg.games||[]).map(g=>g[0]).join()==='match-lab,pack-match,shelf-shot,deep-lab,lab-run,uv-card,skin-iq,facy-run,lucky-wheel', cfg.games);
   chk('config says none are off', cfg.settings.games_off==='', cfg.settings.games_off);
   const g = H.call({action:'admin.get', token:own.token});
   chk('Games is one of the areas, with what it does', g.perms.some(p=>p[0]==='games' && /on or off/.test(p[2])), g.perms);
-  chk('admin.get carries the list too', (g.games||[]).length===8);
+  chk('admin.get carries the list too', (g.games||[]).length===9);
 
   let r = H.call({action:'admin.settings', token:own.token, settings:{games_off:' UV-Card, deep-lab;nope uv-card '}});
   chk('an admin saves it, read the way a person types it: case, separators, unknown and twice',
@@ -125,24 +125,24 @@ console.log('\nthe admin page');
 {
   const {c,p,errs}=await open('/admin.html', {admin:own.token});
   await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));
-  await until(()=>p.evaluate(()=>document.querySelectorAll('#gameToggles input').length===8));
+  await until(()=>p.evaluate(()=>document.querySelectorAll('#gameToggles input').length===9));
   const v = await p.evaluate(()=>({ shown:!document.getElementById('cardGames').hidden,
     names:[...document.querySelectorAll('#gameToggles label span')].map(l=>l.textContent),
     on:[...document.querySelectorAll('#gameToggles input')].filter(i=>i.checked).length,
     note:document.getElementById('gamesCount').textContent }));
   chk('the Games card is on the Settings tab', v.shown, v);
-  chk('...a switch per game, by name, all on', v.names.length===8 && v.names[5]==='UV Card' && v.on===8, v);
-  chk('...and it says so', /All 8 games are on/.test(v.note), v.note);
+  chk('...a switch per game, by name, all on', v.names.length===9 && v.names[5]==='UV Card' && v.names[8]==='Lucky Wheel' && v.on===9, v);
+  chk('...and it says so', /All 9 games are on/.test(v.note), v.note);
   await p.click('#gameToggles input[data-game="uv-card"]');
   await p.click('#gameToggles input[data-game="deep-lab"]');
-  chk('unticking counts down at once', /6 of 8 games on/.test(await p.textContent('#gamesCount')));
-  chk('...and each row says ON or OFF in words', await p.evaluate(()=>[...document.querySelectorAll('#gameToggles label b')].map(x=>x.textContent).join())==='ON,ON,ON,OFF,ON,OFF,ON,ON');
+  chk('unticking counts down at once', /7 of 9 games on/.test(await p.textContent('#gamesCount')));
+  chk('...and each row says ON or OFF in words', await p.evaluate(()=>[...document.querySelectorAll('#gameToggles label b')].map(x=>x.textContent).join())==='ON,ON,ON,OFF,ON,OFF,ON,ON,ON');
   chk('...and strikes the name through', await p.evaluate(()=>getComputedStyle(document.querySelector('#gameToggles input[data-game="uv-card"]').nextSibling).textDecorationLine==='line-through'));
   await p.click('#saveSettings');
   await until(()=>setting('games_off')==='deep-lab,uv-card' || setting('games_off')==='uv-card,deep-lab');
   chk('Save settings writes them to the sheet', /deep-lab/.test(setting('games_off')) && /uv-card/.test(setting('games_off')), setting('games_off'));
   await p.reload({waitUntil:'load'});
-  await until(()=>p.evaluate(()=>document.querySelectorAll('#gameToggles input').length===8));
+  await until(()=>p.evaluate(()=>document.querySelectorAll('#gameToggles input').length===9));
   await sleep(300);
   chk('...and they come back unticked after a reload',
       await p.evaluate(()=>[...document.querySelectorAll('#gameToggles input')].filter(i=>!i.checked).map(i=>i.dataset.game).sort().join())==='deep-lab,uv-card');
@@ -159,7 +159,7 @@ console.log('\nthe admin page');
       await route.fulfill({response:r, json:j});
     });
     await o.p.reload({waitUntil:'load'});
-    await until(()=>o.p.evaluate(()=>document.querySelectorAll('#gameToggles input').length===8));
+    await until(()=>o.p.evaluate(()=>document.querySelectorAll('#gameToggles input').length===9));
     await sleep(300);
     const v = await o.p.evaluate(()=>({ warn:!document.getElementById('gamesOld').hidden,
       text:document.getElementById('gamesOld').textContent,
@@ -187,11 +187,11 @@ console.log('\nthe booth page, for a visitor');
   const {c,p,errs}=await open('/index.html');
   await until(()=>p.evaluate(()=>document.querySelectorAll('#gameRing .cg-off').length===2));
   let w = await wheel(p);
-  chk('the two games are off the wheel', w.ids.join()==='match-lab,pack-match,shelf-shot,lab-run,skin-iq,facy-run', w.ids);
-  chk('...the six left are numbered 01 to 06', w.nums.join()==='01,02,03,04,05,06', w.nums);
-  chk('...and spread round the whole ring', w.step==='60deg' && w.idx.join()==='0,1,2,3,4,5', [w.step, w.idx]);
-  chk('the headline counts six', w.head==='Six games, one booth', w.head);
-  chk('the intro names the six and only them', /^Match Lab, Pack Match, Shelf Shot, Lab Run, Skin IQ Challenge and Facy Run/.test(w.intro) && !/UV Card|Deep Lab|Eight/.test(w.intro), w.intro);
+  chk('the two games are off the wheel', w.ids.join()==='match-lab,pack-match,shelf-shot,lab-run,skin-iq,facy-run,lucky-wheel', w.ids);
+  chk('...the seven left are numbered 01 to 07', w.nums.join()==='01,02,03,04,05,06,07', w.nums);
+  chk('...and spread round the whole ring', w.step===(360/7)+'deg' && w.idx.join()==='0,1,2,3,4,5,6', [w.step, w.idx]);
+  chk('the headline counts seven', w.head==='Seven games, one booth', w.head);
+  chk('the intro names the seven and only them', /^Match Lab, Pack Match, Shelf Shot, Lab Run, Skin IQ Challenge, Facy Run and Lucky Wheel/.test(w.intro) && !/UV Card|Deep Lab|Eight/.test(w.intro), w.intro);
   chk('the ranking board counts six scored games (UV Card never had a column)', /all six games/.test(w.rank), w.rank);
   await p.evaluate(()=>{ const t=Date.now();
     localStorage.setItem('fx.rank.deep-lab', JSON.stringify([{n:'Deepa',s:900,t}]));
@@ -209,15 +209,15 @@ console.log('\nthe booth page, for a visitor');
   await p.evaluate(()=>window.__boothRefresh(true));
   await until(()=>p.evaluate(()=>document.querySelectorAll('#gameRing .cg-off').length===3));
   w = await wheel(p);
-  chk('an open page catches up: five left, renumbered', w.ids.length===5 && w.nums.join()==='01,02,03,04,05' && w.step==='72deg', w);
+  chk('an open page catches up: six left, renumbered', w.ids.length===6 && w.nums.join()==='01,02,03,04,05,06' && w.step==='60deg', w);
   chk('...and the quiz panel goes with its card', w.quiz==='none', w.quiz);
   chk('the chat answer lists only what is on',
       await p.evaluate(()=>{ const off=window.__fxGamesOff; return off.join(); })==='uv-card,deep-lab,skin-iq');
 
   /* every game off */
-  H.call({action:'admin.settings', token:own.token, settings:{games_off:'match-lab,pack-match,shelf-shot,deep-lab,lab-run,uv-card,skin-iq,facy-run'}});
+  H.call({action:'admin.settings', token:own.token, settings:{games_off:'match-lab,pack-match,shelf-shot,deep-lab,lab-run,uv-card,skin-iq,facy-run,lucky-wheel'}});
   await p.evaluate(()=>window.__boothRefresh(true));
-  await until(()=>p.evaluate(()=>document.querySelectorAll('#gameRing .cg-off').length===8));
+  await until(()=>p.evaluate(()=>document.querySelectorAll('#gameRing .cg-off').length===9));
   w = await wheel(p);
   chk('all off: no wheel, no ranking button, and the page says they are resting',
       !w.wheelShown && !w.rankShown && /resting/.test(w.intro) && w.head==='No games, one booth', w);
@@ -227,8 +227,8 @@ console.log('\nthe booth page, for a visitor');
   await p.evaluate(()=>window.__boothRefresh(true));
   await until(()=>p.evaluate(()=>document.querySelectorAll('#gameRing .cg-off').length===0));
   w = await wheel(p);
-  chk('all back on: eight on the wheel, 01 to 08, at 45 degrees', w.ids.length===8 && w.nums[7]==='08' && w.step==='45deg', w);
-  chk('...the headline and the intro are the originals again', w.head==='Eight games, one booth' && /^Eight challenges built for the booth/.test(w.intro), w);
+  chk('all back on: nine on the wheel, 01 to 09, at 40 degrees', w.ids.length===9 && w.nums[8]==='09' && w.step==='40deg', w);
+  chk('...the headline and the intro are the originals again', w.head==='Nine games, one booth' && /^Nine challenges built for the booth/.test(w.intro), w);
   chk('...and the board is back to seven', /all seven games/.test(w.rank) && w.rankShown, w.rank);
   chk('no page errors after all that', errs.length===0, errs);
   await c.close();
@@ -246,7 +246,7 @@ console.log('\nthe chat');
   const said = await p.evaluate(()=>{ const box=document.getElementById('chatMsgs'); return box ? box.innerText : null; });
   if(said===null) chk('the chat box is where the test expects it', false);
   else {
-    chk('the chat says six games', /Six games at this booth/.test(said), said.slice(-400));
+    chk('the chat says seven games', /Seven games at this booth/.test(said), said.slice(-400));
     chk('...and leaves out the two that are off', !/UV Card|Facy Run/.test(said.slice(said.lastIndexOf('games at this booth'))), said.slice(-400));
   }
   chk('no page errors', errs.length===0, errs);
@@ -261,11 +261,11 @@ console.log('\nthe booth page, for an admin');
      because a page that still showed everything read as the switch not working.
      The ribbon names what is off and offers the preview. */
   let w = await wheel(p);
-  chk('an admin sees the page as a visitor does: the off games are not on the wheel', w.ids.length===6 && !w.ids.includes('uv-card') && !w.ids.includes('facy-run'), w.ids);
+  chk('an admin sees the page as a visitor does: the off games are not on the wheel', w.ids.length===7 && !w.ids.includes('uv-card') && !w.ids.includes('facy-run'), w.ids);
   chk('...and the ribbon says which are off, with a button to show them', /UV Card, Facy Run are off/.test(w.ribbon) && /Show the hidden parts/.test(w.ribbon), w.ribbon);
   await p.click('#boothPreviewBtn'); await sleep(400);
   w = await wheel(p);
-  chk('the button shows every game', w.ids.length===8, w.ids);
+  chk('the button shows every game', w.ids.length===9, w.ids);
   const marks = await p.evaluate(()=>[...document.querySelectorAll('#gameRing .cg-item')].map(el=>({id:el.dataset.game,
     off:el.classList.contains('cg-adminoff'), label:getComputedStyle(el,'::after').content,
     grey:getComputedStyle(el.querySelector('.cg-card')).filter})));
@@ -276,7 +276,7 @@ console.log('\nthe booth page, for an admin');
       marks.filter(m=>!m.off).every(m=>m.label==='none' && m.grey==='none'), marks.filter(m=>!m.off));
   chk('...and the ribbon offers the way back', /Back to the visitor view/.test(w.ribbon), w.ribbon);
   await p.click('#boothPreviewBtn'); await sleep(400);
-  chk('back to the visitor view: the off games are gone again', (await wheel(p)).ids.length===6);
+  chk('back to the visitor view: the off games are gone again', (await wheel(p)).ids.length===7);
   chk('no page errors', errs.length===0, errs);
   await c.close();
 }

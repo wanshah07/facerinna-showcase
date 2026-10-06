@@ -2558,8 +2558,22 @@ if (resultEl) {
   }
 }
 
+/* a QR drawn into any canvas: the Lucky Wheel shows its code with the same encoder */
+function qrInto(cv, text) {
+  if (typeof qrcode !== 'function' || !cv) return false;
+  var q = qrcode(0, 'M'); q.addData(text); q.make();
+  var n = q.getModuleCount(), cell = 6, m = 4 * cell, size = n * cell + m * 2;
+  cv.width = size; cv.height = size;
+  var c = cv.getContext('2d');
+  c.fillStyle = '#fff'; c.fillRect(0, 0, size, size);
+  c.fillStyle = '#0b1620';
+  for (var r = 0; r < n; r++) for (var col = 0; col < n; col++)
+    if (q.isDark(r, col)) c.fillRect(m + col * cell, m + r * cell, cell, cell);
+  return true;
+}
+
 window.fxGift = {
-  offer: offer, drawQR: drawQR, needFor: needFor,
+  offer: offer, drawQR: drawQR, needFor: needFor, qrInto: qrInto, redeemUrl: REDEEM_URL,
   claim: function () { return claim(); },
   lastClaim: function () { return lastClaim; },
   panel: function () { return panel; },

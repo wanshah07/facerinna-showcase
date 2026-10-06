@@ -44,7 +44,7 @@ const GAMES=['lab-run','deep-lab','match-lab','pack-match','shelf-shot','facy-ru
 /* The vault and the two benchmark pages are written in wanshah07/facerinna and copied here (the
    "Refresh the moved pages" commits), so a fix made here is overwritten by the next copy: they are
    looked at there, not here. */
-const SITE=['index.html','admin.html','privacy.html','terms.html','cookies.html','redeem.html','scan.html','uv-card.html','events/index.html'];
+const SITE=['index.html','admin.html','privacy.html','terms.html','cookies.html','redeem.html','scan.html','uv-card.html','lucky-wheel.html','events/index.html'];
 
 const T={'.html':'text/html; charset=utf-8','.js':'text/javascript','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.webmanifest':'application/manifest+json','.svg':'image/svg+xml'};
 const srv=http.createServer((q,r)=>{ let f=decodeURIComponent(new URL(q.url,BASE).pathname); if(f.endsWith('/')) f+='index.html'; const fp=path.join(ROOT,f);
