@@ -11,9 +11,13 @@ export const OWNER = 'owner@facerinna.test';
 export function load(){
   const src = fs.readFileSync('/workspace/facerinna-showcase/tools/booth-admin.gs','utf8');
   const tabs = {};
+  /* Writes not yet flushed. A lock let go with writes still pending is how a
+     real sheet hands the next run a stale value; the test can see it here. */
+  const SHEETS = { pending: 0, flushes: 0, unflushedReleases: 0, writes: 0 };
+  const wrote = () => { SHEETS.pending++; SHEETS.writes++; };
   const mkSheet = o => ({
     getLastRow: () => o.rows.length,
-    appendRow: r => o.rows.push(r.slice()),
+    appendRow: r => { wrote(); o.rows.push(r.slice()); },
     deleteRow: n => { o.rows.splice(n-1, 1); },
     setFrozenRows(){}, setColumnWidth(){}, hideColumns(){},
     getRange: (r,c,nr,nc) => {
@@ -24,14 +28,14 @@ export function load(){
         /* as Sheets does: a leading apostrophe marks the cell as text and is not part of its value */
         getValues: () => { const out=[]; for(let i=r-1;i<r-1+(nr||1);i++){ const row=o.rows[i]||[]; const line=[];
           for(let j=c-1;j<c-1+(nc||1);j++){ const v=row[j]===undefined?'':row[j]; line.push(typeof v==='string'&&v[0]==="'"?v.slice(1):v); } out.push(line);} return out; },
-        setValue: v => { for(let i=r-1;i<r-1+(nr||1);i++) put(i,c-1,v); return range; },
-        setValues: vals => { vals.forEach((row,i) => row.forEach((v,j) => put(r-1+i, c-1+j, v))); return range; },
+        setValue: v => { wrote(); for(let i=r-1;i<r-1+(nr||1);i++) put(i,c-1,v); return range; },
+        setValues: vals => { wrote(); vals.forEach((row,i) => row.forEach((v,j) => put(r-1+i, c-1+j, v))); return range; },
         setFontWeight(){ return range; },
       };
       return range;
     },
   });
-  const SpreadsheetApp = { openById: id => {
+  const SpreadsheetApp = { flush: () => { SHEETS.flushes++; SHEETS.pending = 0; }, openById: id => {
     if(id!==BOOK_ID) throw new Error('no book '+id);
     return { getSheetByName: n => tabs[n] ? mkSheet(tabs[n]) : null,
              insertSheet: n => { tabs[n]={rows:[]}; return mkSheet(tabs[n]); } };
@@ -39,7 +43,7 @@ export function load(){
   const mails=[];
   const MailApp = { sendEmail: o => mails.push(o), getRemainingDailyQuota: () => 100 };
   let LOCK_FREE=true;
-  const LockService = { getScriptLock: () => ({ waitLock(){}, releaseLock(){ LOCK_FREE=true; },
+  const LockService = { getScriptLock: () => ({ waitLock(){}, releaseLock(){ if(SHEETS.pending) SHEETS.unflushedReleases++; LOCK_FREE=true; },
     tryLock(){ if(!LOCK_FREE) return false; LOCK_FREE=false; return true; } }) };
   const ContentService = { MimeType:{JSON:'j'}, createTextOutput: s => ({ setMimeType: () => s }) };
   let uuid=0;
@@ -95,5 +99,5 @@ export function load(){
     return call({ action:'redeem', email, code });
   };
   m.setUp();
-  return { m, call, signIn, tabs, mails, PROPS, CACHE, DRIVE };
+  return { m, call, signIn, tabs, mails, PROPS, CACHE, DRIVE, SHEETS };
 }

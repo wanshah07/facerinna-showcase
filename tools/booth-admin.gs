@@ -100,7 +100,10 @@ var SECTION_HEADERS  = ['id', 'label', 'mode', 'passcode', 'message', 'updated',
    `redeemed` and `product` are written the moment an admin scans it, and never
    again -- that row IS the one-gift-per-device rule. */
 var GIFT_HEADERS     = ['claim', 'device', 'game', 'score', 'name', 'created', 'redeemed', 'product', 'by',
-                        'reset', 'reset_by'];
+                        'reset', 'reset_by', 'attempt'];
+/* attempt is the id of the scan that spent the code. A counter phone that did not
+   hear the answer asks again with the same id and is given the same result as a
+   fresh spin; any other scan of that code is a second scan and is told so. */
 /* The wheel. One row per product; quantity is how many are left. A product at
    0 is off the wheel and comes back when it is restocked. A blank quantity is
    "not counted" -- how the products from before stock arrive -- and stays on
@@ -336,6 +339,11 @@ function sheet_(name) {
   return sh;
 }
 function now_() { return new Date(); }
+/* Before a lock is let go, everything written under it is pushed to the sheet. A
+   write left pending can still be invisible to the next run that takes the lock,
+   which then reads the old stock count -- two gifts off one unit -- or a code not
+   yet marked spent. Google's own LockService example does exactly this. */
+function flushSheets_() { try { SpreadsheetApp.flush(); } catch (e) {} }
 function json_(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
@@ -1486,7 +1494,7 @@ function giftClaim_(b) {
     var claim = Utilities.getUuid();
     sheet_(T_GIFTS).appendRow([claim, device, game, score, name, now_(), '', '', '']);
     return json_({ ok: true, claim: claim, redeemed: false, product: '' });
-  } finally { lock.releaseLock(); }
+  } finally { flushSheets_(); lock.releaseLock(); }
 }
 
 /* Body: {action:'admin.gift.redeem', token, claim}
@@ -1502,10 +1510,18 @@ function giftRedeem_(b, email) {
 
   var wheel = wheel_();
   var products = wheel.map(function (x) { return x.product; });
+  var attempt = /^[A-Za-z0-9_-]{8,64}$/.test(String(b.attempt || '')) ? String(b.attempt) : '';
   if (row.redeemed) {
-    var idx = products.indexOf(String(row.product));
-    return json_({ ok: true, already: true, product: String(row.product), index: idx,
-                   products: products, at: row.redeemed, score: row.score, name: String(row.name || '') });
+    /* The same scan asking again -- its phone lost the first answer in a crowd --
+       gets the spin it was given, not "already redeemed", which would have the
+       counter turn away a visitor whose gift is real. The product it won may have
+       just gone out of stock and off the wheel, so it is put back on the list
+       this phone draws. */
+    var again = !!attempt && String(row.attempt || '') === attempt;
+    var list = products.slice(), idx = list.indexOf(String(row.product));
+    if (again && idx < 0) { list.push(String(row.product)); idx = list.length - 1; }
+    return json_({ ok: true, already: !again, again: again, product: String(row.product), index: idx,
+                   products: again ? list : products, at: row.redeemed, score: row.score, name: String(row.name || '') });
   }
   if (row.reset) return json_({ ok: false, error: 'This code was cancelled when the device was reset. The visitor can play again for a new one.' });
   if (!wheel.length) return json_({ ok: false, error: 'Every product on the wheel is out of stock. Restock it in the admin page.' });
@@ -1515,16 +1531,14 @@ function giftRedeem_(b, email) {
      and the one it lands on is taken off the count in the same call. */
   var pick = Math.floor(Math.random() * wheel.length);
   var chosen = wheel[pick], left = null;
+  /* one write per tab, not one per cell: the lock is held for as long as this
+     takes, and every other counter in the queue waits behind it */
   var sh = sheet_(T_GIFTS);
-  sh.getRange(row._row, 7).setValue(now_());
-  sh.getRange(row._row, 8).setValue(chosen.product);
-  sh.getRange(row._row, 9).setValue(email);
+  sh.getRange(row._row, 7, 1, 3).setValues([[now_(), chosen.product, email]]);
+  if (attempt) sh.getRange(row._row, 12, 1, 1).setValues([[attempt]]);
   if (chosen.quantity !== null) {
     left = chosen.quantity - 1;
-    var st = sheet_(T_STOCK);
-    st.getRange(chosen._row, 2).setValue(left);
-    st.getRange(chosen._row, 3).setValue(now_());
-    st.getRange(chosen._row, 4).setValue(email);
+    sheet_(T_STOCK).getRange(chosen._row, 2, 1, 3).setValues([[left, now_(), email]]);
   }
   return json_({ ok: true, already: false, product: chosen.product, index: pick, left: left,
                  products: products, score: row.score, name: String(row.name || '') });
@@ -1760,6 +1774,7 @@ function doPost(e) {
          before the lock is let go, so no reader can refill it with the old
          sheet in between. */
       dropConfig_();
+      flushSheets_();
       lock.releaseLock();
     }
   } catch (err) {
