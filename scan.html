@@ -341,30 +341,78 @@ function reveal(j){
   $('lead').textContent = '';
 }
 
+/* ---- a crowd at the counter -------------------------------------------
+   The booth script spends codes one at a time, holds each turn for about half a
+   second, refuses a request that waited ten seconds for its turn ("busy"), and
+   Google runs only about thirty copies of it at once (the rest get an error
+   page). With many counters scanning together most of the first tries fail, so
+   this phone keeps asking -- spaced out, with a little randomness so a hundred
+   phones do not all come back in the same instant -- for up to three minutes.
+   Every try carries the same attempt id: if the script spent the code but the
+   answer was lost on the way back, the next try is handed the same spin, not
+   "already redeemed". The wheel turns while it waits. */
+var TRY_FOR_MS = 180000;
+function attemptId(){
+  try { if (crypto && crypto.randomUUID) return crypto.randomUUID(); } catch(e){}
+  return 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+}
+function retryable(j, err){
+  if (err) return true;                                  /* no answer, an error page, a timeout */
+  var e = String((j && (j.error || j.reason)) || '');
+  return /busy|too many|try again|timed? ?out|service|unavailable|rate|exceeded/i.test(e);
+}
+var SHELF = 'fx.scan.products';
+function shelf(list){ try { if (list) localStorage.setItem(SHELF, JSON.stringify(list)); else return JSON.parse(localStorage.getItem(SHELF) || '[]'); } catch(e){ return []; } }
+var idleRaf = 0;
+function idleSpin(on){
+  cancelAnimationFrame(idleRaf); idleRaf = 0;
+  if (!on || !products.length) return;
+  var last = performance.now();
+  (function turn(now){ angle -= (now - last) * 0.0016; last = now; drawWheel(); idleRaf = requestAnimationFrame(turn); })(last);
+}
+
 function handle(text){
   var claim = claimFrom(text);
   if(!claim){ camNote('That is not a Facerinna gift code.'); return; }
   busy = true; stopLoop();
-  state.claim = claim;
+  state.claim = claim; state.tries = 0;
   show('camWrap', false);
   $('head').textContent = 'Gift wheel';
   $('lead').textContent = 'Spending the code…';
-  post({ action:'admin.gift.redeem', token:token(), claim:claim }).then(function(j){
-    if(!j || j.ok !== true){
-      var err = (j && j.error) || 'no answer';
-      if(/signed out/i.test(err)){ drop(); return gate('This counter’s sign-in has expired. Sign in again.'); }
-      return fail(err);
-    }
+  var attempt = attemptId(), t0 = Date.now();
+  /* the wheel this counter drew last time, turning while the script decides */
+  products = shelf();
+  if (products.length) { show('wheelWrap', true); drawWheel(); idleSpin(true); }
+  var ask = function(){
+    state.tries++;
+    post({ action:'admin.gift.redeem', token:token(), claim:claim, attempt:attempt }, 25000).then(function(j){
+      if (j && j.ok === true) return done(j);
+      var err = (j && (j.error || j.reason)) || 'no answer';
+      if (/signed out/i.test(err)) { idleSpin(false); drop(); return gate('This counter’s sign-in has expired. Sign in again.'); }
+      if (retryable(j)) return later(err);
+      idleSpin(false); fail(err);
+    }).catch(function(e){ later(e && e.message || String(e)); });
+  };
+  var later = function(why){
+    if (Date.now() - t0 > TRY_FOR_MS) { idleSpin(false); return fail('The booth script is too busy right now (' + why + '). Scan the code again in a minute; it has not been spent twice.'); }
+    var wait = Math.min(10000, 1000 * Math.pow(1.6, state.tries)) * (0.5 + Math.random());
+    $('lead').textContent = 'Many gifts at once — your turn is coming… (try ' + (state.tries + 1) + ')';
+    setTimeout(ask, wait);
+  };
+  var done = function(j){
+    idleSpin(false);
     products = j.products || [];
+    if (products.length) shelf(products);
     $('who').innerHTML = 'One gift per device · <b>the pick is made by the booth script</b>, not by this phone';
-    if(j.already || j.index < 0 || !products.length){ return reveal(j); }
-    show('wheelWrap', true); drawWheel();
+    if(j.already || j.index < 0 || !products.length){ show('wheelWrap', false); return reveal(j); }
+    show('wheelWrap', true);
+    angle = ((angle % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);   /* keep turning the same way into the answer */
+    drawWheel();
     $('lead').textContent = 'Spinning…';
     state.stage = 'spin';
     spinTo(j.index, function(){ reveal(j); });
-  }).catch(function(e){
-    fail('Could not reach the booth script: ' + (e && e.message || e));
-  });
+  };
+  ask();
 }
 
 function nextOne(){
@@ -462,7 +510,7 @@ if(token()) startCam(); else gate('Sign in once and this screen stays signed in.
 
 /* the tests, and nothing else */
 window.__scan = {
-  state: function(){ return state; }, handle: handle, claimFrom: claimFrom,
+  state: function(){ return state; }, handle: handle, claimFrom: claimFrom, idle: function(){ return !!idleRaf; },
   products: function(){ return products; }, angle: function(){ return angle; },
   landed: function(){ return landed; }, spinning: function(){ return spinning; },
   next: nextOne, gate: gate, decoder: function(){ return typeof jsQR === 'function'; },

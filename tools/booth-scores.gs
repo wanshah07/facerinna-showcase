@@ -329,6 +329,8 @@ function doPost(e) {
           ' ' + String(body.ua || '').slice(0, 120)
       ]);
     } finally {
+      /* written before the lock is let go, so the next run reads it */
+      try { SpreadsheetApp.flush(); } catch (e) {}
       lock.releaseLock();
     }
 
