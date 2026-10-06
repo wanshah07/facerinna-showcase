@@ -112,6 +112,61 @@ for(const [tag,vp,mob] of [['phone',{width:390,height:844},true],['phone landsca
 }
 
 /* --------------------------------------------------- 2. the mechanics */
+/* -------------------------- 1b. the pad on phones that do not say "touch" */
+/* The pad used to show only where the browser reported a touch-only screen with no hover.
+   Some phones report a mouse-like pointer instead -- a Samsung with an S Pen, some Xiaomi and
+   Huawei browsers, Chrome's "Desktop site" -- and there Facy could jump but never run. */
+console.log('\nthe pad on every phone, however it describes itself');
+const SAMSUNG='Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
+const DESKTOP='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
+const IPADOS='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
+async function openAs(opt){
+  const c=await b.newContext({viewport:opt.vp, screen:opt.vp, userAgent:opt.ua, isMobile:false, hasTouch:!!opt.touch, deviceScaleFactor:1});
+  await c.addInitScript(a=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.player','Tester'); }catch(e){} }, '');
+  const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.goto(BASE+'/facy-run.html',{waitUntil:'load'}); await p.waitForTimeout(300);
+  const gate=await p.$('#fxrGo'); if(gate){ await gate.click(); await p.waitForTimeout(150); }
+  return {c,p,errs};
+}
+const padState=p=>p.evaluate(()=>({ pad:getComputedStyle(document.getElementById('ctl')).display!=='none',
+  hint:getComputedStyle(document.getElementById('touchHint')).display!=='none',
+  hover:matchMedia('(hover: none) and (pointer: coarse)').matches }));
+/* press ▶ the way a thumb does, then let the world run: does Facy move? */
+const runs=p=>p.evaluate(()=>{ const F=window.__facy; F.start(); F.keys.left=F.keys.right=F.keys.jump=false; F.step(20);
+  const S=F.S(), x0=S.px, b=document.getElementById('right');
+  b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:7,pointerType:'touch'}));
+  F.step(45); const moved=S.px-x0;
+  b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:7,pointerType:'touch'}));
+  return Math.round(moved); });
+for(const [tag,opt,want] of [
+  ['a Samsung that reports a mouse-like pointer', {ua:SAMSUNG, vp:{width:412,height:915}, touch:false}, true],
+  ['Chrome "Desktop site" on a phone (desktop name, touch screen)', {ua:DESKTOP, vp:{width:412,height:915}, touch:true}, true],
+  ['an iPad that calls itself a Mac', {ua:IPADOS, vp:{width:820,height:1180}, touch:true}, true],
+  ['a desk with a mouse', {ua:DESKTOP, vp:{width:1440,height:900}, touch:false}, false]]){
+  const {c,p,errs}=await openAs(opt); const st=await padState(p);
+  chk(`${tag}: ${want?'the ◀ ▶ pad is there':'no pad, the keys are explained instead'}`, st.pad===want && st.hint===want, st);
+  if(want){ const m=await runs(p); chk(`${tag}: pressing ▶ runs Facy forward`, m>40, m); }
+  chk(`${tag}: no page errors`, errs.length===0, errs[0]);
+  await c.close();
+}
+{
+  /* a big screen with a desktop name -- a touch laptop, a booth monitor with a touch frame --
+     gets no pad, until a finger touches it. (The emulator cannot be a touch screen that also
+     says "mouse", so the first touch is a touch-type pointer event, which is what one sends.) */
+  const {c,p,errs}=await openAs({ua:DESKTOP, vp:{width:1920,height:1080}, touch:false});
+  const before=await padState(p);
+  await p.evaluate(()=>document.getElementById('stage').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:3,pointerType:'mouse'})));
+  const mouse=await padState(p);
+  await p.evaluate(()=>document.getElementById('stage').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:4,pointerType:'touch'})));
+  await p.waitForTimeout(100);
+  const after=await padState(p);
+  chk('a big screen with a desktop name: no pad, and a mouse click does not bring one', !before.pad && !mouse.pad, {before,mouse});
+  chk('...the first touch brings the pad and the touch hint', after.pad && after.hint, after);
+  chk('...and ▶ works', (await runs(p))>40);
+  chk('no page errors', errs.length===0, errs[0]);
+  await c.close();
+}
+
 console.log('\nwhat the world does');
 {
   const {c,p,errs}=await open_({width:1440,height:900},false,'');

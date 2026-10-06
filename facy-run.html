@@ -46,7 +46,12 @@
     -webkit-user-select:none;user-select:none;touch-action:none}
   #ctl button.on{background:rgba(63,166,238,.75);border-color:#fff}
   #jump{width:clamp(78px,14vw,104px)!important;height:clamp(78px,14vw,104px)!important;background:rgba(63,166,238,.55)!important}
+  /* The pad shows on anything a finger drives. The media query alone missed phones that
+     report a mouse-like pointer -- a Samsung with an S Pen, some Xiaomi and Huawei browsers,
+     Chrome's "Desktop site" -- and on those Facy could jump but never run. html.touch is set
+     by the script in the head from the device and the first real touch. */
   @media(hover:none) and (pointer:coarse){ #ctl{display:flex} }
+  html.touch #ctl{display:flex}
   /* a bigger target than the drawn circle, so a thumb that lands near still counts */
   #ctl button{position:relative}
   #ctl button::after{content:"";position:absolute;inset:-8px;border-radius:50%}
@@ -55,9 +60,14 @@
     #ctl button{width:clamp(72px,21vw,96px);height:clamp(72px,21vw,96px);font-size:32px}
     #jump{width:clamp(96px,29vw,132px)!important;height:clamp(96px,29vw,132px)!important}
   }
+  @media(orientation:portrait){
+    html.touch #ctl button{width:clamp(72px,21vw,96px);height:clamp(72px,21vw,96px);font-size:32px}
+    html.touch #jump{width:clamp(96px,29vw,132px)!important;height:clamp(96px,29vw,132px)!important}
+  }
   .touchhint{display:none;margin:0 0 18px;font-size:14px;line-height:1.5;color:rgba(255,255,255,.85)}
   .touchhint b{color:#9FD3F7}
   @media(hover:none) and (pointer:coarse){ .touchhint{display:block} #keys{display:none} }
+  html.touch .touchhint{display:block} html.touch #keys{display:none}
   /* screens */
   .screen{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;
     text-align:center;padding:24px;background:linear-gradient(180deg,rgba(8,22,34,.86),rgba(8,22,34,.97));
@@ -156,6 +166,25 @@
   #start,#startBtn,#playBtn{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:2}
 }
 </style>
+<script>
+/* Is a finger driving this? Asked before the page is drawn, so the pad is there from the
+   first frame. Any of: the browser says touch-only; a phone or tablet by its name; an iPad
+   that calls itself a Mac; a touch screen no bigger than a tablet. And whatever was guessed,
+   the first real touch anywhere turns the pad on. A desk with a mouse gets none of it. */
+(function(){
+  var d=document.documentElement, ua=navigator.userAgent||'', tp=navigator.maxTouchPoints||0;
+  var mq=function(q){ try{ return !!(window.matchMedia && matchMedia(q).matches); }catch(e){ return false; } };
+  var small=Math.min(screen.width||9999, screen.height||9999)<=1024;
+  var touch = mq('(hover: none) and (pointer: coarse)')
+    || /Android|iPhone|iPad|iPod|Mobile|Silk|Kindle|Opera Mini|IEMobile|HarmonyOS/i.test(ua)
+    || (/Macintosh/.test(ua) && tp>1)
+    || (tp>0 && small && (mq('(any-pointer: coarse)') || 'ontouchstart' in window));
+  if(touch) d.classList.add('touch');
+  var on=function(e){ if(!e.pointerType || e.pointerType==='touch' || e.pointerType==='pen'){ d.classList.add('touch'); off(); } };
+  var off=function(){ removeEventListener('pointerdown', on, true); removeEventListener('touchstart', on, true); };
+  addEventListener('pointerdown', on, true); addEventListener('touchstart', on, {capture:true, passive:true});
+})();
+</script>
 </head>
 <body>
 <canvas id="stage" aria-label="Facy Run"></canvas>
@@ -2513,6 +2542,7 @@ var REDEEM_URL = 'https://my.facerinna.com/redeem.html';
 var DEVICE_KEY = 'fx.device', NAME_KEY = 'fx.player';
 
 var MOBILE = (function(){
+  if (document.documentElement.classList.contains('touch')) return true;
   try { if (window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches) return true; } catch(e){}
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
 })();
