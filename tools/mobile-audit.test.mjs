@@ -69,7 +69,9 @@ const AUDIT=`(function(ins, cover, within, noReach){
     for(let p=e.parentElement;p&&p!==document.body&&p!==de;p=p.parentElement){ const cs=getComputedStyle(p);
       const isCut=v=>hard ? (v==='hidden'||v==='clip') : v!=='visible';
       const ox=isCut(cs.overflowX), oy=isCut(cs.overflowY); if(!ox&&!oy) continue;
-      const r=p.getBoundingClientRect(); if(ox){x0=Math.max(x0,r.left);x1=Math.min(x1,r.right);} if(oy){y0=Math.max(y0,r.top);y1=Math.min(y1,r.bottom);} }
+      /* a box cuts its content at its padding edge, inside any border, not at its outside */
+      const b=p.getBoundingClientRect(), r={left:b.left+p.clientLeft, top:b.top+p.clientTop, right:b.left+p.clientLeft+p.clientWidth, bottom:b.top+p.clientTop+p.clientHeight};
+      if(ox){x0=Math.max(x0,r.left);x1=Math.min(x1,r.right);} if(oy){y0=Math.max(y0,r.top);y1=Math.min(y1,r.bottom);} }
     return {x0,y0,x1,y1}; };
   const shown=[];
   for(const e of els){

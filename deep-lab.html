@@ -316,6 +316,9 @@ body:has(.screen:not(.hidden)) .hud{opacity:0;visibility:hidden}
 #backTitle{min-height:40px}
 /* held on its side there is little height: the Start button stays in view and the rest scrolls under it */
 @media(max-height:440px){
+  /* a sideways iPhone: the start screen scrolls, and what scrolls must stop above the home bar.
+     A border is never scrolled into, and with nothing painted on it the background shows through. */
+  .screen{border-bottom:env(safe-area-inset-bottom,0px) solid transparent}
   .screen .btn{min-height:40px}
   #start,#startBtn,#playBtn{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:2}
 }

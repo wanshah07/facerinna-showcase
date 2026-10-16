@@ -92,7 +92,10 @@ console.log('\n── desktop 1440×900');
   const r0=await p.evaluate(()=>window.__ctGlobe.rot()); await sleep(1000);
   const r1=await p.evaluate(()=>window.__ctGlobe.rot());
   chk('turns westward about 12 degrees a second ('+(r0-r1).toFixed(1)+')', r0-r1>6 && r0-r1<18, [r0,r1]);
-  chk('no request leaves the page for map data', !reqs.some(u=>/jsdelivr|world-atlas|topojson|unpkg|d3/i.test(u)), reqs.filter(u=>!u.startsWith(BASE)));
+  /* judged by where a request goes, not by its whole text: an Apps Script reply's
+     random key can contain "d3" and once failed this for nothing */
+  const mapReq = u => { try{ const x=new URL(u); return /jsdelivr|unpkg|d3js/i.test(x.hostname) || /world-atlas|topojson|(^|\/)d3(@|[.\/-]|$)/i.test(x.pathname); }catch(e){ return false; } };
+  chk('no request leaves the page for map data', !reqs.some(mapReq), reqs.filter(mapReq));
   /* sideways drag */
   const box=await p.evaluate(()=>{const r=document.getElementById('ctGlobe').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height*.3};});
   await p.mouse.move(box.x,box.y); await p.mouse.down();
