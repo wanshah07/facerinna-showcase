@@ -69,7 +69,11 @@ export function load(opts){
     Access: { ANYONE_WITH_LINK: 'ANYONE_WITH_LINK', PRIVATE: 'PRIVATE' }, Permission: { VIEW: 'VIEW', NONE: 'NONE' },
     getFoldersByName: n => { const hit = DRIVE.folders.filter(x => x.name === n); let i = 0; return { hasNext: () => i < hit.length, next: () => hit[i++] }; },
     createFolder: n => { const fo = { name: n, createFile: mkFile }; DRIVE.folders.push(fo); return fo; },
-    getFileById: id => { if(!DRIVE.files[id]) throw new Error('no file '+id); return DRIVE.files[id]; } };
+    getFileById: id => { if(!DRIVE.files[id]) throw new Error('no file '+id); return DRIVE.files[id]; },
+    getFolderById: id => { const fo = DRIVE.folders.find(x => x.id === id); if(!fo) throw new Error('no folder '+id); return fo; } };
+  /* a folder somebody else made and shared with the script */
+  DRIVE.addFolder = (id, name) => { const fo = { id, name: name || id, getName: () => name || id,
+    createFile: blob => { const f = mkFile(blob); f.folder = id; return f; } }; DRIVE.folders.push(fo); return fo; };
   const PROPS={};
   const PropertiesService = { getScriptProperties: () => ({
     getProperty: k => (k in PROPS ? PROPS[k] : null),

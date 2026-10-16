@@ -130,6 +130,30 @@ r = A({ action:'admin.doc.delete', id });
 check('delete', r.ok && r.documents.length===1 && r.documents[0].id===id2, r);
 check('a deleted document cannot be opened', !call({ action:'doc.get', id, passcode:'site123' }).ok);
 
+console.log('\na Drive folder of its own');
+{
+  const F = load(); const o = F.signIn(OWNER); const FA = x => F.call({ token:o.token, ...x });
+  const FOLDER = '1AbCdEfGhIjKlMnOpQrStUv';
+  F.DRIVE.addFolder(FOLDER, 'Clinic agreements');
+  let r = FA({ action:'admin.doc.save', doc:{ title:'F', body:'x {{Name}}', mode:'show', drive_folder:'https://drive.google.com/drive/folders/'+FOLDER+'?usp=drive_link' } });
+  check('the folder link is kept as its id', r.ok && r.documents[0].drive_folder===FOLDER, r);
+  check('a column of its own, named in the sheet', F.tabs['Documents'].rows[0].includes('drive_folder'));
+  check('a link that is not a folder: refused', !FA({ action:'admin.doc.save', doc:{ title:'G', body:'y', drive_folder:'https://example.com/x' } }).ok);
+  const nope = FA({ action:'admin.doc.save', doc:{ title:'H', body:'z', drive_folder:'https://drive.google.com/drive/folders/1ZzZzZzZzZzZzZzZzZz' } });
+  check('a folder the script cannot open: refused, saying to share it', !nope.ok && /Share it with/.test(nope.error), nope);
+  const id = r.id;
+  check('the public never sees the folder', !JSON.stringify(F.call({ action:'config' })).includes(FOLDER) && !JSON.stringify(F.call({ action:'doc.get', id })).includes(FOLDER));
+  r = F.call({ action:'doc.sign', id, pdf:PDF, signer:'A' });
+  const row = F.tabs['Signed documents'].rows.at(-1), file = F.DRIVE.files[row[5]];
+  check('signed with no Google sign-in: the PDF lands in that folder', r.ok && file && file.folder===FOLDER, file);
+  F.DRIVE.folders.splice(F.DRIVE.folders.findIndex(x=>x.id===FOLDER), 1);
+  r = F.call({ action:'doc.sign', id, pdf:PDF, signer:'B' });
+  const file2 = F.DRIVE.files[F.tabs['Signed documents'].rows.at(-1)[5]];
+  check('folder gone: the copy is still kept, in the script\'s own folder', r.ok && file2 && !file2.folder, file2);
+  const T = load({ extra: "var DOC_TEMPLATES=[{id:'tf', title:'TF', body:'b', drive_folder:'https://drive.google.com/drive/folders/1NotSharedNotShared'}];" });
+  check('a template whose folder is not shared still becomes a document', T.call({ action:'config' }).documents.length===1);
+}
+
 console.log('\ntemplates from templates.gs');
 {
   const TPL = "var DOC_TEMPLATES = [{ id:'t-one', title:'Template one', description:'d', body:'# ONE\\n\\nMade with {{Clinic name}}.', signer_fields:[{label:'Name Clinic', field:'Clinic name'}], our_name:'P', our_signature:'data:image/png;base64,iVBORw0KGgo=' }];";

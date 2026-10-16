@@ -122,7 +122,7 @@ var MEDIA_FOLDER     = 'FACERINNA booth media';
    collaboration, say. The body is plain text with a little markup (see
    docParse_ on the page): {{Label}} is a yellow box the signer fills in. */
 var DOC_HEADERS      = ['id', 'order', 'title', 'description', 'body', 'signer_fields', 'our_name', 'our_title',
-                        'our_email', 'our_signature', 'whatsapp', 'mode', 'passcode', 'updated', 'by'];
+                        'our_email', 'our_signature', 'whatsapp', 'mode', 'passcode', 'updated', 'by', 'drive_folder'];
 /* One row per signed copy. The PDF itself is a private file in Drive. */
 var SIGNED_HEADERS   = ['id', 'doc_id', 'doc_title', 'values', 'signer', 'file_id', 'bytes', 'created', 'device',
                         'deleted', 'deleted_by'];
@@ -1149,6 +1149,15 @@ function docById_(id) {
 function docFields_(r) {
   try { var f = JSON.parse(String(r.signer_fields || '[]')); return Array.isArray(f) ? f : []; } catch (e) { return []; }
 }
+/* A Drive folder, given as its link or its id. The signed copies of a document
+   go there; the script files them as the account it runs as, so the signer
+   needs no Google account at all. */
+function docFolderId_(v) {
+  v = String(v || '').trim();
+  if (!v) return '';
+  var m = v.match(/\/folders\/([A-Za-z0-9_-]{10,})/) || v.match(/[?&]id=([A-Za-z0-9_-]{10,})/) || v.match(/^([A-Za-z0-9_-]{10,})$/);
+  return m ? m[1] : null;
+}
 function docFull_(r) {
   return { id: String(r.id), title: String(r.title || ''), description: String(r.description || ''),
            body: String(r.body || ''), signer_fields: docFields_(r),
@@ -1188,6 +1197,11 @@ function seedDocs_() {
       /* locked when there is a site passcode to open it with; a locked
          document with no passcode anywhere would never open */
       if (!d.mode) d.mode = pass ? 'locked' : 'show';
+      /* a folder the script cannot open would refuse the save; the document
+         still comes, filed in the script's own folder until it is fixed */
+      var fid = docFolderId_(d.drive_folder);
+      if (fid) { try { DriveApp.getFolderById(fid).getName(); } catch (e) { d.drive_folder = ''; } }
+      else if (fid === null) d.drive_folder = '';
       docSave_({ doc: d }, 'template ' + x.id);
       props.setProperty('docseed.' + x.id, String(Date.now()));
     });
@@ -1200,7 +1214,8 @@ function templatesAdmin_() {
     return { id: String(x.id), title: String(x.title), description: String(x.description || ''), body: String(x.body),
              signer_fields: Array.isArray(x.signer_fields) ? x.signer_fields : [], our_name: String(x.our_name || ''),
              our_title: String(x.our_title || ''), our_email: String(x.our_email || ''),
-             our_signature: String(x.our_signature || ''), whatsapp: String(x.whatsapp || '') };
+             our_signature: String(x.our_signature || ''), whatsapp: String(x.whatsapp || ''),
+             drive_folder: String(x.drive_folder || '') };
   });
 }
 
@@ -1214,6 +1229,7 @@ function docsAdmin_() {
     var o = docFull_(r);
     o.order = Number(r.order) || 0; o.mode = docMode_(r.mode); o.passcode = String(r.passcode || '');
     o.updated = iso_(r.updated); o.by = String(r.by || '');
+    o.drive_folder = String(r.drive_folder || '');
     return o;
   });
 }
@@ -1252,12 +1268,18 @@ function docSave_(b, by) {
   fields = fields.map(function (f) { return { label: String(f && f.label || '').trim().slice(0, 60), field: String(f && f.field || '').trim().slice(0, 60) }; })
     .filter(function (f) { return f.label; }).slice(0, 12);
   /* a number, or a wa.me/message link like the booth's Contact button; blank = that Contact link */
+  var folder = docFolderId_(d.drive_folder);
+  if (folder === null) return json_({ ok: false, error: 'that is not a Google Drive folder link' });
+  if (folder) {
+    try { DriveApp.getFolderById(folder).getName(); }
+    catch (e) { return json_({ ok: false, error: 'The script cannot open that Drive folder. Share it with ' + (owner_() || 'the account the script runs as') + ' as Editor, then save again.' }); }
+  }
   var wa = String(d.whatsapp || '').trim();
   wa = /^(https:\/\/)?wa\.me\/message\/[A-Za-z0-9]+$/.test(wa) ? 'https://' + wa.replace(/^https:\/\//, '')
      : wa.replace(/[^\d]/g, '').slice(0, 15);
   var mode = docMode_(d.mode);
   var stored = mode === 'locked' ? 'locked' : mode === 'hidden' ? 'no' : 'yes';
-  var tabs = docTab_(), sh = tabs.docs, rows = docRows_();
+  var tabs = docTab_(), sh = headers_(T_DOCS, DOC_HEADERS), rows = docRows_();
   var id = String(d.id || '').trim(), row = null;
   if (id) rows.forEach(function (r) { if (String(r.id) === id) row = r; });
   if (id && !row) return json_({ ok: false, error: 'no such document' });
@@ -1266,7 +1288,7 @@ function docSave_(b, by) {
   var vals = [id, order, textCell_(title), textCell_(String(d.description || '').trim().slice(0, 400)), cell_(body),
               JSON.stringify(fields), textCell_(String(d.our_name || '').trim().slice(0, 80)),
               textCell_(String(d.our_title || '').trim().slice(0, 80)), textCell_(String(d.our_email || '').trim().slice(0, 120)),
-              sig, wa, stored, String(d.passcode || '').trim().slice(0, 64), now_(), by];
+              sig, wa, stored, String(d.passcode || '').trim().slice(0, 64), now_(), by, folder];
   if (row) sh.getRange(row._row, 1, 1, vals.length).setValues([vals]);
   else sh.appendRow(vals);
   return json_({ ok: true, id: id, documents: docsAdmin_() });
@@ -1338,9 +1360,14 @@ function docSign_(b) {
     if (signedRows_().length >= DOC_MAX_SIGNED) return json_({ ok: false, error: 'the signed-copies list is full; ask the FACERINNA team' });
     var id = 'sig-' + Utilities.getUuid().replace(/-/g, '').slice(-12);
     var name = (String(r.title).replace(/[^\w .-]+/g, '').slice(0, 40) + ' - ' + (signer || 'signed').replace(/[^\w .-]+/g, '').slice(0, 40) + ' - ' + id + '.pdf');
-    var file;
-    try { file = signedFolder_().createFile(Utilities.newBlob(bytes, 'application/pdf', name)); }
-    catch (e) { return json_({ ok: false, error: 'Drive refused the file: ' + String(e && e.message || e) }); }
+    var file, blob = Utilities.newBlob(bytes, 'application/pdf', name);
+    /* the document's own folder when it has one; if that fails (unshared,
+       deleted) the copy still lands in the script's own folder, not nowhere */
+    if (r.drive_folder) { try { file = DriveApp.getFolderById(String(r.drive_folder)).createFile(blob); } catch (e) { file = null; } }
+    if (!file) {
+      try { file = signedFolder_().createFile(blob); }
+      catch (e) { return json_({ ok: false, error: 'Drive refused the file: ' + String(e && e.message || e) }); }
+    }
     /* private by default, and said so: a signed contract is nobody's to open but ours */
     try { file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); } catch (e) {}
     sheet_(T_SIGNED).appendRow([id, String(r.id), textCell_(String(r.title)), JSON.stringify(values), textCell_(signer),
