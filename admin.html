@@ -417,6 +417,8 @@ textarea.docbody{min-height:260px;font-family:ui-monospace,Menlo,Consolas,monosp
               <option value="show">Show</option>
               <option value="hidden">Hidden</option>
             </select>
+            <label class="check"><input type="checkbox" id="docButton" checked> Sign button on the booth page (Clinic Partnership section)</label>
+            <p class="note">Untick to take the button away. The link you send a clinic (🔗) still opens it.</p>
             <label for="docPass">Passcode (blank = the site passcode)</label>
             <input type="text" id="docPass" maxlength="64" autocomplete="off">
             <div class="row" style="margin-top:16px">
@@ -963,8 +965,9 @@ function renderDocs(list, signed){
     el.style.gridTemplateColumns='minmax(0,1fr) auto';
     el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(d.title)+'</div><div class="m">'+
       (d.mode==='show'?'<b>Show</b>':d.mode==='locked'?'<i>&#128274; Locked'+(d.passcode?' (own passcode)':'')+'</i>':'<i>Hidden</i>')+
-      ' · '+n+' signed'+(d.drive_folder?' · <a href="https://drive.google.com/drive/folders/'+esc(d.drive_folder)+'" target="_blank" rel="noopener">Drive folder</a>':'')+' · WhatsApp '+(!d.whatsapp?'Contact chat':/^\d+$/.test(d.whatsapp)?'+'+esc(d.whatsapp):esc(d.whatsapp.replace(/^https:\/\//,'')))+'</div></div>'+
+      ' · '+(d.mode==='hidden'?'':d.button===false?'<i>Button hidden</i>':'<b>Button on</b>')+' · '+n+' signed'+(d.drive_folder?' · <a href="https://drive.google.com/drive/folders/'+esc(d.drive_folder)+'" target="_blank" rel="noopener">Drive folder</a>':'')+' · WhatsApp '+(!d.whatsapp?'Contact chat':/^\d+$/.test(d.whatsapp)?'+'+esc(d.whatsapp):esc(d.whatsapp.replace(/^https:\/\//,'')))+'</div></div>'+
       '<div class="icons">'+
+        (d.mode==='hidden'?'':'<button class="ic" type="button" data-act="btn" title="'+(d.button===false?'Show':'Hide')+' the Sign button on the booth page" aria-pressed="'+(d.button!==false)+'">'+(d.button===false?'🙈':'👁')+'</button>')+
         '<button class="ic" type="button" data-act="link" title="Copy the link to send">🔗</button>'+
         '<button class="ic" type="button" data-act="copy" title="Duplicate: a new document from this one">⧉</button>'+
         '<button class="ic" type="button" data-act="up" title="Move up" '+(i===0?'disabled':'')+'>↑</button>'+
@@ -1000,6 +1003,12 @@ $('docList').addEventListener('click', function(e){
   }
   if(b.dataset.act==='edit'){ docEdit(d); return; }
   if(b.dataset.act==='copy'){ docFrom(d, d.title+' (copy)'); return; }
+  if(b.dataset.act==='btn'){
+    var on = d.button===false;
+    api('admin.doc.button', { id:id, on:on }).then(function(r){ renderDocs(r.documents); toast(on ? 'Sign button shown on the booth page' : 'Sign button hidden'); })
+      .catch(function(err){ toast(err.message, true); });
+    return;
+  }
   if(b.dataset.act==='del'){
     if(!confirm('Delete “'+d.title+'”? It leaves the booth page. Copies already signed stay below.')) return;
     api('admin.doc.delete', { id:id }).then(function(r){ renderDocs(r.documents); toast('Deleted'); if($('docId').value===id) docReset(); })
@@ -1038,11 +1047,12 @@ function docEdit(d){
   $('docSignFields').value=signFieldsText(d.signer_fields); $('docOurName').value=d.our_name||''; $('docOurTitle').value=d.our_title||'';
   $('docOurEmail').value=d.our_email||''; docSig=d.our_signature||''; docSigShow(); $('docWhatsapp').value=d.whatsapp||'';
   $('docMode').value=d.mode||'locked'; $('docPass').value=d.passcode||''; show('docCancel', true);
+  $('docButton').checked = d.button !== false;
   $('docFolder').value=d.drive_folder ? 'https://drive.google.com/drive/folders/'+d.drive_folder : '';
   docFields(); if(!$('docPreview').hidden) docPreview(true);
   $('docTitle').focus();
 }
-function docReset(){ $('docForm').reset(); $('docId').value=''; docSig=''; docSigShow(); $('docMode').value='locked'; $('docFormTitle').textContent='＋ Add document'; show('docCancel', false); $('docPreview').hidden=true; docFields(); }
+function docReset(){ $('docForm').reset(); $('docButton').checked=true; $('docId').value=''; docSig=''; docSigShow(); $('docMode').value='locked'; $('docFormTitle').textContent='＋ Add document'; show('docCancel', false); $('docPreview').hidden=true; docFields(); }
 $('docCancel').addEventListener('click', docReset);
 function docFields(){
   if(!window.FxDoc){ $('docFieldsNote').textContent=''; return; }
@@ -1078,7 +1088,7 @@ $('docForm').addEventListener('submit', function(e){
   e.preventDefault();
   var d={ id:$('docId').value||'', title:$('docTitle').value, description:$('docDesc').value, body:$('docBody').value,
     signer_fields:signFieldsOf($('docSignFields').value), our_name:$('docOurName').value, our_title:$('docOurTitle').value,
-    our_email:$('docOurEmail').value, our_signature:docSig, whatsapp:$('docWhatsapp').value, drive_folder:$('docFolder').value, mode:$('docMode').value, passcode:$('docPass').value };
+    our_email:$('docOurEmail').value, our_signature:docSig, whatsapp:$('docWhatsapp').value, drive_folder:$('docFolder').value, button:$('docButton').checked, mode:$('docMode').value, passcode:$('docPass').value };
   $('docSave').disabled=true;
   api('admin.doc.save', { doc:d }, 30000).then(function(r){
     renderDocs(r.documents); toast(d.id ? 'Document updated' : 'Document added'); docReset();

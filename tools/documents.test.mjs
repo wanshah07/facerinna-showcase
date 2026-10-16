@@ -159,6 +159,19 @@ console.log('\na Drive folder of its own');
   check('a template whose folder is not shared still becomes a document', T.call({ action:'config' }).documents.length===1);
 }
 
+console.log('\nthe Sign button');
+{
+  const K = load(); const o = K.signIn(OWNER); const KA = x => K.call({ token:o.token, ...x });
+  let r = KA({ action:'admin.doc.save', doc:{ title:'K', body:'k', mode:'show' } });
+  check('new: button on', r.documents[0].button===true && K.call({ action:'config' }).documents.length===1);
+  r = KA({ action:'admin.doc.save', doc:{ ...r.documents[0], button:false } });
+  K.CACHE.clear();
+  check('saved with the box unticked: no button, link still opens', r.documents[0].button===false && K.call({ action:'config' }).documents.length===0 && K.call({ action:'doc.get', id:r.id }).ok);
+  r = KA({ action:'admin.doc.button', id:r.id, on:true }); K.CACHE.clear();
+  check('admin.doc.button turns it back on, and the config is fresh at once', r.ok && r.documents[0].button===true && K.call({ action:'config' }).documents.length===1);
+  check('staff without Documents cannot', (KA({ action:'admin.team.save', person:{ email:'s2@x.test', name:'S', role:'staff', access:['gifts'], active:true } }), K.call({ token:K.signIn('s2@x.test').token, action:'admin.doc.button', id:r.id, on:false }).reason==='forbidden'));
+}
+
 console.log('\ntemplates from templates.gs');
 {
   const TPL = "var DOC_TEMPLATES = [{ id:'t-one', title:'Template one', description:'d', body:'# ONE\\n\\nMade with {{Clinic name}}.', signer_fields:[{label:'Name Clinic', field:'Clinic name'}], our_name:'P', our_signature:'data:image/png;base64,iVBORw0KGgo=' }];";

@@ -1267,18 +1267,6 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 /* One column again, and the sheet gets the full width: title above it,
    description under it, and the two actions floating on the brochure itself
    rather than sitting in a row of their own. */
-/* documents to sign, from the booth admin */
-.doc-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px;margin-bottom:26px}
-.doc-card{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:18px;
-  padding:16px 18px;box-shadow:var(--shadow-sm);color:var(--ink);text-decoration:none;min-height:64px;min-width:0}
-.doc-card:hover{box-shadow:var(--shadow-md);border-color:var(--brand)}
-.doc-ic{font-size:26px;flex:0 0 auto}
-.doc-tx{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
-.doc-tx b{font-size:1rem}
-.doc-tx span{font-size:.88rem;color:var(--ink-2)}
-.doc-tx i{font-size:.78rem;color:var(--muted);font-style:normal}
-.doc-go{flex:0 0 auto;font-weight:700;font-size:.88rem;color:var(--brand-deep);white-space:nowrap}
-@media(max-width:420px){.doc-card{flex-wrap:wrap}.doc-go{width:100%;text-align:right}}
 .flyer-strip{background:var(--surface);border:1px solid var(--line);border-radius:22px;
   padding:16px;box-shadow:var(--shadow-md);margin-bottom:26px;text-align:center}
 .flyer-head{margin-bottom:10px}
@@ -8095,39 +8083,20 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
 
 
   /* ---- documents to sign --------------------------------------------------
-     The script lists each document by title only; its text is fetched by
-     sign.html, after the passcode when it is locked. One section, after the
-     clinic part, gone when there is nothing to sign. */
+     The script lists each document whose button is on, by title only; its
+     text is fetched by sign.html, after the passcode when it is locked. Each
+     is one button in the Clinic Partnership section, beside the brochure. */
   function drawDocs(list){
-    var old=document.getElementById('docs'); if(old){ if(old.previousElementSibling && old.previousElementSibling.classList.contains('booth-docs-divider')) old.previousElementSibling.remove(); old.remove(); }
-    list=(list||[]).filter(function(d){ return d && d.id && d.title; });
-    /* and a button in the Clinic Partnership section itself: one document opens
-       straight to signing, more than one goes to the list below */
     [].slice.call(document.querySelectorAll('.doc-sign-btn')).forEach(function(n){ n.remove(); });
+    list=(list||[]).filter(function(d){ return d && d.id && d.title; });
     var acts=document.querySelector('#clinic .flyer-actions');
-    if(acts && list.length){
+    if(!acts) return;
+    list.slice().reverse().forEach(function(d){
       var a=document.createElement('a'); a.className='btn btn-primary doc-sign-btn';
-      a.href = list.length===1 ? 'sign.html?d='+encodeURIComponent(list[0].id) : '#docs';
-      a.title = list.length===1 ? list[0].title : 'Documents to sign';
-      a.innerHTML='&#9997; Sign the agreement';
+      a.href='sign.html?d='+encodeURIComponent(d.id); a.title=d.title;
+      a.innerHTML='&#9997; '+(list.length===1 ? 'Sign the agreement' : 'Sign: '+esc(d.title));
       acts.insertBefore(a, acts.firstChild);
-    }
-    if(!list.length) return;
-    var anchor=document.getElementById('clinic');
-    var sec=document.createElement('section'); sec.id='docs'; sec.className='sec-tight booth-docs';
-    sec.innerHTML='<div class="wrap"><div class="sec-head reveal in"><span class="eyebrow">Documents</span>'+
-      '<h2>Read, fill in &amp; sign</h2><p>Open a document, fill in the yellow boxes, sign with your finger, and send the PDF on WhatsApp.</p></div>'+
-      '<div class="doc-cards">'+list.map(function(d){
-        return '<a class="doc-card" href="sign.html?d='+encodeURIComponent(d.id)+'">'+
-          '<span class="doc-ic" aria-hidden="true">'+(d.locked?'&#128274;':'&#128221;')+'</span>'+
-          '<span class="doc-tx"><b>'+esc(d.title)+'</b>'+(d.description?'<span>'+esc(d.description)+'</span>':'')+
-          (d.locked?'<i>Passcode from the FACERINNA team</i>':'')+'</span>'+
-          '<span class="doc-go">Open &amp; sign &#8594;</span></a>';
-      }).join('')+'</div></div>';
-    var div=document.createElement('div'); div.className='wrap booth-docs-divider'; div.innerHTML='<div class="divider-line"></div>';
-    var ref = anchor ? anchor.nextSibling : document.querySelector('body > footer');
-    var parent = anchor ? anchor.parentNode : document.body;
-    parent.insertBefore(div, ref); parent.insertBefore(sec, div.nextSibling);
+    });
   }
 
   /* ---- QR codes and posters from the admin ------------------------------
