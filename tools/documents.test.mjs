@@ -31,6 +31,13 @@ const id = r.id;
 const d0 = r.documents.find(x => x.id===id);
 check('no mode given: locked', d0 && d0.mode==='locked', d0);
 check('the WhatsApp number keeps only its digits', d0 && d0.whatsapp==='60123456789', d0 && d0.whatsapp);
+{ const w = x => A({ action:'admin.doc.save', doc:{ title:'W', body:'b', whatsapp:x } }).documents.find(d=>d.title==='W');
+  const t1 = w(''); check('WhatsApp left blank stays blank (the page then uses the Contact chat)', t1.whatsapp==='', t1.whatsapp);
+  A({ action:'admin.doc.delete', id:t1.id });
+  const t2 = w('wa.me/message/YKYI736CG4FZH1'); check('a wa.me/message link is kept, as https', t2.whatsapp==='https://wa.me/message/YKYI736CG4FZH1', t2.whatsapp);
+  A({ action:'admin.doc.delete', id:t2.id });
+  const t3 = w('https://evil.test/wa.me/message/X'); check('anything else keeps only its digits', t3.whatsapp==='', t3.whatsapp);
+  A({ action:'admin.doc.delete', id:t3.id }); }
 check('signer fields kept', d0 && d0.signer_fields.length===2 && d0.signer_fields[0].field==='Clinic name', d0 && d0.signer_fields);
 check('no title: refused', !A({ action:'admin.doc.save', doc:{ body:'x' } }).ok);
 check('no text: refused', !A({ action:'admin.doc.save', doc:{ title:'x', body:'  ' } }).ok);
