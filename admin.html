@@ -408,6 +408,9 @@ textarea.docbody{min-height:260px;font-family:ui-monospace,Menlo,Consolas,monosp
             <label for="docWhatsapp">WhatsApp the signed PDF goes to</label>
             <input type="text" id="docWhatsapp" maxlength="60" placeholder="blank = the booth's Contact WhatsApp">
             <p class="note">Leave it blank for the same chat as the Contact button on the booth page. Or a number (60123456789) or a wa.me/message link.</p>
+            <label for="docFolder">Google Drive folder for the signed copies</label>
+            <input type="url" id="docFolder" maxlength="300" placeholder="blank = FACERINNA signed documents">
+            <p class="note">Paste the folder's link. The script saves each signed PDF there itself, so the clinic does not sign in to Google. The folder must be shared with the account the script runs as, as Editor.</p>
             <label for="docMode">On the booth page</label>
             <select id="docMode">
               <option value="locked">Locked &mdash; passcode before the text (recommended)</option>
@@ -935,7 +938,7 @@ function docFrom(t, title){
   docReset();
   docEdit({ id:'', title:title||t.title, description:t.description, body:t.body, signer_fields:t.signer_fields,
     our_name:t.our_name, our_title:t.our_title, our_email:t.our_email, our_signature:t.our_signature, whatsapp:t.whatsapp,
-    mode:'locked', passcode:'' });
+    drive_folder:t.drive_folder, mode:'locked', passcode:'' });
   $('docId').value=''; $('docFormTitle').textContent='＋ Add document'; show('docCancel', true);
   toast('Filled in. Change what you need, then Save.');
 }
@@ -960,7 +963,7 @@ function renderDocs(list, signed){
     el.style.gridTemplateColumns='minmax(0,1fr) auto';
     el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(d.title)+'</div><div class="m">'+
       (d.mode==='show'?'<b>Show</b>':d.mode==='locked'?'<i>&#128274; Locked'+(d.passcode?' (own passcode)':'')+'</i>':'<i>Hidden</i>')+
-      ' · '+n+' signed'+' · WhatsApp '+(!d.whatsapp?'Contact chat':/^\d+$/.test(d.whatsapp)?'+'+esc(d.whatsapp):esc(d.whatsapp.replace(/^https:\/\//,'')))+'</div></div>'+
+      ' · '+n+' signed'+(d.drive_folder?' · <a href="https://drive.google.com/drive/folders/'+esc(d.drive_folder)+'" target="_blank" rel="noopener">Drive folder</a>':'')+' · WhatsApp '+(!d.whatsapp?'Contact chat':/^\d+$/.test(d.whatsapp)?'+'+esc(d.whatsapp):esc(d.whatsapp.replace(/^https:\/\//,'')))+'</div></div>'+
       '<div class="icons">'+
         '<button class="ic" type="button" data-act="link" title="Copy the link to send">🔗</button>'+
         '<button class="ic" type="button" data-act="copy" title="Duplicate: a new document from this one">⧉</button>'+
@@ -979,7 +982,8 @@ function renderSigned(list){
     var vals=s.values||{}, keys=Object.keys(vals).filter(function(k){ return vals[k] && !/date/i.test(k); }).slice(0,2);
     var el=document.createElement('div'); el.className='item'; el.dataset.id=s.id; el.style.gridTemplateColumns='minmax(0,1fr) auto';
     el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(keys.length?vals[keys[0]]:(s.signer||'Signed'))+'</div>'+
-      '<div class="m">'+esc(s.doc_title)+' · signed by '+esc(s.signer||'—')+' · '+esc(when(s.created))+(keys[1]?' · '+esc(vals[keys[1]]):'')+'</div></div>'+
+      '<div class="m">'+esc(s.doc_title)+' · signed by '+esc(s.signer||'—')+' · '+esc(when(s.created))+(keys[1]?' · '+esc(vals[keys[1]]):'')+
+      (s.fallback?' · <i style="color:var(--bad)">not in the chosen Drive folder (the script could not add to it): in FACERINNA signed documents</i>':'')+'</div></div>'+
       '<div class="icons"><button class="ic" type="button" data-act="get" title="Download the PDF">⬇</button>'+
       '<button class="ic" type="button" data-act="del" title="Delete">🗑</button></div>';
     box.appendChild(el);
@@ -1034,6 +1038,7 @@ function docEdit(d){
   $('docSignFields').value=signFieldsText(d.signer_fields); $('docOurName').value=d.our_name||''; $('docOurTitle').value=d.our_title||'';
   $('docOurEmail').value=d.our_email||''; docSig=d.our_signature||''; docSigShow(); $('docWhatsapp').value=d.whatsapp||'';
   $('docMode').value=d.mode||'locked'; $('docPass').value=d.passcode||''; show('docCancel', true);
+  $('docFolder').value=d.drive_folder ? 'https://drive.google.com/drive/folders/'+d.drive_folder : '';
   docFields(); if(!$('docPreview').hidden) docPreview(true);
   $('docTitle').focus();
 }
@@ -1073,7 +1078,7 @@ $('docForm').addEventListener('submit', function(e){
   e.preventDefault();
   var d={ id:$('docId').value||'', title:$('docTitle').value, description:$('docDesc').value, body:$('docBody').value,
     signer_fields:signFieldsOf($('docSignFields').value), our_name:$('docOurName').value, our_title:$('docOurTitle').value,
-    our_email:$('docOurEmail').value, our_signature:docSig, whatsapp:$('docWhatsapp').value, mode:$('docMode').value, passcode:$('docPass').value };
+    our_email:$('docOurEmail').value, our_signature:docSig, whatsapp:$('docWhatsapp').value, drive_folder:$('docFolder').value, mode:$('docMode').value, passcode:$('docPass').value };
   $('docSave').disabled=true;
   api('admin.doc.save', { doc:d }, 30000).then(function(r){
     renderDocs(r.documents); toast(d.id ? 'Document updated' : 'Document added'); docReset();
