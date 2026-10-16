@@ -113,6 +113,19 @@
   background:#e3f6ee;color:#11734d;text-decoration:none}
 .gamerows .off b{background:#fde8e6;color:#b03a2e}
 .stack{display:grid;gap:18px;align-content:start;min-width:0}
+textarea.docbody{min-height:260px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5}
+.dochelp{margin-top:8px}.dochelp summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--brand)}
+.dochelp mark,.paperprev mark{background:#FFEE33;color:#111;padding:0 3px;border-radius:3px}
+.docsig{max-height:60px;max-width:220px;border:1px solid var(--line);border-radius:6px;background:#fff}
+#docOurSig{display:block;width:100%;min-height:44px;padding:8px;border:1px dashed var(--line);border-radius:10px;background:var(--soft);font:inherit;font-size:13px}
+.paperprev{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;max-height:70vh;overflow:auto;
+  font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.45;color:#111}
+.paperprev .fx-title{text-align:center;font-size:15px;margin:0 0 12px}
+.paperprev .fx-head{font-size:13.5px;margin:8px 0 4px}
+.paperprev .fx-p{margin:0 0 5px;display:flex;text-align:justify}
+.paperprev .fx-n{flex:0 0 34px}.paperprev .fx-t{flex:1 1 auto;min-width:0}
+.paperprev .fx-l1{padding-left:34px}.paperprev .fx-gap{margin-top:10px}
+.paperprev .fx-sign{margin-top:14px;padding:10px;border:1px dashed var(--line);border-radius:8px;color:var(--ink2);font-size:12px}
 /* a person whose areas fill one column only gets one column, not an empty
    left-hand side */
 .grid.one{grid-template-columns:minmax(0,720px)}
@@ -190,6 +203,7 @@
       <button class="tab" id="tabSections" role="tab" aria-selected="false" data-view="sections" type="button">▤ Sections</button>
       <button class="tab" id="tabSegments" role="tab" aria-selected="false" data-view="segments" type="button">▦ Segments</button>
       <button class="tab" id="tabMedia" role="tab" aria-selected="false" data-view="media" type="button">🖼 QR &amp; posters</button>
+      <button class="tab" id="tabDocs" role="tab" aria-selected="false" data-view="docs" type="button">📝 Documents</button>
       <button class="tab" id="tabGifts" role="tab" aria-selected="false" data-view="gifts" type="button">🎁 Gifts</button>
       <button class="tab" id="tabAdmins" role="tab" aria-selected="false" data-view="admins" type="button">👤 People</button>
     </div>
@@ -358,6 +372,62 @@
       <div><div class="list" id="mediaList"></div></div>
     </div>
 
+    <!-- documents to fill in and sign -->
+    <div id="viewDocs" class="grid" hidden>
+      <div class="stack">
+        <div class="card">
+          <h2 id="docFormTitle">＋ Add document</h2>
+          <form id="docForm" novalidate>
+            <input type="hidden" id="docId">
+            <label for="docTitle">Title</label>
+            <input type="text" id="docTitle" maxlength="160" placeholder="e.g. Clinic collaboration 2026–2027">
+            <label for="docDesc">One line under the title on the booth page</label>
+            <input type="text" id="docDesc" maxlength="400" placeholder="e.g. For partner clinics">
+            <label for="docBody">The text</label>
+            <textarea id="docBody" class="docbody" spellcheck="false" placeholder="# TITLE&#10;&#10;This is made on {{Date|today}} between ... and {{Clinic name}}.&#10;&#10;1. **Purpose**&#10;1.1 ..."></textarea>
+            <details class="dochelp"><summary>How to write it</summary>
+              <p class="note">One paragraph to a line. <code># Title</code> is the centred title, <code>## Heading</code> a bold line. A line that starts with <code>1.</code> or <code>1.1</code> hangs at the margin; <code>(a)</code> one step in. Start a line with two spaces to indent it. <code>**bold**</code>, <code>__underline__</code>. A blank line adds space.</p>
+              <p class="note"><code>{{Clinic name}}</code> is a <mark>yellow box</mark> the signer fills in; the same name twice is one value. <code>{{Date|today}}</code> starts with today's date. <code>{{Phone|optional}}</code> may stay empty. <code>[[sign Facerinna, | the Clinic,]]</code> puts the signatures there, with those captions; without it they go at the end.</p>
+            </details>
+            <div class="row" style="margin-top:8px"><button class="btn ghost sm" id="docPreviewBtn" type="button">Preview</button><span class="note" id="docFieldsNote"></span></div>
+            <label for="docSignFields">Under the signer's signature (one per line: <code>Label = box</code>)</label>
+            <textarea id="docSignFields" style="min-height:64px" placeholder="Name Clinic = Clinic name&#10;Clinic Address"></textarea>
+            <p class="note">A line that names a box from the text takes its value from there; one that does not is a new yellow box under the signature.</p>
+            <label>Signed for FACERINNA</label>
+            <input type="text" id="docOurName" maxlength="80" placeholder="Name">
+            <input type="text" id="docOurTitle" maxlength="80" placeholder="Designation" style="margin-top:6px">
+            <input type="email" id="docOurEmail" maxlength="120" placeholder="Email" style="margin-top:6px">
+            <label for="docOurSig">Signature picture (optional)</label>
+            <input type="file" id="docOurSig" accept="image/png,image/jpeg,image/webp">
+            <div class="row" id="docSigRow" hidden><img id="docSigImg" class="docsig" alt="FACERINNA signature"><button class="btn danger sm" id="docSigRemove" type="button">Remove</button></div>
+            <label for="docWhatsapp">WhatsApp number the signed PDF goes to</label>
+            <input type="text" id="docWhatsapp" inputmode="tel" maxlength="20" placeholder="e.g. 60123456789">
+            <label for="docMode">On the booth page</label>
+            <select id="docMode">
+              <option value="locked">Locked &mdash; passcode before the text (recommended)</option>
+              <option value="show">Show</option>
+              <option value="hidden">Hidden</option>
+            </select>
+            <label for="docPass">Passcode (blank = the site passcode)</label>
+            <input type="text" id="docPass" maxlength="64" autocomplete="off">
+            <div class="row" style="margin-top:16px">
+              <button class="btn" id="docSave" type="submit">Save document</button>
+              <button class="btn ghost" id="docCancel" type="button" hidden>Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="paperprev" id="docPreview" hidden></div>
+        <div class="list" id="docList"></div>
+        <div class="card">
+          <h2>Signed copies</h2>
+          <p class="note">Each signed PDF is kept privately in Drive (folder <b>FACERINNA signed documents</b>). Only people with Documents access see them here.</p>
+          <div class="list" id="signedList"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- gifts: the stock on the wheel, and who has earned one -->
     <div id="viewGifts" class="grid" hidden>
       <div class="stack">
@@ -428,6 +498,7 @@
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="fx-doc.js"></script>
 <script>
 (function(){
 "use strict";
@@ -458,6 +529,7 @@ var PERMS = [
   ['sections','Sections','Show, lock or hide each part of the booth page'],
   ['segments','Segments','Add, edit, order and delete extra segments'],
   ['media',    'QR & posters',    'Upload QR codes and posters, and lock the ones not used at the current event'],
+  ['documents','Documents','Add, edit and remove documents to sign, and read the signed copies'],
   ['privacy','Privacy notice','The details the privacy page shows']
 ];
 var AREA_KEYS = {
@@ -573,6 +645,7 @@ function refresh(){
     if(can('sections')) renderSections(d.section_rows);
     if(can('segments')) renderSegments(d.segments);
     if(!state.legacy && can('media')) renderMedia(d.media, d.events, d.settings);
+    if(!state.legacy && can('documents')) renderDocs(d.documents || [], d.signed || []);
     if(state.me.role==='admin') renderAdmins(d.admins, d.quota);
     if(!state.legacy && can('stock')) renderStock(d.stock);
     if(!state.legacy && can('claims')) renderClaims(d.claims);
@@ -585,7 +658,7 @@ function refresh(){
 /* tabs */
 function pick(b){
   document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', String(x===b)); });
-  ['settings','sections','segments','media','gifts','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), !!b && v===b.dataset.view); });
+  ['settings','sections','segments','media','docs','gifts','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), !!b && v===b.dataset.view); });
 }
 document.querySelectorAll('.tab').forEach(function(b){
   b.addEventListener('click', function(){ pick(b); });
@@ -599,6 +672,7 @@ function applyAccess(){
   if(state.legacy) $('cardGames').hidden = true;
   show('saveRow', can('page') || (can('games') && !state.legacy) || can('gift') || can('privacy'));
   var tabs = { settings: areasOnSettings.some(can), sections: can('sections'), segments: can('segments'), media: !state.legacy && can('media'),
+               docs: !state.legacy && can('documents'),
                gifts: !state.legacy && (can('stock') || can('claims')),
                admins: state.me && state.me.role==='admin' };
   [].forEach.call(document.querySelectorAll('#viewGifts [data-gift-area]'), function(c){ c.hidden = !can(c.dataset.giftArea); });
@@ -836,6 +910,146 @@ $('segForm').addEventListener('submit', function(e){
   api('admin.segment.save', { segment:seg }).then(function(r){
     state.data.segments = r.segments; renderSegments(r.segments); toast(seg.id ? 'Segment updated' : 'Segment added'); resetForm();
   }).catch(function(err){ toast(err.message, true); }).finally(function(){ $('segSave').disabled = false; });
+});
+
+/* ---- documents to sign ------------------------------------------------
+   The text is written here as plain lines with a little markup (fx-doc.js
+   reads it, the same reader sign.html uses), so the preview is what the
+   signer will see. The signed copies come back as PDFs in Drive. */
+function signFieldsText(list){ return (list||[]).map(function(f){ return f.field && f.field!==f.label ? f.label+' = '+f.field : f.label; }).join('\n'); }
+function signFieldsOf(text){
+  return String(text||'').split('\n').map(function(l){
+    var p=l.split('='); var label=(p[0]||'').trim(), field=(p.slice(1).join('=')||'').trim()||label;
+    return label ? { label:label, field:field } : null;
+  }).filter(Boolean);
+}
+function docLink(id){ return new URL('sign.html?d='+encodeURIComponent(id), location.href).href; }
+function renderDocs(list, signed){
+  state.data.documents = list; if(signed) state.data.signed = signed;
+  var box=$('docList'); box.innerHTML='';
+  if(!list.length) box.innerHTML='<div class="empty">No documents yet. Write one on the left; it appears on the booth page in its own section.</div>';
+  list.forEach(function(d, i){
+    var n=(state.data.signed||[]).filter(function(s){ return s.doc_id===d.id; }).length;
+    var el=document.createElement('div'); el.className='item'+(d.mode==='hidden'?' hidden':''); el.dataset.id=d.id;
+    el.style.gridTemplateColumns='minmax(0,1fr) auto';
+    el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(d.title)+'</div><div class="m">'+
+      (d.mode==='show'?'<b>Show</b>':d.mode==='locked'?'<i>&#128274; Locked'+(d.passcode?' (own passcode)':'')+'</i>':'<i>Hidden</i>')+
+      ' · '+n+' signed'+(d.whatsapp?' · WhatsApp +'+esc(d.whatsapp):'')+'</div></div>'+
+      '<div class="icons">'+
+        '<button class="ic" type="button" data-act="link" title="Copy the link to send">🔗</button>'+
+        '<button class="ic" type="button" data-act="up" title="Move up" '+(i===0?'disabled':'')+'>↑</button>'+
+        '<button class="ic" type="button" data-act="down" title="Move down" '+(i===list.length-1?'disabled':'')+'>↓</button>'+
+        '<button class="ic" type="button" data-act="edit" title="Edit">✎</button>'+
+        '<button class="ic" type="button" data-act="del" title="Delete">🗑</button></div>';
+    box.appendChild(el);
+  });
+  renderSigned(state.data.signed||[]);
+}
+function renderSigned(list){
+  var box=$('signedList'); box.innerHTML='';
+  if(!list.length){ box.innerHTML='<div class="empty">Nothing signed yet.</div>'; return; }
+  list.forEach(function(s){
+    var vals=s.values||{}, keys=Object.keys(vals).filter(function(k){ return vals[k] && !/date/i.test(k); }).slice(0,2);
+    var el=document.createElement('div'); el.className='item'; el.dataset.id=s.id; el.style.gridTemplateColumns='minmax(0,1fr) auto';
+    el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(keys.length?vals[keys[0]]:(s.signer||'Signed'))+'</div>'+
+      '<div class="m">'+esc(s.doc_title)+' · signed by '+esc(s.signer||'—')+' · '+esc(when(s.created))+(keys[1]?' · '+esc(vals[keys[1]]):'')+'</div></div>'+
+      '<div class="icons"><button class="ic" type="button" data-act="get" title="Download the PDF">⬇</button>'+
+      '<button class="ic" type="button" data-act="del" title="Delete">🗑</button></div>';
+    box.appendChild(el);
+  });
+}
+$('docList').addEventListener('click', function(e){
+  var b=e.target.closest('button[data-act]'); if(!b) return;
+  var id=b.closest('.item').dataset.id, list=state.data.documents||[], d=list.filter(function(x){ return x.id===id; })[0];
+  if(!d) return;
+  if(b.dataset.act==='link'){
+    var u=docLink(id);
+    (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function(){ toast('Link copied'); }, function(){ prompt('The link to send:', u); });
+    return;
+  }
+  if(b.dataset.act==='edit'){ docEdit(d); return; }
+  if(b.dataset.act==='del'){
+    if(!confirm('Delete “'+d.title+'”? It leaves the booth page. Copies already signed stay below.')) return;
+    api('admin.doc.delete', { id:id }).then(function(r){ renderDocs(r.documents); toast('Deleted'); if($('docId').value===id) docReset(); })
+      .catch(function(err){ toast(err.message, true); });
+    return;
+  }
+  var ids=list.map(function(x){ return x.id; }), at=ids.indexOf(id), to=b.dataset.act==='up'?at-1:at+1;
+  if(to<0 || to>=ids.length) return;
+  ids.splice(at,1); ids.splice(to,0,id);
+  api('admin.doc.order', { ids:ids }).then(function(r){ renderDocs(r.documents); }).catch(function(err){ toast(err.message, true); });
+});
+$('signedList').addEventListener('click', function(e){
+  var b=e.target.closest('button[data-act]'); if(!b) return;
+  var id=b.closest('.item').dataset.id;
+  if(b.dataset.act==='get'){
+    b.disabled=true;
+    api('admin.doc.file', { id:id }, 60000).then(function(r){
+      var bin=atob(r.pdf), u8=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+      var url=URL.createObjectURL(new Blob([u8], { type:'application/pdf' })), a=document.createElement('a');
+      a.href=url; a.download=r.name||'signed.pdf'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 30000);
+    }).catch(function(err){ toast(err.message, true); }).finally(function(){ b.disabled=false; });
+    return;
+  }
+  if(b.dataset.act==='del'){
+    if(!confirm('Delete this signed copy? The PDF goes to the Drive bin.')) return;
+    api('admin.doc.signed.delete', { id:id }).then(function(r){ state.data.signed=r.signed; renderDocs(state.data.documents||[]); toast('Deleted'); })
+      .catch(function(err){ toast(err.message, true); });
+  }
+});
+var docSig='';
+function docSigShow(){ $('docSigImg').src=docSig||''; $('docSigRow').hidden=!docSig; }
+function docEdit(d){
+  $('docId').value=d.id; $('docFormTitle').textContent='✎ Edit document';
+  $('docTitle').value=d.title||''; $('docDesc').value=d.description||''; $('docBody').value=d.body||'';
+  $('docSignFields').value=signFieldsText(d.signer_fields); $('docOurName').value=d.our_name||''; $('docOurTitle').value=d.our_title||'';
+  $('docOurEmail').value=d.our_email||''; docSig=d.our_signature||''; docSigShow(); $('docWhatsapp').value=d.whatsapp||'';
+  $('docMode').value=d.mode||'locked'; $('docPass').value=d.passcode||''; show('docCancel', true);
+  docFields(); if(!$('docPreview').hidden) docPreview(true);
+  $('docTitle').focus();
+}
+function docReset(){ $('docForm').reset(); $('docId').value=''; docSig=''; docSigShow(); $('docMode').value='locked'; $('docFormTitle').textContent='＋ Add document'; show('docCancel', false); $('docPreview').hidden=true; docFields(); }
+$('docCancel').addEventListener('click', docReset);
+function docFields(){
+  if(!window.FxDoc){ $('docFieldsNote').textContent=''; return; }
+  var m=FxDoc.parse($('docBody').value, signFieldsOf($('docSignFields').value));
+  $('docFieldsNote').textContent = m.fields.length ? 'Yellow boxes: '+m.fields.map(function(f){ return f.label; }).join(', ') : 'No yellow boxes yet';
+}
+function docPreview(keep){
+  var box=$('docPreview');
+  if(!keep && !box.hidden){ box.hidden=true; return; }
+  var m=FxDoc.parse($('docBody').value, signFieldsOf($('docSignFields').value));
+  box.innerHTML=FxDoc.html(m, { values:{}, edit:false, sign:function(b){
+    return 'Signatures: '+esc(b.left||'FACERINNA')+' (left) and '+esc(b.right||'Signed by')+' (right), with '+
+      esc(m.signFields.map(function(f){ return f.label; }).concat(['Signed by','Date']).join(', '))+'.'; } });
+  box.hidden=false;
+}
+$('docPreviewBtn').addEventListener('click', function(){ docPreview(false); });
+['docBody','docSignFields'].forEach(function(k){ $(k).addEventListener('input', function(){ docFields(); if(!$('docPreview').hidden) docPreview(true); }); });
+$('docOurSig').addEventListener('change', function(){
+  var f=this.files && this.files[0]; if(!f) return;
+  readPicture(f).then(function(im){
+    var k=Math.min(1, 520/im.naturalWidth, 180/im.naturalHeight), c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(im.naturalWidth*k)); c.height=Math.max(1,Math.round(im.naturalHeight*k));
+    var g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(im,0,0,c.width,c.height);
+    var q=0.88, u=c.toDataURL('image/jpeg', q);
+    while(u.length>44000 && q>0.4){ q-=0.12; u=c.toDataURL('image/jpeg', q); }
+    if(u.length>44000) throw new Error('that picture is too detailed; crop it closer to the signature');
+    docSig=u; docSigShow();
+  }).catch(function(err){ toast(err.message, true); });
+  this.value='';
+});
+$('docSigRemove').addEventListener('click', function(){ docSig=''; docSigShow(); });
+$('docForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var d={ id:$('docId').value||'', title:$('docTitle').value, description:$('docDesc').value, body:$('docBody').value,
+    signer_fields:signFieldsOf($('docSignFields').value), our_name:$('docOurName').value, our_title:$('docOurTitle').value,
+    our_email:$('docOurEmail').value, our_signature:docSig, whatsapp:$('docWhatsapp').value, mode:$('docMode').value, passcode:$('docPass').value };
+  $('docSave').disabled=true;
+  api('admin.doc.save', { doc:d }, 30000).then(function(r){
+    renderDocs(r.documents); toast(d.id ? 'Document updated' : 'Document added'); docReset();
+  }).catch(function(err){ toast(err.message, true); }).finally(function(){ $('docSave').disabled=false; });
 });
 
 /* gifts: stock and claims */
