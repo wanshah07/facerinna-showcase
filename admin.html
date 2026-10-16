@@ -379,6 +379,10 @@ textarea.docbody{min-height:260px;font-family:ui-monospace,Menlo,Consolas,monosp
           <h2 id="docFormTitle">＋ Add document</h2>
           <form id="docForm" novalidate>
             <input type="hidden" id="docId">
+            <div id="docTplRow" hidden>
+              <label for="docTpl">Start from a template</label>
+              <select id="docTpl"></select>
+            </div>
             <label for="docTitle">Title</label>
             <input type="text" id="docTitle" maxlength="160" placeholder="e.g. Clinic collaboration 2026–2027">
             <label for="docDesc">One line under the title on the booth page</label>
@@ -393,6 +397,7 @@ textarea.docbody{min-height:260px;font-family:ui-monospace,Menlo,Consolas,monosp
             <label for="docSignFields">Under the signer's signature (one per line: <code>Label = box</code>)</label>
             <textarea id="docSignFields" style="min-height:64px" placeholder="Name Clinic = Clinic name&#10;Clinic Address"></textarea>
             <p class="note">A line that names a box from the text takes its value from there; one that does not is a new yellow box under the signature.</p>
+            <p class="note">A new template: ⧉ on any document starts a copy to change and save as its own. A template kept in the script file <b>templates.gs</b> appears here by itself.</p>
             <label>Signed for FACERINNA</label>
             <input type="text" id="docOurName" maxlength="80" placeholder="Name">
             <input type="text" id="docOurTitle" maxlength="80" placeholder="Designation" style="margin-top:6px">
@@ -646,7 +651,7 @@ function refresh(){
     if(can('sections')) renderSections(d.section_rows);
     if(can('segments')) renderSegments(d.segments);
     if(!state.legacy && can('media')) renderMedia(d.media, d.events, d.settings);
-    if(!state.legacy && can('documents')) renderDocs(d.documents || [], d.signed || []);
+    if(!state.legacy && can('documents')){ renderDocs(d.documents || [], d.signed || []); renderTemplates(d.templates); }
     if(state.me.role==='admin') renderAdmins(d.admins, d.quota);
     if(!state.legacy && can('stock')) renderStock(d.stock);
     if(!state.legacy && can('claims')) renderClaims(d.claims);
@@ -925,6 +930,26 @@ function signFieldsOf(text){
   }).filter(Boolean);
 }
 function docLink(id){ return new URL('sign.html?d='+encodeURIComponent(id), location.href).href; }
+/* a new, unsaved document filled from a template or another document */
+function docFrom(t, title){
+  docReset();
+  docEdit({ id:'', title:title||t.title, description:t.description, body:t.body, signer_fields:t.signer_fields,
+    our_name:t.our_name, our_title:t.our_title, our_email:t.our_email, our_signature:t.our_signature, whatsapp:t.whatsapp,
+    mode:'locked', passcode:'' });
+  $('docId').value=''; $('docFormTitle').textContent='＋ Add document'; show('docCancel', true);
+  toast('Filled in. Change what you need, then Save.');
+}
+function renderTemplates(list){
+  state.data.templates = list || [];
+  var sel=$('docTpl');
+  sel.innerHTML='<option value="">Blank document</option>'+state.data.templates.map(function(t, i){ return '<option value="'+i+'">'+esc(t.title)+'</option>'; }).join('');
+  $('docTplRow').hidden = !state.data.templates.length;
+}
+$('docTpl').addEventListener('change', function(){
+  var t=(state.data.templates||[])[+this.value];
+  if(this.value!=='' && t) docFrom(t);
+  this.value='';
+});
 function renderDocs(list, signed){
   state.data.documents = list; if(signed) state.data.signed = signed;
   var box=$('docList'); box.innerHTML='';
@@ -938,6 +963,7 @@ function renderDocs(list, signed){
       ' · '+n+' signed'+' · WhatsApp '+(!d.whatsapp?'Contact chat':/^\d+$/.test(d.whatsapp)?'+'+esc(d.whatsapp):esc(d.whatsapp.replace(/^https:\/\//,'')))+'</div></div>'+
       '<div class="icons">'+
         '<button class="ic" type="button" data-act="link" title="Copy the link to send">🔗</button>'+
+        '<button class="ic" type="button" data-act="copy" title="Duplicate: a new document from this one">⧉</button>'+
         '<button class="ic" type="button" data-act="up" title="Move up" '+(i===0?'disabled':'')+'>↑</button>'+
         '<button class="ic" type="button" data-act="down" title="Move down" '+(i===list.length-1?'disabled':'')+'>↓</button>'+
         '<button class="ic" type="button" data-act="edit" title="Edit">✎</button>'+
@@ -969,6 +995,7 @@ $('docList').addEventListener('click', function(e){
     return;
   }
   if(b.dataset.act==='edit'){ docEdit(d); return; }
+  if(b.dataset.act==='copy'){ docFrom(d, d.title+' (copy)'); return; }
   if(b.dataset.act==='del'){
     if(!confirm('Delete “'+d.title+'”? It leaves the booth page. Copies already signed stay below.')) return;
     api('admin.doc.delete', { id:id }).then(function(r){ renderDocs(r.documents); toast('Deleted'); if($('docId').value===id) docReset(); })

@@ -1155,6 +1155,55 @@ function docFull_(r) {
            our_name: String(r.our_name || ''), our_title: String(r.our_title || ''), our_email: String(r.our_email || ''),
            our_signature: String(r.our_signature || ''), whatsapp: String(r.whatsapp || '') };
 }
+/* ---- templates
+   A template is a document written out in full in a second script file,
+   templates.gs, beside this one in the Apps Script project:
+
+     var DOC_TEMPLATES = [{ id: 'clinic-collaboration', title: '...', body: '...', signer_fields: [...],
+                            our_name: '...', our_title: '...', our_email: '...', our_signature: 'data:image/png;base64,...' }];
+
+   It is not in the website's code -- that is public, and a contract's terms
+   are not. Each template becomes a document by itself the first time the
+   script sees it (once only: delete the document and it stays deleted), and
+   the admin's Documents tab can start a new document from any of them. */
+function docTemplates_() {
+  try { return (typeof DOC_TEMPLATES !== 'undefined' && Array.isArray(DOC_TEMPLATES)) ? DOC_TEMPLATES : []; }
+  catch (e) { return []; }
+}
+function seedDocs_() {
+  var t = docTemplates_();
+  if (!t.length) return;
+  var props = PropertiesService.getScriptProperties();
+  var todo = t.filter(function (x) { return x && x.id && !props.getProperty('docseed.' + x.id); });
+  if (!todo.length) return;
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return;
+  try {
+    docTab_();
+    var pass = String(settings_().passcode || '').trim();
+    todo.forEach(function (x) {
+      if (props.getProperty('docseed.' + x.id)) return;
+      var d = {};
+      Object.keys(x).forEach(function (k) { if (k !== 'id') d[k] = x[k]; });
+      /* locked when there is a site passcode to open it with; a locked
+         document with no passcode anywhere would never open */
+      if (!d.mode) d.mode = pass ? 'locked' : 'show';
+      docSave_({ doc: d }, 'template ' + x.id);
+      props.setProperty('docseed.' + x.id, String(Date.now()));
+    });
+    dropConfig_();
+  } catch (e) {
+  } finally { flushSheets_(); lock.releaseLock(); }
+}
+function templatesAdmin_() {
+  return docTemplates_().filter(function (x) { return x && x.id && x.title && x.body; }).map(function (x) {
+    return { id: String(x.id), title: String(x.title), description: String(x.description || ''), body: String(x.body),
+             signer_fields: Array.isArray(x.signer_fields) ? x.signer_fields : [], our_name: String(x.our_name || ''),
+             our_title: String(x.our_title || ''), our_email: String(x.our_email || ''),
+             our_signature: String(x.our_signature || ''), whatsapp: String(x.whatsapp || '') };
+  });
+}
+
 function publicDocs_() {
   return docRows_().filter(function (r) { return docMode_(r.mode) !== 'hidden' && String(r.title || '').trim(); })
     .map(function (r) { return { id: String(r.id), title: String(r.title), description: String(r.description || ''),
@@ -1373,6 +1422,7 @@ function config_() {
   if (cache) {
     try { var hit = cache.get(CONFIG_KEY); if (hit) return configText_(hit); } catch (e) {}
   }
+  seedDocs_();
   var set = publicSettings_();
   var text = JSON.stringify({ ok: true, settings: set, segments: publicSegments_(),
                  sections: SECTIONS, section_states: publicSections_(),
@@ -1469,7 +1519,7 @@ function adminGet_(me) {
   if (can_(me, 'segments')) out.segments = segments_();
   if (can_(me, 'sections')) out.section_rows = sectionRows_();
   if (can_(me, 'media')) { out.media = mediaList_(); out.events = mediaEvents_(); }
-  if (can_(me, 'documents')) { out.documents = docsAdmin_(); out.signed = signedList_(); }
+  if (can_(me, 'documents')) { seedDocs_(); out.documents = docsAdmin_(); out.signed = signedList_(); out.templates = templatesAdmin_(); }
   if (can_(me, 'stock')) out.stock = stockPublic_();
   if (can_(me, 'claims')) out.claims = claimsList_();
   if (me.role === 'admin') {

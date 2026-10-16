@@ -8,8 +8,9 @@ import crypto from 'node:crypto';
 export const BOOK_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
 export const OWNER = 'owner@facerinna.test';
 
-export function load(){
-  const src = fs.readFileSync('/workspace/facerinna-showcase/tools/booth-admin.gs','utf8');
+/* opts.extra: a second script file of the same project (templates.gs), run first */
+export function load(opts){
+  const src = ((opts && opts.extra) || '') + '\n' + fs.readFileSync('/workspace/facerinna-showcase/tools/booth-admin.gs','utf8');
   const tabs = {};
   /* Writes not yet flushed. A lock let go with writes still pending is how a
      real sheet hands the next run a stale value; the test can see it here. */
