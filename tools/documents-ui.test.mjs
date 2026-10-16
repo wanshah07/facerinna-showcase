@@ -205,6 +205,21 @@ console.log('\n── the admin reads the signed copy');
   await c.close();
 }
 
+console.log('\n── two documents, one with a very long title, on a narrow phone');
+{
+  H.call({ token:own.token, action:'admin.doc.save', doc:{ title:'Klinikkolaborasiperjanjianyangsangatpanjangtanpasebarangjarakdiantaraperkataanuntukujian', body:'x {{Name}}', mode:'show' } });
+  H.call({ token:own.token, action:'admin.doc.save', doc:{ title:'Second', body:'y {{Name}}', mode:'show' } });
+  H.CACHE.clear();
+  const c=await b.newContext({viewport:{width:320,height:700}});
+  await c.addInitScript(a=>{ window.__BOOTH_API=a; }, API);
+  const p=await c.newPage();
+  await p.goto(BASE+'/index.html',{waitUntil:'load'});
+  await until(()=>p.evaluate(()=>document.querySelectorAll('.doc-sign-btn').length>=2), 12000);
+  chk('each document has its own button, titled', await p.evaluate(()=>[...document.querySelectorAll('.doc-sign-btn')].every(a=>/Sign: /.test(a.textContent))));
+  chk('a long title wraps: the page is no wider than the phone', await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1 && [...document.querySelectorAll('.doc-sign-btn')].every(a=>a.getBoundingClientRect().right<=innerWidth+1)), await p.evaluate(()=>[document.documentElement.scrollWidth,innerWidth]));
+  await c.close();
+}
+
 console.log('\n── no number on the document: the Contact chat');
 {
   const r=H.call({ token:own.token, action:'admin.doc.save', doc:{ title:'Open form', body:'I, {{Name}}, agree.', mode:'show' } });

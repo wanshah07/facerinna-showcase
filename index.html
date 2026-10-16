@@ -1339,6 +1339,8 @@ body.slides #talk .flyer-frame{max-width:min(100%, calc((100vh - var(--flyer-oh)
     gap:clamp(12px,2vw,24px);flex-wrap:wrap}
 }
 .flyer-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+/* a document's Sign button carries its title: it may wrap, never push the page wider */
+.flyer-actions .doc-sign-btn{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:center}
 /* In the deck the brochure was competing with its own furniture for height:
    the strip head, the giveaway card, the two buttons and the note all stacked
    under it, and the sheet only gets what is left over (--flyer-oh). Beside it
