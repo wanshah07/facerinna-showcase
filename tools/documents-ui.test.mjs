@@ -38,7 +38,7 @@ await new Promise(r=>srv.listen(PORT,'127.0.0.1',r));
 const b=await chromium.launch();
 const own = H.signIn(OWNER);
 H.call({ token:own.token, action:'admin.settings', settings:{ passcode:'booth42' } });
-const BODY = '# TEST COLLABORATION\n\nTHIS COLLABORATION is made on {{Date|today}} between Us ("Facerinna") and {{Clinic name}} ("the Clinic").\n\n1. **Purpose of Collaboration.**\n1.1 The Parties agree to collaborate for a period of twelve (12) months, and {{Clinic name}} agrees to display the tester zone in a visible and appropriate condition at all times.\n  Social Media Exposure\n(a) content creation;\n(b) videos.\n\n[[sign Facerinna, | the Clinic,]]';
+const BODY = '# TEST COLLABORATION\n\nTHIS COLLABORATION is made on {{Date|today}} between Us ("Facerinna") and {{Clinic name}} ("the Clinic").\n\n1. **Purpose of Collaboration.**\n1.1 The Parties agree to collaborate for a period of twelve (12) months, and {{Clinic name}} agrees to keep the sample shelf tidy and easy to see during opening hours.\n  Social Media Exposure\n(a) content creation;\n(b) videos.\n\n[[sign Facerinna, | the Clinic,]]';
 
 console.log('\n── admin writes a document');
 let docId;
@@ -86,7 +86,7 @@ console.log('\n── the booth page lists it');
   chk('a Sign the agreement button in the Clinic Partnership section, straight to the document', btn && /Sign the agreement/.test(btn.text) && btn.href==='sign.html?d='+encodeURIComponent(docId), btn);
   chk('no page wider than the phone with it', await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   chk('right after the clinic section', await p.evaluate(()=>{ const d=document.getElementById('docs'); let e=document.getElementById('clinic').nextElementSibling; return e && e.classList.contains('booth-docs-divider') && e.nextElementSibling===d; }));
-  chk('none of the text is on the booth page', !(await p.content()).includes('tester zone'));
+  chk('none of the text is on the booth page', !(await p.content()).includes('sample shelf'));
   chk('no page errors', errs.length===0, errs);
   await c.close();
 }
@@ -103,13 +103,13 @@ let pdfPath;
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto(BASE+'/sign.html?d='+encodeURIComponent(docId),{waitUntil:'load'});
   await until(()=>p.evaluate(()=>!document.getElementById('gate').classList.contains('hidden')));
-  chk('locked: the passcode first, no text', await p.evaluate(()=>document.getElementById('paper').classList.contains('hidden') && !document.body.textContent.includes('tester zone')));
+  chk('locked: the passcode first, no text', await p.evaluate(()=>document.getElementById('paper').classList.contains('hidden') && !document.body.textContent.includes('sample shelf')));
   await p.fill('#gatePass','wrong'); await p.click('#gateBtn');
   await until(()=>p.evaluate(()=>/not right/.test(document.getElementById('gateErr').textContent)));
   chk('a wrong passcode says so', /not right/.test(await p.textContent('#gateErr')));
   await p.fill('#gatePass','booth42'); await p.click('#gateBtn');
   await until(()=>p.evaluate(()=>!document.getElementById('paper').classList.contains('hidden')));
-  chk('the right one opens the document', /tester zone/.test(await p.textContent('#paper')));
+  chk('the right one opens the document', /sample shelf/.test(await p.textContent('#paper')));
   chk('the title and the date box filled with today', await p.evaluate(()=>document.getElementById('docTitle').textContent==='Test collaboration' &&
     /^\d{1,2}(st|nd|rd|th) [A-Z][a-z]+ 20\d\d$/.test(document.querySelector('.fx-in[data-f="Date"]').value)));
   chk('two Clinic name boxes in the text, one under the signature', await p.evaluate(()=>document.querySelectorAll('.fx-in[data-f="Clinic name"]').length===3));
@@ -155,7 +155,7 @@ console.log('\n── the PDF');
   let text='';
   try{ text=execFileSync('pdftotext',['-layout',pdfPath,'-'],{encoding:'utf8'}); }catch(e){ text='(pdftotext failed: '+e.message+')'; }
   const flat=text.replace(/\s+/g,' ');
-  chk('it reads back: title, clinic, the clause', /TEST COLLABORATION/.test(flat) && /Klinik Ujian Sdn Bhd/.test(flat) && /tester zone in a visible/.test(flat), flat.slice(0,300));
+  chk('it reads back: title, clinic, the clause', /TEST COLLABORATION/.test(flat) && /Klinik Ujian Sdn Bhd/.test(flat) && /sample shelf tidy and easy/.test(flat), flat.slice(0,300));
   chk('the curly quotes survive', /“?Facerinna”?|"Facerinna"/.test(flat));
   chk('the signature block: both captions, the fields, who signed', /Facerinna,/.test(flat) && /the Clinic,/.test(flat) && /Name Clinic: Klinik Ujian Sdn Bhd/.test(flat) && /Clinic Address: No\. 1, Jalan Ujian/.test(flat) && /Signed by: Dr Test/.test(flat) && /Name: A Person/.test(flat), flat.slice(-400));
   let imgs='';
