@@ -141,6 +141,9 @@ console.log('\na Drive folder of its own');
   check('a link that is not a folder: refused', !FA({ action:'admin.doc.save', doc:{ title:'G', body:'y', drive_folder:'https://example.com/x' } }).ok);
   const nope = FA({ action:'admin.doc.save', doc:{ title:'H', body:'z', drive_folder:'https://drive.google.com/drive/folders/1ZzZzZzZzZzZzZzZzZz' } });
   check('a folder the script cannot open: refused, saying to share it', !nope.ok && /Share it with/.test(nope.error), nope);
+  F.DRIVE.addFolder('1ViewOnlyViewOnlyVw', 'Look only', 'VIEW');
+  const vo = FA({ action:'admin.doc.save', doc:{ title:'V', body:'v', drive_folder:'1ViewOnlyViewOnlyVw' } });
+  check('a folder the script can only view: refused, saying to make it Editor', !vo.ok && /can only view/.test(vo.error) && /as Editor/.test(vo.error), vo);
   const id = r.id;
   check('the public never sees the folder', !JSON.stringify(F.call({ action:'config' })).includes(FOLDER) && !JSON.stringify(F.call({ action:'doc.get', id })).includes(FOLDER));
   r = F.call({ action:'doc.sign', id, pdf:PDF, signer:'A' });
@@ -150,6 +153,8 @@ console.log('\na Drive folder of its own');
   r = F.call({ action:'doc.sign', id, pdf:PDF, signer:'B' });
   const file2 = F.DRIVE.files[F.tabs['Signed documents'].rows.at(-1)[5]];
   check('folder gone: the copy is still kept, in the script\'s own folder', r.ok && file2 && !file2.folder, file2);
+  const sl = FA({ action:'admin.doc.signed' }).signed;
+  check('...and admin is told it is not in the chosen folder', sl[0].fallback===true && sl[1].fallback===false, sl.map(x=>x.fallback));
   const T = load({ extra: "var DOC_TEMPLATES=[{id:'tf', title:'TF', body:'b', drive_folder:'https://drive.google.com/drive/folders/1NotSharedNotShared'}];" });
   check('a template whose folder is not shared still becomes a document', T.call({ action:'config' }).documents.length===1);
 }

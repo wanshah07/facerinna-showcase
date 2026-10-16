@@ -982,7 +982,8 @@ function renderSigned(list){
     var vals=s.values||{}, keys=Object.keys(vals).filter(function(k){ return vals[k] && !/date/i.test(k); }).slice(0,2);
     var el=document.createElement('div'); el.className='item'; el.dataset.id=s.id; el.style.gridTemplateColumns='minmax(0,1fr) auto';
     el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(keys.length?vals[keys[0]]:(s.signer||'Signed'))+'</div>'+
-      '<div class="m">'+esc(s.doc_title)+' · signed by '+esc(s.signer||'—')+' · '+esc(when(s.created))+(keys[1]?' · '+esc(vals[keys[1]]):'')+'</div></div>'+
+      '<div class="m">'+esc(s.doc_title)+' · signed by '+esc(s.signer||'—')+' · '+esc(when(s.created))+(keys[1]?' · '+esc(vals[keys[1]]):'')+
+      (s.fallback?' · <i style="color:var(--bad)">not in the chosen Drive folder (the script could not add to it): in FACERINNA signed documents</i>':'')+'</div></div>'+
       '<div class="icons"><button class="ic" type="button" data-act="get" title="Download the PDF">⬇</button>'+
       '<button class="ic" type="button" data-act="del" title="Delete">🗑</button></div>';
     box.appendChild(el);

@@ -125,7 +125,7 @@ var DOC_HEADERS      = ['id', 'order', 'title', 'description', 'body', 'signer_f
                         'our_email', 'our_signature', 'whatsapp', 'mode', 'passcode', 'updated', 'by', 'drive_folder'];
 /* One row per signed copy. The PDF itself is a private file in Drive. */
 var SIGNED_HEADERS   = ['id', 'doc_id', 'doc_title', 'values', 'signer', 'file_id', 'bytes', 'created', 'device',
-                        'deleted', 'deleted_by'];
+                        'deleted', 'deleted_by', 'fallback'];
 var SIGNED_FOLDER    = 'FACERINNA signed documents';
 var DOC_MAX_BODY     = 45000;      /* a sheet cell holds 50,000 characters */
 var DOC_MAX_SIG      = 45000;      /* the signature picture, as a data URL */
@@ -1158,6 +1158,20 @@ function docFolderId_(v) {
   var m = v.match(/\/folders\/([A-Za-z0-9_-]{10,})/) || v.match(/[?&]id=([A-Za-z0-9_-]{10,})/) || v.match(/^([A-Za-z0-9_-]{10,})$/);
   return m ? m[1] : null;
 }
+/* true when the script's account may add files to the folder; 'view' when it
+   can only look; false when it cannot open it. On a shared drive the access
+   call may not answer -- the folder opened, so take it, and a failed save of a
+   signed copy still lands in the script's own folder, marked as such. */
+function docFolderWritable_(id) {
+  var f;
+  try { f = DriveApp.getFolderById(id); f.getName(); } catch (e) { return false; }
+  try {
+    var who = Session.getEffectiveUser().getEmail(), p = f.getAccess(who);
+    var P = DriveApp.Permission;
+    if (p === P.OWNER || p === P.EDIT || p === P.ORGANIZER || p === P.FILE_ORGANIZER) return true;
+    return 'view';
+  } catch (e) { return true; }
+}
 function docFull_(r) {
   return { id: String(r.id), title: String(r.title || ''), description: String(r.description || ''),
            body: String(r.body || ''), signer_fields: docFields_(r),
@@ -1200,7 +1214,7 @@ function seedDocs_() {
       /* a folder the script cannot open would refuse the save; the document
          still comes, filed in the script's own folder until it is fixed */
       var fid = docFolderId_(d.drive_folder);
-      if (fid) { try { DriveApp.getFolderById(fid).getName(); } catch (e) { d.drive_folder = ''; } }
+      if (fid) { if (docFolderWritable_(fid) !== true) d.drive_folder = ''; }
       else if (fid === null) d.drive_folder = '';
       docSave_({ doc: d }, 'template ' + x.id);
       props.setProperty('docseed.' + x.id, String(Date.now()));
@@ -1271,8 +1285,9 @@ function docSave_(b, by) {
   var folder = docFolderId_(d.drive_folder);
   if (folder === null) return json_({ ok: false, error: 'that is not a Google Drive folder link' });
   if (folder) {
-    try { DriveApp.getFolderById(folder).getName(); }
-    catch (e) { return json_({ ok: false, error: 'The script cannot open that Drive folder. Share it with ' + (owner_() || 'the account the script runs as') + ' as Editor, then save again.' }); }
+    var can = docFolderWritable_(folder);
+    if (can !== true) return json_({ ok: false, error: 'The script ' + (can === 'view' ? 'can only view' : 'cannot open') + ' that Drive folder. Share it with ' +
+                                       (owner_() || 'the account the script runs as') + ' as Editor, then save again.' });
   }
   var wa = String(d.whatsapp || '').trim();
   wa = /^(https:\/\/)?wa\.me\/message\/[A-Za-z0-9]+$/.test(wa) ? 'https://' + wa.replace(/^https:\/\//, '')
@@ -1318,7 +1333,8 @@ function signedList_() {
   return signedRows_().map(function (r) {
     var v = {}; try { v = JSON.parse(String(r.values || '{}')); } catch (e) {}
     return { id: String(r.id), doc_id: String(r.doc_id), doc_title: String(r.doc_title || ''), values: v,
-             signer: String(r.signer || ''), bytes: Number(r.bytes) || 0, created: iso_(r.created) };
+             signer: String(r.signer || ''), bytes: Number(r.bytes) || 0, created: iso_(r.created),
+             fallback: yes_(r.fallback) };
   }).reverse().slice(0, 500);
 }
 function signedFolder_() {
@@ -1364,6 +1380,7 @@ function docSign_(b) {
     /* the document's own folder when it has one; if that fails (unshared,
        deleted) the copy still lands in the script's own folder, not nowhere */
     if (r.drive_folder) { try { file = DriveApp.getFolderById(String(r.drive_folder)).createFile(blob); } catch (e) { file = null; } }
+    var fallback = !!r.drive_folder && !file;
     if (!file) {
       try { file = signedFolder_().createFile(blob); }
       catch (e) { return json_({ ok: false, error: 'Drive refused the file: ' + String(e && e.message || e) }); }
@@ -1371,7 +1388,7 @@ function docSign_(b) {
     /* private by default, and said so: a signed contract is nobody's to open but ours */
     try { file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); } catch (e) {}
     sheet_(T_SIGNED).appendRow([id, String(r.id), textCell_(String(r.title)), JSON.stringify(values), textCell_(signer),
-                                file.getId(), bytes.length, now_(), device, '', '']);
+                                file.getId(), bytes.length, now_(), device, '', '', fallback ? 'yes' : '']);
     if (cache) { try { cache.put('docsign.n', String(n + 1), 600); } catch (e) {} }
     return json_({ ok: true, id: id });
   } finally { flushSheets_(); lock.releaseLock(); }

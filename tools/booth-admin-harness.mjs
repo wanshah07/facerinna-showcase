@@ -66,13 +66,15 @@ export function load(opts){
       setTrashed: t => { f.trashed = t; } };
     DRIVE.files[id] = f; return f; };
   const DriveApp = {
-    Access: { ANYONE_WITH_LINK: 'ANYONE_WITH_LINK', PRIVATE: 'PRIVATE' }, Permission: { VIEW: 'VIEW', NONE: 'NONE' },
+    Access: { ANYONE_WITH_LINK: 'ANYONE_WITH_LINK', PRIVATE: 'PRIVATE' },
+    Permission: { VIEW: 'VIEW', NONE: 'NONE', EDIT: 'EDIT', OWNER: 'OWNER', ORGANIZER: 'ORGANIZER', FILE_ORGANIZER: 'FILE_ORGANIZER', COMMENT: 'COMMENT' },
     getFoldersByName: n => { const hit = DRIVE.folders.filter(x => x.name === n); let i = 0; return { hasNext: () => i < hit.length, next: () => hit[i++] }; },
     createFolder: n => { const fo = { name: n, createFile: mkFile }; DRIVE.folders.push(fo); return fo; },
     getFileById: id => { if(!DRIVE.files[id]) throw new Error('no file '+id); return DRIVE.files[id]; },
     getFolderById: id => { const fo = DRIVE.folders.find(x => x.id === id); if(!fo) throw new Error('no folder '+id); return fo; } };
   /* a folder somebody else made and shared with the script */
-  DRIVE.addFolder = (id, name) => { const fo = { id, name: name || id, getName: () => name || id,
+  DRIVE.addFolder = (id, name, access) => { const fo = { id, name: name || id, getName: () => name || id,
+    getAccess: () => access || 'EDIT',
     createFile: blob => { const f = mkFile(blob); f.folder = id; return f; } }; DRIVE.folders.push(fo); return fo; };
   const PROPS={};
   const PropertiesService = { getScriptProperties: () => ({
