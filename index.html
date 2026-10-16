@@ -8101,6 +8101,17 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   function drawDocs(list){
     var old=document.getElementById('docs'); if(old){ if(old.previousElementSibling && old.previousElementSibling.classList.contains('booth-docs-divider')) old.previousElementSibling.remove(); old.remove(); }
     list=(list||[]).filter(function(d){ return d && d.id && d.title; });
+    /* and a button in the Clinic Partnership section itself: one document opens
+       straight to signing, more than one goes to the list below */
+    [].slice.call(document.querySelectorAll('.doc-sign-btn')).forEach(function(n){ n.remove(); });
+    var acts=document.querySelector('#clinic .flyer-actions');
+    if(acts && list.length){
+      var a=document.createElement('a'); a.className='btn btn-primary doc-sign-btn';
+      a.href = list.length===1 ? 'sign.html?d='+encodeURIComponent(list[0].id) : '#docs';
+      a.title = list.length===1 ? list[0].title : 'Documents to sign';
+      a.innerHTML='&#9997; Sign the agreement';
+      acts.insertBefore(a, acts.firstChild);
+    }
     if(!list.length) return;
     var anchor=document.getElementById('clinic');
     var sec=document.createElement('section'); sec.id='docs'; sec.className='sec-tight booth-docs';

@@ -130,5 +130,26 @@ r = A({ action:'admin.doc.delete', id });
 check('delete', r.ok && r.documents.length===1 && r.documents[0].id===id2, r);
 check('a deleted document cannot be opened', !call({ action:'doc.get', id, passcode:'site123' }).ok);
 
+console.log('\ntemplates from templates.gs');
+{
+  const TPL = "var DOC_TEMPLATES = [{ id:'t-one', title:'Template one', description:'d', body:'# ONE\\n\\nMade with {{Clinic name}}.', signer_fields:[{label:'Name Clinic', field:'Clinic name'}], our_name:'P', our_signature:'data:image/png;base64,iVBORw0KGgo=' }];";
+  const T = load({ extra: TPL }); const o = T.signIn(OWNER);
+  let cfg = T.call({ action:'config' });
+  check('a template becomes a document by itself', cfg.documents.length===1 && cfg.documents[0].title==='Template one', cfg.documents);
+  check('no site passcode: shown, so it can be opened', cfg.documents[0].locked===false);
+  check('its text opens', T.call({ action:'doc.get', id:cfg.documents[0].id }).doc.body.includes('{{Clinic name}}'));
+  let g = T.call({ token:o.token, action:'admin.get' });
+  check('admin gets the template, to start new ones from', g.templates.length===1 && g.templates[0].body.includes('ONE') && g.templates[0].signer_fields[0].field==='Clinic name', g.templates);
+  check('...and the document it made, once', g.documents.length===1 && g.documents[0].our_name==='P', g.documents.length);
+  T.call({ token:o.token, action:'admin.doc.delete', id:g.documents[0].id });
+  T.call({ action:'config' }); T.CACHE.clear(); T.call({ action:'config' });
+  check('deleted stays deleted', T.call({ token:o.token, action:'admin.get' }).documents.length===0);
+  check('the public config carries no template text', !JSON.stringify(T.call({ action:'config' })).includes('Made with'));
+  const U = load({ extra: TPL }); const o2 = U.signIn(OWNER);
+  U.call({ token:o2.token, action:'admin.settings', settings:{ passcode:'p1' } });
+  check('with a site passcode: locked', U.call({ action:'config' }).documents[0].locked===true);
+  check('no templates file: nothing added, nothing breaks', load().call({ action:'config' }).documents.length===0);
+}
+
 console.log(bad ? `\n${bad} FAILED` : '\nall passed');
 process.exit(bad ? 1 : 0);
