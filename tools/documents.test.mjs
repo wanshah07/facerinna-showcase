@@ -77,6 +77,7 @@ r = call({ action:'doc.sign', id, passcode:'site123', pdf:Buffer.from('<html>hi<
 check('not a PDF: refused', !r.ok, r);
 r = call({ action:'doc.sign', id, passcode:'site123', pdf:'' });
 check('no PDF: refused', !r.ok, r);
+tabs['Signed documents'].rows[0].length = 11;   /* a tab from before the fallback column */
 const before = SHEETS.unflushedReleases;
 r = call({ action:'doc.sign', id, passcode:'site123', pdf:'data:application/pdf;base64,'+PDF,
   values:{ 'Clinic name':'=HYPERLINK("x")', 'Date':'16 October 2026' }, signer:'=Dr X', device:'dev_abc123' });
@@ -86,6 +87,7 @@ const row = tabs['Signed documents'].rows[1];
 const file = DRIVE.files[row[5]];
 check('the PDF is a Drive file, private', file && file.access==='PRIVATE' && file.mime==='application/pdf', file);
 check('in its own folder', DRIVE.folders.some(f => f.name==='FACERINNA signed documents'));
+check('every column of Signed documents has its heading', tabs['Signed documents'].rows[0].join()==='id,doc_id,doc_title,values,signer,file_id,bytes,created,device,deleted,deleted_by,fallback', tabs['Signed documents'].rows[0]);
 check('a signer name that looks like a formula is kept as text', String(row[4]).startsWith("'="), row[4]);
 check('nothing about the signed copy goes public', !JSON.stringify(call({ action:'config' })).includes(r.id));
 

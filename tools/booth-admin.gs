@@ -1392,7 +1392,9 @@ function docSign_(b) {
     docTab_();
     if (signedRows_().length >= DOC_MAX_SIGNED) return json_({ ok: false, error: 'the signed-copies list is full; ask the FACERINNA team' });
     var id = 'sig-' + Utilities.getUuid().replace(/-/g, '').slice(-12);
-    var name = (String(r.title).replace(/[^\w .-]+/g, '').slice(0, 40) + ' - ' + (signer || 'signed').replace(/[^\w .-]+/g, '').slice(0, 40) + ' - ' + id + '.pdf');
+    /* a dash like the one in 2026–2027 stays a dash, not nothing */
+    var clean = function (t) { return String(t).replace(/[\u2010-\u2015]/g, '-').replace(/[^\w .-]+/g, '').slice(0, 40); };
+    var name = clean(r.title) + ' - ' + clean(signer || 'signed') + ' - ' + id + '.pdf';
     var file, blob = Utilities.newBlob(bytes, 'application/pdf', name);
     /* the document's own folder when it has one; if that fails (unshared,
        deleted) the copy still lands in the script's own folder, not nowhere */
@@ -1404,7 +1406,8 @@ function docSign_(b) {
     }
     /* private by default, and said so: a signed contract is nobody's to open but ours */
     try { file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); } catch (e) {}
-    sheet_(T_SIGNED).appendRow([id, String(r.id), textCell_(String(r.title)), JSON.stringify(values), textCell_(signer),
+    /* a tab from before the fallback column gets its heading */
+    headers_(T_SIGNED, SIGNED_HEADERS).appendRow([id, String(r.id), textCell_(String(r.title)), JSON.stringify(values), textCell_(signer),
                                 file.getId(), bytes.length, now_(), device, '', '', fallback ? 'yes' : '']);
     if (cache) { try { cache.put('docsign.n', String(n + 1), 600); } catch (e) {} }
     return json_({ ok: true, id: id });
