@@ -83,7 +83,7 @@ var FROM_NAME    = 'FACERINNA Booth';
 
 var T_ADMINS = 'Admins', T_SETTINGS = 'Settings', T_SEGMENTS = 'Segments',
     T_SESSIONS = 'Admin sessions', T_SECTIONS = 'Sections', T_GIFTS = 'Gifts',
-    T_STOCK = 'Gift stock', T_MEDIA = 'Media';
+    T_STOCK = 'Gift stock', T_MEDIA = 'Media', T_DOCS = 'Documents', T_SIGNED = 'Signed documents';
 
 /* One row per person who can sign in. role and access came later (30 Sept
    2026) and sit after the first four columns, so a sheet from before them
@@ -118,6 +118,20 @@ var MEDIA_HEADERS    = ['id', 'kind', 'name', 'label', 'event', 'on', 'file_id',
    only calls Drive for the files whose answer actually changed. */
 var MEDIA_SHARED_COL = 14;
 var MEDIA_FOLDER     = 'FACERINNA booth media';
+/* Documents a visitor fills in and signs on the booth page -- a clinic
+   collaboration, say. The body is plain text with a little markup (see
+   docParse_ on the page): {{Label}} is a yellow box the signer fills in. */
+var DOC_HEADERS      = ['id', 'order', 'title', 'description', 'body', 'signer_fields', 'our_name', 'our_title',
+                        'our_email', 'our_signature', 'whatsapp', 'mode', 'passcode', 'updated', 'by'];
+/* One row per signed copy. The PDF itself is a private file in Drive. */
+var SIGNED_HEADERS   = ['id', 'doc_id', 'doc_title', 'values', 'signer', 'file_id', 'bytes', 'created', 'device',
+                        'deleted', 'deleted_by'];
+var SIGNED_FOLDER    = 'FACERINNA signed documents';
+var DOC_MAX_BODY     = 45000;      /* a sheet cell holds 50,000 characters */
+var DOC_MAX_SIG      = 45000;      /* the signature picture, as a data URL */
+var DOC_MAX_PDF      = 4000000;    /* one signed PDF */
+var DOC_SIGN_BURST   = 40;         /* signed copies taken in ten minutes, at most */
+var DOC_MAX_SIGNED   = 2000;       /* signed copies kept in all, before the oldest must be cleared */
 var MEDIA_MAX_BYTES  = 2500000;        /* one picture, after the page has shrunk it */
 var MEDIA_MAX_ITEMS  = 120;
 var STOCK_MAX        = 40;       /* products on the wheel at most */
@@ -207,6 +221,7 @@ var PERMS = [
   ['sections', 'Sections',        'Show, lock or hide each part of the booth page'],
   ['segments', 'Segments',        'Add, edit, order and delete extra segments'],
   ['media',    'QR & posters',    'Upload QR codes and posters, and lock the ones not used at the current event'],
+  ['documents','Documents',       'Add, edit and remove documents to sign, and read the signed copies'],
   ['privacy',  'Privacy notice',  'The details the privacy page shows']
 ];
 var PERM_KEYS = PERMS.map(function (p) { return p[0]; });
@@ -232,6 +247,12 @@ var ACTION_AREA = {
   'admin.media.upload': 'media',
   'admin.media.set': 'media',
   'admin.media.delete': 'media',
+  'admin.doc.save': 'documents',
+  'admin.doc.delete': 'documents',
+  'admin.doc.order': 'documents',
+  'admin.doc.signed': 'documents',
+  'admin.doc.file': 'documents',
+  'admin.doc.signed.delete': 'documents',
   'admin.stock.set': 'stock',
   'admin.stock.remove': 'stock',
   'admin.claims.reset': 'claims'
@@ -323,6 +344,8 @@ function setUp() {
   });
 
   tab_(book, T_MEDIA, MEDIA_HEADERS);
+  tab_(book, T_DOCS, DOC_HEADERS);
+  tab_(book, T_SIGNED, SIGNED_HEADERS);
   headers_(T_MEDIA, MEDIA_HEADERS);
   stockTab_();   /* after the settings rows: its first list is gift_products */
   Logger.log('ok. admin: ' + me + '. mail quota left today: ' + MailApp.getRemainingDailyQuota());
@@ -1093,6 +1116,208 @@ function mediaDelete_(b, by) {
   return json_({ ok: false, error: 'no such item' });
 }
 
+
+/* -------------------------------------------------------------- documents
+
+   A document is a text a visitor reads, fills in and signs on the booth page:
+   a clinic collaboration, a consent. The admin writes it in the Documents tab;
+   the page lays it out, the yellow boxes take the signer's details, a finger
+   signs it, and the page itself makes the PDF. The signed PDF comes back here
+   and is kept as a PRIVATE file in Drive, listed in the admin page.
+
+   Show / locked / hidden as a segment is. A locked document is listed by title
+   only; its text is handed over by doc.get with the passcode (its own, else the
+   site's). Contract terms are often confidential, and the page is public. */
+
+/* A document with no mode set is locked, not shown: a contract is shown to
+   the public only on purpose. */
+function docMode_(v) { return String(v == null ? '' : v).trim() ? sectionMode_(v) : 'locked'; }
+function docTab_() {
+  var book = SpreadsheetApp.openById(SHEET_ID);
+  return { docs: tab_(book, T_DOCS, DOC_HEADERS), signed: tab_(book, T_SIGNED, SIGNED_HEADERS) };
+}
+function docRows_() {
+  try { return rows_(T_DOCS, DOC_HEADERS).filter(function (r) { return String(r.id || '').trim(); })
+    .sort(function (a, b) { return (Number(a.order) || 0) - (Number(b.order) || 0); }); }
+  catch (e) { return []; }
+}
+function docById_(id) {
+  var all = docRows_();
+  for (var i = 0; i < all.length; i++) if (String(all[i].id) === String(id)) return all[i];
+  return null;
+}
+function docFields_(r) {
+  try { var f = JSON.parse(String(r.signer_fields || '[]')); return Array.isArray(f) ? f : []; } catch (e) { return []; }
+}
+function docFull_(r) {
+  return { id: String(r.id), title: String(r.title || ''), description: String(r.description || ''),
+           body: String(r.body || ''), signer_fields: docFields_(r),
+           our_name: String(r.our_name || ''), our_title: String(r.our_title || ''), our_email: String(r.our_email || ''),
+           our_signature: String(r.our_signature || ''), whatsapp: String(r.whatsapp || '') };
+}
+function publicDocs_() {
+  return docRows_().filter(function (r) { return docMode_(r.mode) !== 'hidden' && String(r.title || '').trim(); })
+    .map(function (r) { return { id: String(r.id), title: String(r.title), description: String(r.description || ''),
+                                 locked: docMode_(r.mode) === 'locked' }; });
+}
+function docsAdmin_() {
+  return docRows_().map(function (r) {
+    var o = docFull_(r);
+    o.order = Number(r.order) || 0; o.mode = docMode_(r.mode); o.passcode = String(r.passcode || '');
+    o.updated = iso_(r.updated); o.by = String(r.by || '');
+    return o;
+  });
+}
+/* the passcode a locked document opens with: its own, else the site's */
+function docOpen_(r, got) {
+  var mode = docMode_(r.mode);
+  if (mode === 'hidden') return false;
+  if (mode !== 'locked') return true;
+  var want = String(r.passcode || '').trim() || String(settings_().passcode || '').trim();
+  /* no passcode anywhere: it stays shut -- locked means locked */
+  return !!want && String(got || '').trim() === want;
+}
+/* Body: {action:'doc.get', id, passcode?}  Back: {ok, doc} | {ok:false, error|locked} */
+function docGet_(b) {
+  var r = docById_(b && b.id);
+  if (!r || docMode_(r.mode) === 'hidden') return json_({ ok: false, error: 'no such document' });
+  if (!docOpen_(r, b.passcode)) {
+    if (b.passcode) { var missed = missCount_(1); Utilities.sleep(Math.min(600 * missed, 2000)); }
+    return json_({ ok: false, locked: true, error: b.passcode ? 'wrong passcode' : 'passcode needed' });
+  }
+  if (b.passcode) missCount_(0);
+  return json_({ ok: true, doc: docFull_(r) });
+}
+
+function docSave_(b, by) {
+  var d = (b && b.doc) || {};
+  var title = String(d.title || '').trim().slice(0, 160);
+  if (!title) return json_({ ok: false, error: 'a document needs a title' });
+  var body = String(d.body || '');
+  if (!body.trim()) return json_({ ok: false, error: 'a document needs its text' });
+  if (body.length > DOC_MAX_BODY) return json_({ ok: false, error: 'the text is over ' + DOC_MAX_BODY + ' characters' });
+  var sig = String(d.our_signature || '');
+  if (sig && !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(sig)) return json_({ ok: false, error: 'the signature must be a PNG or JPEG picture' });
+  if (sig.length > DOC_MAX_SIG) return json_({ ok: false, error: 'the signature picture is too large; crop it closer' });
+  var fields = Array.isArray(d.signer_fields) ? d.signer_fields : [];
+  fields = fields.map(function (f) { return { label: String(f && f.label || '').trim().slice(0, 60), field: String(f && f.field || '').trim().slice(0, 60) }; })
+    .filter(function (f) { return f.label; }).slice(0, 12);
+  var wa = String(d.whatsapp || '').replace(/[^\d]/g, '').slice(0, 15);
+  var mode = docMode_(d.mode);
+  var stored = mode === 'locked' ? 'locked' : mode === 'hidden' ? 'no' : 'yes';
+  var tabs = docTab_(), sh = tabs.docs, rows = docRows_();
+  var id = String(d.id || '').trim(), row = null;
+  if (id) rows.forEach(function (r) { if (String(r.id) === id) row = r; });
+  if (id && !row) return json_({ ok: false, error: 'no such document' });
+  var order = row ? (Number(row.order) || 0) : rows.reduce(function (m, r) { return Math.max(m, Number(r.order) || 0); }, 0) + 1;
+  if (!row) do { id = 'doc-' + Utilities.getUuid().replace(/-/g, '').slice(-10); } while (rows.some(function (r) { return String(r.id) === id; }));
+  var vals = [id, order, textCell_(title), textCell_(String(d.description || '').trim().slice(0, 400)), cell_(body),
+              JSON.stringify(fields), textCell_(String(d.our_name || '').trim().slice(0, 80)),
+              textCell_(String(d.our_title || '').trim().slice(0, 80)), textCell_(String(d.our_email || '').trim().slice(0, 120)),
+              sig, wa, stored, String(d.passcode || '').trim().slice(0, 64), now_(), by];
+  if (row) sh.getRange(row._row, 1, 1, vals.length).setValues([vals]);
+  else sh.appendRow(vals);
+  return json_({ ok: true, id: id, documents: docsAdmin_() });
+}
+function docDelete_(b, by) {
+  var id = String((b && b.id) || ''), sh = docTab_().docs, rows = docRows_();
+  for (var i = 0; i < rows.length; i++) if (String(rows[i].id) === id) {
+    sh.getRange(rows[i]._row, 1, 1, DOC_HEADERS.length)
+      .setValues([DOC_HEADERS.map(function (h) { return h === 'updated' ? now_() : h === 'by' ? by + ' (deleted)' : ''; })]);
+    return json_({ ok: true, documents: docsAdmin_() });
+  }
+  return json_({ ok: false, error: 'no such document' });
+}
+function docOrder_(b, by) {
+  var ids = (b && b.ids) || [];
+  if (!Array.isArray(ids)) return json_({ ok: false, error: 'ids must be a list' });
+  var sh = docTab_().docs;
+  docRows_().forEach(function (r) { var at = ids.indexOf(String(r.id)); if (at >= 0) sh.getRange(r._row, 2, 1, 1).setValues([[at + 1]]); });
+  return json_({ ok: true, documents: docsAdmin_() });
+}
+
+function signedRows_() {
+  try { return rows_(T_SIGNED, SIGNED_HEADERS).filter(function (r) { return String(r.id || '').trim() && !r.deleted; }); }
+  catch (e) { return []; }
+}
+function signedList_() {
+  return signedRows_().map(function (r) {
+    var v = {}; try { v = JSON.parse(String(r.values || '{}')); } catch (e) {}
+    return { id: String(r.id), doc_id: String(r.doc_id), doc_title: String(r.doc_title || ''), values: v,
+             signer: String(r.signer || ''), bytes: Number(r.bytes) || 0, created: iso_(r.created) };
+  }).reverse().slice(0, 500);
+}
+function signedFolder_() {
+  var it = DriveApp.getFoldersByName(SIGNED_FOLDER);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(SIGNED_FOLDER);
+}
+/* Body: {action:'doc.sign', id, passcode?, values:{label:value}, signer, device, pdf (base64)}
+   The page made the PDF; it is kept as it arrived, private, and listed for the admin. */
+function docSign_(b) {
+  b = b || {};
+  var r = docById_(b.id);
+  if (!r || docMode_(r.mode) === 'hidden') return json_({ ok: false, error: 'no such document' });
+  if (!docOpen_(r, b.passcode)) return json_({ ok: false, locked: true, error: 'passcode needed' });
+  var data = String(b.pdf || '').replace(/^data:[^,]*,/, '').replace(/\s/g, '');
+  if (!data || !/^[A-Za-z0-9+\/]+=*$/.test(data)) return json_({ ok: false, error: 'the signed PDF did not arrive' });
+  var bytes;
+  try { bytes = Utilities.base64Decode(data); } catch (e) { return json_({ ok: false, error: 'the signed PDF could not be read' }); }
+  if (!bytes.length || bytes.length > DOC_MAX_PDF) return json_({ ok: false, error: 'the signed PDF is too large' });
+  /* a PDF starts %PDF- : anything else is not what this keeps */
+  if (!(bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70)) return json_({ ok: false, error: 'that is not a PDF' });
+  var values = {};
+  if (b.values && typeof b.values === 'object') Object.keys(b.values).slice(0, 30).forEach(function (k) {
+    values[String(k).slice(0, 60)] = String(b.values[k] == null ? '' : b.values[k]).slice(0, 300);
+  });
+  var signer = String(b.signer || '').trim().slice(0, 120);
+  var device = /^[A-Za-z0-9_-]{6,40}$/.test(String(b.device || '')) ? String(b.device) : '';
+
+  /* A shown document can be signed by anyone: a ceiling on how many in ten
+     minutes keeps the Drive folder from being filled by a script. A booth
+     gets a handful an hour. */
+  var cache = configCache_(), n = 0;
+  if (cache) { try { n = parseInt(cache.get('docsign.n'), 10) || 0; } catch (e) {} }
+  if (n >= DOC_SIGN_BURST) return json_({ ok: false, reason: 'busy', error: 'Many documents were just signed. Try again in a few minutes.' });
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return json_({ ok: false, reason: 'busy', error: 'busy, try again' });
+  try {
+    docTab_();
+    if (signedRows_().length >= DOC_MAX_SIGNED) return json_({ ok: false, error: 'the signed-copies list is full; ask the FACERINNA team' });
+    var id = 'sig-' + Utilities.getUuid().replace(/-/g, '').slice(-12);
+    var name = (String(r.title).replace(/[^\w .-]+/g, '').slice(0, 40) + ' - ' + (signer || 'signed').replace(/[^\w .-]+/g, '').slice(0, 40) + ' - ' + id + '.pdf');
+    var file;
+    try { file = signedFolder_().createFile(Utilities.newBlob(bytes, 'application/pdf', name)); }
+    catch (e) { return json_({ ok: false, error: 'Drive refused the file: ' + String(e && e.message || e) }); }
+    /* private by default, and said so: a signed contract is nobody's to open but ours */
+    try { file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); } catch (e) {}
+    sheet_(T_SIGNED).appendRow([id, String(r.id), textCell_(String(r.title)), JSON.stringify(values), textCell_(signer),
+                                file.getId(), bytes.length, now_(), device, '', '']);
+    if (cache) { try { cache.put('docsign.n', String(n + 1), 600); } catch (e) {} }
+    return json_({ ok: true, id: id });
+  } finally { flushSheets_(); lock.releaseLock(); }
+}
+/* Body: {action:'admin.doc.file', token, id}  Back: {ok, name, pdf (base64)} -- for the admin's Download */
+function docFile_(b) {
+  var id = String((b && b.id) || '');
+  var rows = signedRows_();
+  for (var i = 0; i < rows.length; i++) if (String(rows[i].id) === id) {
+    var f;
+    try { f = DriveApp.getFileById(String(rows[i].file_id)); } catch (e) { return json_({ ok: false, error: 'the file is gone from Drive' }); }
+    return json_({ ok: true, name: f.getName(), pdf: Utilities.base64Encode(f.getBlob().getBytes()) });
+  }
+  return json_({ ok: false, error: 'no such signed copy' });
+}
+function signedDelete_(b, by) {
+  var id = String((b && b.id) || ''), rows = signedRows_();
+  for (var i = 0; i < rows.length; i++) if (String(rows[i].id) === id) {
+    try { DriveApp.getFileById(String(rows[i].file_id)).setTrashed(true); } catch (e) {}
+    sheet_(T_SIGNED).getRange(rows[i]._row, 10, 1, 2).setValues([[now_(), by]]);
+    return json_({ ok: true, signed: signedList_() });
+  }
+  return json_({ ok: false, error: 'no such signed copy' });
+}
+
 /* ------------------------------------------------------------- the actions */
 
 /* What each game has to score, worked out here so no page has to parse it.
@@ -1150,6 +1375,7 @@ function config_() {
                  sections: SECTIONS, section_states: publicSections_(),
                  games: GAMES, gift_games: GIFT_GAMES, gift_needs: giftNeeds_(set.gift_points),
                  media: publicMedia_(set.active_event), builtin_off: builtinOff_(set.active_event),
+                 documents: publicDocs_(),
                  at: Date.now() });
   /* a script cache value may not pass 100KB; past that, do without */
   if (cache && text.length < 90000) { try { cache.put(CONFIG_KEY, text, CONFIG_SECS); } catch (e) {} }
@@ -1240,6 +1466,7 @@ function adminGet_(me) {
   if (can_(me, 'segments')) out.segments = segments_();
   if (can_(me, 'sections')) out.section_rows = sectionRows_();
   if (can_(me, 'media')) { out.media = mediaList_(); out.events = mediaEvents_(); }
+  if (can_(me, 'documents')) { out.documents = docsAdmin_(); out.signed = signedList_(); }
   if (can_(me, 'stock')) out.stock = stockPublic_();
   if (can_(me, 'claims')) out.claims = claimsList_();
   if (me.role === 'admin') {
@@ -1821,6 +2048,8 @@ function doPost(e) {
     if (action === 'redeem')  return codeRedeem_(b);
     if (action === 'gift.claim') return giftClaim_(b);
     if (action === 'gift.spin')  return giftSpin_(b);
+    if (action === 'doc.get')    return docGet_(b);
+    if (action === 'doc.sign')   return docSign_(b);
 
     /* the admin ones: every write takes the lock */
     if (action.indexOf('admin.') !== 0) return json_({ ok: false, error: 'unknown action' });
@@ -1830,6 +2059,8 @@ function doPost(e) {
     if (ACTION_AREA[action] && !can_(me, ACTION_AREA[action])) return refuse_(ACTION_AREA[action]);
     if (action === 'admin.get') return adminGet_(me);
     if (action === 'admin.guide') return guide_(email);
+    if (action === 'admin.doc.signed') return json_({ ok: true, signed: signedList_() });
+    if (action === 'admin.doc.file')   return docFile_(b);
 
     var lock = LockService.getScriptLock();
     if (!lock.tryLock(10000)) return json_({ ok: false, error: 'busy, try again' });
@@ -1842,6 +2073,10 @@ function doPost(e) {
         case 'admin.media.upload':    return mediaUpload_(b, email);
         case 'admin.media.set':       return mediaSet_(b, email);
         case 'admin.media.delete':    return mediaDelete_(b, email);
+        case 'admin.doc.save':        return docSave_(b, email);
+        case 'admin.doc.delete':      return docDelete_(b, email);
+        case 'admin.doc.order':       return docOrder_(b, email);
+        case 'admin.doc.signed.delete': return signedDelete_(b, email);
         case 'admin.section.set':     return setSection_(b, email);
         case 'admin.gift.redeem':     return giftRedeem_(b, email);
         case 'admin.team.save':       return teamSave_(b, me);

@@ -60,7 +60,7 @@ export function load(){
   const DRIVE = { files: {}, folders: [], failShare: false, n: 0 };
   const mkFile = (blob) => { const id = 'drv' + String(++DRIVE.n).padStart(6,'0');
     const f = { id, name: blob.name, mime: blob.mime, bytes: blob.bytes.length, access: 'PRIVATE', trashed: false,
-      getId: () => id,
+      getId: () => id, getName: () => blob.name, getBlob: () => ({ getBytes: () => blob.bytes }),
       setSharing: (a, p) => { if(DRIVE.failShare) throw new Error('Sharing outside the domain is not allowed'); f.access = a; },
       setTrashed: t => { f.trashed = t; } };
     DRIVE.files[id] = f; return f; };

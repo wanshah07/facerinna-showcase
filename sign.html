@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0B1620">
+<link rel="icon" href="icon-192.png">
+<title>FACERINNA — Sign a document</title>
+<style>
+  /* A document from the booth admin, to fill in and sign on the phone.
+     The yellow boxes take the signer's details, a finger signs, and the page
+     makes the PDF itself (fx-doc.js). The PDF goes to the admin's Drive, and
+     the share sheet hands it to WhatsApp. A locked document's text is only
+     fetched after the passcode: none of it is in this file. */
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:#0B1620;color:#EAF4FF;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{padding:calc(18px + env(safe-area-inset-top,0)) 16px 40px}
+  .top{max-width:820px;margin:0 auto 14px;text-align:center}
+  .eyebrow{font-size:11px;letter-spacing:.42em;text-transform:uppercase;font-weight:800;color:#54C1F5;margin:0 0 8px}
+  h1{font-size:clamp(20px,4.6vw,28px);margin:0 0 6px;letter-spacing:-.01em}
+  .sub{font-size:14px;line-height:1.55;color:rgba(255,255,255,.75);margin:0 auto;max-width:560px;font-weight:600}
+  .sub a{color:#9fd8ff}
+  .card{background:#fff;color:#0b1620;border-radius:16px;padding:18px 20px;max-width:820px;margin:12px auto;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+  .card h2{margin:0 0 8px;font-size:19px}
+  .card p{margin:0 0 10px;font-size:14px;line-height:1.5;color:#3f5670;font-weight:600}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;appearance:none;border:0;border-radius:12px;min-height:46px;padding:12px 20px;
+    font:inherit;font-size:15px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#6FDCC6,#3FA6EE);color:#0b1620;text-decoration:none;margin:6px 6px 0 0}
+  .btn.ghost{background:rgba(11,22,32,.07);color:#0b1620}
+  .btn.wa{background:#25D366;color:#073b1d}
+  .btn:disabled{opacity:.5;cursor:default}
+  .hidden{display:none!important}
+  .bad{color:#c0392b!important}
+  .ok{color:#11734d!important}
+  input.pass,input.plain{width:100%;font:inherit;font-size:16px;padding:12px 14px;border:1px solid #cfd9e6;border-radius:10px;margin:4px 0 6px}
+
+  /* the paper */
+  .paper{background:#fff;color:#111;max-width:820px;margin:0 auto;border-radius:6px;padding:clamp(18px,5vw,56px) clamp(16px,5.5vw,62px);
+    font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.5;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+  .fx-title{text-align:center;font-size:17px;margin:0 0 18px;letter-spacing:.02em}
+  .fx-head{font-size:15px;margin:10px 0 6px}
+  .fx-p{margin:0 0 6px;text-align:justify;display:flex;gap:0}
+  .fx-p .fx-n{flex:0 0 38px}
+  .fx-p .fx-t{flex:1 1 auto;min-width:0}
+  .fx-l1{padding-left:38px}
+  .fx-gap{margin-top:14px}
+  /* justified text on a phone is rivers of white between three words */
+  @media(max-width:620px){.fx-p{text-align:left}.fx-p .fx-n{flex-basis:34px}.fx-l1{padding-left:34px}}
+  .fx-in{font:inherit;font-size:15px;background:#FFEE33;border:0;border-bottom:2px solid #c9a800;border-radius:3px;padding:1px 5px;margin:0 1px;
+    max-width:100%;color:#111;min-width:6ch}
+  .fx-in:focus{outline:2px solid #3FA6EE;background:#fff59a}
+  .fx-in.miss{background:#ffd1cc;border-bottom-color:#c0392b}
+  .fx-in::placeholder{color:#7a6a00;opacity:.8}
+  .fx-sign{margin-top:26px}
+  .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  @media(max-width:620px){.sgrid{grid-template-columns:1fr}}
+  .scol b.cap{display:block;margin-bottom:8px}
+  .ourSig{height:70px;display:flex;align-items:flex-end}
+  .ourSig img{max-height:66px;max-width:80%}
+  .sline{border-top:1px solid #111;margin:2px 0 6px;width:88%}
+  .sl{margin:2px 0;font-size:13.5px}
+  .sl label{display:block;font-size:12px;color:#556;font-weight:700;margin-top:8px}
+  .sl .fx-in{width:100%;font-size:16px;padding:6px 8px}
+  #padWrap{position:relative;border:1px dashed #9ab;border-radius:8px;background:#fff;touch-action:none}
+  #pad{display:block;width:100%;height:150px;touch-action:none;cursor:crosshair}
+  #padWrap .hint{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;color:#9ab;font-size:13px;pointer-events:none}
+  #padWrap.inked .hint{display:none}
+  #padWrap.miss{border-color:#c0392b;background:#fff4f2}
+  .padbar{display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:12px;color:#667}
+  .linkbtn{appearance:none;border:0;background:none;color:#1b6fb8;font:inherit;font-weight:700;cursor:pointer;padding:6px 0}
+  .actions{max-width:820px;margin:14px auto 0;text-align:center}
+  .err{color:#ffb4a8;font-weight:700;font-size:14px;margin:10px 0 0;min-height:1em}
+  .foot{max-width:820px;margin:18px auto 0;text-align:center;font-size:12px;color:rgba(255,255,255,.55)}
+  .foot a{color:rgba(255,255,255,.75)}
+</style>
+</head>
+<body>
+<div class="top">
+  <p class="eyebrow">FACERINNA · Documents</p>
+  <h1 id="docTitle">Document</h1>
+  <p class="sub" id="lead">Opening…</p>
+</div>
+
+<div class="card hidden" id="gate">
+  <h2>Passcode</h2>
+  <p>This document is locked. Enter the passcode the FACERINNA team gave you.</p>
+  <form id="gateForm" autocomplete="off">
+    <input class="pass" id="gatePass" type="password" inputmode="text" aria-label="Passcode" placeholder="Passcode" required>
+    <button class="btn" id="gateBtn" type="submit">Open</button>
+    <p class="bad" id="gateErr" role="alert"></p>
+  </form>
+</div>
+
+<div class="card hidden" id="oops"><h2>That did not open</h2><p id="oopsText" class="bad"></p><a class="btn ghost" href="index.html">Back to the booth</a></div>
+
+<article class="paper hidden" id="paper" aria-label="The document"></article>
+
+<div class="actions hidden" id="actions">
+  <button class="btn" id="signBtn" type="button">✍ Sign &amp; make the PDF</button>
+  <p class="err" id="err" role="alert"></p>
+</div>
+
+<div class="card hidden" id="done">
+  <h2>Signed ✓</h2>
+  <p id="doneText">Your signed PDF is ready.</p>
+  <p id="saveState" role="status"></p>
+  <div>
+    <button class="btn wa" id="shareBtn" type="button">Send the PDF on WhatsApp</button>
+    <a class="btn ghost hidden" id="waChat" target="_blank" rel="noopener">Open the FACERINNA WhatsApp chat</a>
+    <button class="btn ghost" id="dlBtn" type="button">Download the PDF</button>
+    <button class="btn ghost hidden" id="retryBtn" type="button">Send to FACERINNA again</button>
+    <button class="btn ghost" id="editBtn" type="button">Change something</button>
+  </div>
+  <p id="shareNote" style="font-size:12.5px;margin-top:12px"></p>
+</div>
+
+<p class="foot"><a href="index.html">← The booth page</a> · <a href="privacy.html">Privacy</a></p>
+
+<script src="fx-doc.js"></script>
+<script>
+(function(){
+'use strict';
+var API = (typeof window.__BOOTH_API === 'string') ? window.__BOOTH_API
+  : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
+var $ = function(id){ return document.getElementById(id); };
+var show = function(id, on){ $(id).classList.toggle('hidden', !on); };
+var esc = FxDoc.esc;
+var id = (new URLSearchParams(location.search).get('d') || '').replace(/[^\w-]/g, '').slice(0, 40);
+var PASSKEY = 'fx.doc.pass.' + id;
+var doc = null, model = null, values = {}, pass = '', made = null, savedId = null, today = FxDoc.longDate();
+
+function post(body, ms){
+  var ctl = ('AbortController' in window) ? new AbortController() : null;
+  var t = ctl && setTimeout(function(){ ctl.abort(); }, ms || 15000);
+  return fetch(API, { method:'POST', body:JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
+    .then(function(r){ return r.json(); }).finally(function(){ if(t) clearTimeout(t); });
+}
+function oops(t){ show('gate', false); show('paper', false); show('actions', false); $('lead').textContent = ''; $('oopsText').textContent = t; show('oops', true); }
+
+/* ---- open ---- */
+function open(p){
+  $('lead').textContent = 'Opening…';
+  return post({ action:'doc.get', id:id, passcode:p || '' }, 15000).then(function(j){
+    if(j && j.ok && j.doc){
+      pass = p || '';
+      try{ if(pass) sessionStorage.setItem(PASSKEY, pass); }catch(e){}
+      start(j.doc); return;
+    }
+    if(j && j.locked){
+      try{ sessionStorage.removeItem(PASSKEY); }catch(e){}
+      show('gate', true); $('lead').textContent = '';
+      $('gateErr').textContent = p ? 'That passcode is not right.' : '';
+      $('gatePass').value = ''; $('gatePass').focus();
+      return;
+    }
+    oops((j && j.error) === 'no such document' ? 'This document is not available. Ask the FACERINNA team for the link.' : 'Could not open it: ' + ((j && j.error) || 'no answer'));
+  }).catch(function(){ oops('Could not reach FACERINNA. Check the connection and open the link again.'); });
+}
+$('gateForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  $('gateBtn').disabled = true;
+  open($('gatePass').value.trim()).finally(function(){ $('gateBtn').disabled = false; });
+});
+
+/* ---- draw ---- */
+function start(d){
+  doc = d;
+  document.title = 'FACERINNA — ' + d.title;
+  $('docTitle').textContent = d.title;
+  $('lead').innerHTML = 'Fill in the <b style="background:#FFEE33;color:#111;padding:0 4px;border-radius:3px">yellow boxes</b>, sign at the bottom, then send it.';
+  model = FxDoc.parse(d.body, d.signer_fields);
+  model.fields.forEach(function(f){ if(f.today && !values[f.label]) values[f.label] = today; });
+  /* shown first: the signature pad takes its size from the page */
+  show('gate', false); show('paper', true); show('actions', true);
+  draw();
+}
+function signHtml(b){
+  var ours = '<div class="scol"><b class="cap">'+esc(b.left || 'FACERINNA')+'</b>'+
+    '<div class="ourSig">'+(doc.our_signature ? '<img src="'+esc(doc.our_signature)+'" alt="FACERINNA signature">' : '')+'</div>'+
+    '<div class="sline"></div>'+
+    (doc.our_name ? '<div class="sl">Name: '+esc(doc.our_name)+'</div>' : '')+
+    (doc.our_title ? '<div class="sl">Designation: '+esc(doc.our_title)+'</div>' : '')+
+    (doc.our_email ? '<div class="sl">Email: '+esc(doc.our_email)+'</div>' : '')+'</div>';
+  var theirs = '<div class="scol"><b class="cap">'+esc(b.right || 'Signed by')+'</b>'+
+    '<div id="padWrap"><canvas id="pad" aria-label="Sign here with your finger"></canvas><span class="hint">Sign here with your finger</span></div>'+
+    '<div class="padbar"><span>'+esc(today)+'</span><button class="linkbtn" id="padClear" type="button">Clear the signature</button></div>'+
+    model.signFields.map(function(f){
+      var v = values[f.field] || '';
+      return '<div class="sl"><label>'+esc(f.label)+'</label><input class="fx-in" type="text" data-f="'+esc(f.field)+'" aria-label="'+esc(f.label)+'" value="'+esc(v)+'" maxlength="300" autocomplete="off"></div>';
+    }).join('')+
+    '<div class="sl"><label for="signer">Your name (who is signing)</label><input class="fx-in" id="signer" type="text" maxlength="120" autocomplete="name" value="'+esc(values.__signer || '')+'"></div>'+
+    '</div>';
+  return '<div class="sgrid">'+ours+theirs+'</div>';
+}
+function draw(){
+  $('paper').innerHTML = FxDoc.html(model, { values:values, edit:true, sign:signHtml });
+  [].forEach.call(document.querySelectorAll('#paper .fx-in[data-f]'), function(inp){
+    inp.addEventListener('input', function(){
+      var f = inp.dataset.f; values[f] = inp.value; inp.classList.remove('miss');
+      if(!inp.closest('.sl')) inp.size = Math.max(6, Math.min(36, (inp.value || f).length));
+      /* the same label in two places is one value */
+      [].forEach.call(document.querySelectorAll('#paper .fx-in[data-f]'), function(o){
+        if(o !== inp && o.dataset.f === f){ o.value = inp.value; o.classList.remove('miss'); if(!o.closest('.sl')) o.size = inp.size; }
+      });
+    });
+  });
+  $('signer').addEventListener('input', function(){ values.__signer = this.value; this.classList.remove('miss'); });
+  pad();
+}
+
+/* ---- the signature pad ---- */
+var ink = null;
+function pad(){
+  var c = $('pad'), wrap = $('padWrap'), g, last = null, dpr = Math.min(3, window.devicePixelRatio || 1);
+  ink = { has:false, x0:1e9, y0:1e9, x1:-1, y1:-1, canvas:c };
+  function size(){
+    var r = c.getBoundingClientRect();
+    c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+    g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#0a1f5c'; g.lineWidth = 2.4 * dpr;
+    ink.has = false; ink.x0 = ink.y0 = 1e9; ink.x1 = ink.y1 = -1; wrap.classList.remove('inked');
+  }
+  size();
+  function at(e){ var r = c.getBoundingClientRect(); return { x:(e.clientX - r.left) * dpr, y:(e.clientY - r.top) * dpr }; }
+  function grow(p){ ink.x0 = Math.min(ink.x0, p.x); ink.y0 = Math.min(ink.y0, p.y); ink.x1 = Math.max(ink.x1, p.x); ink.y1 = Math.max(ink.y1, p.y); }
+  c.addEventListener('pointerdown', function(e){
+    e.preventDefault(); try{ c.setPointerCapture(e.pointerId); }catch(x){}
+    /* drawn while hidden, or the phone turned before the first stroke: size it now */
+    if(!ink.has && Math.abs(c.width - Math.round(c.getBoundingClientRect().width * dpr)) > 2) size();
+    last = at(e); grow(last);
+    g.beginPath(); g.arc(last.x, last.y, g.lineWidth / 2, 0, Math.PI * 2); g.fillStyle = g.strokeStyle; g.fill();
+    ink.has = true; wrap.classList.add('inked'); wrap.classList.remove('miss');
+  });
+  c.addEventListener('pointermove', function(e){
+    if(!last) return; e.preventDefault();
+    var p = at(e); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(p.x, p.y); g.stroke(); grow(p); last = p;
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(t){ c.addEventListener(t, function(){ last = null; }); });
+  $('padClear').addEventListener('click', size);
+}
+/* the ink alone, cropped, so it fills the space above the line in the PDF */
+function signatureCanvas(){
+  if(!ink || !ink.has || !ink.canvas.width || !ink.canvas.height) return null;
+  var c = ink.canvas, m = 12, x = Math.max(0, ink.x0 - m), y = Math.max(0, ink.y0 - m);
+  var w = Math.min(c.width, ink.x1 + m) - x, h = Math.min(c.height, ink.y1 + m) - y;
+  var o = document.createElement('canvas'); o.width = Math.max(1, Math.round(w)); o.height = Math.max(1, Math.round(h));
+  var g = o.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, o.width, o.height);
+  g.drawImage(c, x, y, w, h, 0, 0, o.width, o.height);
+  return o;
+}
+
+/* ---- sign ---- */
+function b64(u8){ var s = '', k = 0x8000; for(var i = 0; i < u8.length; i += k) s += String.fromCharCode.apply(null, u8.subarray(i, i + k)); return btoa(s); }
+function fileName(){
+  var who = values[(model.signFields[0] || {}).field] || values.__signer || 'signed';
+  /* plain ASCII: Chrome names a download with a dash like 2026–2027 in it just "download" */
+  return (doc.title + ' - ' + who).normalize('NFKD').replace(/[\u2010-\u2015]/g, '-').replace(/[\u2018\u2019]/g, "'")
+    .replace(/[^\x20-\x7e]/g, '').replace(/[\\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90) + ' - signed.pdf';
+}
+$('signBtn').addEventListener('click', function(){
+  $('err').textContent = '';
+  var miss = [];
+  model.fields.forEach(function(f){
+    if(f.optional || String(values[f.label] || '').trim()) return;
+    miss.push(f.label);
+    [].forEach.call(document.querySelectorAll('#paper .fx-in[data-f]'), function(o){ if(o.dataset.f === f.label) o.classList.add('miss'); });
+  });
+  if(!String(values.__signer || '').trim()){ miss.push('your name'); $('signer').classList.add('miss'); }
+  if(!ink || !ink.has){ miss.push('your signature'); $('padWrap').classList.add('miss'); }
+  if(miss.length){
+    $('err').textContent = 'Still to fill in: ' + miss.join(', ') + '.';
+    var first = document.querySelector('#paper .miss'); if(first) first.scrollIntoView({ block:'center', behavior:'smooth' });
+    return;
+  }
+  var btn = this; btn.disabled = true; btn.textContent = 'Making the PDF…';
+  Promise.resolve().then(function(){
+    return Promise.all([FxDoc.jpegOf(doc.our_signature || null, 600), FxDoc.jpegOf(signatureCanvas(), 600)]);
+  }).then(function(sigs){
+    if(!sigs[1]) throw new Error('the signature did not take; clear it and sign again');
+    var clean = {}; model.fields.forEach(function(f){ clean[f.label] = String(values[f.label] || '').trim(); });
+    var out = FxDoc.pdf(model, {
+      title: doc.title, values: clean, signFields: model.signFields,
+      ours: { name:doc.our_name, title:doc.our_title, email:doc.our_email, sig:sigs[0] },
+      theirs: { sig:sigs[1], name:String(values.__signer).trim(), date:today },
+      footer: doc.title + ' · signed ' + today
+    });
+    made = { bytes:out.bytes, name:fileName(), values:clean, signer:String(values.__signer).trim() };
+    made.blob = new Blob([out.bytes], { type:'application/pdf' });
+    show('paper', false); show('actions', false); show('done', true);
+    $('docTitle').scrollIntoView({ block:'start' });
+    $('lead').textContent = '';
+    $('doneText').textContent = 'Your signed copy of “' + doc.title + '” is ready (' + out.pages + ' page' + (out.pages === 1 ? '' : 's') + ').';
+    setupShare();
+    return save();
+  }).catch(function(e){ $('err').textContent = 'Could not make the PDF: ' + (e && e.message || e); })
+    .finally(function(){ btn.disabled = false; btn.textContent = '✍ Sign & make the PDF'; });
+});
+/* the copy for FACERINNA: kept privately, read in the admin's Documents tab */
+function save(){
+  if(savedId){ return Promise.resolve(); }
+  $('saveState').className = ''; $('saveState').textContent = 'Sending a copy to FACERINNA…'; show('retryBtn', false);
+  return post({ action:'doc.sign', id:id, passcode:pass, values:made.values, signer:made.signer, pdf:b64(made.bytes) }, 45000).then(function(j){
+    if(j && j.ok){ savedId = j.id; $('saveState').className = 'ok'; $('saveState').textContent = '✓ FACERINNA has a copy.'; return; }
+    throw new Error((j && j.error) || 'no answer');
+  }).catch(function(e){
+    $('saveState').className = 'bad';
+    $('saveState').textContent = 'The copy did not reach FACERINNA (' + (e && e.message || e) + '). Send it on WhatsApp below, or try again.';
+    show('retryBtn', true);
+  });
+}
+$('retryBtn').addEventListener('click', function(){ if(made) save(); });
+function download(){
+  var u = URL.createObjectURL(made.blob), a = document.createElement('a');
+  a.href = u; a.download = made.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(u); }, 30000);
+}
+$('dlBtn').addEventListener('click', function(){ if(made) download(); });
+function waText(){
+  return 'Signed: ' + doc.title + (made.signer ? ' — ' + made.signer : '') + ' (' + today + '). The PDF is attached.';
+}
+function setupShare(){
+  var file = null;
+  try{ file = new File([made.blob], made.name, { type:'application/pdf' }); }catch(e){}
+  var canFile = !!(file && navigator.canShare && navigator.canShare({ files:[file] }));
+  made.file = file; made.canFile = canFile;
+  var num = String(doc.whatsapp || '').replace(/\D/g, '');
+  if(num){ $('waChat').href = 'https://wa.me/' + num + '?text=' + encodeURIComponent(waText()); }
+  /* the share sheet cannot pick the chat; this link can, for a message to go with it */
+  show('waChat', !!num && canFile);
+  $('shareBtn').textContent = canFile ? 'Send the PDF on WhatsApp' : 'Download, then send on WhatsApp';
+  $('shareNote').textContent = canFile
+    ? 'Pick WhatsApp in the list that opens' + (num ? ', then the FACERINNA chat (+' + num + ')' : '') + '.'
+    : 'This browser cannot hand a file to WhatsApp directly: the PDF is downloaded' + (num ? ' and the FACERINNA chat opens; attach the PDF there with the 📎 button.' : '; attach it in WhatsApp with the 📎 button.');
+}
+$('shareBtn').addEventListener('click', function(){
+  if(!made) return;
+  if(made.canFile){
+    navigator.share({ files:[made.file], title:doc.title, text:waText() }).catch(function(){});
+    return;
+  }
+  download();
+  var num = String(doc.whatsapp || '').replace(/\D/g, '');
+  if(num) window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(waText()), '_blank', 'noopener');
+});
+$('editBtn').addEventListener('click', function(){
+  /* a change makes a new PDF, and a new copy for FACERINNA */
+  savedId = null; made = null;
+  show('done', false); show('paper', true); show('actions', true);
+  $('lead').textContent = 'Change what you need, sign again, then send.';
+  var sig = ink && ink.has; draw(); if(sig) $('padWrap').classList.add('miss');
+});
+
+if(!API){ oops('This page is not connected yet.'); return; }
+if(!id){ oops('No document was named. Ask the FACERINNA team for the link.'); return; }
+var saved = ''; try{ saved = sessionStorage.getItem(PASSKEY) || ''; }catch(e){}
+open(saved);
+})();
+</script>
+</body>
+</html>
