@@ -122,7 +122,7 @@ var MEDIA_FOLDER     = 'FACERINNA booth media';
    collaboration, say. The body is plain text with a little markup (see
    docParse_ on the page): {{Label}} is a yellow box the signer fills in. */
 var DOC_HEADERS      = ['id', 'order', 'title', 'description', 'body', 'signer_fields', 'our_name', 'our_title',
-                        'our_email', 'our_signature', 'whatsapp', 'mode', 'passcode', 'updated', 'by', 'drive_folder'];
+                        'our_email', 'our_signature', 'whatsapp', 'mode', 'passcode', 'updated', 'by', 'drive_folder', 'button'];
 /* One row per signed copy. The PDF itself is a private file in Drive. */
 var SIGNED_HEADERS   = ['id', 'doc_id', 'doc_title', 'values', 'signer', 'file_id', 'bytes', 'created', 'device',
                         'deleted', 'deleted_by', 'fallback'];
@@ -249,6 +249,7 @@ var ACTION_AREA = {
   'admin.media.delete': 'media',
   'admin.doc.save': 'documents',
   'admin.doc.delete': 'documents',
+  'admin.doc.button': 'documents',
   'admin.doc.order': 'documents',
   'admin.doc.signed': 'documents',
   'admin.doc.file': 'documents',
@@ -1233,8 +1234,11 @@ function templatesAdmin_() {
   });
 }
 
+/* The Sign button on the booth page, on unless switched off. Off takes the
+   button away and nothing else: the link sent to a clinic still opens. */
+function docButton_(r) { return !/^(no|off|hide|hidden|false|0)$/i.test(String(r.button == null ? '' : r.button).trim()); }
 function publicDocs_() {
-  return docRows_().filter(function (r) { return docMode_(r.mode) !== 'hidden' && String(r.title || '').trim(); })
+  return docRows_().filter(function (r) { return docMode_(r.mode) !== 'hidden' && docButton_(r) && String(r.title || '').trim(); })
     .map(function (r) { return { id: String(r.id), title: String(r.title), description: String(r.description || ''),
                                  locked: docMode_(r.mode) === 'locked' }; });
 }
@@ -1244,6 +1248,7 @@ function docsAdmin_() {
     o.order = Number(r.order) || 0; o.mode = docMode_(r.mode); o.passcode = String(r.passcode || '');
     o.updated = iso_(r.updated); o.by = String(r.by || '');
     o.drive_folder = String(r.drive_folder || '');
+    o.button = docButton_(r);
     return o;
   });
 }
@@ -1303,10 +1308,22 @@ function docSave_(b, by) {
   var vals = [id, order, textCell_(title), textCell_(String(d.description || '').trim().slice(0, 400)), cell_(body),
               JSON.stringify(fields), textCell_(String(d.our_name || '').trim().slice(0, 80)),
               textCell_(String(d.our_title || '').trim().slice(0, 80)), textCell_(String(d.our_email || '').trim().slice(0, 120)),
-              sig, wa, stored, String(d.passcode || '').trim().slice(0, 64), now_(), by, folder];
+              sig, wa, stored, String(d.passcode || '').trim().slice(0, 64), now_(), by, folder,
+              d.button === false || /^(no|off)$/i.test(String(d.button)) ? 'no' : 'yes'];
   if (row) sh.getRange(row._row, 1, 1, vals.length).setValues([vals]);
   else sh.appendRow(vals);
   return json_({ ok: true, id: id, documents: docsAdmin_() });
+}
+/* Body: {action:'admin.doc.button', token, id, on}  the Sign button on or off, nothing else */
+function docButtonSet_(b, by) {
+  var id = String((b && b.id) || ''), rows = docRows_();
+  for (var i = 0; i < rows.length; i++) if (String(rows[i].id) === id) {
+    var sh = headers_(T_DOCS, DOC_HEADERS);
+    sh.getRange(rows[i]._row, DOC_HEADERS.indexOf('button') + 1, 1, 1).setValues([[b.on ? 'yes' : 'no']]);
+    sh.getRange(rows[i]._row, DOC_HEADERS.indexOf('updated') + 1, 1, 2).setValues([[now_(), by]]);
+    return json_({ ok: true, documents: docsAdmin_() });
+  }
+  return json_({ ok: false, error: 'no such document' });
 }
 function docDelete_(b, by) {
   var id = String((b && b.id) || ''), sh = docTab_().docs, rows = docRows_();
@@ -2172,6 +2189,7 @@ function doPost(e) {
         case 'admin.media.delete':    return mediaDelete_(b, email);
         case 'admin.doc.save':        return docSave_(b, email);
         case 'admin.doc.delete':      return docDelete_(b, email);
+        case 'admin.doc.button':      return docButtonSet_(b, email);
         case 'admin.doc.order':       return docOrder_(b, email);
         case 'admin.doc.signed.delete': return signedDelete_(b, email);
         case 'admin.section.set':     return setSection_(b, email);
