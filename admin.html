@@ -400,8 +400,9 @@ textarea.docbody{min-height:260px;font-family:ui-monospace,Menlo,Consolas,monosp
             <label for="docOurSig">Signature picture (optional)</label>
             <input type="file" id="docOurSig" accept="image/png,image/jpeg,image/webp">
             <div class="row" id="docSigRow" hidden><img id="docSigImg" class="docsig" alt="FACERINNA signature"><button class="btn danger sm" id="docSigRemove" type="button">Remove</button></div>
-            <label for="docWhatsapp">WhatsApp number the signed PDF goes to</label>
-            <input type="text" id="docWhatsapp" inputmode="tel" maxlength="20" placeholder="e.g. 60123456789">
+            <label for="docWhatsapp">WhatsApp the signed PDF goes to</label>
+            <input type="text" id="docWhatsapp" maxlength="60" placeholder="blank = the booth's Contact WhatsApp">
+            <p class="note">Leave it blank for the same chat as the Contact button on the booth page. Or a number (60123456789) or a wa.me/message link.</p>
             <label for="docMode">On the booth page</label>
             <select id="docMode">
               <option value="locked">Locked &mdash; passcode before the text (recommended)</option>
@@ -934,7 +935,7 @@ function renderDocs(list, signed){
     el.style.gridTemplateColumns='minmax(0,1fr) auto';
     el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(d.title)+'</div><div class="m">'+
       (d.mode==='show'?'<b>Show</b>':d.mode==='locked'?'<i>&#128274; Locked'+(d.passcode?' (own passcode)':'')+'</i>':'<i>Hidden</i>')+
-      ' · '+n+' signed'+(d.whatsapp?' · WhatsApp +'+esc(d.whatsapp):'')+'</div></div>'+
+      ' · '+n+' signed'+' · WhatsApp '+(!d.whatsapp?'Contact chat':/^\d+$/.test(d.whatsapp)?'+'+esc(d.whatsapp):esc(d.whatsapp.replace(/^https:\/\//,'')))+'</div></div>'+
       '<div class="icons">'+
         '<button class="ic" type="button" data-act="link" title="Copy the link to send">🔗</button>'+
         '<button class="ic" type="button" data-act="up" title="Move up" '+(i===0?'disabled':'')+'>↑</button>'+

@@ -1202,7 +1202,10 @@ function docSave_(b, by) {
   var fields = Array.isArray(d.signer_fields) ? d.signer_fields : [];
   fields = fields.map(function (f) { return { label: String(f && f.label || '').trim().slice(0, 60), field: String(f && f.field || '').trim().slice(0, 60) }; })
     .filter(function (f) { return f.label; }).slice(0, 12);
-  var wa = String(d.whatsapp || '').replace(/[^\d]/g, '').slice(0, 15);
+  /* a number, or a wa.me/message link like the booth's Contact button; blank = that Contact link */
+  var wa = String(d.whatsapp || '').trim();
+  wa = /^(https:\/\/)?wa\.me\/message\/[A-Za-z0-9]+$/.test(wa) ? 'https://' + wa.replace(/^https:\/\//, '')
+     : wa.replace(/[^\d]/g, '').slice(0, 15);
   var mode = docMode_(d.mode);
   var stored = mode === 'locked' ? 'locked' : mode === 'hidden' ? 'no' : 'yes';
   var tabs = docTab_(), sh = tabs.docs, rows = docRows_();

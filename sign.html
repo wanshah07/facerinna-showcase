@@ -318,19 +318,28 @@ $('dlBtn').addEventListener('click', function(){ if(made) download(); });
 function waText(){
   return 'Signed: ' + doc.title + (made.signer ? ' — ' + made.signer : '') + ' (' + today + '). The PDF is attached.';
 }
+/* Where the FACERINNA chat is: the document's own number, else the booth's
+   contact WhatsApp -- the same link as the Contact button on the booth page. */
+var CONTACT_WA = 'https://wa.me/message/YKYI736CG4FZH1';
+function chatLink(){
+  var w = String(doc.whatsapp || '').trim();
+  if(/^https:\/\/wa\.me\/message\/[A-Za-z0-9]+$/.test(w)) return w;
+  var num = w.replace(/\D/g, '');
+  /* a message link carries its own greeting; a number takes ours */
+  return num ? 'https://wa.me/' + num + '?text=' + encodeURIComponent(waText()) : CONTACT_WA;
+}
 function setupShare(){
   var file = null;
   try{ file = new File([made.blob], made.name, { type:'application/pdf' }); }catch(e){}
   var canFile = !!(file && navigator.canShare && navigator.canShare({ files:[file] }));
   made.file = file; made.canFile = canFile;
-  var num = String(doc.whatsapp || '').replace(/\D/g, '');
-  if(num){ $('waChat').href = 'https://wa.me/' + num + '?text=' + encodeURIComponent(waText()); }
+  $('waChat').href = chatLink();
   /* the share sheet cannot pick the chat; this link can, for a message to go with it */
-  show('waChat', !!num && canFile);
+  show('waChat', canFile);
   $('shareBtn').textContent = canFile ? 'Send the PDF on WhatsApp' : 'Download, then send on WhatsApp';
   $('shareNote').textContent = canFile
-    ? 'Pick WhatsApp in the list that opens' + (num ? ', then the FACERINNA chat (+' + num + ')' : '') + '.'
-    : 'This browser cannot hand a file to WhatsApp directly: the PDF is downloaded' + (num ? ' and the FACERINNA chat opens; attach the PDF there with the 📎 button.' : '; attach it in WhatsApp with the 📎 button.');
+    ? 'Pick WhatsApp in the list that opens, then the FACERINNA chat. Or open the chat below.'
+    : 'This browser cannot hand a file to WhatsApp directly: the PDF is downloaded and the FACERINNA chat opens; attach the PDF there with the 📎 button.';
 }
 $('shareBtn').addEventListener('click', function(){
   if(!made) return;
@@ -339,8 +348,7 @@ $('shareBtn').addEventListener('click', function(){
     return;
   }
   download();
-  var num = String(doc.whatsapp || '').replace(/\D/g, '');
-  if(num) window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(waText()), '_blank', 'noopener');
+  window.open(chatLink(), '_blank', 'noopener');
 });
 $('editBtn').addEventListener('click', function(){
   /* a change makes a new PDF, and a new copy for FACERINNA */

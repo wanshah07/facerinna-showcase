@@ -188,6 +188,29 @@ console.log('\n── the admin reads the signed copy');
   await c.close();
 }
 
+console.log('\n── no number on the document: the Contact chat');
+{
+  const r=H.call({ token:own.token, action:'admin.doc.save', doc:{ title:'Open form', body:'I, {{Name}}, agree.', mode:'show' } });
+  const c=await b.newContext({viewport:{width:390,height:844}});
+  await c.addInitScript(a=>{ window.__BOOTH_API=a; }, API);
+  const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await c.route(/wa\.me|whatsapp\.com/, rt=>rt.fulfill({ status:200, contentType:'text/html', body:'whatsapp' }));   /* stays here */
+  const popups=[]; c.on('page', pg=>popups.push(pg));
+  await p.goto(BASE+'/sign.html?d='+r.id,{waitUntil:'load'});
+  await until(()=>p.evaluate(()=>!document.getElementById('paper').classList.contains('hidden')));
+  await p.fill('.fx-in[data-f="Name"]','Ali'); await p.fill('#signer','Ali');
+  await p.locator('#pad').scrollIntoViewIfNeeded(); const bx=await p.locator('#pad').boundingBox();
+  await p.mouse.move(bx.x+20,bx.y+60); await p.mouse.down(); await p.mouse.move(bx.x+200,bx.y+90); await p.mouse.up();
+  await p.click('#signBtn');
+  await until(()=>p.evaluate(()=>!document.getElementById('done').classList.contains('hidden')));
+  chk('the chat link is the booth\'s Contact WhatsApp', await p.evaluate(()=>document.getElementById('waChat').getAttribute('href'))==='https://wa.me/message/YKYI736CG4FZH1');
+  await Promise.all([p.waitForEvent('download'), p.click('#shareBtn')]);
+  await until(()=>Promise.resolve(popups.length>0), 4000);
+  chk('no file sharing here: the PDF downloads and the Contact chat opens', popups.length===1 && /wa\.me\/message\/YKYI736CG4FZH1/.test(popups[0].url()), popups.map(x=>x.url()));
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+
 await b.close(); srv.close();
 console.log(bad ? `\n${bad} FAILED` : '\nall passed');
 process.exit(bad ? 1 : 0);
