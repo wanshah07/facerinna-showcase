@@ -313,6 +313,9 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
 
   /* the board still shows itself on an arrival from anywhere else */
   const c2=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  /* no booth script: the live one may have the games section hidden for the
+     day, and then there is rightly no board to open */
+  await c2.addInitScript(()=>{ window.__BOOTH_API=''; });
   const p2=await c2.newPage();
   await p2.goto(BASE+'/index.html#game',{waitUntil:'load'}); await sleep(3500);
   l=await landed(p2);
