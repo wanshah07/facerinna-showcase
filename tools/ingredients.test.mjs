@@ -46,12 +46,16 @@ for(const vp of [{width:1366,height:800},{width:360,height:740}]){
       const before=ing&&ing.compareDocumentPosition(document.querySelector('#cpanel .study'))&Node.DOCUMENT_POSITION_FOLLOWING;
       const out={ok:!!ing&&chips.length>0&&list.textContent===INCI[n].inci&&lbl.textContent.includes(INCI[n].not),
         fits:list.scrollWidth<=panel.clientWidth, before:!!before,
-        chipsIn:chips.every(c=>INCI[n].inci.toUpperCase().includes(c.replace(/^☀️ /,'').replace(/ [\d.]+%.*$/,'').toUpperCase()))};
+        chipsIn:chips.filter(c=>!c.startsWith('☀️')).every(c=>INCI[n].inci.toUpperCase().includes(c.replace(/ [\d.]+%.*$/,'').toUpperCase())),
+        uvOne:chips.filter(c=>c.startsWith('☀️')).length<=1,
+        // levels are round: whole numbers from 10 up, halves from 1 up, one significant figure below
+        round:chips.every(c=>{ const m=c.match(/([\d.]+)%/); if(!m) return true; const v=+m[1];
+          return v>=10?Number.isInteger(v):v>=1?Number.isInteger(v*2):+v.toPrecision(1)===v; })};
       closeClin(); return out; }, n);
-    if(r.ok&&r.chipsIn) shown++; if(r.fits) fits++; if(r.before) order++;
-    if(!(r.ok&&r.chipsIn&&r.fits&&r.before)) console.log('    ', n, JSON.stringify(r));
+    if(r.ok&&r.chipsIn&&r.uvOne&&r.round) shown++; if(r.fits) fits++; if(r.before) order++;
+    if(!(r.ok&&r.chipsIn&&r.uvOne&&r.round&&r.fits&&r.before)) console.log('    ', n, JSON.stringify(r));
   }
-  chk('the sheet shows actives and the full INCI for all 19, every active named in its list'+tag, shown===19, shown);
+  chk('the sheet shows rounded actives (UV filters as one total) and the full INCI for all 19'+tag, shown===19, shown);
   chk('ingredients sit above the clinical studies'+tag, order===19, order);
   chk('the INCI list wraps inside the panel'+tag, fits===19, fits);
   await c.close();
