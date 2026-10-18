@@ -1208,7 +1208,6 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .se-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .se{background:var(--brand-soft);color:var(--brand-deep);border-radius:999px;padding:6px 13px;font-size:.76rem;font-weight:600}
 .ingr{border:1px solid var(--line);border-radius:16px;padding:16px 20px;margin-bottom:18px;background:linear-gradient(180deg,#FDFEFF,var(--surface))}
-.ingr-note{font-size:.7rem;color:var(--muted);margin-top:6px}
 .ingr-lbl{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal-deep);margin-top:12px}
 .ingr-list{font-size:.78rem;line-height:1.55;color:var(--ink-2);margin:4px 0 0;overflow-wrap:anywhere}
 .spf-compare{display:flex;flex-direction:column;gap:8px;margin:12px 0 2px}
@@ -6573,7 +6572,6 @@ function openClin(name){
   const ingHTML=ing?`<div class="ingr">
       <div class="eyebrow" style="margin-bottom:8px">Ingredients</div>
       <div class="se-row" style="margin-top:0">${ing.actives.split('; ').map(a=>`<span class="se">${a.startsWith('UV filters')?'☀️ ':''}${a}</span>`).join('')}</div>
-      <div class="ingr-note">Levels are rounded.</div>
       <div class="ingr-lbl">Full ingredients (INCI) · NPRA ${ing.not}</div>
       <p class="ingr-list">${ing.inci}</p>
     </div>`:'';

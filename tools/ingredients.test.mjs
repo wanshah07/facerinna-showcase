@@ -50,11 +50,10 @@ for(const vp of [{width:1366,height:800},{width:360,height:740}]){
         uvOne:chips.filter(c=>c.startsWith('☀️')).length<=1,
         // levels are round: whole numbers from 10 up, halves from 1 up, one significant figure below
         round:chips.every(c=>{ const m=c.match(/([\d.]+)%/); if(!m) return true; const v=+m[1];
-          return v>=10?Number.isInteger(v):v>=1?Number.isInteger(v*2):+v.toPrecision(1)===v; }),
-        note:/rounded/i.test(document.querySelector('#cpanel .ingr-note')?.textContent||'')};
+          return v>=10?Number.isInteger(v):v>=1?Number.isInteger(v*2):+v.toPrecision(1)===v; })};
       closeClin(); return out; }, n);
-    if(r.ok&&r.chipsIn&&r.uvOne&&r.round&&r.note) shown++; if(r.fits) fits++; if(r.before) order++;
-    if(!(r.ok&&r.chipsIn&&r.uvOne&&r.round&&r.note&&r.fits&&r.before)) console.log('    ', n, JSON.stringify(r));
+    if(r.ok&&r.chipsIn&&r.uvOne&&r.round) shown++; if(r.fits) fits++; if(r.before) order++;
+    if(!(r.ok&&r.chipsIn&&r.uvOne&&r.round&&r.fits&&r.before)) console.log('    ', n, JSON.stringify(r));
   }
   chk('the sheet shows rounded actives (UV filters as one total) and the full INCI for all 19'+tag, shown===19, shown);
   chk('ingredients sit above the clinical studies'+tag, order===19, order);
