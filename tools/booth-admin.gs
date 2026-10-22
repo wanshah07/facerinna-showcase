@@ -615,23 +615,41 @@ function codeRedeem_(b) {
 
   var props = PropertiesService.getScriptProperties();
   var slot  = 'admincode:' + email;
-  var rec   = readCode_(props, slot);
 
-  if (!rec) return json_({ ok: false, reason: 'nocode' });
-  if (Date.now() > rec.exp) { props.deleteProperty(slot); return json_({ ok: false, reason: 'codeexpired' }); }
-  if (rec.tries >= CODE_TRIES) { props.deleteProperty(slot); return json_({ ok: false, reason: 'toomany' }); }
+  /* Locked around the read-check-increment-save: without it, two guesses
+     landing at the same moment both read the same `tries` before either
+     writes theirs back, and the 5-try limit never actually counts past 1
+     per batch of concurrent requests. The deliberate sleep on a wrong guess
+     stays outside the lock so one slow guesser cannot stall every other
+     admin's sign-in attempt. */
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  var rec, bad = false;
+  try {
+    rec = readCode_(props, slot);
+    if (!rec) return json_({ ok: false, reason: 'nocode' });
+    if (Date.now() > rec.exp) { props.deleteProperty(slot); return json_({ ok: false, reason: 'codeexpired' }); }
+    if (rec.tries >= CODE_TRIES) { props.deleteProperty(slot); return json_({ ok: false, reason: 'toomany' }); }
 
-  if (!code || codeHash_(email, code) !== rec.h) {
-    rec.tries++;
-    props.setProperty(slot, JSON.stringify(rec));
+    if (!code || codeHash_(email, code) !== rec.h) {
+      rec.tries++;
+      props.setProperty(slot, JSON.stringify(rec));
+      bad = true;
+    } else {
+      props.deleteProperty(slot);
+    }
+  } finally {
+    flushSheets_();
+    lock.releaseLock();
+  }
+
+  if (bad) {
     /* Each wrong one costs longer than the last, capped low: a long wait holds
        one of the script's execution slots, which is a cheaper thing to attack
        than six digits with five tries and ten minutes on them. */
     Utilities.sleep(Math.min(400 * rec.tries, 2000));
     return json_({ ok: false, reason: 'badcode', left: CODE_TRIES - rec.tries });
   }
-
-  props.deleteProperty(slot);
 
   /* Asked again rather than trusting what was true when the code was minted:
      an address taken off the list in those ten minutes must not still get in
@@ -1685,6 +1703,38 @@ function giftLive_(rows, device) {
   return null;
 }
 
+/* The device id is whatever the visitor's browser sends -- nothing stops a
+   script from minting a fresh random one on every call and walking away with
+   a gift per call, since each new id looks like a never-seen device. There is
+   no visitor IP available to an Apps Script web app to key a per-visitor
+   limit on, so this is a script-wide throttle instead: no more than
+   GIFT_ISSUE_MAX fresh gifts (a device that has never held a live claim
+   before) in any GIFT_ISSUE_WINDOW_MS window, across every device and every
+   game. A real booth, even a busy one, is nowhere near this; a script trying
+   to empty the wheel in a tight loop is throttled to a rate an attacker gains
+   nothing by exceeding. Devices re-asking for a claim they already hold are
+   never counted or blocked here -- this only guards the creation of a NEW
+   row. */
+var GIFT_ISSUE_WINDOW_MS = 10000;
+var GIFT_ISSUE_MAX = 300;
+function giftIssueAllowed_() {
+  /* CacheService increments are not perfectly atomic across concurrent
+     executions, so under real contention the count this throttle sees can be
+     slightly low -- a few extra requests may slip through right at the edge
+     of GIFT_ISSUE_MAX. That is an acceptable trade for not taking the
+     script lock here: this already runs while giftClaim_/giftSpin_ hold
+     their own lock for the stock write, and a second, nested
+     LockService.getScriptLock() acquired from the same execution would wait
+     on a lock this same execution already holds. */
+  var cache = CacheService.getScriptCache();
+  if (!cache) return true; /* fail open: a cache outage must not stop real gifts */
+  var key = 'giftrl:' + Math.floor(Date.now() / GIFT_ISSUE_WINDOW_MS);
+  var n = parseInt(cache.get(key), 10) || 0;
+  if (n >= GIFT_ISSUE_MAX) return false;
+  cache.put(key, String(n + 1), Math.ceil(GIFT_ISSUE_WINDOW_MS / 1000) + 5);
+  return true;
+}
+
 /* ------------------------------------------------------------------- stock */
 
 function stockTab_() {
@@ -1851,6 +1901,9 @@ function giftClaim_(b) {
     if (have) return json_(giftPublic_(have));
     /* nothing left to give: no code, rather than one the counter cannot honour */
     if (!wheel_().length) return json_({ ok: false, reason: 'nostock' });
+    /* only the act of minting a NEW claim is throttled -- a device re-asking
+       for the claim it already holds, above, never reaches this check */
+    if (!giftIssueAllowed_()) return json_({ ok: false, reason: 'busy' });
     var claim = Utilities.getUuid();
     sheet_(T_GIFTS).appendRow([claim, device, game, score, name, now_(), '', '', '']);
     return json_({ ok: true, claim: claim, redeemed: false, product: '' });
@@ -1890,6 +1943,9 @@ function giftSpin_(b) {
                      product: have.redeemed ? String(have.product || '') : '', redeemed: !!have.redeemed });
     }
     if (!wheel.length) return json_({ ok: false, reason: 'nostock' });
+    /* only the act of minting a NEW spin is throttled -- a device re-asking
+       for the claim it already holds, above, never reaches this check */
+    if (!giftIssueAllowed_()) return json_({ ok: false, reason: 'busy' });
     var pick = Math.floor(Math.random() * wheel.length), chosen = wheel[pick];
     var claim = Utilities.getUuid();
     /* product written now, redeemed left empty: the code is the visitor's and the

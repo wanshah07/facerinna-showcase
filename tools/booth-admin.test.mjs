@@ -57,6 +57,13 @@ const PropertiesService = { getScriptProperties: () => ({
   deleteProperty: k => { delete PROPS[k]; } }) };
 const Session = { getEffectiveUser: () => ({ getEmail: () => OWNER }) };
 const Logger = { log(){} };
+/* Apps Script's script cache: shared by every run, values forgotten after
+   their TTL. */
+const CACHE = new Map();
+const CacheService = { getScriptCache: () => ({
+  get: k => { const e = CACHE.get(k); if(!e) return null; if(e.exp <= Date.now()){ CACHE.delete(k); return null; } return e.v; },
+  put: (k,v,secs) => { if(String(v).length > 100*1024) throw new Error('Argument too large: value'); CACHE.set(k,{v:String(v), exp:Date.now()+(secs||600)*1000}); },
+  remove: k => { CACHE.delete(k); } }) };
 /* a clock the tests can move */
 let NOW = Date.parse('2026-09-16T12:00:00Z');
 const RealDate = Date;

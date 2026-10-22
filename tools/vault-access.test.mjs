@@ -165,8 +165,10 @@ const Logger = { log(){} };
 const HtmlService = { createHtmlOutput: h => ({ setTitle: () => h }) };
 
 const m = eval(`(() => { ${src}
-  return { doPost, doGet, setUp, sendApprovals, preview, checkWorkbooks, readVault_,
-           onSheetEdit, installTriggers, removeTriggers, decideFromPage }; })()`);
+  return { doPost, doGet, setUp: setUp_, sendApprovals: sendApprovals_, preview: preview_,
+           checkWorkbooks: checkWorkbooks_, readVault_,
+           onSheetEdit: onSheetEdit_, installTriggers: installTriggers_,
+           removeTriggers: removeTriggers_, decideFromPage }; })()`);
 
 const call = o => JSON.parse(m.doPost({ postData:{ contents: JSON.stringify(o), type:'text/plain' } }));
 const codeOf = () => {
