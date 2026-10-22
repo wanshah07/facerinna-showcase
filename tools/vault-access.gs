@@ -37,7 +37,7 @@
  * SET UP
  *   1. script.google.com -> New project.  Not Extensions -> Apps Script.
  *   2. Paste this whole file. Fill in VAULT_URL below.
- *   3. Run -> setUp once. Grant the permissions, including the one for
+ *   3. Run -> setUp_ once. Grant the permissions, including the one for
  *      sending mail — that is what delivers the approval links.
  *   4. Deploy -> New deployment -> Web app.
  *        Execute as:      Me
@@ -139,7 +139,14 @@ var COL_STATUS = 5, COL_TOKEN = 6, COL_KEY = 10;
 
 /* ------------------------------------------------------------------- setup */
 
-function setUp() {
+/* Trailing underscore: not an Apps Script entry point, and -- the actual
+   reason it matters here -- any top-level function WITHOUT a trailing
+   underscore is reachable from the client over google.script.run once a page
+   from this project is ever served (see doGet below). Only decideFromPage,
+   doGet and doPost are meant to answer to the outside world; everything
+   else run by hand from the editor or by a trigger gets the underscore so a
+   crafted page can never call it. */
+function setUp_() {
   var sh = reqTab_();
   var fresh = sh.getLastRow() === 0;
   if (fresh) sh.appendRow(REQ_HEADERS);
@@ -317,20 +324,20 @@ function findRow_(sh, email) {
  * address, their email, a code. A key in a mail is a key in whichever
  * browser opens the mail, and that was the whole trouble with the old link.
  */
-function sendApprovals() {
+function sendApprovals_() {
   /* Two callers can land at the same moment: the edit trigger and the timer.
      Without the lock both would see the same untold row and both would mail.
      tryLock, not waitLock: if another run holds it, that run is doing this. */
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(3000)) return 'Another run is already sending.';
   try {
-    return sendApprovals_();
+    return sendApprovalsImpl_();
   } finally {
     lock.releaseLock();
   }
 }
 
-function sendApprovals_() {
+function sendApprovalsImpl_() {
   var sh = reqTab_();
   var last = sh.getLastRow();
   if (last < 2) return 'No requests yet.';
@@ -506,23 +513,40 @@ function codeRedeem_(b) {
   var code  = String(b.code || '').replace(/\D/g, '');
   var props = PropertiesService.getScriptProperties();
   var slot  = 'code:' + email;
-  var rec   = readCode_(props, slot);
 
-  if (!rec) return json_({ ok: false, reason: 'nocode' });
-  if (Date.now() > rec.exp) { props.deleteProperty(slot); return json_({ ok: false, reason: 'codeexpired' }); }
-  if (rec.tries >= CODE_TRIES) { props.deleteProperty(slot); return json_({ ok: false, reason: 'toomany' }); }
+  /* Locked around the read-check-increment-save: without it, two guesses
+     landing at the same moment both read the same `tries` before either
+     writes theirs back, and the 5-try limit never actually counts past 1
+     per batch of concurrent requests. The deliberate sleep on a wrong guess
+     stays outside the lock so one slow guesser cannot stall every other
+     visitor's sign-in attempt. */
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  var rec, bad = false;
+  try {
+    rec = readCode_(props, slot);
+    if (!rec) return json_({ ok: false, reason: 'nocode' });
+    if (Date.now() > rec.exp) { props.deleteProperty(slot); return json_({ ok: false, reason: 'codeexpired' }); }
+    if (rec.tries >= CODE_TRIES) { props.deleteProperty(slot); return json_({ ok: false, reason: 'toomany' }); }
 
-  if (!code || codeHash_(email, code) !== rec.h) {
-    rec.tries++;
-    props.setProperty(slot, JSON.stringify(rec));
+    if (!code || codeHash_(email, code) !== rec.h) {
+      rec.tries++;
+      props.setProperty(slot, JSON.stringify(rec));
+      bad = true;
+    } else {
+      props.deleteProperty(slot);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+
+  if (bad) {
     /* Each wrong one costs longer than the last, capped low: a long wait holds
        one of the script's execution slots, which is a cheaper thing to attack
        than six digits with five tries and ten minutes on them. */
     Utilities.sleep(Math.min(400 * rec.tries, 2000));
     return json_({ ok: false, reason: 'badcode', left: CODE_TRIES - rec.tries });
   }
-
-  props.deleteProperty(slot);
 
   /* Read the row again rather than trusting the state it had when the code was
      asked for: a row revoked in those ten minutes must not still let someone
@@ -794,7 +818,7 @@ function decideFromPage(key, decision) {
   }
   /* Not left to the five-minute timer: you pressed a button and are watching
      the page, so the mail should be gone before you look away. */
-  sendApprovals();
+  sendApprovals_();
   return 'Approved. ' + found.email + ' has been emailed how to sign in.';
 }
 
@@ -839,7 +863,7 @@ function page_(inner) {
 /* ------------------------------------------------------------ maintenance */
 
 /* What the request list looks like, printed in the editor. */
-function preview() {
+function preview_() {
   var sh = reqTab_(), last = sh.getLastRow();
   if (last < 2) return 'No requests yet.';
   var v = sh.getRange(2, 1, last - 1, REQ_HEADERS.length).getValues();
@@ -854,7 +878,7 @@ function preview() {
 
 /* Reads the workbooks and reports what came back, without needing a token.
    Run this after setUp: if it cannot see the reports, nothing else will. */
-function checkWorkbooks() {
+function checkWorkbooks_() {
   var msg;
   try {
     var d = readVault_();
@@ -892,20 +916,20 @@ function checkWorkbooks() {
  * authorisation and cannot send mail at all, which would look like the
  * feature silently not working.
  */
-function installTriggers() {
-  removeTriggers();
-  ScriptApp.newTrigger('onSheetEdit').forSpreadsheet(SHEET_ID).onEdit().create();
-  ScriptApp.newTrigger('sendApprovals').timeBased().everyMinutes(5).create();
+function installTriggers_() {
+  removeTriggers_();
+  ScriptApp.newTrigger('onSheetEdit_').forSpreadsheet(SHEET_ID).onEdit().create();
+  ScriptApp.newTrigger('sendApprovals_').timeBased().everyMinutes(5).create();
   return 'Installed. Set a status cell to "approved" and the mail goes out by itself.';
 }
 
-/* Re-running installTriggers must not leave two of each: triggers stack
+/* Re-running installTriggers_ must not leave two of each: triggers stack
    silently, and four copies means four runs racing for the same row. */
-function removeTriggers() {
+function removeTriggers_() {
   var all = ScriptApp.getProjectTriggers(), n = 0;
   for (var i = 0; i < all.length; i++) {
     var fn = all[i].getHandlerFunction();
-    if (fn === 'onSheetEdit' || fn === 'sendApprovals') {
+    if (fn === 'onSheetEdit_' || fn === 'sendApprovals_') {
       ScriptApp.deleteTrigger(all[i]);
       n++;
     }
@@ -916,15 +940,15 @@ function removeTriggers() {
 /* Fires on every edit anywhere in the workbook, the Scores tab included, so
    it has to be narrow: the request tab, the status column, and a value that
    actually says approved. Anything else returns without touching a thing. */
-function onSheetEdit(e) {
+function onSheetEdit_(e) {
   try {
     if (!e || !e.range) return;
     if (e.range.getSheet().getName() !== REQ_TAB) return;
     if (e.range.getColumn() !== 5) return;                   /* status */
     if (e.range.getRow() < 2) return;                        /* the header */
     if (String(e.value || '').trim().toLowerCase() !== 'approved') return;
-    sendApprovals();
+    sendApprovals_();
   } catch (err) {
-    Logger.log('onSheetEdit: ' + (err && err.message || err));
+    Logger.log('onSheetEdit_: ' + (err && err.message || err));
   }
 }

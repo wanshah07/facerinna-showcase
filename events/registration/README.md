@@ -114,8 +114,9 @@ consent line renders without a link if it is left blank, which is worse.
 - Open the events page, tap **Register here**, and complete the three steps
   with your own details. A row should appear in the sheet, a code on screen,
   and an email within a minute.
-- Submit the same email for the same event again. You should get the *same*
-  code back, not a second row.
+- Submit the same email for the same event again. You should get a message
+  saying your ticket has been emailed to you again, not a second row and not
+  the code itself on screen -- see the note on that below.
 
 ## 5. Check-in at the door
 
@@ -191,9 +192,11 @@ should get.
 It only ever appends a row and sends one email; it returns nothing about
 anybody else, and it cannot be used to read the sheet. Every field is
 re-validated server-side, because the checks in the page are a courtesy to the
-visitor, not a control. A repeat of the same email for the same event returns
-the existing code instead of creating a second row, so a refresh or a double
-tap cannot produce two tickets.
+visitor, not a control. A repeat of the same email for the same event resends
+the existing ticket by mail instead of creating a second row -- it never
+echoes the ticket code back in the HTTP response for a repeat submission,
+only on a brand-new one, so posting a stranger's email here cannot be used to
+read their ticket code and check in as them at the door.
 
 If it is ever abused, redeploy with a new URL and update `REGISTER_ENDPOINT`;
 the old URL dies with the old deployment.

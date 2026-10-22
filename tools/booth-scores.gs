@@ -312,7 +312,12 @@ function doPost(e) {
 
     /* Two people finishing at the same instant both read the same last row and
        one write lands on top of the other. The lock is the whole reason the
-       board can be trusted at a busy booth. */
+       board can be trusted at a busy booth. It stays held through the cached
+       board's read-merge-write below too: releasing it right after the sheet
+       append let two concurrent posts both read the same cached board, merge
+       their own run into it separately, and then each overwrite the cache with
+       a copy missing the other's update -- and merge_ itself can double-count
+       a player who had fallen out of the cached top 50 when that happens. */
     var now = new Date();
     var lock = LockService.getScriptLock();
     lock.waitLock(20000);
@@ -328,19 +333,19 @@ function doPost(e) {
         String((e && e.postData && e.postData.type) || '') +
           ' ' + String(body.ua || '').slice(0, 120)
       ]);
-    } finally {
       /* written before the lock is let go, so the next run reads it */
       try { SpreadsheetApp.flush(); } catch (e) {}
+
+      /* Folded into the cached board rather than re-derived from the sheet. The
+         poster is waiting on this reply with a result screen already up, and
+         walking every row written today to tell them they came third is the one
+         piece of work here that gets slower the better the day goes. */
+      var all = boards_();
+      all[id] = merge_(all[id] || { rows: [], n: 0 }, name, score, now.getTime());
+      putBoards_(all);
+    } finally {
       lock.releaseLock();
     }
-
-    /* Folded into the cached board rather than re-derived from the sheet. The
-       poster is waiting on this reply with a result screen already up, and
-       walking every row written today to tell them they came third is the one
-       piece of work here that gets slower the better the day goes. */
-    var all = boards_();
-    all[id] = merge_(all[id] || { rows: [], n: 0 }, name, score, now.getTime());
-    putBoards_(all);
 
     var rows = all[id].rows, rank = null, best = null;
     for (var i = 0; i < rows.length; i++) {

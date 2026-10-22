@@ -380,19 +380,24 @@ function doPost(e) {
                   sheet.getRange(i + 2, sentCol2 + 1).setValue(new Date());
                 }
                 logRow('DUPLICATE-RESENT', email, event, 'sent ' + existing + ' again');
-                return reply({ ok: true, code: existing, duplicate: true, resent: true });
+                /* The code itself never goes in the HTTP response: anybody who
+                   knows -- or guesses -- an attendee's email could post it here
+                   and read back their ticket code, then check in as them at the
+                   door. It only ever goes to the address on the row, by mail,
+                   which only the real registrant's inbox can read. */
+                return reply({ ok: true, duplicate: true, resent: true });
               } catch (mailErr) {
                 console.error(mailErr);
                 logRow('DUPLICATE', email, event,
                        'resend failed: ' + mailErr + ' (code ' + existing + ')');
-                return reply({ ok: true, code: existing, duplicate: true, resent: false });
+                return reply({ ok: true, duplicate: true, resent: false });
               }
             }
 
             logRow('DUPLICATE', email, event,
                    'already had ' + existing + ', resent ' + Math.round(mins) +
                    ' min ago so not sending again');
-            return reply({ ok: true, code: existing, duplicate: true, resent: false });
+            return reply({ ok: true, duplicate: true, resent: false });
           }
         }
       }
