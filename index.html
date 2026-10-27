@@ -2375,9 +2375,10 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
   <div class="hero-stage">
     <div class="slideshow" id="heroShow" role="region" aria-roledescription="carousel"
          aria-label="FACERINNA key visuals">
-      <!-- Slide 01 is the existing key visual, untouched: same image, same
-           contain-and-mask treatment. Slides 02–05 are built at runtime from
-           the four hero products already on this page. -->
+      <!-- Slide 01 is the key visual (the full-range family photo), shown
+           whole with the contain-and-mask treatment. Slides 02–07 (clinic
+           partnership, then one banner per range) are built at runtime from
+           SLIDE_OVERRIDES in the script. -->
       <div class="slide active">
         <div class="hero-frame">
           <img class="hero-kv-img" src="hero-banner.jpg" alt="FACERINNA Dermatologist Care — tested by dermatologist, approved with science, with the full product range">
@@ -4121,10 +4122,10 @@ const HEROES = [
    Nothing here invents content. Slide 01 is the key visual that was already
    in the hero, left exactly as it was — same file, same contain-and-mask
    treatment, and no overlay type, because its headline is printed inside the
-   artwork and a second copy on top would only fight it. Slides 02–05 are the
-   four hero products already on the page: their own renders, their own names
-   split across the component's two lines, and their own category line
-   underneath.
+   artwork and a second copy on top would only fight it. Slides 02–07 are
+   finished banners listed in SLIDE_OVERRIDES; an entry without a picture
+   falls back to the hero product in the same place, its name split across
+   the component's two lines with its category line underneath.
 
    Added for the booth: the deck advances on its own every 7 seconds, because
    nobody walks up to an unattended TV to press an arrow. Any interaction
@@ -4132,8 +4133,8 @@ const HEROES = [
    presentation mode already owns them page-wide.
    ============================================================ */
 (function(){
-  /* ══ REPLACE THE SLIDE 02–05 PICTURES HERE ═══════════════════════════
-     Four slots, one per slide, in order. Fill in only what you want to
+  /* ══ REPLACE THE SLIDE 02–07 PICTURES HERE ═══════════════════════════
+     One slot per slide, in order. Fill in only what you want to
      change and leave the rest as '' — an empty field keeps what is there
      now (the hero product's own render, name and category line).
 
@@ -4151,10 +4152,12 @@ const HEROES = [
      replace hero-banner.jpg or edit its <img src>.
      ═══════════════════════════════════════════════════════════════════ */
   const SLIDE_OVERRIDES = [
-    {img:'docs/slide-2.webp', bare:true},   // slide 02 — the 360 Skin Hub brochure
-    {img:'docs/slide-3.webp', bare:true},   // slide 03 — Ceramide B5
-    {img:'docs/slide-4.webp', bare:true},   // slide 04 — Salicylic Acid
-    {img:'docs/slide-5.webp', bare:true}    // slide 05 — Niacinamide
+    {img:'docs/slide-2.webp', bare:true, alt:'360 Skin Hub clinic partnership'},      // slide 02
+    {img:'docs/slide-3.webp', bare:true, alt:'Ceramide B5 Balancing Line'},           // slide 03
+    {img:'docs/slide-4.webp', bare:true, alt:'Salicylic Acid Acne Line'},             // slide 04
+    {img:'docs/slide-5.webp', bare:true, alt:'Niacinamide Bright Dark Spot Line'},    // slide 05
+    {img:'docs/slide-6.webp', bare:true, alt:'5% B5 Barrier Cream Line'},             // slide 06
+    {img:'docs/slide-7.webp', bare:true, alt:'SPF50 Serum Sunscreen Line'}            // slide 07
   ];
 
   const show=document.getElementById('heroShow');
@@ -4180,8 +4183,10 @@ const HEROES = [
   const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-  HEROES.forEach(function(h,i){
-    const o=SLIDE_OVERRIDES[i]||{};
+  /* one slide per entry above; an entry with no picture of its own falls
+     back to the hero product in the same place */
+  SLIDE_OVERRIDES.forEach(function(o,i){
+    const h=HEROES[i]||{name:o.alt||'',tag:'',img:''};
     const auto=twoLines(h.name);
     const l1=o.line1||auto[0], l2=o.line2||auto[1], sub=o.sub||h.tag;
     const img=docAsset(o.img||h.img);
@@ -4198,7 +4203,7 @@ const HEROES = [
         ? '<div class="slide-fill" style="background-image:url('+JSON.stringify(img)+')"></div>'+
           '<span class="slide-scrim"></span>'
         : bare
-          ? '<div class="hero-frame"><img class="hero-kv-img" src="'+esc(img)+'" alt="'+esc(h.name)+'" loading="lazy"></div>'
+          ? '<div class="hero-frame"><img class="hero-kv-img" src="'+esc(img)+'" alt="'+esc(o.alt||h.name)+'" loading="lazy"></div>'
           : '<div class="slide-kv"><img src="'+esc(img)+'" alt="'+esc(l1+' '+l2)+'" loading="lazy"></div>')+
       (bare ? '' :
       '<div class="slide-text"><span>'+esc(l1)+'</span><span>'+esc(l2)+'</span>'+
