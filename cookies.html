@@ -40,12 +40,14 @@
 <main>
   <h1>Cookie settings</h1>
   <p class="sub">What this site keeps in your browser, and the button that clears it.
-     Last reviewed 20 September 2026.</p>
+     Last reviewed 29 October 2026.</p>
 
   <div class="card">
-    <p style="margin:0"><b>This site sets no cookies.</b> There is no advertising, no analytics,
-    no tracking pixel and nothing from a third party following you between sites. That is why
-    there is no banner asking you to accept anything — there is nothing to accept.</p>
+    <p style="margin:0"><b>This site sets no cookies.</b> There is no advertising, no tracking
+    pixel and nothing from a third party following you between sites. The public pages count
+    page views with Cloudflare Web Analytics, which works without a cookie and without storing
+    anything in your browser. That is why there is no banner asking you to accept anything
+    — there is nothing to accept.</p>
   </div>
 
   <h2>What it does keep, on this device only</h2>
@@ -108,5 +110,9 @@
   });
 })();
 </script>
+<!-- Cloudflare Web Analytics: page views only, no cookies, no browser storage.
+     A module script runs after the page is parsed, so an offline booth is unaffected. -->
+<script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9218ecd43aea410c856a9270cb580f34"}'></script>
+<!-- End Cloudflare Web Analytics -->
 </body>
 </html>
