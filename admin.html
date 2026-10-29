@@ -1642,7 +1642,11 @@ start();
 var VIS = { range:'7d', from:null, to:null, country:'', state:'', path:'', live:true, data:null, timer:null, open:false, maps:{}, busy:false, configured:false };
 var MYT = 8*3600*1000;
 function visConfigured(info){ VIS.configured = !!(info && info.configured); show('visSetup', !VIS.configured); show('visBody', VIS.configured);
-  if(!VIS.configured) $('visSetupWhy').textContent = 'The script answered that the two properties are missing.'; }
+  if(!VIS.configured) $('visSetupWhy').textContent = 'The script answered that the two properties are missing.';
+  /* The tab can be opened while admin.get is still on its way (a slow script), and visOpen
+     then had nothing to go on and loaded nothing. Whoever is already looking at the tab
+     gets their numbers the moment the script says the counter is set up. */
+  else if(VIS.open && !VIS.data){ visLoad(); visArm(); } }
 function visPeriod(){
   var now = Date.now(), dayStart = function(ms){ return Math.floor((ms+MYT)/86400000)*86400000 - MYT; };
   var r = VIS.range, from, to = now;
