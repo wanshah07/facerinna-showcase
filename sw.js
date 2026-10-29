@@ -10,7 +10,7 @@
  * day to day you should not need to, because pages are fetched from the
  * network first and everything else is revalidated in the background.
  */
-const VERSION = 'facerinna-2026-10-27b';
+const VERSION = 'facerinna-2026-10-29a';
 
 /* How long a page load waits on the network before falling back to the
    stored copy. This is time to first byte, not the whole download -- fetch()
@@ -52,7 +52,28 @@ const CORE = [
   './events/index.html',
   './facerinna-test-reports-claims/index.html',
   './facerinna-efficacy-benchmark/index.html',
-  './hero-banner.jpg',
+  './hero-banner.webp',
+  './hero-banner-1100.webp',
+  './docs/hm-crowd.webp',
+  './products/10-niacinamide-3-txa-bright-dark-spot-serum.webp',
+  './products/2-niacinamide-power-bright-cleanser.webp',
+  './products/2-salicylic-acid-acne-serum.webp',
+  './products/5-b5-centella-calming-gel-cream.webp',
+  './products/5-b5-intensive-barrier-cream.webp',
+  './products/5-b5-niacinamide-bright-barrier-cream.webp',
+  './products/5-niacinamide-1-txa-bright-dark-spot-moisturizer.webp',
+  './products/acne-defense-matte-serum-sunscreen-spf50.webp',
+  './products/amino-acid-ph-balanced-cream-cleanser.webp',
+  './products/ceramide-b5-balancing-moisturizer.webp',
+  './products/ceramide-b5-balancing-toner.webp',
+  './products/low-ph-b5-gel-cleanser.webp',
+  './products/niacinamide-brightening-serum-sunscreen-spf50-pa.webp',
+  './products/physical-defense-barrier-serum-sunscreen-spf50.webp',
+  './products/retinol-anti-aging-moisturizer.webp',
+  './products/retinol-anti-aging-serum.webp',
+  './products/salicylic-acid-acne-gel-cleanser.webp',
+  './products/salicylic-acid-acne-moisturizer.webp',
+  './products/salicylic-acid-acne-toner.webp',
   './docs/talk-poster-1.webp',
   './manifest.webmanifest',
   './icon-192.png',
