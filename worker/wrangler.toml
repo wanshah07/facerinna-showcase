@@ -12,7 +12,7 @@ ALLOWED_ORIGINS = "https://my.facerinna.com"
 binding = "DB"
 database_name = "facerinna-visitors"
 # Filled in by `npx wrangler d1 create facerinna-visitors` on first deploy.
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "e1e3c0c9-da26-4a0c-82f5-ec5adef07f39"
 
 # Secrets, set with `npx wrangler secret put <NAME>`:
 #   STATS_KEY  the bearer key the booth Apps Script sends to read /stats (also goes into
