@@ -2337,6 +2337,20 @@ function doGet(e) {
   return json_({ ok: true, service: 'facerinna booth admin', at: Date.now() });
 }
 
+/* Run this once from the editor after adding VISITORS_URL and VISITORS_KEY. It makes an
+   outbound request, which is what makes Google ask the owner for the "connect to an
+   external service" permission (a function that never calls UrlFetchApp cannot trigger
+   it), and it logs whether the visitor counter answers and accepts the key. */
+function checkVisitors() {
+  var cfg = visitorsCfg_();
+  if (!cfg) { Logger.log('VISITORS_URL and VISITORS_KEY are not both set in Script Properties.'); return; }
+  var live = UrlFetchApp.fetch(cfg.url + '/', { muteHttpExceptions: true });
+  Logger.log('counter alive: ' + live.getResponseCode() + ' ' + live.getContentText().slice(0, 120));
+  var stats = UrlFetchApp.fetch(cfg.url + '/stats', { muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + cfg.key } });
+  var body = {}; try { body = JSON.parse(stats.getContentText()); } catch (e) {}
+  Logger.log('stats with the key: ' + stats.getResponseCode() + (body && body.totals ? ' views=' + body.totals.views + ' visitors=' + body.totals.visitors : ' ' + stats.getContentText().slice(0, 120)));
+}
+
 /* Run this from the editor to see what the page will get. */
 function preview() {
   Logger.log(JSON.stringify({ settings: publicSettings_(), segments: publicSegments_() }, null, 2));
