@@ -1,0 +1,20 @@
+# Visitor collector for my.facerinna.com. Deploy: `npx wrangler deploy` from this folder
+# (needs `wrangler login` or CLOUDFLARE_API_TOKEN). One D1 database holds the hits.
+name = "facerinna-visitors"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Pages allowed to send hits. Comma separated; the dev server adds localhost on its own.
+ALLOWED_ORIGINS = "https://my.facerinna.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "facerinna-visitors"
+# Filled in by `npx wrangler d1 create facerinna-visitors` on first deploy.
+database_id = "REPLACE_WITH_D1_ID"
+
+# Secrets, set with `npx wrangler secret put <NAME>`:
+#   STATS_KEY  the bearer key the booth Apps Script sends to read /stats (also goes into
+#              Script Properties as VISITORS_KEY)
+#   SALT       random string mixed into the daily visitor hash so it cannot be reversed

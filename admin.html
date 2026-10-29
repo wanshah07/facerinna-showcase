@@ -133,6 +133,48 @@ textarea.docbody{min-height:260px;font-family:ui-monospace,Menlo,Consolas,monosp
 .saverow{grid-column:1/-1;position:sticky;bottom:0;z-index:4;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
   background:rgba(245,247,251,.94);backdrop-filter:blur(6px);padding:12px 0;border-top:1px solid var(--line)}
 .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+/* visitors */
+.vis{display:grid;gap:18px}
+.vistools{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.vistools label{margin:0 0 4px}
+.vistools select,.vistools input{width:auto;min-width:120px}
+.vistools .grow{flex:1 1 auto}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.tile .k{font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+.tile .v{font-size:28px;font-weight:900;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
+.tile .m{font-size:12.5px;color:var(--ink2)}
+.tile.live .v{color:var(--ok)}
+.livedot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px;box-shadow:0 0 0 0 rgba(31,157,97,.5);animation:pulse 1.6s infinite}
+@keyframes pulse{to{box-shadow:0 0 0 8px rgba(31,157,97,0)}}
+.vis2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start}
+.vischart{width:100%;height:220px;display:block}
+.vismap{width:100%;height:auto;display:block;background:var(--soft);border-radius:10px}
+.vismap path{stroke:#fff;stroke-width:.6;cursor:pointer;transition:opacity .15s}
+.vismap path:hover{opacity:.75}
+.vismap path.sel{stroke:var(--ink);stroke-width:1.4}
+.legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2);margin-top:8px}
+.legend i{display:inline-block;width:70px;height:10px;border-radius:5px;background:linear-gradient(90deg,#dbe9f8,#0A5480)}
+table.vt{width:100%;border-collapse:collapse;font-size:13.5px}
+table.vt th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);padding:6px 8px;border-bottom:1px solid var(--line)}
+table.vt td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.vt td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.vt tr.click{cursor:pointer} table.vt tr.click:hover td{background:var(--soft)}
+table.vt .bar{display:block;height:4px;border-radius:2px;background:var(--brand2);margin-top:4px}
+.viscap{font-size:12px;color:var(--ink2);margin-top:6px}
+.printhead{display:none}
+@media print{
+  body{background:#fff;font-size:12px}
+  .top,.tabs,.vistools,#noAccess,#viewSettings,#viewSections,#viewSegments,#viewMedia,#viewDocs,#viewGifts,#viewAdmins,.toast,h1{display:none!important}
+  #viewVisitors{display:grid!important}
+  .printhead{display:block;margin:0 0 10px}
+  .printhead h2{margin:0;font-size:18px} .printhead p{margin:2px 0;color:#444}
+  .card,.tile{box-shadow:none;break-inside:avoid;border-color:#ccc}
+  .vis2{grid-template-columns:1fr 1fr}
+  .vismap path{cursor:default}
+  table.vt{font-size:11px}
+  #visRecent{display:none}
+}
 .chip{appearance:none;font:inherit;font-size:12.5px;font-weight:700;border-radius:999px;padding:5px 11px;cursor:pointer;
   border:1px solid var(--line);background:#fff;color:var(--ink2);min-height:30px}
 .chip[aria-pressed="true"]{background:var(--soft);border-color:#bcd6f5;color:var(--brand)}
@@ -205,6 +247,7 @@ textarea.docbody{min-height:260px;font-family:ui-monospace,Menlo,Consolas,monosp
       <button class="tab" id="tabMedia" role="tab" aria-selected="false" data-view="media" type="button">🖼 QR &amp; posters</button>
       <button class="tab" id="tabDocs" role="tab" aria-selected="false" data-view="docs" type="button">📝 Documents</button>
       <button class="tab" id="tabGifts" role="tab" aria-selected="false" data-view="gifts" type="button">🎁 Gifts</button>
+      <button class="tab" id="tabVisitors" role="tab" aria-selected="false" data-view="visitors" type="button">📊 Visitors</button>
       <button class="tab" id="tabAdmins" role="tab" aria-selected="false" data-view="admins" type="button">👤 People</button>
     </div>
 
@@ -473,6 +516,59 @@ textarea.docbody{min-height:260px;font-family:ui-monospace,Menlo,Consolas,monosp
       </div>
     </div>
 
+    <!-- visitors: who comes to the website, from the collector in worker/ -->
+    <div id="viewVisitors" class="vis" hidden>
+      <div class="printhead" id="visPrintHead"></div>
+      <div class="card" id="visSetup" hidden>
+        <h2>The visitor counter is not connected yet</h2>
+        <p class="note">Counting happens in a small Cloudflare Worker (the <code>worker/</code> folder of the site). The booth script reads it on your behalf, so two values have to be in the script's <b>Project Settings → Script Properties</b>: <code>VISITORS_URL</code> (the Worker's address) and <code>VISITORS_KEY</code> (the same string as the Worker's <code>STATS_KEY</code> secret). Add them and reload this page.</p>
+        <p class="note" id="visSetupWhy"></p>
+      </div>
+      <div id="visBody" hidden>
+        <div class="card">
+          <div class="vistools">
+            <div><label for="visRange">Period</label>
+              <select id="visRange">
+                <option value="today">Today</option><option value="yesterday">Yesterday</option>
+                <option value="7d" selected>Last 7 days</option><option value="30d">Last 30 days</option>
+                <option value="90d">Last 90 days</option><option value="all">All time</option><option value="custom">Custom…</option>
+              </select></div>
+            <div id="visCustom" hidden><label for="visFrom">From</label><input type="date" id="visFrom"></div>
+            <div id="visCustom2" hidden><label for="visTo">To</label><input type="date" id="visTo"></div>
+            <div><label for="visCountry">Country</label><select id="visCountry"><option value="">All countries</option><option value="MY">Malaysia</option></select></div>
+            <div><label for="visState">State</label><select id="visState"><option value="">All states</option></select></div>
+            <div class="grow"><label for="visPath">Page</label><select id="visPath"><option value="">All pages</option></select></div>
+            <div><label>&nbsp;</label><button class="btn ghost" type="button" id="visClear">Clear filters</button></div>
+          </div>
+          <div class="row" style="margin-top:12px;justify-content:space-between">
+            <label class="check" style="margin:0"><input type="checkbox" id="visLive" checked> Live: refresh every 30 seconds</label>
+            <div class="row">
+              <button class="btn ghost sm" type="button" id="visRefresh">Refresh now</button>
+              <button class="btn ghost sm" type="button" id="visCsvSummary">CSV summary</button>
+              <button class="btn ghost sm" type="button" id="visCsv">CSV rows</button>
+              <button class="btn sm" type="button" id="visPdf">PDF report</button>
+            </div>
+          </div>
+          <p class="note" id="visStamp" style="margin:10px 0 0"></p>
+        </div>
+        <div class="tiles" id="visTiles"></div>
+        <div class="card"><h2>Visits over time</h2><svg class="vischart" id="visChart" viewBox="0 0 720 220" preserveAspectRatio="none" role="img" aria-label="Page views over time"></svg><p class="viscap" id="visChartCap"></p></div>
+        <div class="vis2">
+          <div class="card"><h2>Malaysia by state</h2><svg class="vismap" id="visMapMy" viewBox="0 0 600 300" role="img" aria-label="Map of Malaysia by state"></svg><div class="legend"><span>fewer</span><i></i><span>more</span><span style="margin-left:auto" id="visMapMyCap"></span></div></div>
+          <div class="card"><h2>World by country</h2><svg class="vismap" id="visMapWorld" viewBox="0 0 600 300" role="img" aria-label="Map of the world by country"></svg><div class="legend"><span>fewer</span><i></i><span>more</span><span style="margin-left:auto" id="visMapWorldCap"></span></div></div>
+        </div>
+        <div class="vis2">
+          <div class="card"><h2>States</h2><div id="visTState"></div></div>
+          <div class="card"><h2>Cities</h2><div id="visTCity"></div></div>
+          <div class="card"><h2>Countries</h2><div id="visTCountry"></div></div>
+          <div class="card"><h2>Pages</h2><div id="visTPath"></div></div>
+          <div class="card"><h2>Came from</h2><div id="visTRef"></div></div>
+          <div class="card"><h2>Devices, browsers, systems</h2><div id="visTDevice"></div><div id="visTBrowser" style="margin-top:10px"></div><div id="visTOs" style="margin-top:10px"></div></div>
+        </div>
+        <div class="card" id="visRecent"><h2>Latest 50 page views</h2><div id="visTRecent"></div></div>
+      </div>
+    </div>
+
     <!-- people -->
     <div id="viewAdmins" class="grid" hidden>
       <div class="stack">
@@ -660,6 +756,7 @@ function refresh(){
     if(state.me.role==='admin') renderAdmins(d.admins, d.quota);
     if(!state.legacy && can('stock')) renderStock(d.stock);
     if(!state.legacy && can('claims')) renderClaims(d.claims);
+    if(!state.legacy && can('visitors')) visConfigured(d.visitors);
   }).catch(function(err){
     if(/signed out|no longer/.test(err.message)){ toast('Signed out: '+err.message, true); state.token=null; try{ localStorage.removeItem(KEY); }catch(e){} toLogin(); }
     else toast('Could not load: '+err.message, true);
@@ -669,7 +766,8 @@ function refresh(){
 /* tabs */
 function pick(b){
   document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', String(x===b)); });
-  ['settings','sections','segments','media','docs','gifts','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), !!b && v===b.dataset.view); });
+  ['settings','sections','segments','media','docs','gifts','visitors','admins'].forEach(function(v){ show('view'+v.charAt(0).toUpperCase()+v.slice(1), !!b && v===b.dataset.view); });
+  if(b && b.dataset.view==='visitors') visOpen(); else visClose();
 }
 document.querySelectorAll('.tab').forEach(function(b){
   b.addEventListener('click', function(){ pick(b); });
@@ -685,6 +783,7 @@ function applyAccess(){
   var tabs = { settings: areasOnSettings.some(can), sections: can('sections'), segments: can('segments'), media: !state.legacy && can('media'),
                docs: !state.legacy && can('documents'),
                gifts: !state.legacy && (can('stock') || can('claims')),
+               visitors: !state.legacy && can('visitors') && !!(state.data && state.data.visitors),
                admins: state.me && state.me.role==='admin' };
   [].forEach.call(document.querySelectorAll('#viewGifts [data-gift-area]'), function(c){ c.hidden = !can(c.dataset.giftArea); });
   show('legacyProducts', state.legacy); show('giftStockNote', !state.legacy);
@@ -1534,6 +1633,213 @@ function start(){
   } else toLogin();
 }
 start();
+
+/* ---- visitors ---------------------------------------------------------
+   The counts come from the collector in worker/, through the booth script
+   (admin.visitors), never straight from this page: the Worker's key must not
+   be in a public file. Everything here is drawn from one JSON answer, so a
+   filter is a new ask and a redraw, nothing more. */
+var VIS = { range:'7d', from:null, to:null, country:'', state:'', path:'', live:true, data:null, timer:null, open:false, maps:{}, busy:false, configured:false };
+var MYT = 8*3600*1000;
+function visConfigured(info){ VIS.configured = !!(info && info.configured); show('visSetup', !VIS.configured); show('visBody', VIS.configured);
+  if(!VIS.configured) $('visSetupWhy').textContent = 'The script answered that the two properties are missing.'; }
+function visPeriod(){
+  var now = Date.now(), dayStart = function(ms){ return Math.floor((ms+MYT)/86400000)*86400000 - MYT; };
+  var r = VIS.range, from, to = now;
+  if(r==='today') from = dayStart(now);
+  else if(r==='yesterday'){ from = dayStart(now)-86400000; to = dayStart(now)-1; }
+  else if(r==='7d') from = dayStart(now)-6*86400000;
+  else if(r==='30d') from = dayStart(now)-29*86400000;
+  else if(r==='90d') from = dayStart(now)-89*86400000;
+  else if(r==='all') from = Date.UTC(2026,9,29);
+  else { from = VIS.from ? Date.parse(VIS.from+'T00:00:00+08:00') : dayStart(now)-6*86400000; to = VIS.to ? Date.parse(VIS.to+'T23:59:59+08:00') : now; }
+  return { from:from, to:to };
+}
+function visQuery(){ var p = visPeriod(); return { from:p.from, to:p.to, country:VIS.country, state:VIS.state, path:VIS.path }; }
+function visOpen(){ VIS.open = true; if(!VIS.configured) return; visLoad(); visArm(); }
+function visClose(){ VIS.open = false; clearInterval(VIS.timer); VIS.timer = null; }
+function visArm(){ clearInterval(VIS.timer); VIS.timer = null; if(VIS.live && VIS.open) VIS.timer = setInterval(function(){ if(!document.hidden) visLoad(true); }, 30000); }
+function visLoad(quiet){
+  if(VIS.busy) return Promise.resolve();
+  VIS.busy = true; if(!quiet) $('visStamp').textContent = 'Loading…';
+  return api('admin.visitors', { q: visQuery() }, 30000).then(function(j){
+    VIS.data = j.stats; renderVis(j.stats);
+  }).catch(function(err){
+    if(/not set up/.test(err.message)){ VIS.configured=false; show('visSetup', true); show('visBody', false); $('visSetupWhy').textContent = err.message; }
+    else $('visStamp').textContent = 'Could not load: ' + err.message;
+  }).finally(function(){ VIS.busy = false; });
+}
+function fmtN(n){ return Number(n||0).toLocaleString('en-MY'); }
+function fmtT(ms){ var d = new Date(ms+MYT); return d.toISOString().replace('T',' ').slice(0,16) + ' MYT'; }
+function fmtD(ms){ return new Date(ms+MYT).toISOString().slice(0,10); }
+var MY_STATE_ALIAS = { 'penang':'pulau pinang', 'pinang':'pulau pinang', 'malacca':'melaka', 'kuala lumpur federal territory':'kuala lumpur', 'federal territory of kuala lumpur':'kuala lumpur', 'wilayah persekutuan kuala lumpur':'kuala lumpur', 'labuan federal territory':'labuan', 'putrajaya federal territory':'putrajaya' };
+function normState(s){ s = String(s||'').toLowerCase().replace(/^(negeri|state of)\s+/,'').replace(/\s+/g,' ').trim(); return MY_STATE_ALIAS[s] || s; }
+/* lat, lon of states too small for the 110m outline */
+var SMALL_COUNTRY = { SG:[1.35,103.82], HK:[22.32,114.17], MO:[22.2,113.55], BN:[4.53,114.73], MV:[3.2,73.22], BH:[26.07,50.56], QA:[25.35,51.18], KW:[29.31,47.48], MT:[35.9,14.51], MU:[-20.35,57.55], SC:[-4.68,55.49], BB:[13.19,-59.54], AD:[42.51,1.52], LI:[47.17,9.55], MC:[43.74,7.42], SM:[43.94,12.46], LU:[49.82,6.13], CY:[35.13,33.43], JM:[18.11,-77.3], TT:[10.69,-61.22], AE:[23.42,53.85], PR:[18.22,-66.59], RE:[-21.12,55.54], GU:[13.44,144.79] };
+var COUNTRY_NAMES = (typeof Intl!=='undefined' && Intl.DisplayNames) ? new Intl.DisplayNames(['en'], {type:'region'}) : null;
+function countryName(c){ if(!c) return '—'; try{ return COUNTRY_NAMES ? COUNTRY_NAMES.of(c) : c; }catch(e){ return c; } }
+function periodLabel(){ var p = visPeriod(); return ({today:'Today', yesterday:'Yesterday', '7d':'Last 7 days', '30d':'Last 30 days', '90d':'Last 90 days', all:'All time'})[VIS.range] || (fmtD(p.from)+' to '+fmtD(p.to)); }
+function filterLabel(){ var f=[]; if(VIS.country) f.push(countryName(VIS.country)); if(VIS.state) f.push(VIS.state); if(VIS.path) f.push(VIS.path); return f.length ? f.join(' · ') : 'no filter'; }
+
+function renderVis(d){
+  var live = d.live || {}, t = d.totals || {};
+  var topState = (d.byState||[])[0], topCountry = (d.byCountry||[])[0], topPath = (d.byPath||[])[0];
+  var views = Number(t.views||0), visitors = Number(t.visitors||0);
+  $('visTiles').innerHTML =
+    tile('Visitors', fmtN(visitors), periodLabel()) +
+    tile('Page views', fmtN(views), visitors ? (views/visitors).toFixed(1)+' pages per visitor' : '') +
+    '<div class="tile live"><div class="k"><span class="livedot"></span>Live now</div><div class="v">'+fmtN(live.visitors)+'</div><div class="m">'+fmtN(live.views)+' page views in the last 5 minutes</div></div>' +
+    tile('Top state', topState ? esc(topState.k) : '—', topState ? fmtN(topState.views)+' views' : 'no Malaysian visits yet') +
+    tile('Top country', topCountry ? esc(countryName(topCountry.k)) : '—', topCountry ? fmtN(topCountry.views)+' views' : '') +
+    tile('Top page', topPath ? esc(topPath.k) : '—', topPath ? fmtN(topPath.views)+' views' : '');
+  $('visStamp').textContent = 'Updated ' + fmtT(d.at) + ' · ' + periodLabel() + ' · ' + filterLabel() + (d.first ? ' · counting since ' + fmtD(d.first) : '');
+  $('visPrintHead').innerHTML = '<h2>FACERINNA website visitors</h2><p>'+esc(periodLabel())+' ('+fmtD(visPeriod().from)+' to '+fmtD(visPeriod().to)+') · '+esc(filterLabel())+'</p><p>Generated '+fmtT(Date.now())+' from my.facerinna.com/admin.html</p>';
+  renderChart(d.series||[], d.bucketMs||86400000);
+  fillSelect('visCountry', (d.byCountry||[]).map(function(r){ return [r.k, countryName(r.k)+' ('+fmtN(r.views)+')']; }), VIS.country, [['','All countries'],['MY','Malaysia']]);
+  fillSelect('visState', (d.byState||[]).map(function(r){ return [r.k, r.k+' ('+fmtN(r.views)+')']; }), VIS.state, [['','All states']]);
+  fillSelect('visPath', (d.byPath||[]).map(function(r){ return [r.k, r.k+' ('+fmtN(r.views)+')']; }), VIS.path, [['','All pages']]);
+  var total = views || 1;
+  tableOf('visTState', ['State','Visitors','Views'], d.byState, function(r){ return [r.k, r.visitors, r.views]; }, total, function(r){ VIS.country='MY'; VIS.state = (VIS.state===r.k ? '' : r.k); visChanged(); }, 'No Malaysian visits in this period.');
+  tableOf('visTCity', ['City','Visitors','Views'], d.byCity, function(r){ return [r.k + (r.state ? ', '+r.state : '') + (r.country && r.country!=='MY' ? ' ('+r.country+')' : ''), r.visitors, r.views]; }, total, null, 'No city known yet.');
+  tableOf('visTCountry', ['Country','Visitors','Views'], d.byCountry, function(r){ return [countryName(r.k), r.visitors, r.views]; }, total, function(r){ VIS.country = (VIS.country===r.k ? '' : r.k); if(VIS.country!=='MY') VIS.state=''; visChanged(); }, 'Nothing counted yet.');
+  tableOf('visTPath', ['Page','Visitors','Views'], d.byPath, function(r){ return [r.k, r.visitors, r.views]; }, total, function(r){ VIS.path = (VIS.path===r.k ? '' : r.k); visChanged(); }, 'Nothing counted yet.');
+  tableOf('visTRef', ['Site or app','Visitors','Views'], d.byRef, function(r){ return [r.k, r.visitors, r.views]; }, total, null, 'Every visit so far was typed in, from a QR code, or from an app that hides where it came from.');
+  tableOf('visTDevice', ['Device','Visitors','Views'], d.byDevice, function(r){ return [r.k, r.visitors, r.views]; }, total, null, '');
+  tableOf('visTBrowser', ['Browser','Visitors','Views'], d.byBrowser, function(r){ return [r.k, r.visitors, r.views]; }, total, null, '');
+  tableOf('visTOs', ['System','Visitors','Views'], d.byOs, function(r){ return [r.k, r.visitors, r.views]; }, total, null, '');
+  var rec = (d.recent||[]).map(function(r){ return '<tr><td class="n">'+fmtT(r.ts).replace(' MYT','')+'</td><td>'+esc(r.path)+'</td><td>'+esc([r.city, r.state, r.country].filter(Boolean).join(', ')||'—')+'</td><td>'+esc([r.device, r.browser].filter(Boolean).join(' · '))+'</td><td>'+esc(r.ref||'—')+'</td></tr>'; }).join('');
+  $('visTRecent').innerHTML = rec ? '<div style="overflow:auto"><table class="vt"><tr><th>Time (MYT)</th><th>Page</th><th>Where</th><th>Device</th><th>From</th></tr>'+rec+'</table></div>' : '<div class="empty">Nothing yet.</div>';
+  drawMaps(d);
+}
+function tile(k, v, m){ return '<div class="tile"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="m">'+esc(m||'')+'</div></div>'; }
+function fillSelect(id, rows, cur, head){
+  var sel = $(id), seen = {}, html = '';
+  (head||[]).forEach(function(h){ seen[h[0]] = 1; html += '<option value="'+esc(h[0])+'">'+esc(h[1])+'</option>'; });
+  rows.forEach(function(r){ if(seen[r[0]]) return; seen[r[0]] = 1; html += '<option value="'+esc(r[0])+'">'+esc(r[1])+'</option>'; });
+  if(cur && !seen[cur]) html += '<option value="'+esc(cur)+'">'+esc(cur)+'</option>';
+  sel.innerHTML = html; sel.value = cur || '';
+}
+function tableOf(id, heads, rows, cells, total, onClick, emptyText){
+  rows = rows || [];
+  if(!rows.length){ $(id).innerHTML = emptyText ? '<div class="empty" style="padding:12px">'+esc(emptyText)+'</div>' : ''; return; }
+  var html = '<table class="vt"><tr>'+heads.map(function(h,i){ return '<th'+(i?' class="n"':'')+'>'+esc(h)+'</th>'; }).join('')+'</tr>';
+  rows.forEach(function(r, i){
+    var c = cells(r), pct = Math.min(100, 100*Number(c[2]||0)/total);
+    html += '<tr'+(onClick?' class="click" data-i="'+i+'" tabindex="0"':'')+'><td>'+esc(c[0])+'<span class="bar" style="width:'+pct.toFixed(1)+'%"></span></td><td class="n">'+fmtN(c[1])+'</td><td class="n">'+fmtN(c[2])+'</td></tr>';
+  });
+  $(id).innerHTML = html + '</table>';
+  if(onClick) [].forEach.call($(id).querySelectorAll('tr.click'), function(tr){ var go=function(){ onClick(rows[Number(tr.dataset.i)]); }; tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if(e.key==='Enter') go(); }); });
+}
+function renderChart(series, bucketMs){
+  var svg = $('visChart'), W=720, H=220, L=44, R=10, T=12, B=30;
+  if(!series.length){ svg.innerHTML = '<text x="360" y="115" text-anchor="middle" fill="#5b6b7f" font-size="14">Nothing in this period yet</text>'; $('visChartCap').textContent=''; return; }
+  var p = visPeriod(), start = Math.floor((p.from+MYT)/bucketMs)*bucketMs-MYT, end = p.to, n = Math.max(1, Math.floor((end-start)/bucketMs)+1);
+  if(n > 400){ bucketMs = 86400000; start = Math.floor((p.from+MYT)/bucketMs)*bucketMs-MYT; n = Math.floor((end-start)/bucketMs)+1; }
+  var byT = {}; series.forEach(function(s){ var k = Math.floor((+s.t+MYT)/bucketMs)*bucketMs-MYT, o = byT[k] || (byT[k] = {views:0, visitors:0}); o.views += +s.views||0; o.visitors += +s.visitors||0; });
+  var pts = []; for(var i=0;i<n;i++){ var t = start+i*bucketMs, s = byT[t]||{views:0,visitors:0}; pts.push({t:t, views:+s.views, visitors:+s.visitors}); }
+  var max = Math.max(1, Math.max.apply(null, pts.map(function(q){ return q.views; })));
+  var x = function(i){ return L + (W-L-R) * (n===1 ? .5 : i/(n-1)); }, y = function(v){ return T + (H-T-B) * (1 - v/max); };
+  var bw = Math.max(2, (W-L-R)/n*0.7);
+  var html = '';
+  [0, .5, 1].forEach(function(f){ var v=Math.round(max*f); html += '<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#e3e8ef"/><text x="'+(L-6)+'" y="'+(y(v)+4)+'" text-anchor="end" font-size="11" fill="#5b6b7f">'+v+'</text>'; });
+  pts.forEach(function(q,i){ html += '<rect x="'+(x(i)-bw/2)+'" y="'+y(q.views)+'" width="'+bw+'" height="'+Math.max(0,(H-B)-y(q.views))+'" rx="2" fill="#bcd6f5"><title>'+esc(bucketMs<86400000 ? fmtT(q.t) : fmtD(q.t))+': '+q.views+' views, '+q.visitors+' visitors</title></rect>'; });
+  html += '<polyline fill="none" stroke="#0A5480" stroke-width="2" points="'+pts.map(function(q,i){ return x(i)+','+y(q.visitors); }).join(' ')+'"/>';
+  var step = Math.ceil(n/8);
+  pts.forEach(function(q,i){ if(i%step===0 || i===n-1) html += '<text x="'+x(i)+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="#5b6b7f">'+(bucketMs<86400000 ? new Date(q.t+MYT).toISOString().slice(11,16) : fmtD(q.t).slice(5))+'</text>'; });
+  svg.innerHTML = html;
+  $('visChartCap').textContent = (bucketMs<86400000 ? 'Per hour' : 'Per day') + ', Malaysia time. Bars are page views, the line is visitors.';
+}
+/* maps: GeoJSON drawn straight to SVG with a plate carrée projection fitted to
+   the drawing. Enough for a choropleth; nothing here needs a globe. */
+function loadMap(name){
+  if(VIS.maps[name]) return VIS.maps[name];
+  VIS.maps[name] = fetch('map/'+name+'.json').then(function(r){ if(!r.ok) throw new Error('map '+r.status); return r.json(); }).catch(function(e){ delete VIS.maps[name]; throw e; });
+  return VIS.maps[name];
+}
+function geoPath(geom, proj){
+  var rings = geom.type==='Polygon' ? geom.coordinates : [].concat.apply([], geom.coordinates);
+  return rings.map(function(r){ return 'M' + r.map(function(c){ var p = proj(c); return p[0].toFixed(1)+' '+p[1].toFixed(1); }).join('L') + 'Z'; }).join('');
+}
+function fitProj(fc, W, H, pad){
+  var minX=180,maxX=-180,minY=90,maxY=-90;
+  fc.features.forEach(function(f){ var rings = f.geometry.type==='Polygon' ? f.geometry.coordinates : [].concat.apply([], f.geometry.coordinates);
+    rings.forEach(function(r){ r.forEach(function(c){ if(c[0]<minX)minX=c[0]; if(c[0]>maxX)maxX=c[0]; if(c[1]<minY)minY=c[1]; if(c[1]>maxY)maxY=c[1]; }); }); });
+  var sx = (W-2*pad)/(maxX-minX), sy = (H-2*pad)/(maxY-minY), s = Math.min(sx, sy);
+  var ox = (W - s*(maxX-minX))/2, oy = (H - s*(maxY-minY))/2;
+  return function(c){ return [ox + (c[0]-minX)*s, oy + (maxY-c[1])*s]; };
+}
+function shade(v, max){ if(!v) return '#e9eef5'; var t = Math.log(1+v)/Math.log(1+max); var a=[219,233,248], b=[10,84,128]; return 'rgb('+a.map(function(x,i){ return Math.round(x+(b[i]-x)*t); }).join(',')+')'; }
+function drawMaps(d){
+  var byState = {}; (d.byState||[]).forEach(function(r){ byState[normState(r.k)] = r; });
+  var maxS = Math.max.apply(null, [1].concat((d.byState||[]).map(function(r){ return +r.views; })));
+  loadMap('my-states').then(function(fc){
+    var proj = fitProj(fc, 600, 300, 10), html = '';
+    fc.features.forEach(function(f){ var key = normState(f.properties.name), r = byState[key], v = r ? +r.views : 0, sel = VIS.state && normState(VIS.state)===key;
+      html += '<path d="'+geoPath(f.geometry, proj)+'" fill="'+shade(v, maxS)+'" class="'+(sel?'sel':'')+'" data-state="'+esc(r ? r.k : f.properties.name)+'"><title>'+esc(f.properties.name)+': '+(r ? fmtN(r.views)+' views, '+fmtN(r.visitors)+' visitors' : 'no visits')+'</title></path>'; });
+    $('visMapMy').innerHTML = html;
+    [].forEach.call($('visMapMy').querySelectorAll('path'), function(p){ p.addEventListener('click', function(){ var st = p.dataset.state; VIS.country='MY'; VIS.state = (VIS.state===st ? '' : st); visChanged(); }); });
+    $('visMapMyCap').textContent = (d.byState||[]).length ? fmtN((d.byState||[]).reduce(function(a,r){ return a+(+r.views); },0)) + ' views placed in a state' : 'no Malaysian visits yet';
+  }).catch(function(e){ $('visMapMy').innerHTML = '<text x="300" y="150" text-anchor="middle" fill="#5b6b7f" font-size="13">Map not available: '+esc(e.message)+'</text>'; });
+  var byC = {}; (d.byCountry||[]).forEach(function(r){ byC[r.k] = r; });
+  var maxC = Math.max.apply(null, [1].concat((d.byCountry||[]).map(function(r){ return +r.views; })));
+  loadMap('world').then(function(fc){
+    var proj = function(c){ return [ (c[0]+180)/360*600, (90-c[1])/180*300*1.0 ]; }, html = '';
+    fc.features.forEach(function(f){ var r = byC[f.properties.iso], v = r ? +r.views : 0, sel = VIS.country===f.properties.iso;
+      html += '<path d="'+geoPath(f.geometry, proj)+'" fill="'+shade(v, maxC)+'" class="'+(sel?'sel':'')+'" data-iso="'+esc(f.properties.iso)+'"><title>'+esc(f.properties.name)+': '+(r ? fmtN(r.views)+' views, '+fmtN(r.visitors)+' visitors' : 'no visits')+'</title></path>'; });
+    /* countries too small to have a shape at this scale get a dot */
+    var drawn = {}; fc.features.forEach(function(f){ drawn[f.properties.iso] = 1; });
+    (d.byCountry||[]).forEach(function(r){ var c = SMALL_COUNTRY[r.k]; if(drawn[r.k] || !c) return; var q = proj([c[1], c[0]]);
+      html += '<circle cx="'+q[0].toFixed(1)+'" cy="'+q[1].toFixed(1)+'" r="4" fill="'+shade(+r.views, maxC)+'" stroke="#fff" stroke-width=".8" data-iso="'+esc(r.k)+'" class="'+(VIS.country===r.k?'sel':'')+'" style="cursor:pointer"><title>'+esc(countryName(r.k))+': '+fmtN(r.views)+' views, '+fmtN(r.visitors)+' visitors</title></circle>'; });
+    $('visMapWorld').innerHTML = html;
+    [].forEach.call($('visMapWorld').querySelectorAll('path, circle'), function(p){ p.addEventListener('click', function(){ var iso = p.dataset.iso; VIS.country = (VIS.country===iso ? '' : iso); if(VIS.country!=='MY') VIS.state=''; visChanged(); }); });
+    $('visMapWorldCap').textContent = (d.byCountry||[]).length + ' countries';
+  }).catch(function(e){ $('visMapWorld').innerHTML = '<text x="300" y="150" text-anchor="middle" fill="#5b6b7f" font-size="13">Map not available: '+esc(e.message)+'</text>'; });
+}
+function visChanged(){ $('visCountry').value = VIS.country; $('visState').value = VIS.state; $('visPath').value = VIS.path; visLoad(); }
+function download(name, text, mime){
+  var blob = new Blob([text], {type: mime||'text/csv;charset=utf-8'}), a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function csvCell(v){ v = v==null ? '' : String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function visStamp(){ return fmtD(visPeriod().from)+'_'+fmtD(visPeriod().to); }
+$('visRange').addEventListener('change', function(){ VIS.range = this.value; var c = VIS.range==='custom'; show('visCustom', c); show('visCustom2', c); if(c){ var p=visPeriod(); if(!$('visFrom').value) $('visFrom').value = fmtD(p.from); if(!$('visTo').value) $('visTo').value = fmtD(p.to); VIS.from=$('visFrom').value; VIS.to=$('visTo').value; } visLoad(); });
+$('visFrom').addEventListener('change', function(){ VIS.from = this.value; visLoad(); });
+$('visTo').addEventListener('change', function(){ VIS.to = this.value; visLoad(); });
+$('visCountry').addEventListener('change', function(){ VIS.country = this.value; if(VIS.country!=='MY') VIS.state=''; visChanged(); });
+$('visState').addEventListener('change', function(){ VIS.state = this.value; if(VIS.state) VIS.country='MY'; visChanged(); });
+$('visPath').addEventListener('change', function(){ VIS.path = this.value; visChanged(); });
+$('visClear').addEventListener('click', function(){ VIS.country=''; VIS.state=''; VIS.path=''; visChanged(); });
+$('visLive').addEventListener('change', function(){ VIS.live = this.checked; visArm(); });
+$('visRefresh').addEventListener('click', function(){ visLoad(); });
+$('visCsv').addEventListener('click', function(){
+  var b = $('visCsv'); b.disabled = true;
+  api('admin.visitors.csv', { q: visQuery() }, 60000).then(function(j){ download('facerinna-visitors-rows-'+visStamp()+'.csv', j.csv); toast('CSV downloaded'); })
+    .catch(function(err){ toast('Could not export: '+err.message, true); }).finally(function(){ b.disabled = false; });
+});
+$('visCsvSummary').addEventListener('click', function(){
+  var d = VIS.data; if(!d){ toast('Nothing loaded yet', true); return; }
+  var lines = [['FACERINNA website visitors', periodLabel(), fmtD(visPeriod().from)+' to '+fmtD(visPeriod().to), filterLabel(), 'generated '+fmtT(Date.now())].map(csvCell).join(',')];
+  lines.push('', 'totals,visitors,views', ['period', d.totals.visitors, d.totals.views].join(','), ['live (5 min)', d.live.visitors, d.live.views].join(','));
+  [['by day/hour (MYT)', d.series, function(r){ return [d.bucketMs<86400000 ? fmtT(r.t) : fmtD(r.t), r.visitors, r.views]; }],
+   ['states (Malaysia)', d.byState, function(r){ return [r.k, r.visitors, r.views]; }],
+   ['cities', d.byCity, function(r){ return [[r.k, r.state, r.country].filter(Boolean).join(', '), r.visitors, r.views]; }],
+   ['countries', d.byCountry, function(r){ return [countryName(r.k)+' ('+r.k+')', r.visitors, r.views]; }],
+   ['pages', d.byPath, function(r){ return [r.k, r.visitors, r.views]; }],
+   ['came from', d.byRef, function(r){ return [r.k, r.visitors, r.views]; }],
+   ['devices', d.byDevice, function(r){ return [r.k, r.visitors, r.views]; }],
+   ['browsers', d.byBrowser, function(r){ return [r.k, r.visitors, r.views]; }],
+   ['systems', d.byOs, function(r){ return [r.k, r.visitors, r.views]; }]
+  ].forEach(function(sec){ lines.push('', sec[0]+',visitors,views'); (sec[1]||[]).forEach(function(r){ lines.push(sec[2](r).map(csvCell).join(',')); }); });
+  download('facerinna-visitors-summary-'+visStamp()+'.csv', lines.join('\n')+'\n'); toast('Summary CSV downloaded');
+});
+$('visPdf').addEventListener('click', function(){
+  if(!VIS.data){ toast('Nothing loaded yet', true); return; }
+  var old = document.title; document.title = 'FACERINNA visitors '+visStamp();
+  var done = function(){ document.title = old; window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done); window.print();
+});
+document.addEventListener('visibilitychange', function(){ if(!document.hidden && VIS.open && VIS.live && VIS.configured) visLoad(true); });
 })();
 </script>
 <script>

@@ -87,8 +87,11 @@
   <p>The public pages load a small script from Cloudflare Web Analytics that counts page views.
      It sets no cookie, stores nothing in your browser, and does not identify you: we see how
      many times a page was opened, from which country, on what kind of device and browser, and
-     which site linked here. We do not see who you are, your IP address is not kept, and the
-     count is not joined to anything you type into a form or a game.</p>
+     which site linked here. Our own counter does the same and adds the state and city the
+     connection comes from, so we can see which part of Malaysia a visit is from; it keeps a
+     one-day scrambled code in place of your address so one phone is counted once a day, and
+     the code cannot be turned back into you. We do not see who you are, your IP address is not
+     kept, and no count is joined to anything you type into a form or a game.</p>
 
   <h3>What is not collected</h3>
   <p>There is no advertising tracking on these pages, no third-party cookies, and no
@@ -197,6 +200,7 @@ if ('serviceWorker' in navigator)
 <!-- Cloudflare Web Analytics: page views only, no cookies, no browser storage.
      A module script runs after the page is parsed, so an offline booth is unaffected. -->
 <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9218ecd43aea410c856a9270cb580f34"}'></script>
+<script defer src="fx-visit.js"></script>
 <!-- End Cloudflare Web Analytics -->
 </body>
 </html>

@@ -222,7 +222,8 @@ var PERMS = [
   ['segments', 'Segments',        'Add, edit, order and delete extra segments'],
   ['media',    'QR & posters',    'Upload QR codes and posters, and lock the ones not used at the current event'],
   ['documents','Documents',       'Add, edit and remove documents to sign, and read the signed copies'],
-  ['privacy',  'Privacy notice',  'The details the privacy page shows']
+  ['privacy',  'Privacy notice',  'The details the privacy page shows'],
+  ['visitors', 'Visitors',        'See who visits the website: counts, map, pages, referrers, and export']
 ];
 var PERM_KEYS = PERMS.map(function (p) { return p[0]; });
 function permLabel_(k) { for (var i = 0; i < PERMS.length; i++) if (PERMS[i][0] === k) return PERMS[i][1]; return k; }
@@ -256,7 +257,9 @@ var ACTION_AREA = {
   'admin.doc.signed.delete': 'documents',
   'admin.stock.set': 'stock',
   'admin.stock.remove': 'stock',
-  'admin.claims.reset': 'claims'
+  'admin.claims.reset': 'claims',
+  'admin.visitors': 'visitors',
+  'admin.visitors.csv': 'visitors'
 };
 var TEAM_MAX = 200;
 var GIFT_MAX_SCORE = 100000;
@@ -1604,6 +1607,7 @@ function adminGet_(me) {
   if (can_(me, 'documents')) { seedDocs_(); out.documents = docsAdmin_(); out.signed = signedList_(); out.templates = templatesAdmin_(); }
   if (can_(me, 'stock')) out.stock = stockPublic_();
   if (can_(me, 'claims')) out.claims = claimsList_();
+  if (can_(me, 'visitors')) out.visitors = { configured: !!visitorsCfg_() };
   if (me.role === 'admin') {
     out.admins = teamList_();
     var quota = 0; try { quota = MailApp.getRemainingDailyQuota(); } catch (e) {}
@@ -2203,6 +2207,56 @@ function teamRemove_(b, me) {
   return json_({ ok: true, admins: teamList_() });
 }
 
+/* ---- visitors ----------------------------------------------------------
+   The visitor counts live in a Cloudflare Worker (worker/ in the repo), which
+   only answers a request carrying its key. The key cannot sit in admin.html,
+   because that file is public, so it sits here in Script Properties and this
+   script asks on the admin's behalf, after the usual sign-in and area check.
+     VISITORS_URL  https://facerinna-visitors.<account>.workers.dev
+     VISITORS_KEY  the same string as the Worker's STATS_KEY secret
+   Only the filters the dashboard knows are passed on, nothing else from the
+   body reaches the Worker. */
+var VISITOR_FILTERS = ['from', 'to', 'country', 'state', 'path'];
+function visitorsCfg_() {
+  var props = PropertiesService.getScriptProperties();
+  var url = String(props.getProperty('VISITORS_URL') || '').replace(/\/+$/, '');
+  var key = String(props.getProperty('VISITORS_KEY') || '');
+  if (!/^https:\/\//.test(url) || !key) return null;
+  return { url: url, key: key };
+}
+function visitorsQuery_(b) {
+  var q = (b && b.q) || {}, parts = [];
+  for (var i = 0; i < VISITOR_FILTERS.length; i++) {
+    var k = VISITOR_FILTERS[i], v = q[k];
+    if (v === undefined || v === null || v === '') continue;
+    parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(v).slice(0, 200)));
+  }
+  return parts.length ? '?' + parts.join('&') : '';
+}
+function visitorsFetch_(path, b) {
+  var cfg = visitorsCfg_();
+  if (!cfg) return { status: 0, text: '', setup: true };
+  var res = UrlFetchApp.fetch(cfg.url + path + visitorsQuery_(b), {
+    method: 'get', muteHttpExceptions: true, followRedirects: false,
+    headers: { Authorization: 'Bearer ' + cfg.key }
+  });
+  return { status: res.getResponseCode(), text: res.getContentText() };
+}
+function visitors_(b) {
+  var r = visitorsFetch_('/stats', b);
+  if (r.setup) return json_({ ok: false, error: 'The visitor counter is not set up yet: VISITORS_URL and VISITORS_KEY are missing from Script Properties.', setup: true });
+  if (r.status !== 200) return json_({ ok: false, error: 'The visitor counter answered ' + r.status + (r.status === 401 ? ': the key does not match' : '') });
+  var data; try { data = JSON.parse(r.text); } catch (e) { return json_({ ok: false, error: 'The visitor counter sent something that is not JSON' }); }
+  if (!data || data.ok !== true) return json_({ ok: false, error: (data && data.error) || 'no answer from the visitor counter' });
+  return json_({ ok: true, stats: data });
+}
+function visitorsCsv_(b) {
+  var r = visitorsFetch_('/export.csv', b);
+  if (r.setup) return json_({ ok: false, error: 'The visitor counter is not set up yet.', setup: true });
+  if (r.status !== 200) return json_({ ok: false, error: 'The visitor counter answered ' + r.status });
+  return json_({ ok: true, csv: r.text });
+}
+
 function doPost(e) {
   try {
     var b = {};
@@ -2234,6 +2288,8 @@ function doPost(e) {
     if (action === 'admin.guide') return guide_(email);
     if (action === 'admin.doc.signed') return json_({ ok: true, signed: signedList_() });
     if (action === 'admin.doc.file')   return docFile_(b);
+    if (action === 'admin.visitors')     return visitors_(b);
+    if (action === 'admin.visitors.csv') return visitorsCsv_(b);
 
     var lock = LockService.getScriptLock();
     if (!lock.tryLock(10000)) return json_({ ok: false, error: 'busy, try again' });
