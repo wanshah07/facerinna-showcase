@@ -6,7 +6,7 @@
    headless browser is dropped on the collector side. Runs after everything
    else and fails silently, so an offline booth never notices it. */
 (function () {
-  var COLLECTOR = 'https://facerinna-visitors.REPLACE_WITH_ACCOUNT.workers.dev';
+  var COLLECTOR = 'https://facerinna-visitors.purple-frog-7517.workers.dev';
   if (!COLLECTOR || /REPLACE_WITH/.test(COLLECTOR)) return;
   if (!/^https:\/\/my\.facerinna\.com$|^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(location.origin)) return;
   if (navigator.webdriver) return;
