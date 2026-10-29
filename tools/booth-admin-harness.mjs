@@ -89,6 +89,11 @@ export function load(opts){
     put: (k,v,secs) => { if(String(v).length > 100*1024) throw new Error('Argument too large: value'); CACHE.set(k,{v:String(v), exp:Date.now()+(secs||600)*1000}); },
     remove: k => { CACHE.delete(k); } }) };
   const Session = { getEffectiveUser: () => ({ getEmail: () => OWNER }) };
+  /* The visitor Worker, as the script reaches it: a test sets FETCH.answer to
+     what the Worker should say and reads FETCH.calls for what was asked. */
+  const FETCH = { calls: [], answer: { code: 200, text: '{"ok":true}' } };
+  const UrlFetchApp = { fetch: (url, opts) => { FETCH.calls.push({ url, opts }); const a = typeof FETCH.answer === 'function' ? FETCH.answer(url, opts) : FETCH.answer;
+    return { getResponseCode: () => a.code, getContentText: () => a.text }; } };
   const Logger = { log(){} };
   const m = eval(`(() => { ${src}
     return { doPost, doGet, setUp }; })()`);
@@ -106,5 +111,5 @@ export function load(opts){
     return call({ action:'redeem', email, code });
   };
   m.setUp();
-  return { m, call, signIn, tabs, mails, PROPS, CACHE, DRIVE, SHEETS };
+  return { m, call, signIn, tabs, mails, PROPS, CACHE, DRIVE, SHEETS, FETCH };
 }
