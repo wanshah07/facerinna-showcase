@@ -37,7 +37,8 @@ const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript','.json':
 const srv=http.createServer((req,res)=>{
   const u=new URL(req.url,BASE);
   if(u.pathname==='/api'){ let body=''; req.on('data',c=>body+=c); req.on('end',()=>{ let out; try{ out=H.call(JSON.parse(body||'{}')); }catch(e){ out={ok:false,error:String(e.message)}; }
-    res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify(out)); }); return; }
+    const wait = (globalThis.SLOW_GET && /"action":"admin.get"/.test(body)) ? globalThis.SLOW_GET : 0;
+    setTimeout(()=>{ res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify(out)); }, wait); }); return; }
   let f=decodeURIComponent(u.pathname); if(f.endsWith('/')) f+='index.html';
   const fp=path.join(ROOT,f);
   if(f==='/sw.js'||!fs.existsSync(fp)||!fs.statSync(fp).isFile()){ res.writeHead(404); res.end(); return; }
@@ -124,6 +125,24 @@ console.log('── the page');
   await p.emulateMedia({media:'screen'});
   chk('no page errors', errs.length===0, errs);
   await c.close();
+}
+
+console.log('── opened before the script has answered');
+{
+  /* a slow script: the tab is clicked while admin.get is still on its way */
+  globalThis.SLOW_GET = 1500;
+  const c=await b.newContext({viewport:{width:1280,height:900}});
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
+  const p=await c.newPage();
+  await p.goto(BASE+'/admin.html',{waitUntil:'load'});
+  await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));
+  const n0 = H.FETCH.calls.length;
+  await p.evaluate(()=>document.getElementById('tabVisitors').click());
+  await sleep(300);
+  chk('nothing is loaded yet: the script has not said the counter is set up', H.FETCH.calls.length===n0);
+  chk('...and the numbers arrive by themselves once it does', await until(()=>p.evaluate(()=>document.querySelectorAll('#visTiles .tile').length===6), 12000), await p.evaluate(()=>document.getElementById('visStamp').textContent));
+  chk('...with the Updated line under the filters', await p.evaluate(()=>/^Updated /.test(document.getElementById('visStamp').textContent)));
+  globalThis.SLOW_GET = 0; await c.close();
 }
 
 console.log('── not set up, and no access');
