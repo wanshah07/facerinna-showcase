@@ -37,7 +37,7 @@ def decode(png: bytes):
 
 src = open(PAGE, encoding='utf-8').read()
 seg = src[src.index('<div class="qr-grid reveal">'):src.index('<!-- INTERACTIVE GAME -->')]
-cards = re.findall(r'<div class="qr-card">(.*?)\n      </div>', seg, re.S)
+cards = re.findall(r'<div class="qr-card"[^>]*>(.*?)\n      </div>', seg, re.S)
 
 bad = 0
 def check(label, cond):
