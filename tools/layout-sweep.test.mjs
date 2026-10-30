@@ -20,7 +20,7 @@ import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
 const DIR=PAGE('');
 const PAGES=['index.html','admin.html','privacy.html','terms.html','cookies.html','uv-card.html','facy-run.html','redeem.html','lab-run.html','deep-lab.html',
-  'match-lab.html','pack-match.html','shelf-shot.html','scan.html','events/index.html',
+  'match-lab.html','pack-match.html','pack-drop-4k.html','shelf-shot.html','scan.html','events/index.html',
   'facerinna-test-reports-claims/index.html','facerinna-test-reports-claims/embed.html',
   'facerinna-benchmark-anon/index.html','facerinna-efficacy-benchmark/index.html'];
 /* one phone, then a tablet held both ways, at the two sizes that between them

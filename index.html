@@ -3084,13 +3084,13 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
   <div class="wrap">
     <div class="sec-head center reveal">
       <span class="eyebrow">Interactive · Booth Engagement</span>
-      <h2><span id="gameHeadline">Nine games, one booth</span><button class="ghelp" type="button" id="guideBtn"
+      <h2><span id="gameHeadline">Ten games, one booth</span><button class="ghelp" type="button" id="guideBtn"
         aria-label="Booth staff guide" title="Booth staff guide">?</button></h2>
-      <p id="gameIntro">Nine challenges built for the booth — five 3D arcade games, Facy Run, the UV Card lucky draw, the Skin IQ quiz and the Lucky Wheel, all on the spinning lab wheel. Score well, or spin once, and claim your reward at the booth.</p>
+      <p id="gameIntro">Ten challenges built for the booth — five 3D arcade games, Pack Drop, Facy Run, the UV Card lucky draw, the Skin IQ quiz and the Lucky Wheel, all on the spinning lab wheel. Score well, or spin once, and claim your reward at the booth.</p>
     </div>
     <div class="cg-wrap reveal">
       <div class="cg" id="gameGallery" role="region" aria-roledescription="carousel"
-           aria-label="Circular 3D gallery of the eight booth games">
+           aria-label="Circular 3D gallery of the ten booth games">
         <div class="cg-ring" id="gameRing">
           <div class="cg-item" role="group" aria-label="Match Lab" data-game="match-lab">
             <a class="cg-card" href="match-lab.html" data-art="0">
@@ -3185,6 +3185,18 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
                 <em>Run · Jump · Learn</em>
                 <p>Prof Facy runs three zones — Skin Types, Skin Concerns, Ingredients. Bump the ? blocks, pick the right product at each signpost, stomp the breakouts. Score 6,000 for a gift.</p>
                 <span class="cc-play">▶ Play Facy Run</span>
+              </div>
+            </a>
+          </div>
+          <div class="cg-item" role="group" aria-label="Pack Drop" data-game="pack-drop">
+            <a class="cg-card" href="pack-drop-4k.html" data-art="9">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">09</span>
+              <div class="cg-cap">
+                <h4>Pack Drop</h4>
+                <em>Stack · Clear · Repeat</em>
+                <p>Guide the FACERINNA packs down and fill whole rows to clear them — smooth, calm and in full HD. Score well for a gift.</p>
+                <span class="cc-play">▶ Play Pack Drop</span>
               </div>
             </a>
           </div>
@@ -5622,7 +5634,8 @@ const GALLERY_DOCS = [
     {a:'#123256', b:'#8FD0F7', ic:'🧠'},
     {a:'#2A1B5E', b:'#8D6BF0', ic:'🔦'},
     {a:'#0E4B7E', b:'#7EC8F5', ic:'🏃‍♂️'},
-    {a:'#5A2A0E', b:'#FFB15C', ic:'🎡'}
+    {a:'#5A2A0E', b:'#FFB15C', ic:'🎡'},
+    {a:'#10305A', b:'#66D0FF', ic:'🧩'}
   ];
   /* Eight 600x800 canvases with a 230px emoji each cost a long job if drawn together at
      load, and the gallery is well below the fold. Paint them one per turn once the page
@@ -6641,6 +6654,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     {id:'deep-lab',   name:'Deep Lab',   unit:'pts'},
     {id:'lab-run',    name:'Lab Run',    unit:'pts'},
     {id:'facy-run',   name:'Facy Run',   unit:'pts'},
+    {id:'pack-drop',  name:'Pack Drop',  unit:'pts'},
     {id:'skin-iq',    name:'Skin IQ',    unit:'of 5'}
   ];
   const TOP=5;
@@ -7468,10 +7482,11 @@ function launchConfetti(){
         if(on('facy-run')) lines.push('🏃 <b>Facy Run</b> — run Prof Facy through skin types, concerns and ingredients; 6,000 points earns a gift → <a href="facy-run.html">play here</a>');
         if(on('skin-iq')) lines.push('🧠 <b>Skin IQ Challenge</b> — 5 questions, score 4+ for a reward → <a href="#game">play here</a>');
         if(arcade.length) lines.push((arcade.length===1?arcade[0]:arcade.slice(0,-1).join(', ')+' &amp; '+arcade[arcade.length-1])+' — '+(arcade.length===1?'a 3D arcade challenge':['','','two','three','four','five'][arcade.length]+' 3D arcade challenges')+' on our spinning game wheel → <a href="#game">see '+(arcade.length===1?'it':'them all')+'</a>');
+        if(on('pack-drop')) lines.push('🧩 <b>Pack Drop</b> — stack the FACERINNA packs and clear whole rows, smooth and in full HD → <a href="pack-drop-4k.html">play here</a>');
         if(on('uv-card')) lines.push('🔦 <b>UV Card</b> — pick a brochure, slide the UV light, reveal your number → <a href="uv-card.html">play here</a>');
         if(on('lucky-wheel')) lines.push('🎡 <b>Lucky Wheel</b> — one spin per phone for a gift from today’s stock → <a href="lucky-wheel.html">spin here</a>');
         /* counted from the wheel itself, so a game added there is counted here too */
-        const all=document.querySelectorAll('#gameRing .cg-item[data-game]').length||9;
+        const all=document.querySelectorAll('#gameRing .cg-item[data-game]').length||10;
         const n=all-off.length, W=['No','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
         bot(n ? W[n]+(n===1?' game':' games')+' at this booth 🎮<br><br>'+lines.join('<br>')
               : 'The games are resting right now 🎮 Ask the FACERINNA team at the booth.');
@@ -8063,7 +8078,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
      board and the headline all count the games that are left. */
   var GAME_NAMES={'match-lab':'Match Lab','pack-match':'Pack Match','shelf-shot':'Shelf Shot',
     'deep-lab':'Deep Lab','lab-run':'Lab Run','uv-card':'UV Card','skin-iq':'Skin IQ Challenge','facy-run':'Facy Run',
-    'lucky-wheel':'Lucky Wheel'};
+    'pack-drop':'Pack Drop','lucky-wheel':'Lucky Wheel'};
   var NUM=['No','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
   var introAll=null;
   function gamesOff(st){

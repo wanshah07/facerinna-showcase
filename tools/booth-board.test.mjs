@@ -120,11 +120,11 @@ console.log('\nthe label counts the games rather than spelling the number out');
     'facy-run':[{n:'Runner', s:8200, t: 1000}]});
   const n = r.games.length;
   console.log('   games on the board:', n, '·', r.label.trim());
-  check('every game in the list holds a row', n===7);
-  check('the button says so',   new RegExp('all seven games').test(r.label));
-  check('the heading says so',  /^Seven games, one board$/.test(r.heading.trim()));
-  check('the screen reader is told the same', /seven games/.test(r.aria));
-  check('and a player is counted out of that many', r.played.every(x=>/ of 7$/.test(x.trim())), r.played);
+  check('every game in the list holds a row', n===8);
+  check('the button says so',   new RegExp('all eight games').test(r.label));
+  check('the heading says so',  /^Eight games, one board$/.test(r.heading.trim()));
+  check('the screen reader is told the same', /eight games/.test(r.aria));
+  check('and a player is counted out of that many', r.played.every(x=>/ of 8$/.test(x.trim())), r.played);
   /* The first cut of this read "fiveth is worth 1": the ordinal was built by
      sticking "th" on the number word. A board nobody can argue with should
      not be the thing on screen that cannot spell. */
