@@ -191,7 +191,9 @@ table.vt .bar{display:block;height:4px;border-radius:2px;background:var(--brand2
 .accessbox label span{display:block;font-weight:500;font-size:12px;color:var(--ink2)}
 .accessbox input{margin-top:3px}
 .accessbox.all label{opacity:.6}
-.stock{grid-template-columns:minmax(0,1fr) auto}
+.stock{grid-template-columns:56px minmax(0,1fr) auto;align-items:start;gap:12px}
+.stock .pic{width:56px;height:56px;border-radius:10px;background:#f3f6fa;border:1px solid var(--line);object-fit:contain;display:block}
+.stock .pic.none{display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--ink2)}
 .stock .count{font-weight:800;font-size:15px}
 .stock .count.out{color:var(--bad)}
 .stock .count.nc{color:var(--ink2);font-weight:600;font-size:13px}
@@ -494,7 +496,7 @@ table.vt .bar{display:block;height:4px;border-radius:2px;background:var(--brand2
             <input type="number" id="stockQty" min="0" max="100000" step="1" inputmode="numeric" placeholder="e.g. 24">
             <div class="row" style="margin-top:14px"><button class="btn" id="stockAdd" type="submit">Add to the wheel</button></div>
           </form>
-          <p class="note" style="margin-top:14px">Each gift handed out takes one off its product. A product at <b>0</b> leaves the wheel by itself and comes back as soon as you restock it. When every product is at 0 the games stop giving out new codes.</p>
+          <p class="note" style="margin-top:14px">Every FACERINNA product is listed here by itself, with its picture. Each gift handed out takes one off its product. A product at <b>0</b> leaves the wheel by itself and comes back as soon as you restock it. When every product is at 0 the games stop giving out new codes.</p>
           <p class="note"><b>Add</b> restocks: it adds to what is left, so gifts handed out while you were typing are not undone. <b>Set</b> is for correcting a count after counting the boxes.</p>
         </div>
         <div class="card" data-gift-area="claims">
@@ -1360,6 +1362,15 @@ $('mediaForm').addEventListener('submit', function(e){
   }).finally(function(){ $('mediaUp').disabled = false; });
 });
 
+/* the product's own picture, found the way the wheel finds it: the name in lower case,
+   every run of anything that is not a letter or a digit turned into one dash */
+function productPic(name){
+  var slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  var im = document.createElement('img'); im.className='pic'; im.alt=''; im.loading='lazy'; im.decoding='async';
+  im.src = 'products/'+slug+'.webp';
+  im.onerror = function(){ var d = el('div','pic none','🎁'); d.setAttribute('aria-hidden','true'); if(im.parentNode) im.parentNode.replaceChild(d, im); };
+  return im;
+}
 function renderStock(list){
   var box=$('stockList'); box.textContent='';
   if(!list || !list.length){ box.appendChild(el('div','empty','No products yet. Add one on the left.')); return; }
@@ -1368,6 +1379,7 @@ function renderStock(list){
   list.forEach(function(x){
     var out = x.quantity===0, nc = x.quantity===null;
     var card = el('div','item stock'+(out?' out':'')); card.dataset.product = x.product;
+    card.appendChild(productPic(x.product));
     var main = el('div');
     main.appendChild(el('div','t', x.product)).style.textTransform='none';
     main.appendChild(el('div','count'+(out?' out':'')+(nc?' nc':''),

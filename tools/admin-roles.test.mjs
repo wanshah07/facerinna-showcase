@@ -123,7 +123,7 @@ check('ADMIN in capitals is an admin', signIn('caps@clinic.test').role==='admin'
 console.log('\nthe wheel is the stock');
 const stockTab = () => tabs['Gift stock'].rows.slice(1);
 g = call({ action:'admin.get', token:own.token });
-check('the stock list starts from the old products, not counted', g.stock.length===8 && g.stock.every(x=>x.quantity===null && x.on_wheel), g.stock);
+check('the stock list starts from the old products and the whole catalogue, none counted', g.stock.length===19 && g.stock.every(x=>x.quantity===null && x.on_wheel) && g.stock.slice(0,8).every(x=>/before stock/.test(x.by)), g.stock);
 const P = g.stock.map(x=>x.product);
 // count them all: two of the first, none of the rest
 P.forEach((name,i)=>call({ action:'admin.stock.set', token:own.token, product:name, quantity: i===0 ? 2 : 0 }));
