@@ -1605,7 +1605,7 @@ function adminGet_(me) {
   if (can_(me, 'sections')) out.section_rows = sectionRows_();
   if (can_(me, 'media')) { out.media = mediaList_(); out.events = mediaEvents_(); }
   if (can_(me, 'documents')) { seedDocs_(); out.documents = docsAdmin_(); out.signed = signedList_(); out.templates = templatesAdmin_(); }
-  if (can_(me, 'stock')) out.stock = stockPublic_();
+  if (can_(me, 'stock')) { seedCatalogue_(false); out.stock = stockPublic_(); }
   if (can_(me, 'claims')) out.claims = claimsList_();
   if (can_(me, 'visitors')) out.visitors = { configured: !!visitorsCfg_() };
   if (me.role === 'admin') {
@@ -1754,6 +1754,62 @@ function stockTab_() {
   }
   return sh;
 }
+/* Every product on the booth, the same names as PRODUCTS in index.html and as the
+   pictures in products/ (the wheel finds a picture by the name: lower case, anything
+   that is not a letter or a digit turned into a dash). Each is put on the Gift stock
+   list ONCE, not counted, so it is on the wheel until somebody sets a number; a product
+   an admin later removes is not brought back. tools/stock-catalogue.test.mjs keeps this
+   list, index.html and the pictures in step. */
+var CATALOGUE = [
+  '2% Niacinamide Power Bright Cleanser',
+  '10% Niacinamide 3% TXA Bright Dark Spot Serum',
+  '5% Niacinamide 1% TXA Bright Dark Spot Moisturizer',
+  'Niacinamide Brightening Serum Sunscreen SPF50 PA++++',
+  'Salicylic Acid Acne Gel Cleanser',
+  'Salicylic Acid Acne Toner',
+  '2% Salicylic Acid Acne Serum',
+  'Salicylic Acid Acne Moisturizer',
+  'Low pH B5 Gel Cleanser',
+  'Ceramide B5 Balancing Toner',
+  'Ceramide B5 Balancing Moisturizer',
+  'Retinol Anti-Aging Serum',
+  'Retinol Anti-Aging Moisturizer',
+  '5% B5 Centella Calming Gel Cream',
+  '5% B5 Niacinamide Bright Barrier Cream',
+  '5% B5 Intensive Barrier Cream',
+  'Amino Acid pH-Balanced Cream Cleanser',
+  'Acne Defense Matte Serum Sunscreen SPF50',
+  'Physical Defense Barrier Serum Sunscreen SPF50'
+];
+var CATALOGUE_KEY = 'stock_catalogue_seen';
+var WHEEL_KEY = 'gift_wheel', WHEEL_SECS = 20;
+function dropWheel_() {
+  var c = configCache_();
+  if (c) { try { c.remove(WHEEL_KEY); } catch (e) {} }
+}
+/* Adds the catalogue products that were never on the list. Writes the sheet, so it
+   needs the script lock: the caller says whether it already holds it (a spin does),
+   otherwise it takes it for the moment it needs and gives up quietly if it cannot. */
+function seedCatalogue_(locked) {
+  var props = PropertiesService.getScriptProperties(), seen = [];
+  try { seen = JSON.parse(props.getProperty(CATALOGUE_KEY) || '[]'); } catch (e) { seen = []; }
+  if (!(seen instanceof Array)) seen = [];
+  var todo = CATALOGUE.filter(function (p) { return seen.indexOf(p) < 0; });
+  if (!todo.length) return 0;
+  var lock = null;
+  if (!locked) { lock = LockService.getScriptLock(); if (!lock.tryLock(8000)) return 0; }
+  try {
+    var sh = stockTab_(), rows = stock_(), t = now_(), added = 0, done = seen.slice();
+    todo.forEach(function (p) {
+      if (stockFind_(rows, p)) { done.push(p); return; }
+      if (rows.length + added >= STOCK_MAX) return;             /* no room: asked again next time */
+      sh.appendRow([cell_(p), '', t, 'product catalogue']); added++; done.push(p);
+    });
+    props.setProperty(CATALOGUE_KEY, JSON.stringify(done));
+    if (added) dropWheel_();
+    return added;
+  } finally { if (lock) { flushSheets_(); lock.releaseLock(); } }
+}
 /* blank is "not counted"; anything else is a whole number, and something
    that is not a number reads as none left -- less on the wheel, not more */
 function qty_(v) {
@@ -1815,12 +1871,14 @@ function stockSet_(b, me) {
     if (rows.length >= STOCK_MAX) return json_({ ok: false, error: 'the wheel holds ' + STOCK_MAX + ' products at most' });
     sh.appendRow([cell_(name), q, t, me.email]);
   }
+  dropWheel_();
   return json_({ ok: true, stock: stockPublic_() });
 }
 function stockRemove_(b, me) {
   var row = stockFind_(stock_(), b && b.product);
   if (!row) return json_({ ok: false, error: 'that product is not on the list' });
   sheet_(T_STOCK).deleteRow(row._row);
+  dropWheel_();
   return json_({ ok: true, stock: stockPublic_() });
 }
 
@@ -1854,6 +1912,7 @@ function claimsReset_(b, me) {
     if (st && st.quantity !== null) {
       sheet_(T_STOCK).getRange(st._row, 2, 1, 3).setValues([[st.quantity + 1, now_(), me.email + ' (reset)']]);
       back++;
+      dropWheel_();
     }
   });
   return json_({ ok: true, reset: live.length, returned: back, claims: claimsList_() });
@@ -1915,6 +1974,25 @@ function giftClaim_(b) {
 }
 
 
+/* Body: {action:'gift.wheel'}
+   Back: {ok:true, products:[name, ...]}   what is on the wheel right now, in the order a spin counts
+   Public, no counts: the visitor's page draws the real wheel, pictures and all, before the
+   first spin instead of a wheel of question marks. Kept for a few seconds so a crowd of phones
+   opening the page is one read of the sheet, not hundreds; a spin that empties a product
+   drops it. The list a spin answers with is the one that decides where the wheel stops. */
+function giftWheel_() {
+  var c = configCache_();
+  if (c) { try { var hit = c.get(WHEEL_KEY); if (hit) return configText_(hit); } catch (e) {} }
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return json_({ ok: false, reason: 'busy' });
+  try {
+    seedCatalogue_(true);
+    var text = JSON.stringify({ ok: true, products: wheel_().map(function (x) { return x.product; }) });
+    if (c) { try { c.put(WHEEL_KEY, text, WHEEL_SECS); } catch (e) {} }
+    return configText_(text);
+  } finally { flushSheets_(); lock.releaseLock(); }
+}
+
 /* Body: {action:'gift.spin', device, name}
    Back: {ok:true, claim, product, index, products}            a fresh spin
          {ok:true, claim, product, index, products, already}   this device spun before
@@ -1934,6 +2012,7 @@ function giftSpin_(b) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return json_({ ok: false, reason: 'busy' });
   try {
+    seedCatalogue_(true);
     var wheel = wheel_(), products = wheel.map(function (x) { return x.product; });
     var have = giftLive_(giftRows_(), device);
     if (have) {
@@ -1956,7 +2035,7 @@ function giftSpin_(b) {
        unit is set aside for it; the counter's scan only marks it handed over */
     sheet_(T_GIFTS).appendRow([claim, device, LUCKY, 0, name, now_(), '', cell_(chosen.product), '', '', '', '']);
     if (chosen.quantity !== null)
-      sheet_(T_STOCK).getRange(chosen._row, 2, 1, 3).setValues([[chosen.quantity - 1, now_(), 'lucky wheel']]);
+      { sheet_(T_STOCK).getRange(chosen._row, 2, 1, 3).setValues([[chosen.quantity - 1, now_(), 'lucky wheel']]); if (chosen.quantity - 1 <= 0) dropWheel_(); }
     return json_({ ok: true, claim: claim, product: chosen.product, index: pick, products: products });
   } finally { flushSheets_(); lock.releaseLock(); }
 }
@@ -2015,6 +2094,7 @@ function giftRedeem_(b, email) {
   if (chosen.quantity !== null) {
     left = chosen.quantity - 1;
     sheet_(T_STOCK).getRange(chosen._row, 2, 1, 3).setValues([[left, now_(), email]]);
+    if (left <= 0) dropWheel_();
   }
   return json_({ ok: true, already: false, product: chosen.product, index: pick, left: left,
                  products: products, score: row.score, name: String(row.name || '') });
@@ -2275,6 +2355,7 @@ function doPost(e) {
     if (action === 'redeem')  return codeRedeem_(b);
     if (action === 'gift.claim') return giftClaim_(b);
     if (action === 'gift.spin')  return giftSpin_(b);
+    if (action === 'gift.wheel') return giftWheel_();
     if (action === 'doc.get')    return docGet_(b);
     if (action === 'doc.sign')   return docSign_(b);
 

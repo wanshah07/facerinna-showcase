@@ -9,7 +9,8 @@ import { ROOT, PAGE } from './paths.mjs';
 export const BOOK_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
 export const OWNER = 'owner@facerinna.test';
 
-/* opts.extra: a second script file of the same project (templates.gs), run first */
+/* opts.extra: a second script file of the same project (templates.gs), run first;
+   opts.catalogue: let the script put the product catalogue on the stock list, as it does live */
 export function load(opts){
   const src = ((opts && opts.extra) || '') + '\n' + fs.readFileSync(ROOT+'tools/booth-admin.gs','utf8');
   const tabs = {};
@@ -78,6 +79,13 @@ export function load(opts){
     getAccess: () => access || 'EDIT',
     createFile: blob => { const f = mkFile(blob); f.folder = id; return f; } }; DRIVE.folders.push(fo); return fo; };
   const PROPS={};
+  /* The product catalogue is put on the Gift stock list the first time anything asks for the
+     wheel. Most tests set their own products and count on the wheel being exactly those, so
+     the catalogue is marked as already done; the test that is about it passes opts.catalogue. */
+  if(!(opts && opts.catalogue)){
+    const cat = (src.match(/var CATALOGUE = \[([\s\S]*?)\];/)||[])[1] || '';
+    PROPS['stock_catalogue_seen'] = JSON.stringify((cat.match(/'([^']+)'/g)||[]).map(x=>x.slice(1,-1)));
+  }
   const PropertiesService = { getScriptProperties: () => ({
     getProperty: k => (k in PROPS ? PROPS[k] : null),
     setProperty: (k,v) => { PROPS[k]=String(v); },

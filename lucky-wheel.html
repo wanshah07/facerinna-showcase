@@ -165,6 +165,15 @@ function spinTo(index, done){
 }
 draw();
 
+/* The real wheel before the first spin: every product that is in stock today, with its own
+   picture, instead of a wheel of question marks. Public, no counts. The spin's own answer
+   still carries the list that decides where the wheel stops, and replaces this one. If the
+   booth cannot be reached the question marks stay and the spin works as before. */
+post({ action:'gift.wheel' }, 8000).then(function(j){
+  if (stage !== 'ready') return;
+  if (j && j.ok === true && j.products && j.products.length){ products = j.products; draw(); }
+}).catch(function(){});
+
 /* ------------------------------------------------------------- the flow */
 var stage = 'ready', won = '';
 var GAME = { 'match-lab':'Match Lab','pack-match':'Pack Match','shelf-shot':'Shelf Shot','deep-lab':'Deep Lab',
