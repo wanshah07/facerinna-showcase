@@ -15,9 +15,10 @@
    them: a child an ancestor clips on purpose, and a position:fixed layer,
    which cannot scroll the page whatever its box says -- the benchmark pages'
    .fr-plane is a blurred backdrop bled past every edge by design. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const DIR='file:///workspace/facerinna-showcase/';
+const DIR=PAGE('');
 const PAGES=['index.html','admin.html','privacy.html','terms.html','cookies.html','uv-card.html','facy-run.html','redeem.html','lab-run.html','deep-lab.html',
   'match-lab.html','pack-match.html','shelf-shot.html','scan.html','events/index.html',
   'facerinna-test-reports-claims/index.html','facerinna-test-reports-claims/embed.html',

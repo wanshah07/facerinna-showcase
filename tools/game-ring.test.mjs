@@ -5,18 +5,19 @@
    the eighth was nowhere a visitor could reach. Counting `.cg-item` in the
    file said eight and was no use at all -- the question is what is INSIDE
    #gameRing, and whether turning the wheel brings each one to the front. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 const { chromium } = pkg;
 import http from 'http'; import fs from 'fs';
-const ROOT='/workspace/facerinna-showcase';
-const html=fs.readFileSync(ROOT+'/index.html');
+import { ROOT, PAGE } from './paths.mjs';
+
+const html=fs.readFileSync(ROOT+'index.html');
 /* The page is not the only file it asks for any more: fx-gift.js is a real
    request, and a server answering every path with the page hands the browser
    HTML where it expects JavaScript. Serve what is asked for. */
 const srv=http.createServer((q,r)=>{
   const path=decodeURIComponent(new URL(q.url,'http://x').pathname);
   if(path==='/'||path==='/index.html'){ r.writeHead(200,{'Content-Type':'text/html'}); return r.end(html); }
-  const f='/workspace/facerinna-showcase'+path;
+  const f=ROOT+path;
   if(/^\/[\w.-]+\.js$/.test(path) && fs.existsSync(f)){
     r.writeHead(200,{'Content-Type':'text/javascript'}); return r.end(fs.readFileSync(f));
   }

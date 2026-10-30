@@ -9,11 +9,12 @@
 
    The script side is covered by vault-access.test.mjs; what only a browser
    can answer is whether the gate walks a person through it. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
 /* VAULT_PAGE lets the same checks run against a fresh build of the source
    before the publisher has carried it here. */
-const PAGE=process.env.VAULT_PAGE || 'file:///workspace/facerinna-showcase/facerinna-test-reports-claims/index.html';
+const FILE=process.env.VAULT_PAGE || PAGE('facerinna-test-reports-claims/index.html');
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 
@@ -52,7 +53,7 @@ for(const [tag,w,h,mob] of [['phone',390,844,true],['desk',1440,900,false]]){
     }
     return send({ok:false, error:'unexpected '+body.action});
   });
-  await p.goto(PAGE,{waitUntil:'load'});
+  await p.goto(FILE,{waitUntil:'load'});
   await p.waitForTimeout(1200);
 
   const vis = s => p.evaluate(sel=>{ const e=document.querySelector(sel);

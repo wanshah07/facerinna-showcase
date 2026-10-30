@@ -6,13 +6,14 @@
    hold and nothing else, let an admin add people and tick or untick their
    areas in place, manage the stock on the wheel and let a device play again,
    and tell counter staff without Counter why the camera will not open. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { load, OWNER } from './booth-admin-harness.mjs';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8199, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
+const PORT=8199, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

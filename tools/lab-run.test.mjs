@@ -4,9 +4,10 @@
    page is served here with one line added that hands back a reference to it,
    and nothing else changed: the logic under test is the shipped logic. */
 import fs from 'node:fs';
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const FILE=process.env.PAGE||'/workspace/facerinna-showcase/lab-run.html';
+const FILE=process.env.PAGE||new URL('../lab-run.html', import.meta.url).pathname;
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 

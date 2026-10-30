@@ -2,19 +2,20 @@
    apart from the cache. Playwright's setOffline does not reach a service
    worker's own fetches, so "offline" here means the web server is actually
    dead -- and a control run without the worker proves the difference shows. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const PORT=8123, BASE=`http://127.0.0.1:${PORT}`, ROOT='/workspace/facerinna-showcase';
+const PORT=8123, BASE=`http://127.0.0.1:${PORT}`;
 let bad=0; const chk=(l,ok)=>{ if(!ok) bad++; console.log((ok?'  PASS  ':'  FAIL  ')+l); };
 
 let srv=null;
 const up=()=>new Promise(r=>{const s=net.connect(PORT,'127.0.0.1');
   s.on('connect',()=>{s.end();r(true)}); s.on('error',()=>r(false));});
 async function serve(dir){
-  srv=spawn('node',['/opt/node22/lib/node_modules/http-server/bin/http-server','-p',String(PORT),
+  srv=spawn('node',[new URL('../node_modules/http-server/bin/http-server', import.meta.url).pathname,'-p',String(PORT),
                     '-c-1','-d','false','--silent','.'],
             {cwd:dir||ROOT, stdio:'ignore'});
   for(let i=0;i<60;i++){ if(await up()) return; await new Promise(r=>setTimeout(r,150)); }

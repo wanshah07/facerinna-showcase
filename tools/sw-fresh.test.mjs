@@ -5,12 +5,13 @@
 
    The server is in-process so the test can change what a URL says between
    two loads, and make the server hang, without touching the repository. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const PORT=8124, BASE=`http://127.0.0.1:${PORT}`, ROOT='/workspace/facerinna-showcase';
+const PORT=8124, BASE=`http://127.0.0.1:${PORT}`;
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript','.json':'application/json',

@@ -2,9 +2,10 @@
    Each game is served with one line added that hands back references to its
    governor; nothing else about the page is changed. */
 import fs from 'node:fs';
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const DIR='/workspace/facerinna-showcase/';
+const DIR=ROOT;
 const GAMES=['lab-run.html','deep-lab.html','match-lab.html','pack-match.html','shelf-shot.html'];
 const A='function perfTick(dtMs){';
 const INJ='window.__perf=function(){return {PERF:PERF,tick:perfTick,'+

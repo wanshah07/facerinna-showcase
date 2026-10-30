@@ -6,12 +6,13 @@
    signed-in browser gets the blocks drawn -- as elements, with a *starred*
    word arriving as <b> and a block that tries to be markup arriving as
    text. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8141, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
+const PORT=8141, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

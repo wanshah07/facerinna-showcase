@@ -2,12 +2,13 @@
    served in-process so what each one posts can be checked and what each one
    is told can be chosen. The script itself is tested in booth-admin.test.mjs;
    this is the two pages doing what they are told. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8127, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
+const PORT=8127, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -644,7 +645,7 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   await p.evaluate(()=>{ delete window.__boothAskFloorMs; });
 
   /* the shipped numbers, where a test's shortened copy cannot stand in */
-  const SRC = fs.readFileSync(ROOT+'/index.html','utf8');
+  const SRC = fs.readFileSync(ROOT+'index.html','utf8');
   chk('the timer it ships with is three minutes',        /var POLL_MS = 180000;/.test(SRC));
   chk('the floor it ships with is fifteen seconds',       /window\.__boothAskFloorMs \|\| 15000/.test(SRC));
   chk('...and the four moments worth asking at are wired',

@@ -1,9 +1,10 @@
 /* The session poster under the QR codes: it is where it was asked to be, the
    print is the full-size one, it opens in the reader at print size, and it
    fits a phone as well as a desk. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const PAGE='file:///workspace/facerinna-showcase/index.html';
+const FILE=PAGE();
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -14,7 +15,7 @@ for(const [W,H] of [[390,844],[1280,800]]){
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.route('**/*', r=>{const u=r.request().url();
     return (u.startsWith('file://')||u.startsWith('data:')||u.startsWith('blob:'))?r.continue():r.abort();});
-  await p.goto(PAGE,{waitUntil:'load'}); await sleep(1500);
+  await p.goto(FILE,{waitUntil:'load'}); await sleep(1500);
 
   const where=await p.evaluate(()=>{
     const ids=[...document.querySelectorAll('main > section, body > section')].map(s=>s.id).filter(Boolean);

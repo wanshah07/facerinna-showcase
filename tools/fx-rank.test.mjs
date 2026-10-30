@@ -1,9 +1,10 @@
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 const { chromium } = pkg;
 import http from 'http'; import fs from 'fs';
+import { ROOT, PAGE } from './paths.mjs';
 
 const ENDPOINT = 'https://script.google.com/macros/s/AKfycbx4zwbrto2iEUu7T9BMZG7_7VNALN2eNrr_209P9Bll-R1FK6fT0_qg9lJnNyqInJZz/exec';
-const rank = fs.readFileSync('/workspace/facerinna-showcase/fx-rank.js','utf8');
+const rank = fs.readFileSync(ROOT+'fx-rank.js','utf8');
 
 /* A minimal stand-in for a game page: a result screen that starts hidden and
    a score element, which is the entire contract fx-rank.js needs. */

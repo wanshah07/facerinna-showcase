@@ -23,14 +23,15 @@
 
      node tools/counter-load.test.mjs              100 phones
      node tools/counter-load.test.mjs 30           fewer, for a quick look  */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { load, OWNER } from './booth-admin-harness.mjs';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
 const N = +(process.argv.slice(2).find(a=>/^\d+$/.test(a)) || 100);
-const ROOT='/workspace/facerinna-showcase', PORT=8350+Math.floor(Math.random()*40), BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
+const PORT=8350+Math.floor(Math.random()*40), BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 const MAX_EXEC=30, LOCK_WAIT=10000, READ=120, WRITE=60, FLUSH=150, AUTH=350, LOSE=0.05;
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++; console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

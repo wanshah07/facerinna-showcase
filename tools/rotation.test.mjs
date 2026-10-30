@@ -8,9 +8,10 @@
 
    The one thing it cannot check is a real device's address bar changing
    height a beat after the turn. Headless Chromium has no address bar. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const DIR='file:///workspace/facerinna-showcase/';
+const DIR=PAGE('');
 const PAGES=['index.html','lab-run.html','deep-lab.html','match-lab.html','pack-match.html','shelf-shot.html','uv-card.html','facy-run.html'];
 const PORT={width:390,height:844}, LAND={width:844,height:390};
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;

@@ -3,9 +3,10 @@
    it asks for the address the code encodes.
    Routing is on the context, not the page, so the new tab a target="_blank"
    opens is intercepted too and nothing leaves this machine. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const PAGE=process.env.PAGE||'file:///workspace/facerinna-showcase/index.html';
+const FILE=process.env.PAGE||PAGE();
 const WANT={'Clinic registration QR code':'docs.google.com/forms',
             'WhatsApp QR code':'wa.me/message/YKYI736CG4FZH1'};
 let bad=0; const chk=(l,ok,extra)=>{ if(!ok) bad++;
@@ -18,7 +19,7 @@ for(const w of [390,1280]){
   await c.route('**/*', r=>{const u=r.request().url();
     return (u.startsWith('file://')||u.startsWith('data:'))?r.continue():r.abort();});
   const p=await c.newPage();
-  await p.goto(PAGE,{waitUntil:'load'});
+  await p.goto(FILE,{waitUntil:'load'});
   for(const [alt,want] of Object.entries(WANT)){
     const img=await p.$(`#qrcore img[alt="${alt}"]`);
     await img.scrollIntoViewIfNeeded();

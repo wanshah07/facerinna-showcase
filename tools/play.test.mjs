@@ -2,9 +2,10 @@
    comes loose: an error thrown, a score that stops being a number, a game
    that never starts, a result screen that never arrives. Not a substitute for
    a person playing it -- it is the floor, not the ceiling. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const DIR='file:///workspace/facerinna-showcase/';
+const DIR=PAGE('');
 const GAMES=[
   {f:'lab-run.html',    score:'#score',  start:'#playBtn'},
   {f:'deep-lab.html',   score:null,      start:null},

@@ -4,12 +4,13 @@
    icon on the counter phone opens the counter (never the public site) full
    screen with the FACERINNA mark; give iOS an opaque touch icon, since it
    paints transparency black; and be something Chrome will install. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8198, BASE='http://127.0.0.1:'+PORT;
+const PORT=8198, BASE='http://127.0.0.1:'+PORT;
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript','.png':'image/png',

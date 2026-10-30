@@ -2,9 +2,10 @@
    Antialiasing cannot be read off a setting -- it is a property of the WebGL
    context -- so it is read back from the context itself. */
 import fs from 'node:fs';
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const DIR='/workspace/facerinna-showcase/';
+const DIR=ROOT;
 const GAMES=['lab-run.html','deep-lab.html','match-lab.html','pack-match.html','shelf-shot.html'];
 const A='function perfTick(dtMs){';
 const INJ='window.__cfg=function(){var gl=renderer.getContext();'+

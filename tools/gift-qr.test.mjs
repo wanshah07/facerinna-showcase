@@ -7,13 +7,13 @@
 
    The quiz gets its own case because its score reads "4/5" on screen, and
    anything stripping non-digits from that reads forty-five. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8161, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
+const PORT=8161, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -154,6 +154,7 @@ console.log('\na run that clears it');
   fs.writeFileSync(file, Buffer.from(png.split(',')[1],'base64'));
   const py=spawnSync('python3',['-c',`
 import cv2, sys
+import { ROOT, PAGE } from './paths.mjs';
 img=cv2.imread(sys.argv[1]); big=cv2.resize(img,None,fx=3,fy=3,interpolation=cv2.INTER_NEAREST)
 val,_,_=cv2.QRCodeDetector().detectAndDecode(big); print(val)`, file],{encoding:'utf8'});
   const read=(py.stdout||'').trim();

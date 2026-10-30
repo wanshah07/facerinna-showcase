@@ -5,7 +5,8 @@
    the one place an admin can be revoked. */
 import fs from 'fs';
 import crypto from 'node:crypto';
-const src = fs.readFileSync('/workspace/facerinna-showcase/tools/booth-admin.gs','utf8');
+import { ROOT, PAGE } from './paths.mjs';
+const src = fs.readFileSync(ROOT+'tools/booth-admin.gs','utf8');
 
 const BOOK_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
 const tabs = {};

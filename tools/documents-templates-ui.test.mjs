@@ -2,15 +2,16 @@
    Apps Script project, never on the website) is a document by itself, and a
    new document can start from it, or from any document with Duplicate. The
    real admin and booth pages and booth-admin script through a local server. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import { load, OWNER } from './booth-admin-harness.mjs';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8233, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
+const PORT=8233, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
