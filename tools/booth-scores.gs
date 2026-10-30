@@ -98,6 +98,7 @@ var GAMES = {
   'deep-lab':   { name: 'Deep Lab',   max: 100000 },
   'lab-run':    { name: 'Lab Run',    max: 100000 },
   'facy-run':   { name: 'Facy Run',   max: 100000 },
+  'pack-drop':  { name: 'Pack Drop',  max: 100000 },
   'skin-iq':    { name: 'Skin IQ',    max: 5 }
 };
 

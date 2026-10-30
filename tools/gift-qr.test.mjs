@@ -12,6 +12,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { ROOT } from './paths.mjs';
 const {chromium}=pkg;
 const PORT=8161, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
@@ -110,7 +111,7 @@ const finish=(p,score)=>p.evaluate(n=>{
 
 console.log('the module is loaded by every game that keeps a score');
 {
-  const want=['match-lab','pack-match','shelf-shot','deep-lab','lab-run'];
+  const want=['match-lab','pack-match','shelf-shot','deep-lab','lab-run','pack-drop-4k'];
   const miss=want.filter(g=>!fs.readFileSync(path.join(ROOT,g+'.html'),'utf8').includes('src="fx-gift.js"'));
   chk('the five arcade games', miss.length===0, miss);
   chk('...and the booth page, for the quiz',
