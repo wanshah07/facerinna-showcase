@@ -502,6 +502,10 @@
 
   function render(justScored, prevBest) {
     lastRun = { score: justScored, prev: prevBest };
+    /* A game can ask for the board to stay out of the way: the run is still booked
+       and sent, and the popup is made ready, but it only comes up when the player
+       taps the Ranking button. FX_RANK = { ..., manual: true } */
+    if (CFG.manual) { fill(); refresh(); return; }
     openPop();
   }
 

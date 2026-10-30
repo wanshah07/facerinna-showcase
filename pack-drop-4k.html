@@ -99,6 +99,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
 .mini{display:flex;justify-content:center;gap:clamp(14px,3vmin,34px);margin:1em 0 1.2em}
 .mini div{min-width:3.6em}.mini b{display:block;font-size:clamp(18px,3vmin,30px);font-variant-numeric:tabular-nums}.mini span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
 .mini b.new{color:var(--gold)}
+.screen p.rk{margin:1.1em 0 0;font-size:clamp(11px,1.5vmin,14px)}.rk b{color:var(--ink);font-weight:600}
 .btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .btn{font:inherit;font-weight:700;letter-spacing:.02em;border:0;border-radius:999px;padding:.95em 2em;min-height:48px;cursor:pointer;color:#05243b;background:#e3f6ff;
   font-size:clamp(14px,2vmin,20px);touch-action:manipulation;transition:transform .15s cubic-bezier(.2,.9,.3,1.3),box-shadow .2s,background .2s}
@@ -208,6 +209,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
           <p class="cap" style="color:var(--mut)">points</p>
           <div class="mini"><div><b id="rLines">0</b><span>Lines</span></div><div><b id="rLevel">1</b><span>Level</span></div><div><b id="rBest">0</b><span>Best</span></div></div>
           <div class="btns"><button class="btn pri" id="again" type="button">Play again</button></div>
+          <p class="rk">Tap <b>🏆 Ranking</b> to see where you stand.</p>
         </div>
       </div>
     </div>
@@ -265,9 +267,10 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
 var COLS = 6, ROWS = 10;
 var RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-/* ── the range: three families, because a pack's shape decides where it sits.
-   Tall serums lie along a straight bar, jars fill a square, and tubes and
-   bottles lie along the long arm of an L, T, J, S or Z. */
+/* ── the range. A block is the shape of the pack it carries: a serum is a bar
+   four cells long, a tube or a cleanser is three cells tall, a sunscreen bottle
+   is two, a jar is a square. The glass wraps the pack; the pack is never a
+   picture sitting in a tile. */
 var RANGE = [
   {s:'10-niacinamide-3-txa-bright-dark-spot-serum', f:'bar',  c:'#4898D8'},
   {s:'2-salicylic-acid-acne-serum',                 f:'bar',  c:'#12A79B'},
@@ -285,16 +288,17 @@ var RANGE = [
   {s:'5-b5-niacinamide-bright-barrier-cream',       f:'tube', c:'#F0C25A'},
   {s:'5-b5-intensive-barrier-cream',                f:'tube', c:'#F0C25A'},
   {s:'amino-acid-ph-balanced-cream-cleanser',       f:'tube', c:'#7C9CC2'},
-  {s:'niacinamide-brightening-serum-sunscreen-spf50-pa', f:'tube', c:'#E8A13B'},
-  {s:'acne-defense-matte-serum-sunscreen-spf50',    f:'tube', c:'#E8A13B'},
-  {s:'physical-defense-barrier-serum-sunscreen-spf50', f:'tube', c:'#E8A13B'}
+  {s:'niacinamide-brightening-serum-sunscreen-spf50-pa', f:'bottle', c:'#E8A13B'},
+  {s:'acne-defense-matte-serum-sunscreen-spf50',    f:'bottle', c:'#E8A13B'},
+  {s:'physical-defense-barrier-serum-sunscreen-spf50', f:'bottle', c:'#E8A13B'}
 ];
 var SHAPES = {
-  I:{m:[[1,1,1,1]],f:'bar'}, O:{m:[[1,1],[1,1]],f:'jar'},
-  T:{m:[[0,1,0],[1,1,1]],f:'tube'}, L:{m:[[0,0,1],[1,1,1]],f:'tube'}, J:{m:[[1,0,0],[1,1,1]],f:'tube'},
-  S:{m:[[0,1,1],[1,1,0]],f:'tube'}, Z:{m:[[1,1,0],[0,1,1]],f:'tube'}
+  bar:   {m:[[1,1,1,1]],        f:'bar'},      /* serums, lying down to begin with */
+  tube:  {m:[[1],[1],[1]],      f:'tube'},     /* cleansers, toners, cream tubes, standing */
+  bottle:{m:[[1],[1]],          f:'bottle'},   /* sunscreen bottles, standing */
+  jar:   {m:[[1,1],[1,1]],      f:'jar'}       /* moisturizers */
 };
-var KEYS = Object.keys(SHAPES);
+var KEYS = ['bar','tube','bottle','jar','tube','jar','bottle'];   /* one of each, tubes and jars twice, shuffled like a deck */
 
 /* ── DOM ─────────────────────────────────────────────────────────────── */
 var $ = function(id){ return document.getElementById(id); };
@@ -365,15 +369,16 @@ function newPiece(){
   var k = bag.pop(), sh = SHAPES[k];
   return {k:k, m:sh.m.map(function(r){return r.slice();}), p:pick(sh.f), x:0, y:0, fy:0, uid:++uidN};
 }
-/* the straight run of cells the pack lies along: its centre, its length, and whether it lies down */
+/* the pack fills its whole block, lying down when the block is wider than tall */
 function heroOf(m){
-  var h = m.length, w = m[0].length, best = {len:0};
-  if (h === 2 && w === 2 && m[0][0] && m[0][1] && m[1][0] && m[1][1]) return {cx:1, cy:1, bw:2, bh:2, lying:false};
-  for (var j=0;j<h;j++){ var run=0; for (var i=0;i<=w;i++){ if (i<w && m[j][i]) run++; else { if (run > best.len) best={len:run, cx:i-run/2, cy:j+.5, lying:true}; run=0; } } }
-  for (var i2=0;i2<w;i2++){ var r2=0; for (var j2=0;j2<=h;j2++){ if (j2<h && m[j2][i2]) r2++; else { if (r2 > best.len) best={len:r2, cx:i2+.5, cy:j2-r2/2, lying:false}; r2=0; } } }
-  return best.lying ? {cx:best.cx, cy:best.cy, bw:best.len, bh:1, lying:true} : {cx:best.cx, cy:best.cy, bw:1, bh:best.len, lying:false};
+  var w = m[0].length, h = m.length;
+  return {cx:w/2, cy:h/2, bw:w, bh:h, lying:w > h};
 }
 
+/* bit 1 top, 2 right, 4 bottom, 8 left: set where the cell has no neighbour in the same block */
+function maskOf(m, i, j){
+  return (j === 0 ? 1 : 0) | (i === m[0].length-1 ? 2 : 0) | (j === m.length-1 ? 4 : 0) | (i === 0 ? 8 : 0);
+}
 function emptyBoard(){ var b=[]; for (var j=0;j<ROWS;j++) b.push(new Array(COLS).fill(null)); return b; }
 function collide(m, x, y){
   for (var j=0;j<m.length;j++) for (var i=0;i<m[j].length;i++) if (m[j][i]) {
@@ -426,6 +431,7 @@ function tryMove(dx){
 function rotate(dir){
   if (state !== 'play' || !cur) return;
   var m = cur.m, h = m.length, w = m[0].length, n = [];
+  if (w === h) return;                                         /* a jar looks the same turned, so it is not turned */
   for (var i=0;i<w;i++){ n.push([]); for (var j=0;j<h;j++) n[i].push(dir>0 ? m[h-1-j][i] : m[j][w-1-i]); }
   var nx = cur.x + Math.floor((w - h)/2), ny = cur.y + Math.floor((h - w)/2);
   var kicks = [[0,0],[-1,0],[1,0],[0,-1],[-2,0],[2,0],[-1,-1],[1,-1]];
@@ -456,7 +462,7 @@ function lock(hard){
   for (var j=0;j<cur.m.length;j++) for (var i=0;i<cur.m[j].length;i++) if (cur.m[j][i]) {
     var by = cur.y+j, bx = cur.x+i;
     if (by < 0) continue;
-    board[by][bx] = {p:cur.p, hx:hero.cx - (i+.5), hy:hero.cy - (j+.5), bw:hero.bw, bh:hero.bh, lying:hero.lying, oy:0, vy:0, pop:hard ? 1.14 : 1.07};
+    board[by][bx] = {p:cur.p, hx:hero.cx - (i+.5), hy:hero.cy - (j+.5), bw:hero.bw, bh:hero.bh, lying:hero.lying, mask:maskOf(cur.m, i, j), oy:0, vy:0, pop:hard ? 1.14 : 1.07};
     parts.push.apply(parts, burst((bx+.5)*cell, (by+1)*cell, prod.c, hard ? 4 : 2, .35));
   }
   buzz(hard ? 14 : 8);
@@ -555,20 +561,37 @@ function update(dt){
 function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 function hex(c, a){ var n = parseInt(c.slice(1),16); return 'rgba(' + (n>>16) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')'; }
 
-/* one glass tile in a pack's colour: painted once per colour and size, then only copied */
-function paintTile(c, x, y, s, color){
-  var m = s*.045, r = s*.18;
-  var gr = c.createLinearGradient(x, y, x, y+s); gr.addColorStop(0, hex(color,.7)); gr.addColorStop(1, hex(color,.3));
-  rr(c, x+m, y+m, s-2*m, s-2*m, r); c.fillStyle = gr; c.fill();
-  c.lineWidth = Math.max(1, s*.022); c.strokeStyle = 'rgba(255,255,255,.34)'; c.stroke();
-  var gl = c.createLinearGradient(x, y, x, y+s*.5); gl.addColorStop(0,'rgba(255,255,255,.28)'); gl.addColorStop(1,'rgba(255,255,255,0)');
-  rr(c, x+m*2, y+m*2, s-4*m, s*.46, r*.8); c.fillStyle = gl; c.fill();
+/* The block: a pane of coloured glass wrapped round the pack, as tight as the pack is. Where a piece has been
+   cut by a cleared row, only the sides that were its outside are drawn, so what is left is still glass round pack. */
+function paintWrap(c, w, h, s, color, mask){
+  var m = s*.035, r = s*.2;
+  var x0 = (mask&8) ? m : 0, y0 = (mask&1) ? m : 0, x1 = w - ((mask&2) ? m : 0), y1 = h - ((mask&4) ? m : 0);
+  var tl = (mask&1 && mask&8) ? r : 0, tr = (mask&1 && mask&2) ? r : 0, br = (mask&4 && mask&2) ? r : 0, bl = (mask&4 && mask&8) ? r : 0;
+  c.beginPath(); c.moveTo(x0+tl,y0); c.lineTo(x1-tr,y0); if (tr) c.arcTo(x1,y0,x1,y0+tr,tr); else c.lineTo(x1,y0);
+  c.lineTo(x1,y1-br); if (br) c.arcTo(x1,y1,x1-br,y1,br); else c.lineTo(x1,y1);
+  c.lineTo(x0+bl,y1); if (bl) c.arcTo(x0,y1,x0,y1-bl,bl); else c.lineTo(x0,y1);
+  c.lineTo(x0,y0+tl); if (tl) c.arcTo(x0,y0,x0+tl,y0,tl); else c.lineTo(x0,y0);
+  c.closePath();
+  var gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, hex(color,.58)); gr.addColorStop(1, hex(color,.26));
+  c.fillStyle = gr; c.fill();
+  /* a sheen down the top edge and a rim on the outside edges only */
+  if (mask&1) { var gl = c.createLinearGradient(0, y0, 0, y0+s*.5); gl.addColorStop(0,'rgba(255,255,255,.26)'); gl.addColorStop(1,'rgba(255,255,255,0)');
+    c.save(); c.clip(); c.fillStyle = gl; c.fillRect(x0, y0, x1-x0, s*.5); c.restore(); }
+  c.lineWidth = Math.max(1, s*.024); c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineCap = 'round';
+  if (mask&1) { c.beginPath(); c.moveTo(x0+tl,y0); c.lineTo(x1-tr,y0); c.stroke(); }
+  if (mask&2) { c.beginPath(); c.moveTo(x1,y0+tr); c.lineTo(x1,y1-br); c.stroke(); }
+  if (mask&4) { c.beginPath(); c.moveTo(x1-br,y1); c.lineTo(x0+bl,y1); c.stroke(); }
+  if (mask&8) { c.beginPath(); c.moveTo(x0,y1-bl); c.lineTo(x0,y0+tl); c.stroke(); }
+  if (tl) { c.beginPath(); c.arc(x0+tl,y0+tl,tl,Math.PI,1.5*Math.PI); c.stroke(); }
+  if (tr) { c.beginPath(); c.arc(x1-tr,y0+tr,tr,1.5*Math.PI,2*Math.PI); c.stroke(); }
+  if (br) { c.beginPath(); c.arc(x1-br,y1-br,br,0,.5*Math.PI); c.stroke(); }
+  if (bl) { c.beginPath(); c.arc(x0+bl,y1-bl,bl,.5*Math.PI,Math.PI); c.stroke(); }
 }
-function tile(c, x, y, s, color, alpha){
-  var key = color + '|' + Math.round(s*dpr), t = tiles[key];
-  if (!t) { t = document.createElement('canvas'); t.width = t.height = Math.max(1, Math.round(s*dpr));
-    var tc = t.getContext('2d'); tc.scale(t.width/s, t.width/s); paintTile(tc, 0, 0, s, color); tiles[key] = t; }
-  if (alpha !== 1) { c.save(); c.globalAlpha = alpha; c.drawImage(t, x, y, s, s); c.restore(); } else c.drawImage(t, x, y, s, s);
+function glass(c, x, y, w, h, s, color, mask, alpha){
+  var key = color + '|' + Math.round(w*dpr) + 'x' + Math.round(h*dpr) + '|' + mask + '|' + Math.round(s*dpr), t = tiles[key];
+  if (!t) { t = document.createElement('canvas'); t.width = Math.max(1, Math.round(w*dpr)); t.height = Math.max(1, Math.round(h*dpr));
+    var tc = t.getContext('2d'); tc.scale(t.width/w, t.height/h); paintWrap(tc, w, h, s, color, mask); tiles[key] = t; }
+  if (alpha !== 1) { c.save(); c.globalAlpha = alpha; c.drawImage(t, x, y, w, h); c.restore(); } else c.drawImage(t, x, y, w, h);
 }
 /* a pack, lying or standing, fitted inside its run of cells and drawn from a pre-scaled sprite */
 function hero(c, prod, cx, cy, h, s, alpha, clip){
@@ -585,10 +608,9 @@ function hero(c, prod, cx, cy, h, s, alpha, clip){
 function drawPiece(c, pc, ox, oy, s, alpha, rot, ghost){
   var m = pc.m, w = m[0].length, h = m.length, prod = RANGE[pc.p], hr = heroOf(m);
   c.save(); c.translate(ox + w*s/2, oy + h*s/2); if (rot) c.rotate(rot); c.translate(-w*s/2, -h*s/2);
-  for (var j=0;j<h;j++) for (var i=0;i<w;i++) if (m[j][i]) tile(c, i*s, j*s, s, prod.c, ghost ? .2 : alpha);
-  if (!ghost) hero(c, prod, hr.cx*s, hr.cy*s, hr, s, alpha);
-  else { c.globalAlpha = .55; c.lineWidth = Math.max(1.5, s*.04); c.strokeStyle = hex(prod.c,.9); c.setLineDash([s*.14, s*.12]);
-    for (var j2=0;j2<h;j2++) for (var i2=0;i2<w;i2++) if (m[j2][i2]) { rr(c, i2*s+s*.07, j2*s+s*.07, s*.86, s*.86, s*.16); c.stroke(); } }
+  if (!ghost) { glass(c, 0, 0, w*s, h*s, s, prod.c, 15, alpha); hero(c, prod, hr.cx*s, hr.cy*s, hr, s, alpha); }
+  else { c.globalAlpha = .6; c.lineWidth = Math.max(1.5, s*.04); c.strokeStyle = hex(prod.c,.95); c.setLineDash([s*.14, s*.12]);
+    rr(c, s*.06, s*.06, w*s - s*.12, h*s - s*.12, s*.22); c.stroke(); c.fillStyle = hex(prod.c,.08); c.fill(); }
   c.restore();
 }
 
@@ -607,7 +629,7 @@ function drawCells(c, animated){
       if (flash >= 0) { sc = 1 - .35*flash*flash; a = 1 - flash*flash; }
       c.save();
       if (sc !== 1) { c.translate(x+cell/2, y+cell/2); c.scale(sc, sc); c.translate(-cell/2, -cell/2); x = 0; y = 0; }
-      tile(c, x, y, cell, prod.c, a);
+      glass(c, x, y, cell, cell, cell, prod.c, cl.mask === undefined ? 15 : cl.mask, a);
       hero(c, prod, x+cell/2+cl.hx*cell, y+cell/2+cl.hy*cell, cl, cell, a, [x, y, cell, cell]);
       c.restore();
     }
@@ -666,7 +688,7 @@ function drawNexts(){
     if (cn.width !== Math.round(bw*dpr)) { cn.width = Math.round(bw*dpr); cn.height = Math.round(bh*dpr); }
     var c = cn.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,bw,bh);
     if (!pc) return;
-    var s = Math.min(bw/3.9, bh/2.7) * (big ? 1 : .92), w = pc.m[0].length, h = pc.m.length;
+    var w = pc.m[0].length, h = pc.m.length, s = Math.min(bw*.78/w, bh*.8/h, 58) * (big ? 1 : .9);
     drawPiece(c, pc, (bw - w*s)/2, (bh - h*s)/2, s, big ? 1 : .8, 0, false);
   });
 }
@@ -758,14 +780,15 @@ window.__packdrop = {start:reset, press:press, state:function(){ return state; }
   force:function(k){ var p = newPiece(); p.k = k; p.m = SHAPES[k].m.map(function(r){ return r.slice(); }); p.p = pick(SHAPES[k].f); nxt[0] = p; },
   forceNow:function(k){ var p = newPiece(); p.k = k; p.m = SHAPES[k].m.map(function(r){ return r.slice(); }); p.p = pick(SHAPES[k].f);
     p.x = Math.floor((COLS - p.m[0].length)/2); p.y = 0; cur = p; vx = p.x; vy = 0; lockT = 0; },
-  fill:function(r, a, b){ for (var c=a;c<b;c++) board[r][c] = {p:7, hx:0, hy:0, bw:1, bh:1, lying:false, oy:0, vy:0, pop:1}; },
+  fill:function(r, a, b){ for (var c=a;c<b;c++) board[r][c] = {p:7, hx:0, hy:0, bw:1, bh:1, lying:false, mask:15, oy:0, vy:0, pop:1}; },
   row:function(r){ return board[r].map(function(c){ return c ? 1 : 0; }).join(''); }};
 })();
 </script>
 
-<!-- booth ranking: the player's name before a run, the board after it. It
-     reads #rScore when #result loses its `hidden` class. -->
-<script>window.FX_RANK={id:'pack-drop',name:'Pack Drop',result:'#result',score:'#rScore'};</script>
+<!-- booth ranking: the player's name before a run; the board comes up only when the
+     player taps the Ranking button (manual), never over the game on its own. It reads
+     #rScore when #result loses its `hidden` class. -->
+<script>window.FX_RANK={id:'pack-drop',name:'Pack Drop',result:'#result',score:'#rScore',manual:true};</script>
 <script src="fx-rank.js"></script>
 <script src="fx-gift.js"></script>
 <script>

@@ -36,7 +36,8 @@ async function open(vp, touch, dsf){
   p.on('console',m=>{ if(m.type()==='error' && !/cloudflare|rum|ERR_FAILED|sw\.js|404|script\.google|net::/i.test(m.text())) errs.push(m.text()); });
   await p.goto(BASE+'/pack-drop-4k.html',{waitUntil:'load'});
   await p.waitForFunction(()=>window.__packdrop && window.__packdrop.snapshot().loaded>=19,null,{timeout:8000}).catch(()=>{});
-  await p.evaluate(()=>{ const g=document.querySelector('.fxr-gate'); if(g) g.classList.add('hidden'); });
+  /* give the name the way a visitor does, so the Ranking button is there as it is for them */
+  await p.fill('#fxrName','Tester').catch(()=>{}); await p.click('#fxrGo').catch(()=>{}); await sleep(250);
   return {c,p,errs};
 }
 
@@ -86,6 +87,7 @@ console.log('\nsmooth movement, frame by frame');
   const mark=await p.evaluate(()=>window.__fr.length);
   await sleep(2600);
   await tap(p,'right'); await sleep(700);
+  await p.evaluate(()=>window.__packdrop.forceNow('tube')); await sleep(250);   /* a jar is square and does not turn, so bring a tube */
   await tap(p,'rotate'); await sleep(900);
   const fr=await p.evaluate(()=>window.__fr);
   const fall=fr.slice(mark, mark+90).filter((f,i,a)=>i===0||f.x===a[i-1].x);
@@ -122,10 +124,10 @@ console.log('\nclearing a row');
   const {c,p,errs}=await open({width:1280,height:720},false,1);
   await p.evaluate(()=>window.__packdrop.start()); await sleep(300);
   /* the bottom row is full except for four gaps at the left; bring in a bar and drop it there */
-  await p.evaluate(()=>{ window.__packdrop.fill(9,4,6); window.__packdrop.forceNow('I'); }); await sleep(200);
+  await p.evaluate(()=>{ window.__packdrop.fill(9,4,6); window.__packdrop.forceNow('bar'); }); await sleep(200);
   await tap(p,'left'); await sleep(300);
   const pre=await p.evaluate(()=>({s:window.__packdrop.snapshot(), row:window.__packdrop.row(9)}));
-  chk('the bar sits over the gap', pre.s.x===0 && pre.s.k==='I' && pre.row==='000011', pre);
+  chk('the bar sits over the gap', pre.s.x===0 && pre.s.k==='bar' && pre.row==='000011', pre);
   await tap(p,'hard');
   await sleep(150);
   const mid=await p.evaluate(()=>window.__packdrop.state());
@@ -155,11 +157,30 @@ console.log('\na whole game, played to the end');
   chk('it ends: the stack reaches the top', end.st==='over', end.st);
   chk('the result screen is up with the final score ('+end.rScore+')', end.shown && +end.rScore===end.s.score && end.s.score>0, end);
   chk('the booth ranking took the score, under the player\'s name', end.board.length===1 && end.board[0].s===end.s.score && end.board[0].n==='Tester', end.board);
-  chk('and the ranking popup came up', end.pop, end.pop);
+  chk('the ranking popup does NOT come up over the game on its own', !end.pop, end.pop);
+  await p.click('.fxr-show'); await sleep(500);
+  chk('it comes up when the player taps Ranking, with their score', await p.evaluate(()=>{ const e=document.querySelector('.fxr-pop'); return e.classList.contains('on') && /Tester/.test(e.innerText); }));
+  await p.click('.fxr-x'); await sleep(400);
   chk('the best score is kept on this device', +end.best===end.s.score, end.best);
   await p.evaluate(()=>document.getElementById('again').click()); await sleep(500);
   const again=await p.evaluate(()=>({st:window.__packdrop.state(), s:window.__packdrop.snapshot(), hidden:document.getElementById('result').classList.contains('hidden')}));
   chk('Play again starts a fresh game', again.st==='play' && again.s.score===0 && again.hidden, again);
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+
+/* ───────────────────────── 4b. on a wide screen the ranking opens beside the board, never on it */
+console.log('\nthe ranking, on a wide screen');
+{
+  const {c,p,errs}=await open({width:1366,height:768},false,1);
+  await p.evaluate(()=>window.__packdrop.start());
+  const t0=Date.now(); while(Date.now()-t0<30000 && await p.evaluate(()=>window.__packdrop.state())!=='over'){ await p.keyboard.press('Space'); await sleep(120); }
+  await sleep(900);
+  chk('the run ended and nothing popped up over it', await p.evaluate(()=>window.__packdrop.state()==='over' && !document.querySelector('.fxr-pop.on')));
+  await p.click('.fxr-show'); await sleep(500);
+  const r=await p.evaluate(()=>{ const a=document.querySelector('.fxr-pop').getBoundingClientRect(), b=document.getElementById('cab').getBoundingClientRect(); return {pop:[a.left,a.top,a.right,a.bottom], cab:[b.left,b.top,b.right,b.bottom], on:document.querySelector('.fxr-pop').classList.contains('on')}; });
+  chk('tapping Ranking opens it', r.on, r);
+  chk('and it opens outside the board', r.pop[0] >= r.cab[2]-1 || r.pop[2] <= r.cab[0]+1 || r.pop[1] >= r.cab[3]-1 || r.pop[3] <= r.cab[1]+1, r);
   chk('no page errors', errs.length===0, errs);
   await c.close();
 }
