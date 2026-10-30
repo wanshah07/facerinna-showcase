@@ -7,12 +7,13 @@
    never that a gift is owed, since it cannot know. Checked on Facy Run
    (its own code) and on the shared fx-gift.js the other games and the quiz
    use. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8236, BASE='http://127.0.0.1:'+PORT;
+const PORT=8236, BASE='http://127.0.0.1:'+PORT;
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

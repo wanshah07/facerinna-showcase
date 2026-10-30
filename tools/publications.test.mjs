@@ -5,12 +5,13 @@
    with keys, a sideways wheel, a drag or a tap on a neighbour, open the one
    in front in a reader at its full resolution, and never catch the page's
    own vertical scroll on the way past. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8191, BASE='http://127.0.0.1:'+PORT;
+const PORT=8191, BASE='http://127.0.0.1:'+PORT;
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

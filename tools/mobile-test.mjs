@@ -7,9 +7,10 @@
    inside a carousel or marquee, because an ancestor clips it and that is the
    whole point of the component; and a visually-hidden heading, whose 1px
    clipped box IS the technique.  */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const FILE = process.env.PAGE || 'file:///workspace/facerinna-showcase/index.html';
+const FILE = process.env.PAGE || PAGE();
 const WIDTHS=[320,360,390,414,430];
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 let bad=0;

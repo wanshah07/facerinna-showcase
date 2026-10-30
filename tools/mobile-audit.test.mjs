@@ -17,12 +17,13 @@
      --shots DIR           a screenshot of every screen that has a finding
 
    Exit code 1 if anything is found. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8260+Math.floor(Math.random()*60), BASE='http://127.0.0.1:'+PORT;
+const PORT=8260+Math.floor(Math.random()*60), BASE='http://127.0.0.1:'+PORT;
 const arg=n=>{ const i=process.argv.indexOf('--'+n); return i>0 ? process.argv[i+1] : null; };
 const FULL=process.argv.includes('--full'), ONLY=arg('only'), SHOTS=arg('shots');
 if(SHOTS) fs.mkdirSync(SHOTS,{recursive:true});

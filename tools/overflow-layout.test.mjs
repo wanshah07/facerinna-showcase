@@ -2,7 +2,8 @@
    trusting that the CSS parsed. On a phone the hero is sized by its 5:4
    aspect ratio (a narrow-screen rule that already existed), so the svh rule
    is exercised on a wider viewport where the vh rule was the one in force. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++; console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
@@ -11,7 +12,7 @@ const read = async (vp, mobile) => {
   const p=await c.newPage();
   await p.route('**/*', r=>{const u=r.request().url();
     return (u.startsWith('file://')||u.startsWith('data:')||u.startsWith('blob:'))?r.continue():r.abort();});
-  await p.goto('file:///workspace/facerinna-showcase/index.html',{waitUntil:'load'});
+  await p.goto(PAGE(),{waitUntil:'load'});
   await p.waitForTimeout(1200);
   const r=await p.evaluate(()=>{
     const cs=el=>getComputedStyle(el), h=el=>Math.round(el.getBoundingClientRect().height);

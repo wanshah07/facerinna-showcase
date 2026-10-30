@@ -3,9 +3,10 @@
    Served with one line added that hands back the game's own state; nothing
    else about the page is changed. */
 import fs from 'node:fs';
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const FILE='/workspace/facerinna-showcase/lab-run.html';
+const FILE=new URL('../lab-run.html', import.meta.url).pathname;
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 

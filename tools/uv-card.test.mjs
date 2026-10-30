@@ -10,9 +10,10 @@
 
    What is not proved: frame rate on a real Android GPU. Headless Chromium
    under SwiftShader tells you nothing useful about that. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const PAGE='file:///workspace/facerinna-showcase/uv-card.html';
+const FILE=PAGE('uv-card.html');
 const SHOTS=process.env.SHOTS ? process.env.SHOTS.replace(/\/$/,'')+'/' : null;
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
@@ -289,7 +290,7 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
    Over http, so the home page sees where the visitor came from. */
 {
   const http=await import('node:http'); const fs=await import('node:fs'); const path=await import('node:path');
-  const ROOT='/workspace/facerinna-showcase', PORT=8125, BASE='http://127.0.0.1:'+PORT;
+  const PORT=8125, BASE='http://127.0.0.1:'+PORT;
   const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript','.webmanifest':'application/manifest+json','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp'};
   const srv=http.createServer((req,res)=>{ let f=decodeURIComponent(new URL(req.url,BASE).pathname); if(f.endsWith('/')) f+='index.html';
     const fp=path.join(ROOT,f); if(!fs.existsSync(fp)||!fs.statSync(fp).isFile()){ res.writeHead(404); res.end(); return; }

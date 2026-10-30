@@ -4,7 +4,8 @@
    ranking rule agrees with the page's own bests(), because a booth where the
    popup and the big board disagree is worse than no board. */
 import fs from 'fs';
-const src = fs.readFileSync('/workspace/facerinna-showcase/tools/booth-scores.gs','utf8');
+import { ROOT, PAGE } from './paths.mjs';
+const src = fs.readFileSync(ROOT+'tools/booth-scores.gs','utf8');
 
 const sheet = { rows: [] };
 /* Both paths, because the live config is the standalone one: SHEET_ID set and

@@ -8,11 +8,12 @@
    game off and empty stock all say so.
    Page: the wheel lands on the slice the script chose, the QR carries the
    code, and every answer that is not a spin says what to do. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { load, OWNER } from './booth-admin-harness.mjs';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++; console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -89,7 +90,7 @@ console.log('the script');
 }
 
 console.log('\nthe page');
-const ROOT='/workspace/facerinna-showcase', PORT=8380+Math.floor(Math.random()*40), BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
+const PORT=8380+Math.floor(Math.random()*40), BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 let mode='ok';
 const srv=http.createServer((req,res)=>{
   const u=new URL(req.url,BASE);

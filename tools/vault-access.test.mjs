@@ -4,7 +4,8 @@
    stops buying the moment a cell changes, and that the four reasons a refusal
    can have stay distinguishable. */
 import fs from 'fs';
-const src = fs.readFileSync('/workspace/facerinna-showcase/tools/vault-access.gs','utf8');
+import { ROOT, PAGE } from './paths.mjs';
+const src = fs.readFileSync(ROOT+'tools/vault-access.gs','utf8');
 
 /* --- a fake workbook set, shaped exactly like the real tabs --- */
 const REQ = { name:'Vault requests', rows: [] };

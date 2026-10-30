@@ -7,14 +7,15 @@
    locks the rest. Staff without the area never see the tab.
    Site: live items appear, locked ones are not in the page at all, the built-in
    codes can be hidden, a hostile label is text, and nothing runs off the screen. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { load, OWNER } from './booth-admin-harness.mjs';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8240+Math.floor(Math.random()*50), BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
+const PORT=8240+Math.floor(Math.random()*50), BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++; console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(fn, ms=15000, step=100){ const t=Date.now(); while(Date.now()-t<ms){ if(await fn()) return true; await sleep(step);} return fn(); }

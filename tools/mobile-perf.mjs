@@ -19,12 +19,13 @@
      node tools/mobile-perf.mjs --only facy          pages whose name contains this
      node tools/mobile-perf.mjs --throttle 6         a slower phone
    Exit code 1 if anything is over its budget (see BUDGET). */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8330+Math.floor(Math.random()*50), BASE='http://127.0.0.1:'+PORT;
+const PORT=8330+Math.floor(Math.random()*50), BASE='http://127.0.0.1:'+PORT;
 const arg=n=>{ const i=process.argv.indexOf('--'+n); return i>0 ? process.argv[i+1] : null; };
 const ONLY=arg('only'), RATE=+(arg('throttle')||4);
 

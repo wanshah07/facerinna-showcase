@@ -3,9 +3,10 @@
    means nothing about a phone. What does carry over: how much work the main
    thread does per frame in JS, how much garbage a frame makes, and whether
    there are spikes -- those are the same code paths on any device. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
-const ROOT='file:///workspace/facerinna-showcase/';
+const FILE=PAGE('');
 const GAMES=process.argv.slice(2).length?process.argv.slice(2)
   :['lab-run.html','deep-lab.html','match-lab.html','pack-match.html','shelf-shot.html'];
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
@@ -27,7 +28,7 @@ for(const g of GAMES){
   });
   await p.route('**/*', r=>{const u=r.request().url();
     return (u.startsWith('file://')||u.startsWith('data:')||u.startsWith('blob:'))?r.continue():r.abort();});
-  await p.goto(ROOT+g,{waitUntil:'load'});
+  await p.goto(FILE+g,{waitUntil:'load'});
   await p.waitForTimeout(2500);
   /* start it however this game starts */
   for(const sel of ['#playBtn','#startBtn','#begin','button.play','.start-btn']){

@@ -13,13 +13,13 @@
    ask of them. That section exists because the loop was once armed nowhere on
    a first open -- the picture was live, nothing ever looked at it, and every
    check that called handle() by hand passed. */
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
+import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 const {chromium}=pkg;
-const ROOT='/workspace/facerinna-showcase', PORT=8163, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
+const PORT=8163, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
   console.log((ok?'  PASS  ':'  FAIL  ')+l+(!ok&&x!==undefined?'  -> '+JSON.stringify(x):'')); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -224,6 +224,7 @@ console.log('\na code held up to the camera, with nobody touching the page');
   const y4m='/tmp/fx-scan-cam.y4m';
   const py=spawnSync('python3',['-c',`
 import cv2, numpy as np, sys
+import { ROOT, PAGE } from './paths.mjs';
 q=cv2.QRCodeEncoder_create().encode(sys.argv[1])
 q=cv2.copyMakeBorder(q,4,4,4,4,cv2.BORDER_CONSTANT,value=255)
 W,H=640,480
