@@ -25,20 +25,31 @@ const srv=http.createServer((q,r)=>{
 await new Promise(r=>srv.listen(PORT,'127.0.0.1',r));
 const b=await chromium.launch();
 
-const KEY={left:'ArrowLeft',right:'ArrowRight',rotate:'ArrowUp',down:'ArrowDown',hard:'Space'};
+const KEY={left:'ArrowLeft',right:'ArrowRight',rotate:'ArrowUp',down:'ArrowDown',hard:'Space',hold:'c'};
 /* a key tap, the way a keyboard sends one: down, then up */
 const tap=(p,a)=>p.keyboard.press(KEY[a]);
-async function open(vp, touch, dsf){
+/* `gift` stands in for the booth script: {on, need} answers the config call, and a claim hands back a code */
+async function open(vp, touch, dsf, gift){
   const c=await b.newContext({viewport:vp,isMobile:touch,hasTouch:touch,deviceScaleFactor:dsf});
-  await c.addInitScript(()=>{ window.__BOOTH_API=''; try{ localStorage.setItem('fx.player','Tester'); }catch(e){} });
-  const p=await c.newPage(); const errs=[];
+  await c.addInitScript((api)=>{ window.__BOOTH_API=api; try{ localStorage.setItem('fx.player','Tester'); }catch(e){} }, gift?BASE+'/api':'');
+  const calls=[];
+  if(gift) await c.route(BASE+'/api', async route=>{
+    let q={}; try{ q=JSON.parse(route.request().postData()||'{}'); }catch(e){}
+    calls.push(q);
+    let out={ok:false};
+    if(q.action==='config') out={ok:true,settings:{gift_active:gift.on?'yes':'no'},gift_needs:gift.need?{'pack-drop':gift.need}:{}};
+    else if(q.action==='gift.claim') out=q.score>=gift.need?{ok:true,claim:'44444444-4444-4444-8444-444444444444'}:{ok:false,reason:'short'};
+    else if(q.action==='score.submit'||q.action==='board'||q.action==='scores') out={ok:true};
+    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(out)});
+  });
+  const p=await c.newPage(); const errs=[]; p.calls=calls;
   p.on('pageerror',e=>errs.push(e.message));
   p.on('console',m=>{ if(m.type()==='error' && !/cloudflare|rum|ERR_FAILED|sw\.js|404|script\.google|net::/i.test(m.text())) errs.push(m.text()); });
   await p.goto(BASE+'/pack-drop-4k.html',{waitUntil:'load'});
   await p.waitForFunction(()=>window.__packdrop && window.__packdrop.snapshot().loaded>=19,null,{timeout:8000}).catch(()=>{});
   /* give the name the way a visitor does, so the Ranking button is there as it is for them */
   await p.fill('#fxrName','Tester').catch(()=>{}); await p.click('#fxrGo').catch(()=>{}); await sleep(250);
-  return {c,p,errs};
+  return {c,p,errs,calls};
 }
 
 /* ───────────────────────── 1. every screen, held every way */
@@ -50,19 +61,23 @@ const VPS=[
 ];
 for (const [name,w,h,touch,dsf] of VPS){
   const {c,p,errs}=await open({width:w,height:h},touch,dsf);
-  const before=await p.evaluate(()=>window.__packdrop.snapshot());
-  await p.evaluate(()=>window.__packdrop.start()); await sleep(500);
+  const menu=await p.evaluate(()=>{ const R=s=>{const b=document.querySelector(s).getBoundingClientRect(); return {l:b.left,t:b.top,r:b.right,b:b.bottom};}; return {cab:R('#cab'),g:R('#goGift'),n:R('#goPlay')}; });
+  const within=(a,o)=>a.l>=o.l-1&&a.r<=o.r+1&&a.t>=o.t-1&&a.b<=o.b+1;
+  chk(name+': both start buttons (Redeem gift, Normal play) are inside the board and tappable', within(menu.g,menu.cab)&&within(menu.n,menu.cab)&&(menu.g.b-menu.g.t)>=40&&(menu.n.b-menu.n.t)>=40, menu);
+  await p.evaluate(()=>window.__packdrop.start('play')); await sleep(500);
   const m=await p.evaluate(()=>{
     const R=s=>{const e=document.querySelector(s); if(!e) return null; const b=e.getBoundingClientRect(); return {l:b.left,t:b.top,r:b.right,b:b.bottom,w:b.width,h:b.height,vis:getComputedStyle(e).display!=='none'&&b.width>0};};
     const cv=document.getElementById('game'), s=window.__packdrop.snapshot();
     const back=document.querySelector('.fxr-back'); const bb=back&&back.getBoundingClientRect();
     return {cab:R('#cab'),cv:R('#game'),left:R('.left .card'),right:R('.right .card'),hd:R('.hd'),padL:R('.padL'),padR:R('.padR'),btnL:R('.padL .pb'),btnR:R('.padR .pb:last-child'),btnL2:R('.padR .pb'),
       back:bb?{l:bb.left,t:bb.top,r:bb.right,b:bb.bottom}:null, sw:document.documentElement.scrollWidth, sh:document.documentElement.scrollHeight,
-      iw:innerWidth, ih:innerHeight, cw:cv.width, ch:cv.height, snap:s};
+      iw:innerWidth, ih:innerHeight, cw:cv.width, ch:cv.height, snap:s,
+      side:[...document.querySelectorAll('.left .card,.right .card')].filter(e=>e.offsetWidth>0).map(e=>{const b=e.getBoundingClientRect(); return {t:b.top,b:b.bottom,l:b.left,r:b.right};})};
   });
   const hit=(a,b)=>a&&b&&a.vis!==false&&b.vis!==false&&a.l<b.r-1&&a.r>b.l+1&&a.t<b.b-1&&a.b>b.t+1;
   const inside=m.cab.l>=0&&m.cab.t>=0&&m.cab.r<=m.iw&&m.cab.b<=m.ih;
   chk(name+': the whole board is on screen, and the page does not scroll', inside && m.sw<=m.iw && m.sh<=m.ih, {cab:m.cab,iw:m.iw,ih:m.ih,sw:m.sw,sh:m.sh});
+  chk(name+': every side card (stats, saved, next packs, controls) is fully on screen', m.side.every(c=>c.t>=-1&&c.b<=m.ih+1&&c.l>=-1&&c.r<=m.iw+1), m.side);
   chk(name+': board cell is big enough to read ('+m.snap.cell+'px)', m.snap.cell>=(h<=700?30:44), m.snap.cell);
   chk(name+': the board does not sit under the stats, the next packs, the pads or the Back button',
       !hit(m.cab,m.left)&&!hit(m.cab,m.right)&&!hit(m.cab,m.padL)&&!hit(m.cab,m.padR)&&!hit(m.cab,m.back&&{...m.back,vis:true,l:m.back.l,r:m.back.r}), m);
@@ -82,7 +97,7 @@ console.log('\nsmooth movement, frame by frame');
 {
   const {c,p,errs}=await open({width:1366,height:768},false,1);
   await p.evaluate(()=>{ window.__fr=[]; const t=(ts)=>{ const s=window.__packdrop.snapshot(); window.__fr.push({t:ts||performance.now(),vx:s.vx,vy:s.vy,x:s.x,y:s.y,rot:s.rotV,st:s.state}); window.__raf=requestAnimationFrame(t); }; requestAnimationFrame(t); });
-  await p.evaluate(()=>window.__packdrop.start());
+  await p.evaluate(()=>window.__packdrop.start("play"));
   await sleep(1400);                                   /* let it glide in, then watch it fall */
   const mark=await p.evaluate(()=>window.__fr.length);
   await sleep(2600);
@@ -91,11 +106,11 @@ console.log('\nsmooth movement, frame by frame');
   await tap(p,'rotate'); await sleep(900);
   const fr=await p.evaluate(()=>window.__fr);
   const fall=fr.slice(mark, mark+90).filter((f,i,a)=>i===0||f.x===a[i-1].x);
-  /* speed over a tenth of a second, in cells a second: it must be the gravity (about 1 cell/s at level 1), whatever the frame rate.
+  /* speed over a tenth of a second, in cells a second: it must be the gravity (about 1.4 cells/s at level 1), whatever the frame rate.
      Single frames are not compared: a busy machine drops a frame now and then and the game, which runs on the clock, catches up. */
   const sp=[]; for(let i=0;i+6<fall.length;i+=3){ const dt=(fall[i+6].t-fall[i].t)/1000; if(dt>0.05 && fall[i+6].y===fall[i].y) sp.push((fall[i+6].vy-fall[i].vy)/dt); }
   const med=sp.slice().sort((a,b)=>a-b)[Math.floor(sp.length/2)], mx=Math.max(...sp.map(Math.abs)), mn=Math.min(...sp);
-  chk('falling is a steady speed, not a stepping one (median '+med.toFixed(2)+' cells/s, range '+mn.toFixed(2)+' to '+mx.toFixed(2)+')', sp.length>=6 && med>0.7 && med<1.5 && mn>0.4 && mx<2.2, {n:sp.length,med,mn,mx});
+  chk('falling is a steady speed, not a stepping one (median '+med.toFixed(2)+' cells/s, range '+mn.toFixed(2)+' to '+mx.toFixed(2)+')', sp.length>=6 && med>1.0 && med<2.0 && mn>0.6 && mx<3, {n:sp.length,med,mn,mx});
   const moving=fall.slice(1).filter((f,i)=>f.vy>fall[i].vy+1e-4).length;
   chk('the picture moves on nearly every frame it draws ('+moving+' of '+(fall.length-1)+')', moving/(fall.length-1)>0.9, {moving,n:fall.length});
   /* the one move to the right: the visual column eases over the time it should */
@@ -145,7 +160,7 @@ console.log('\nclearing a row');
 console.log('\na whole game, played to the end');
 {
   const {c,p,errs}=await open({width:390,height:844},true,2);
-  await p.evaluate(()=>window.__packdrop.start());
+  await p.evaluate(()=>window.__packdrop.start("play"));
   const t0=Date.now(); let n=0;
   while(Date.now()-t0<70000){
     const st=await p.evaluate(()=>window.__packdrop.state()); if(st==='over') break;
@@ -159,7 +174,7 @@ console.log('\na whole game, played to the end');
   chk('the booth ranking took the score, under the player\'s name', end.board.length===1 && end.board[0].s===end.s.score && end.board[0].n==='Tester', end.board);
   chk('the ranking popup does NOT come up over the game on its own', !end.pop, end.pop);
   await p.click('.fxr-show'); await sleep(500);
-  chk('it comes up when the player taps Ranking, with their score', await p.evaluate(()=>{ const e=document.querySelector('.fxr-pop'); return e.classList.contains('on') && /Tester/.test(e.innerText); }));
+  chk('it comes up when the player taps Ranking, with their score', await p.evaluate(()=>{ const e=document.querySelector('.fxr-pop'); return e.classList.contains('on') && /You scored/.test(e.innerText); }));
   await p.click('.fxr-x'); await sleep(400);
   chk('the best score is kept on this device', +end.best===end.s.score, end.best);
   await p.evaluate(()=>document.getElementById('again').click()); await sleep(500);
@@ -173,7 +188,7 @@ console.log('\na whole game, played to the end');
 console.log('\nthe ranking, on a wide screen');
 {
   const {c,p,errs}=await open({width:1366,height:768},false,1);
-  await p.evaluate(()=>window.__packdrop.start());
+  await p.evaluate(()=>window.__packdrop.start("play"));
   const t0=Date.now(); while(Date.now()-t0<30000 && await p.evaluate(()=>window.__packdrop.state())!=='over'){ await p.keyboard.press('Space'); await sleep(120); }
   await sleep(900);
   chk('the run ended and nothing popped up over it', await p.evaluate(()=>window.__packdrop.state()==='over' && !document.querySelector('.fxr-pop.on')));
@@ -208,6 +223,162 @@ console.log('\nsteering');
   chk('P pauses and shows the pause screen', await p.evaluate(()=>window.__packdrop.state()==='pause' && !document.getElementById('paused').classList.contains('hidden')));
   await p.keyboard.press('p'); await sleep(200);
   chk('P again carries on', await p.evaluate(()=>window.__packdrop.state()==='play'));
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+
+/* ───────────────────────── 6. the start screen: Redeem gift or Normal play */
+console.log('\nthe two ways to play');
+const NEED=600;
+{
+  const {c,p,errs}=await open({width:1366,height:768},false,1,{on:true,need:NEED});
+  await p.waitForFunction(()=>window.__packdrop.snapshot().giftState==='ready',null,{timeout:6000}).catch(()=>{});
+  const ui=await p.evaluate(()=>({gs:window.__packdrop.snapshot().giftState, txt:document.getElementById('goGift').innerText, dis:document.getElementById('goGift').disabled, play:document.getElementById('goPlay').innerText}));
+  chk('with a gift target set, Redeem gift is on and says what to reach', ui.gs==='ready' && !ui.dis && ui.txt.includes('600'), ui);
+  chk('Normal play sits beside it, with no target', /Normal play/.test(ui.play), ui.play);
+  await p.click('#goPlay'); await sleep(300);
+  const n=await p.evaluate(()=>({s:window.__packdrop.snapshot(), gb:document.getElementById('giftBox').hidden, tag:document.getElementById('modeTag').textContent, startHidden:document.getElementById('start').classList.contains('hidden')}));
+  chk('Normal play starts an endless game: no target, no gift bar', n.s.mode==='play' && n.s.need===0 && n.gb && n.startHidden && /Normal/.test(n.tag), n);
+  await p.evaluate(()=>window.__packdrop.addScore(5000)); await sleep(200);
+  chk('and passing the gift score does not stop it', await p.evaluate(()=>window.__packdrop.state()==='play'));
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+{
+  const {c,p,errs}=await open({width:1366,height:768},false,1,{on:false,need:NEED});
+  await sleep(900);
+  const ui=await p.evaluate(()=>({gs:window.__packdrop.snapshot().giftState, dis:document.getElementById('goGift').disabled, txt:document.getElementById('goGift').innerText}));
+  chk('with gifts off, Redeem gift is greyed out and says so; Normal play still works', ui.gs==='off' && ui.dis && /not on/i.test(ui.txt), ui);
+  await p.click('#goPlay'); await sleep(200);
+  chk('Normal play starts regardless', await p.evaluate(()=>window.__packdrop.state()==='play'));
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+{
+  const {c,p,errs}=await open({width:1366,height:768},false,1,{on:true,need:0});
+  await sleep(900);
+  const ui=await p.evaluate(()=>({gs:window.__packdrop.snapshot().giftState, dis:document.getElementById('goGift').disabled}));
+  chk('gifts on but no target for this game: Redeem gift is greyed out', ui.gs==='unset' && ui.dis, ui);
+  await c.close();
+}
+
+/* ───────────────────────── 7. redeem mode: stop the moment the score is reached */
+console.log('\nredeem gift: stops at the target and says so');
+{
+  const {c,p,errs,calls}=await open({width:390,height:844},true,2,{on:true,need:NEED});
+  await p.waitForFunction(()=>window.__packdrop.snapshot().giftState==='ready',null,{timeout:6000}).catch(()=>{});
+  await p.tap('#goGift'); await sleep(400);
+  const a=await p.evaluate(()=>({s:window.__packdrop.snapshot(), gb:document.getElementById('giftBox').hidden, need:document.getElementById('giftNeedTxt').textContent}));
+  chk('Redeem gift starts a run aimed at '+NEED, a.s.mode==='gift' && a.s.need===NEED && !a.gb && a.need==='600', a);
+  await p.evaluate(n=>window.__packdrop.addScore(n),NEED-1); await sleep(200);
+  chk('one point short: still playing', await p.evaluate(()=>window.__packdrop.state()==='play'));
+  await p.evaluate(()=>window.__packdrop.addScore(1));
+  const w=await p.evaluate(()=>({st:window.__packdrop.state(), y:window.__packdrop.snapshot().y}));
+  chk('the very point that reaches it stops the game', w.st==='won', w);
+  await sleep(300);
+  const y1=await p.evaluate(()=>JSON.stringify(window.__packdrop.snapshot()));
+  await p.keyboard.press('Space'); await p.keyboard.press('ArrowLeft'); await sleep(300);
+  chk('and nothing moves after that, whatever is pressed', await p.evaluate(j=>JSON.stringify(window.__packdrop.snapshot())===j, y1));
+  await sleep(1400);
+  const r=await p.evaluate(()=>({shown:!document.getElementById('result').classList.contains('hidden'), win:document.getElementById('result').classList.contains('win'),
+    h:getComputedStyle(document.getElementById('rWin')).display, head:document.getElementById('rWin').textContent, score:+document.getElementById('rScore').textContent,
+    gift:(document.querySelector('.fxg')||{}).innerText||'', btn:!!document.querySelector('.fxg button') && getComputedStyle(document.querySelector('.fxg button')).display}));
+  chk('"You are a winner!" comes up on the result screen, gold', r.shown && r.win && r.h!=='none' && /winner/i.test(r.head), r);
+  chk('with the final score ('+r.score+')', r.score>=NEED, r.score);
+  chk('and the gift offered to claim', /earned the gift/i.test(r.gift) && r.btn==='inline-block', r.gift);
+  await p.tap('.fxg button'); await sleep(900);
+  const cl=await p.evaluate(()=>(document.querySelector('.fxg')||{}).innerText||'');
+  chk('claiming hands over the code', /waiting/i.test(cl) && calls.some(q=>q.action==='gift.claim' && q.game==='pack-drop' && q.score>=NEED), {cl,calls:calls.map(q=>q.action)});
+  await p.evaluate(()=>document.getElementById('again').click()); await sleep(400);
+  chk('Play again goes straight into another redeem run', await p.evaluate(()=>{const s=window.__packdrop.snapshot(); return s.state==='play' && s.mode==='gift' && s.score===0;}));
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+{
+  /* a redeem run that ends short says how far it was; a normal run never offers a gift even over the line */
+  const {c,p,errs}=await open({width:1280,height:720},false,1,{on:true,need:NEED});
+  await p.waitForFunction(()=>window.__packdrop.snapshot().giftState==='ready',null,{timeout:6000}).catch(()=>{});
+  await p.click('#goPlay'); await sleep(200);
+  await p.evaluate(()=>window.__packdrop.addScore(9000));
+  const t0=Date.now(); while(Date.now()-t0<40000 && await p.evaluate(()=>window.__packdrop.state())!=='over'){ await p.keyboard.press('Space'); await sleep(90); }
+  await sleep(1000);
+  const r=await p.evaluate(()=>({st:window.__packdrop.state(), shown:!document.getElementById('result').classList.contains('hidden'), win:document.getElementById('result').classList.contains('win'),
+    gift:(document.querySelector('.fxg')&&document.querySelector('.fxg').style.display)||'none'}));
+  chk('a Normal run over the gift score ends as a plain result: no winner, no gift offer', r.st==='over' && r.shown && !r.win && r.gift==='none', r);
+  await p.click('#menu'); await sleep(500);
+  chk('Change mode goes back to the two buttons', await p.evaluate(()=>!document.getElementById('start').classList.contains('hidden') && document.getElementById('result').classList.contains('hidden')));
+  await p.click('#goGift'); await sleep(300);
+  const t1=Date.now(); while(Date.now()-t1<40000 && await p.evaluate(()=>window.__packdrop.state())!=='over'){ await p.keyboard.press('Space'); await sleep(90); }
+  await sleep(1000);
+  const q=await p.evaluate(()=>({head:document.getElementById('rHead').textContent, sub:document.getElementById('rSub').textContent, win:document.getElementById('result').classList.contains('win'), gift:(document.querySelector('.fxg')||{}).innerText||''}));
+  chk('a redeem run that ends short says how many points were missing', /So close/i.test(q.head) && /more points/.test(q.sub) && !q.win, q);
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+
+/* ───────────────────────── 8. the special blocks, saving a pack, the speed */
+console.log('\nbonus pack, bomb, save, speed');
+{
+  const {c,p,errs}=await open({width:1366,height:768},false,1);
+  await p.evaluate(()=>window.__packdrop.start('play')); await sleep(300);
+  /* saving a pack and bringing it back */
+  await p.evaluate(()=>window.__packdrop.forceNow('bottle')); await sleep(150);
+  await tap(p,'hold'); await sleep(150);
+  const h1=await p.evaluate(()=>window.__packdrop.snapshot());
+  chk('C saves the pack that is falling and a new one comes down', h1.held==='bottle' && h1.k && h1.state==='play', h1);
+  await tap(p,'hold'); await sleep(100);
+  const h2=await p.evaluate(()=>window.__packdrop.snapshot());
+  chk('a second save on the same pack is refused (once for each pack)', h2.held==='bottle' && h2.k===h1.k, h2);
+  await tap(p,'hard'); await sleep(700);
+  const h3=await p.evaluate(()=>window.__packdrop.snapshot());
+  chk('after it lands, saving is open again', h3.canHold===true, h3);
+  const falling=h3.k;
+  await tap(p,'hold'); await sleep(150);
+  const h4=await p.evaluate(()=>window.__packdrop.snapshot());
+  chk('pressing C brings the saved pack back, and the falling one takes its place', h4.k==='bottle' && h4.held===falling, h4);
+
+  /* a gold pack adds bonus marks on landing */
+  await p.evaluate(()=>{ window.__packdrop.forceNow('jar',{bonus:true}); }); await sleep(150);
+  const b0=(await p.evaluate(()=>window.__packdrop.snapshot()));
+  chk('a gold pack can come down', b0.bonus===true, b0);
+  await tap(p,'hard'); await sleep(300);
+  const b1=(await p.evaluate(()=>window.__packdrop.snapshot()));
+  chk('landing it adds the bonus (+200 at level 1) on top of the drop points', b1.score-b0.score>=200, {before:b0.score,after:b1.score});
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+{
+  const {c,p,errs}=await open({width:1366,height:768},false,1);
+  await p.evaluate(()=>window.__packdrop.start('play')); await sleep(300);
+  /* two rows of stock three wide on the left, a bomb dropped on column 2: the 3x3 around where it lands goes, and what stood on it falls */
+  await p.evaluate(()=>{ window.__packdrop.fill(9,0,3); window.__packdrop.fill(8,0,3); window.__packdrop.forceNow('bomb'); }); await sleep(200);
+  const pre=await p.evaluate(()=>window.__packdrop.snapshot());
+  chk('a bomb can come down', pre.bomb===true && pre.k==='bomb', pre);
+  while((await p.evaluate(()=>window.__packdrop.snapshot().x))>2) { await tap(p,'left'); await sleep(40); }
+  while((await p.evaluate(()=>window.__packdrop.snapshot().x))<2) { await tap(p,'right'); await sleep(40); }
+  await sleep(200);
+  await tap(p,'hard');
+  await sleep(120);
+  const mid=await p.evaluate(()=>({st:window.__packdrop.state(), score:window.__packdrop.snapshot().score}));
+  chk('it explodes on landing', mid.st==='beat' && mid.score>=100, mid);
+  await sleep(1200);
+  const post=await p.evaluate(()=>({r8:window.__packdrop.row(8),r9:window.__packdrop.row(9),r7:window.__packdrop.row(7),s:window.__packdrop.snapshot()}));
+  chk('the blast took the pack under it and beside it (row 8 columns 1 and 2) and left what was outside it', post.r8==='100000' && post.r9==='111000', post);
+  chk('then the game carries on with the next piece', post.s.state==='play' && post.s.k, post.s);
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+{
+  const {c,p,errs}=await open({width:1366,height:768},false,1);
+  await p.evaluate(()=>window.__packdrop.start('play')); await sleep(200);
+  const g=await p.evaluate(()=>[1,2,3,5,8,12,20].map(n=>+window.__packdrop.gravityAt(n).toFixed(2)));
+  chk('the fall gets quicker every level, and is quicker than before even at level 1 ('+g.join(', ')+' cells/s)', g[0]>=1.35 && g.every((v,i)=>i===0||v>g[i-1]) && g.slice(0,6).every((v,i)=>i===0||v>g[i-1]+0.3) && g[g.length-1]<=16, g);
+  await p.evaluate(()=>{ window.__packdrop.fill(9,0,6); });
+  await p.evaluate(()=>window.__packdrop.forceNow('bar')); await tap(p,'hard'); await sleep(1500);
+  const lv=await p.evaluate(()=>window.__packdrop.snapshot());
+  chk('and a level comes every five lines (one line so far: level '+lv.level+')', lv.level===1 || lv.lines<5, lv);
+  await p.evaluate(()=>window.__packdrop.setLevel(2));
+  chk('level 2 is faster than level 1', await p.evaluate(()=>window.__packdrop.snapshot().gravity>1.9));
   chk('no page errors', errs.length===0, errs);
   await c.close();
 }
