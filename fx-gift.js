@@ -2330,7 +2330,8 @@ var qrcode = function() {
 var CFG = (function () {
   var r = window.FX_RANK || {}, g = window.FX_GIFT || {};
   return { id: g.id || r.id, result: g.result || r.result, score: g.score || r.score,
-           name: g.name || r.name || '' };
+           name: g.name || r.name || '',
+           gate: g.giftGate || r.giftGate };   /* a game with a Normal play mode says when a gift may be offered */
 })();
 if (!CFG.id || !CFG.result) return;              /* nothing to hang it on */
 
@@ -2475,6 +2476,7 @@ function offer(score) {
   lastClaim = null;
   lastScore = score;
   if (!API) return Promise.resolve();
+  if (CFG.gate && !CFG.gate()) return Promise.resolve();
 
   return settings().then(function (cfg) {
     if (!cfg) cfg = remembered();
