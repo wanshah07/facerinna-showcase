@@ -100,6 +100,7 @@ var GAMES = {
   'facy-run':   { name: 'Facy Run',   max: 100000 },
   'pack-drop':  { name: 'Pack Drop',  max: 100000 },
   'pack-crush': { name: 'Pack Crush', max: 200000 },
+  'pack-recall': { name: 'Pack Recall', max: 200000 },
   'skin-iq':    { name: 'Skin IQ',    max: 5 }
 };
 

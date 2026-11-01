@@ -111,7 +111,7 @@ const finish=(p,score)=>p.evaluate(n=>{
 
 console.log('the module is loaded by every game that keeps a score');
 {
-  const want=['match-lab','pack-match','shelf-shot','deep-lab','lab-run','pack-drop-4k','pack-crush-4k'];
+  const want=['match-lab','pack-match','shelf-shot','deep-lab','lab-run','pack-drop-4k','pack-crush-4k','pack-recall-4k'];
   const miss=want.filter(g=>!fs.readFileSync(path.join(ROOT,g+'.html'),'utf8').includes('src="fx-gift.js"'));
   chk('the five arcade games', miss.length===0, miss);
   chk('...and the booth page, for the quiz',
