@@ -58,6 +58,7 @@ const VPS=[
   ['TV 1920x1080',1920,1080,false,1],['TV 4K 3840x2160',3840,2160,false,1],['desktop 1366x768',1366,768,false,1],
   ['tablet upright 820x1180',820,1180,true,2],['tablet on its side 1180x820',1180,820,true,2],
   ['phone upright 390x844',390,844,true,3],['small phone 360x640',360,640,true,3],['phone on its side 844x390',844,390,true,3],
+  ['tall kiosk 1080x1920',1080,1920,true,1],['squarer desktop 1280x1024',1280,1024,false,1],
 ];
 for (const [name,w,h,touch,dsf] of VPS){
   const {c,p,errs}=await open({width:w,height:h},touch,dsf);
