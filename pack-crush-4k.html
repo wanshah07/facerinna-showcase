@@ -16,7 +16,8 @@
   --ink:#eef8ff;--mut:#9cc0d8;--line:rgba(160,215,255,.18);--blue:#3fb4ee;--blue2:#7fd5ff;--gold:#ffd98a;
   --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
   --safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);
-  --gap:clamp(10px,1.6vmin,28px);
+  --gap:clamp(10px,1.6vmin,61.6px);
+  --side:clamp(150px,24.5vmin,540px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#04101f;color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -43,17 +44,17 @@ html,body{margin:0;height:100%;background:#04101f;color:var(--ink);font-family:I
 .app{position:relative;z-index:1;height:100vh;height:100dvh;display:grid;
   padding:calc(var(--safe-t) + var(--gap)) calc(var(--safe-r) + var(--gap)) calc(var(--safe-b) + var(--gap)) calc(var(--safe-l) + var(--gap));
   gap:var(--gap);
-  grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr);
+  grid-template-columns:var(--side) minmax(0,1fr) var(--side);
   grid-template-rows:auto minmax(0,1fr);
   grid-template-areas:"hd hd hd" "left board right"}
 .hd{grid-area:hd;display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
 .hd .r{display:flex;align-items:center;gap:10px}
-.brand{display:flex;align-items:center;gap:clamp(12px,2vmin,26px);min-width:0}
-.brand img{height:clamp(22px,4.2vmin,52px);width:auto;display:block;filter:drop-shadow(0 2px 10px rgba(63,180,238,.35))}
-.brand span{display:block;padding-left:clamp(12px,2vmin,26px);border-left:1px solid var(--line)}
-.brand b{display:block;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.6vmin,44px);letter-spacing:.01em;line-height:1.05}
-.brand small{display:block;font-size:clamp(9px,1.25vmin,13px);letter-spacing:.34em;text-transform:uppercase;color:var(--blue2);font-weight:700;margin-bottom:3px}
-.tag{font-size:clamp(11px,1.5vmin,14px);font-weight:700;letter-spacing:.06em;padding:.45em 1em;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--line);white-space:nowrap}
+.brand{display:flex;align-items:center;gap:clamp(12px,2vmin,57.2px);min-width:0}
+.brand img{height:clamp(22px,4.2vmin,114.4px);width:auto;display:block;filter:drop-shadow(0 2px 10px rgba(63,180,238,.35))}
+.brand span{display:block;padding-left:clamp(12px,2vmin,57.2px);border-left:1px solid var(--line)}
+.brand b{display:block;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.6vmin,96.8px);letter-spacing:.01em;line-height:1.05}
+.brand small{display:block;font-size:clamp(9px,1.25vmin,28.6px);letter-spacing:.34em;text-transform:uppercase;color:var(--blue2);font-weight:700;margin-bottom:3px}
+.tag{font-size:clamp(11px,1.5vmin,30.8px);font-weight:700;letter-spacing:.06em;padding:.45em 1em;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--line);white-space:nowrap}
 .tag[hidden]{display:none}
 .tag.gift{background:linear-gradient(180deg,rgba(255,201,74,.3),rgba(255,160,50,.16));border-color:rgba(255,201,74,.55);color:#ffe8b0}
 .left{grid-area:left;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:var(--gap);min-width:0}
@@ -62,57 +63,57 @@ html,body{margin:0;height:100%;background:#04101f;color:var(--ink);font-family:I
 .padL{grid-area:padL}.padR{grid-area:padR}
 
 .card{background:linear-gradient(165deg,rgba(40,90,150,.5),rgba(12,36,72,.55));border:1px solid var(--line);
-  border-radius:clamp(14px,2.2vmin,26px);padding:clamp(12px,2vmin,26px);width:min(100%,clamp(150px,24vmin,340px));
+  border-radius:clamp(14px,2.2vmin,57.2px);padding:clamp(12px,2vmin,57.2px);width:min(100%,clamp(150px,24vmin,748px));
   box-shadow:0 18px 50px rgba(0,5,20,.35),inset 0 1px 0 rgba(255,255,255,.12)}
-.card h3{margin:0 0 .5em;font-size:clamp(9px,1.3vmin,13px);letter-spacing:.3em;text-transform:uppercase;color:var(--blue2);font-weight:700}
+.card h3{margin:0 0 .5em;font-size:clamp(9px,1.3vmin,28.6px);letter-spacing:.3em;text-transform:uppercase;color:var(--blue2);font-weight:700}
 .stat{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:.35em 0;border-top:1px solid rgba(160,215,255,.1)}
 .stat:first-of-type{border-top:0}
-.stat span{font-size:clamp(10px,1.5vmin,15px);color:var(--mut);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
-.stat b{font-variant-numeric:tabular-nums;font-size:clamp(18px,3.4vmin,40px);font-weight:700;line-height:1.1}
+.stat span{font-size:clamp(10px,1.5vmin,33px);color:var(--mut);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.stat b{font-variant-numeric:tabular-nums;font-size:clamp(18px,3.4vmin,88px);font-weight:700;line-height:1.1}
 .stat.big{flex-wrap:wrap}
-.stat.big b{font-size:clamp(22px,4.2vmin,54px);background:linear-gradient(180deg,#fff,#a9e2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat.big b{font-size:clamp(22px,4.2vmin,118.8px);background:linear-gradient(180deg,#fff,#a9e2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .lvl{height:5px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:.7em}
 .lvl i{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,var(--blue),var(--blue2));transition:transform .5s cubic-bezier(.2,.8,.2,1)}
 .giftbox{margin-top:.8em;padding-top:.7em;border-top:1px solid rgba(255,201,74,.3)}
 .giftbox[hidden]{display:none}
-.giftbox .gl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:clamp(10px,1.4vmin,14px);color:#ffe8b0;font-weight:700;letter-spacing:.04em}
+.giftbox .gl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:clamp(10px,1.4vmin,30.8px);color:#ffe8b0;font-weight:700;letter-spacing:.04em}
 .giftbox .gl b{font-variant-numeric:tabular-nums;font-size:1.25em}
 .giftbox .lvl{margin-top:.45em;height:7px}
 .giftbox .lvl i{background:linear-gradient(90deg,#ffb93d,#ffe08a);transition:none}
-.help{margin:0;padding:0;list-style:none;font-size:clamp(11px,1.5vmin,15px);line-height:1.7;color:var(--mut)}
+.help{margin:0;padding:0;list-style:none;font-size:clamp(11px,1.5vmin,33px);line-height:1.7;color:var(--mut)}
 .help b{color:var(--ink);font-weight:600}
 .help.touch{display:none}
 kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;border:1px solid rgba(160,215,255,.3);border-bottom-width:2px;background:rgba(255,255,255,.08);font:600 .86em Inter,sans-serif;text-align:center;color:var(--ink)}
 
 /* the board: a rounded glass cabinet. The canvas is sized here in CSS pixels
    and drawn at device resolution, so a 4K screen gets a 4K picture. */
-.cab{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:clamp(16px,2.6vmin,30px);
+.cab{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:clamp(16px,2.6vmin,66px);
   background:linear-gradient(180deg,rgba(12,40,76,.78),rgba(5,20,42,.88));border:1px solid rgba(160,215,255,.26);
   box-shadow:0 30px 90px rgba(0,6,22,.65),0 0 0 6px rgba(255,255,255,.035),0 0 80px rgba(48,150,230,.16),inset 0 1px 0 rgba(255,255,255,.16);overflow:hidden}
 #game{display:block;touch-action:none;outline:none;contain:paint;transform:translateZ(0)}
 
 /* overlays sit over the cabinet and fade; nothing is display-toggled mid-frame */
-.screen{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;padding:clamp(10px,2vmin,28px);text-align:center;-webkit-overflow-scrolling:touch;
+.screen{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;padding:clamp(10px,2vmin,61.6px);text-align:center;-webkit-overflow-scrolling:touch;
   background:radial-gradient(circle at 50% 40%,rgba(6,28,56,.78),rgba(3,10,24,.94));
   transition:opacity .35s ease,visibility 0s;overflow-y:auto}
 .screen.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .3s ease,visibility 0s .3s}
 .screen .in{max-width:30em;margin:auto;transition:transform .5s cubic-bezier(.2,.9,.25,1.1)}
 .screen.hidden .in{transform:translateY(14px) scale(.97)}
-.screen h2{margin:.1em 0 .25em;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.4vmin,42px);line-height:1.12}
-.screen p{margin:.4em 0 1em;color:var(--mut);font-size:clamp(12px,1.8vmin,18px);line-height:1.55}
-.screen .big{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:clamp(48px,11vmin,130px);line-height:1;margin:.04em 0 .02em;color:#fff;font-variant-numeric:tabular-nums;
+.screen h2{margin:.1em 0 .25em;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.4vmin,92.4px);line-height:1.12}
+.screen p{margin:.4em 0 1em;color:var(--mut);font-size:clamp(12px,1.8vmin,39.6px);line-height:1.55}
+.screen .big{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:clamp(48px,11vmin,286px);line-height:1;margin:.04em 0 .02em;color:#fff;font-variant-numeric:tabular-nums;
   text-shadow:0 0 50px rgba(80,190,255,.55)}
-.screen .cap{margin:0;letter-spacing:.3em;text-transform:uppercase;font-size:clamp(10px,1.4vmin,14px);color:var(--blue2);font-weight:700}
-.mini{display:flex;justify-content:center;gap:clamp(14px,3vmin,34px);margin:1em 0 1.2em}
-.mini div{min-width:3.6em}.mini b{display:block;font-size:clamp(18px,3vmin,30px);font-variant-numeric:tabular-nums}.mini span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.screen .cap{margin:0;letter-spacing:.3em;text-transform:uppercase;font-size:clamp(10px,1.4vmin,30.8px);color:var(--blue2);font-weight:700}
+.mini{display:flex;justify-content:center;gap:clamp(14px,3vmin,74.8px);margin:1em 0 1.2em}
+.mini div{min-width:3.6em}.mini b{display:block;font-size:clamp(18px,3vmin,66px);font-variant-numeric:tabular-nums}.mini span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
 .mini b.new{color:var(--gold)}
-.screen p.rk{margin:1.1em 0 0;font-size:clamp(11px,1.5vmin,14px)}.rk b{color:var(--ink);font-weight:600}
-.screen p.note{margin:1.1em 0 0;font-size:clamp(11px,1.45vmin,13.5px);min-height:1.5em}
+.screen p.rk{margin:1.1em 0 0;font-size:clamp(11px,1.5vmin,30.8px)}.rk b{color:var(--ink);font-weight:600}
+.screen p.note{margin:1.1em 0 0;font-size:clamp(11px,1.45vmin,29.7px);min-height:1.5em}
 .screen p.sub{margin:.2em 0 .4em}
 .btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .btns.col{flex-direction:column;align-items:stretch;gap:16px;max-width:22em;margin:0 auto}
 .btn{font:inherit;font-weight:700;letter-spacing:.02em;border:0;border-radius:999px;padding:.95em 2em;min-height:48px;cursor:pointer;color:#05243b;background:#e3f6ff;
-  font-size:clamp(14px,2vmin,20px);touch-action:manipulation;transition:transform .15s cubic-bezier(.2,.9,.3,1.3),box-shadow .2s,background .2s}
+  font-size:clamp(14px,2vmin,44px);touch-action:manipulation;transition:transform .15s cubic-bezier(.2,.9,.3,1.3),box-shadow .2s,background .2s}
 .btn.pri{background:linear-gradient(180deg,#6fd2ff,#2fa6e6);color:#031d33;box-shadow:0 8px 0 #1a77ad,0 18px 40px rgba(31,150,225,.4)}
 .btn.pri:hover{transform:translateY(-2px)}.btn.pri:active{transform:translateY(5px);box-shadow:0 3px 0 #1a77ad,0 8px 20px rgba(31,150,225,.35)}
 .btn.gold{background:linear-gradient(180deg,#ffe28a,#ffb12e);color:#3a2300;box-shadow:0 8px 0 #c47a08,0 18px 40px rgba(255,170,40,.4)}
@@ -120,20 +121,20 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
 .btn[disabled]{opacity:.5;cursor:default;transform:none!important}
 .btn.ghost{background:rgba(255,255,255,.08);color:var(--ink);border:1px solid var(--line)}
 .btn.ghost:hover{background:rgba(255,255,255,.14)}
-.btn.sm{min-height:42px;padding:.55em 1.3em;font-size:clamp(12px,1.6vmin,15px)}
+.btn.sm{min-height:42px;padding:.55em 1.3em;font-size:clamp(12px,1.6vmin,33px)}
 .btn small{display:block;font-weight:600;font-size:.62em;letter-spacing:.04em;opacity:.8;margin-top:.2em}
 :focus-visible{outline:3px solid #ffe183;outline-offset:3px}
 
 /* the winner: the result screen turns gold */
 .screen.win{background:radial-gradient(circle at 50% 38%,rgba(70,48,6,.82),rgba(14,8,2,.95))}
 .screen.win .cap{color:var(--gold)}
-.screen h2.winner{display:none;font-size:clamp(26px,5.2vmin,58px);background:linear-gradient(180deg,#fff6d6,#ffc94a);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.1em}
+.screen h2.winner{display:none;font-size:clamp(26px,5.2vmin,127.6px);background:linear-gradient(180deg,#fff6d6,#ffc94a);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.1em}
 .screen.win h2.winner{display:block}
 .screen.win .big{text-shadow:0 0 60px rgba(255,190,60,.7)}
 
 /* touch pad: shown only where a finger is the controller */
-.pad{display:none;gap:clamp(8px,1.6vmin,16px);align-items:center;justify-content:center}
-.pb{position:relative;width:clamp(56px,9.5vmin,92px);height:clamp(56px,9.5vmin,92px);border-radius:26%;border:1px solid var(--line);color:var(--ink);cursor:pointer;touch-action:none;padding:0;
+.pad{display:none;gap:clamp(8px,1.6vmin,35.2px);align-items:center;justify-content:center}
+.pb{position:relative;width:clamp(56px,9.5vmin,202.4px);height:clamp(56px,9.5vmin,202.4px);border-radius:26%;border:1px solid var(--line);color:var(--ink);cursor:pointer;touch-action:none;padding:0;
   background:linear-gradient(165deg,rgba(90,140,200,.45),rgba(30,60,110,.45));display:grid;place-items:center;
   box-shadow:0 8px 24px rgba(0,5,20,.35),inset 0 1px 0 rgba(255,255,255,.14);
   transition:transform .09s ease,background .12s ease}
@@ -150,46 +151,55 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
   .padL{justify-self:end}.padR{justify-self:start}
 }
 /* upright and narrow: one column, stats above the board, pad below it */
-@media (max-width:700px) and (orientation:portrait),(max-aspect-ratio:3/4) and (max-width:900px){
+@media (orientation:portrait){
   .app{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto minmax(0,1fr) auto;
-    grid-template-areas:"hd hd" "left right" "board board" "padL padR";gap:clamp(6px,1.4vh,12px)}
+    grid-template-areas:"hd hd" "left right" "board board" "padL padR";gap:clamp(6px,1.4vh,26.4px)}
   .padL,.padR{display:flex;padding-bottom:66px;align-self:end;gap:8px}.padL{justify-self:start}.padR{justify-self:end}
-  .pb{width:clamp(46px,13.2vw,62px);height:clamp(46px,13.2vw,62px)}
+  .pb{width:clamp(46px,13.2vw,136.4px);height:clamp(46px,13.2vw,136.4px)}
   .help.kbd{display:none}.help.touch{display:block}
-  .brand span{display:none}.brand img{height:clamp(20px,3.4vh,34px)}
+  .brand span{display:none}.brand img{height:clamp(20px,3.4vh,74.8px)}
   .left{flex-direction:row;align-items:stretch;justify-content:flex-start;gap:8px}
   .left .card{width:auto;flex:1 1 0;padding:8px 12px;border-radius:14px;display:grid;grid-template-columns:1fr 1fr;align-content:center;gap:4px 14px}
   .left .card h3{display:none}
   .left .stat{flex-direction:column;align-items:flex-start;gap:0;border:0;padding:0}
-  .left .stat span{font-size:10px}.left .stat b{font-size:clamp(18px,3.2vh,28px)}.left .stat.big b{font-size:clamp(20px,3.6vh,32px)}
+  .left .stat span{font-size:10px}.left .stat b{font-size:clamp(18px,3.2vh,61.6px)}.left .stat.big b{font-size:clamp(20px,3.6vh,70.4px)}
   .left .lvl{display:none}
   .left .giftbox{grid-column:1 / -1;margin:2px 0 0;padding-top:6px}.left .giftbox .lvl{display:block}
     .right{flex-direction:row;align-items:center;justify-content:flex-end}
-  .right .card{padding:8px 10px;width:auto}.right .card h3{display:none}.right .card.how,.right .card.tools{display:none}
+  .right .card{padding:8px 10px;width:auto}.right .card h3{display:none}.right .card.how,.left .card.tools{display:none}
   .tag{padding:.35em .8em}
   .screen .btns:not(.col) .btn{padding:.7em 1.2em;min-height:44px;font-size:14px}
   .screen .mini{margin:.6em 0 .9em}.screen p.rk{margin-top:.8em}
-  .screen h2.winner{font-size:clamp(22px,4.4vh,34px)}
+  .screen h2.winner{font-size:clamp(22px,4.4vh,74.8px)}
 }
 /* a phone on its side: board in the middle, a pad under each thumb */
 @media (orientation:landscape) and (max-height:560px){
-  .app{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;
+  .app{grid-template-columns:var(--side) minmax(0,1fr) var(--side);grid-template-rows:auto minmax(0,1fr) auto;
     grid-template-areas:"hd hd hd" "left board right" "padL board padR";gap:8px}
   .brand span{display:none}.brand img{height:22px}
-  .card{padding:8px 12px;width:min(100%,200px)}.card h3{margin-bottom:.2em}.stat b{font-size:clamp(16px,5vh,26px)}.stat.big b{font-size:clamp(20px,6.5vh,34px)}
-  .left .lvl,.right .card.how,.right .card.tools{display:none}.left .giftbox .lvl{display:block}
+  .card{padding:8px 12px;width:min(100%,200px)}.card h3{margin-bottom:.2em}.stat b{font-size:clamp(16px,5vh,57.2px)}.stat.big b{font-size:clamp(20px,6.5vh,74.8px)}
+  .left .lvl,.right .card.how,.left .card.tools{display:none}.left .giftbox .lvl{display:block}
   .padL,.padR{align-self:center;padding-bottom:0;gap:6px}
   .padL{justify-self:start;padding-left:66px}                /* clear of the Booth button, which sits at the bottom left */
   .fxr-show,.fxr-back{padding:0!important;width:46px!important;height:46px!important;border-radius:50%!important;font-size:18px!important;line-height:44px!important;text-align:center!important}
   .fxr-show .fxr-lbl,.fxr-back .fxr-lbl{display:none!important}   /* icons only, so the two corner buttons stay off the pads */
-  .pb{width:clamp(40px,11.8vh,60px);height:clamp(40px,11.8vh,60px)}
-  .screen .big{font-size:clamp(34px,13vh,80px)}.screen h2{font-size:clamp(16px,5.5vh,28px)}.screen p{margin:.2em 0 .6em;font-size:clamp(11px,3.4vh,15px)}
+  .pb{width:clamp(40px,11.8vh,132px);height:clamp(40px,11.8vh,132px)}
+  .screen .big{font-size:clamp(34px,13vh,176px)}.screen h2{font-size:clamp(16px,5.5vh,61.6px)}.screen p{margin:.2em 0 .6em;font-size:clamp(11px,3.4vh,33px)}
   .mini{margin:.4em 0 .6em}.btn{padding:.6em 1.6em;min-height:42px}.btn.pri{box-shadow:0 5px 0 #1a77ad,0 12px 28px rgba(31,150,225,.35)}.btn.gold{box-shadow:0 5px 0 #c47a08,0 12px 28px rgba(255,170,40,.35)}
   .btns.col{flex-direction:row;max-width:none}
   /* the board is narrow here: the result keeps to what fits across it */
   .screen{padding:8px}.screen .mini,.screen p.rk,.screen .cap + .cap{display:none}
-  .screen h2.winner{font-size:clamp(16px,6.4vh,26px)}.screen .big{font-size:clamp(30px,11vh,60px)}.screen p.sub{font-size:11px;margin:.2em 0 .5em}
+  .screen h2.winner{font-size:clamp(16px,6.4vh,57.2px)}.screen .big{font-size:clamp(30px,11vh,132px)}.screen p.sub{font-size:11px;margin:.2em 0 .5em}
   .screen .btns .btn{padding:.55em 1.1em;min-height:38px;font-size:13px}.btns{gap:8px}
+}
+@media (orientation:portrait) and (min-height:1500px){
+  .app{grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-areas:"hd hd" "left right" "board board" "how how" "padL padR"}
+  .right{display:contents}
+  .right .card.goalcard{grid-area:right}
+  .right .card.how{display:block;grid-area:how;width:auto;padding:1.4vmin 2.4vmin}
+  .right .card.how h3{display:block}
+  .leg{font-size:2.3vmin}.help{font-size:2.1vmin}
+  .padL,.padR{padding-bottom:70px}
 }
 @media (prefers-reduced-motion:reduce){.sky i{animation:none}.screen,.screen .in,.lvl i{transition-duration:.01ms!important}}
 @media (hover:none){.btn.pri:hover,.btn.gold:hover{transform:none}}
@@ -198,21 +208,21 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
 #game{cursor:pointer}
 .stat b.low{color:#ffb199}
 .tools{display:flex;gap:10px;flex-wrap:wrap}.tools .btn{flex:1 1 auto}
-.leg{margin:0;padding:0;list-style:none;font-size:clamp(11px,1.45vmin,15px);line-height:1.55;color:var(--mut)}
+.leg{margin:0;padding:0;list-style:none;font-size:clamp(11px,1.45vmin,33px);line-height:1.55;color:var(--mut)}
 .leg li{margin:.35em 0}.leg b{color:var(--ink);font-weight:600}
 .leg i{font-style:normal;display:inline-block;width:1.2em;text-align:center}
-.stars{display:flex;gap:10px;justify-content:center;margin:.2em 0 .3em;font-size:clamp(34px,7vmin,64px);line-height:1}
+.stars{display:flex;gap:10px;justify-content:center;margin:.2em 0 .3em;font-size:clamp(34px,7vmin,140.8px);line-height:1}
 .stars i{font-style:normal;color:rgba(255,255,255,.18);transition:color .4s,transform .5s cubic-bezier(.2,1.6,.3,1),text-shadow .4s}
 .stars i.on{color:#ffc94a;text-shadow:0 0 28px rgba(255,190,60,.8);transform:scale(1.12)}
 .stars i:nth-child(2){transition-delay:.15s}.stars i:nth-child(3){transition-delay:.3s}
 .pb.pad-shuffle .n{position:absolute;right:6px;bottom:3px;font-size:10px;font-weight:700;color:var(--mut)}
 @media (pointer:coarse){.tools{display:none}}
-@media (max-width:700px) and (orientation:portrait),(max-aspect-ratio:3/4) and (max-width:900px){
-  .right .card.tools{display:none}
+@media (orientation:portrait){
+  .left .card.tools{display:none}
   .right{flex-direction:row;align-items:stretch;justify-content:flex-end}
   .right .card.goalcard{display:grid;grid-template-columns:1fr 1fr;align-content:center;gap:4px 14px;padding:8px 12px;width:auto}
   .right .card.goalcard .stat{flex-direction:column;align-items:flex-start;gap:0;border:0;padding:0}
-  .right .card.goalcard .stat span{font-size:10px}.right .card.goalcard .stat b{font-size:clamp(16px,2.8vh,24px)}
+  .right .card.goalcard .stat span{font-size:10px}.right .card.goalcard .stat b{font-size:clamp(16px,2.8vh,52.8px)}
   .right .card.goalcard .stat.cmb{display:none}
   .padL,.padR{padding-bottom:66px}
 }
@@ -238,6 +248,10 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
       <div class="lvl" aria-hidden="true"><i id="lvlBar"></i></div>
       <div class="giftbox" id="giftBox" hidden><div class="gl"><span>🎁 Gift at</span><b id="giftNeedTxt">0</b></div><div class="lvl" aria-hidden="true"><i id="giftBar"></i></div></div>
     </div>
+    <div class="card tools">
+      <button class="btn ghost sm" data-a="hint" type="button">💡 Hint</button>
+      <button class="btn ghost sm" data-a="shuffle" type="button">🔀 Shuffle · −1 move</button>
+    </div>
   </aside>
 
   <main class="board" id="boardWrap">
@@ -248,7 +262,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
         <div class="in">
           <p class="cap">HD Match Lab</p>
           <h2>Line up the routine.</h2>
-          <p>Swap neighbouring packs to line up three. Four makes a striped pack, an L or a T a wrapped one, five a rainbow. Reach each level's target before the moves run out.</p>
+          <p>Swap neighbouring packs to line up three. Four makes a laser, an L or a T a wrapped pack, five a rainbow, six a bomb. Reach each level's target before the moves run out.</p>
           <div class="btns col">
             <button class="btn gold" id="goGift" type="button">🎁 Redeem gift<small id="giftSub">Checking the gift desk…</small></button>
             <button class="btn pri" id="goPlay" type="button">Normal play<small>Level by level · beat each target</small></button>
@@ -301,18 +315,16 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
     <div class="card how">
       <h3>Specials</h3>
       <ul class="leg">
-        <li><i>▮</i><b>Striped</b> — 4 in a line: clears a row or column</li>
+        <li><i>⚡</i><b>Laser</b> — 4 in a line, plus a bonus: fires along its row or column</li>
         <li><i>🎀</i><b>Wrapped</b> — an L or a T: blasts 3×3, twice</li>
         <li><i>🌈</i><b>Rainbow</b> — 5 in a line: swap it with any pack</li>
+        <li><i>💣</i><b>Bomb</b> — 6 in a line, or dropped in: swap it to blast 5×5</li>
         <li><i>✨</i>Swap two specials together for a bigger blast</li>
       </ul>
       <ul class="help kbd" style="margin-top:.7em"><li><kbd>←↑↓→</kbd> <kbd>Space</kbd> move &amp; swap</li><li><kbd>H</kbd> hint · <kbd>R</kbd> shuffle · <kbd>P</kbd> pause</li></ul>
       <ul class="help touch" style="margin-top:.7em"><li><b>Drag</b> a pack onto its neighbour, or <b>tap two</b>.</li></ul>
     </div>
-    <div class="card tools">
-      <button class="btn ghost sm" data-a="hint" type="button">💡 Hint</button>
-      <button class="btn ghost sm" data-a="shuffle" type="button">🔀 Shuffle · −1 move</button>
-    </div>
+
   </aside>
 
   <nav class="pad padL" aria-label="Hint">
@@ -334,9 +346,10 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
    The rules are the ones everyone knows from the candy games:
 
      3 in a line        clear them
-     4 in a line        a striped pack: clears its whole row or column
+     4 in a line        a laser pack (and a bonus): fires along its whole row or column
      L or T of 5        a wrapped pack: blasts 3x3, then again when things settle
      5 in a line        a rainbow pack: clears every pack of the kind you swap it with
+   6 in a line        a bomb: blasts 5x5. Bombs also drop in now and then
      two specials swapped together make something bigger still.
 
    Levels: reach the score before the moves run out. Moves left when you do are
@@ -355,7 +368,10 @@ var N = 8;
 var RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var COARSE = !!(window.matchMedia && matchMedia('(pointer:coarse)').matches);
 
-var SP = {none:0, sh:1, sv:2, wrap:3, rain:4};         /* sh clears a row, sv a column */
+var SP = {none:0, sh:1, sv:2, wrap:3, rain:4, bomb:5};   /* sh is a laser along a row, sv one down a column */
+/* the bonus a special pays the moment it is printed, times the cascade */
+var PRINT_BONUS = [0, 400, 400, 300, 800, 1200];
+var PRINT_NAME = ['', 'LASER', 'LASER', 'WRAPPED', 'RAINBOW', 'BOMB'];
 var RANGE = [
   {s:'10-niacinamide-3-txa-bright-dark-spot-serum',   c:'#3F8DE0', n:'Niacinamide serum'},
   {s:'2-salicylic-acid-acne-serum',                   c:'#1DB98A', n:'Salicylic serum'},
@@ -406,7 +422,7 @@ function targetFor(l){ return 6000 + 2200*(l-1); }
 function fit(){
   var r = wrapEl.getBoundingClientRect();
   var c = Math.max(24, Math.floor(Math.min(r.width / N, r.height / N)));
-  var d = Math.min(COARSE ? 2 : 3, Math.max(2, window.devicePixelRatio || 1)), budget = COARSE ? 5e6 : 14e6;
+  var d = Math.min(COARSE ? 2 : 3, Math.max(2, window.devicePixelRatio || 1)), budget = COARSE ? 5e6 : 18e6;   /* a 4K screen still gets 2x: that is 4000 pixels across the board */
   while (d > 1 && (c*N*d) * (c*N*d) > budget) d -= .5;
   if (c === cell && d === dpr && cv.width) return;
   cell = c; dpr = d; W = H = cell*N;
@@ -458,17 +474,40 @@ function packSprite(p, box, s){
   sp = {cv:out, tw:(w + 2*pad)/dpr, th:(h + 2*pad)/dpr}; sprites[key] = sp; return sp;
 }
 
-function paintStripes(c, s, vertical){
+function paintLaser(c, s, vertical){
   c.save(); rrect(c, s*.04, s*.04, s*.92, s*.92, s*.26); c.clip();
-  c.fillStyle = 'rgba(255,255,255,.62)';
-  for (var i=0;i<3;i++){ var o = s*(.2 + i*.22); if (vertical) c.fillRect(o, 0, s*.075, s); else c.fillRect(0, o, s, s*.075); }
+  c.translate(s/2, s/2); if (!vertical) c.rotate(-Math.PI/2);
+  var gl = c.createLinearGradient(-s*.2, 0, s*.2, 0);                                  /* the glow round the beam */
+  gl.addColorStop(0,'rgba(255,40,90,0)'); gl.addColorStop(.5,'rgba(255,60,110,.85)'); gl.addColorStop(1,'rgba(255,40,90,0)');
+  c.fillStyle = gl; c.fillRect(-s*.2, -s/2, s*.4, s);
+  var core = c.createLinearGradient(-s*.05, 0, s*.05, 0);
+  core.addColorStop(0,'rgba(255,255,255,.2)'); core.addColorStop(.5,'rgba(255,255,255,1)'); core.addColorStop(1,'rgba(255,255,255,.2)');
+  c.fillStyle = core; c.fillRect(-s*.05, -s/2, s*.1, s);
   c.restore();
-  /* an arrowhead at each end says which way it will go */
-  c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,20,50,.55)'; c.lineWidth = Math.max(1, s*.02); c.lineJoin = 'round';
-  [[-1],[1]].forEach(function(d){
-    c.save(); c.translate(s/2, s/2); if (!vertical) c.rotate(-Math.PI/2); c.translate(0, d[0]*s*.405);
-    c.beginPath(); c.moveTo(0, d[0]*s*.07); c.lineTo(-s*.1, -d[0]*s*.045); c.lineTo(s*.1, -d[0]*s*.045); c.closePath(); c.fill(); c.stroke(); c.restore();
+  /* an emitter at each end, so it reads as a laser and not a stripe */
+  c.save(); c.translate(s/2, s/2); if (!vertical) c.rotate(-Math.PI/2);
+  [-1,1].forEach(function(d){
+    c.save(); c.translate(0, d*s*.4);
+    c.beginPath(); c.moveTo(0, -s*.075); c.lineTo(s*.09, 0); c.lineTo(0, s*.075); c.lineTo(-s*.09, 0); c.closePath();
+    c.fillStyle = '#ff2f6b'; c.fill(); c.lineWidth = Math.max(1, s*.02); c.strokeStyle = '#fff'; c.stroke();
+    c.restore();
   });
+  c.restore();
+}
+function paintBomb(c, s){
+  var m = s*.04, w = s - 2*m;
+  rrect(c, m, m, w, w, s*.26);
+  var bg = c.createRadialGradient(s*.5, s*.55, s*.05, s/2, s/2, s*.62); bg.addColorStop(0,'#5a2a1c'); bg.addColorStop(1,'#1a0c10');
+  c.fillStyle = bg; c.fill();
+  var R = s*.27, cx = s/2, cy = s*.57;
+  var g1 = c.createRadialGradient(cx - R*.35, cy - R*.4, R*.1, cx, cy, R*1.05); g1.addColorStop(0,'#7a8499'); g1.addColorStop(.45,'#262d3c'); g1.addColorStop(1,'#07090f');
+  c.beginPath(); c.arc(cx, cy, R, 0, 6.2832); c.fillStyle = g1; c.fill();
+  c.lineWidth = R*.07; c.strokeStyle = 'rgba(255,255,255,.3)'; c.stroke();
+  c.beginPath(); c.arc(cx - R*.36, cy - R*.28, R*.2, 0, 6.2832); c.fillStyle = 'rgba(255,255,255,.3)'; c.fill();
+  c.fillStyle = '#3b4354'; c.fillRect(cx - R*.2, cy - R*1.08, R*.4, R*.3);
+  c.strokeStyle = '#d9b27a'; c.lineWidth = R*.12; c.lineCap = 'round'; c.beginPath(); c.moveTo(cx, cy - R*1.08); c.quadraticCurveTo(cx + R*.25, cy - R*1.55, cx + R*.65, cy - R*1.45); c.stroke();
+  c.fillStyle = '#ff5a4f'; c.font = '700 ' + Math.round(R*.8) + 'px Inter, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('!', cx, cy + R*.08);
+  rrect(c, m, m, w, w, s*.26); c.lineWidth = Math.max(1.5, s*.04); c.strokeStyle = '#ff9a3c'; c.stroke();
 }
 function paintRibbon(c, s){
   c.save(); rrect(c, s*.04, s*.04, s*.92, s*.92, s*.26); c.clip();
@@ -503,13 +542,14 @@ function tileSprite(k, sp){
   var c = cvs.getContext('2d'); c.setTransform(px/cell, 0, 0, px/cell, 0, 0);
   var s = cell;
   if (sp === SP.rain) paintRainbow(c, s);
+  else if (sp === SP.bomb) paintBomb(c, s);
   else {
     var p = RANGE[k];
     paintBlock(c, s, p.c);
     if (sp === SP.wrap) paintRibbon(c, s);
     var ps = packSprite(p, s*.76, s);
     if (ps) c.drawImage(ps.cv, (s - ps.tw)/2, (s - ps.th)/2 + s*.01, ps.tw, ps.th);
-    if (sp === SP.sh || sp === SP.sv) paintStripes(c, s, sp === SP.sv);
+    if (sp === SP.sh || sp === SP.sv) paintLaser(c, s, sp === SP.sv);
   }
   sprites[key] = cvs; return cvs;
 }
@@ -517,7 +557,7 @@ function warmSoon(){ clearTimeout(warmT); warmT = setTimeout(warmStart, 60); }
 function warmStart(){
   warmQ = [];
   for (var k=0;k<KINDS;k++) (function(kk){ [0,1,2,3].forEach(function(sp){ warmQ.push(function(){ tileSprite(kk, sp); }); }); })(k);
-  warmQ.push(function(){ tileSprite(0, SP.rain); });
+  warmQ.push(function(){ tileSprite(0, SP.rain); }); warmQ.push(function(){ tileSprite(0, SP.bomb); });
   (function pump(){ var t0 = performance.now(); while (warmQ.length && performance.now() - t0 < 5) warmQ.shift()(); if (warmQ.length) warmT = setTimeout(pump, 8); })();
 }
 
@@ -577,6 +617,7 @@ function clusters(rs){
 function specialFor(cl){
   if (cl.hasH && cl.hasV) return SP.wrap;
   var m = Math.max(cl.h, cl.v);
+  if (m >= 6) return SP.bomb;
   if (m >= 5) return SP.rain;
   if (m === 4) return cl.h >= 4 ? SP.sv : SP.sh;     /* a line across makes a pack that clears a column, and the other way round */
   return 0;
@@ -618,6 +659,13 @@ function bestMove(){
 /* two specials swapped together; null when the swap is not one of these */
 function comboOf(a, b){
   if (!a || !b || (!a.sp && !b.sp)) return null;
+  if (a.sp === SP.bomb || b.sp === SP.bomb){
+    var o = a.sp === SP.bomb ? b : a;
+    if (o.sp === SP.bomb) return {type:'bomb7'};
+    if (o.sp === SP.rain) return {type:'all'};
+    if (o.sp) return {type:'fat'};
+    return {type:'bomb5'};
+  }
   if (a.sp === SP.rain || b.sp === SP.rain){
     var other = a.sp === SP.rain ? b : a;
     if (a.sp === SP.rain && b.sp === SP.rain) return {type:'all'};
@@ -640,11 +688,14 @@ function chain(marked){
     var key = q[i]; if (done[key]) continue; done[key] = 1;
     var a = key.split(','), r = +a[0], c = +a[1], t = B[r][c];
     if (!t || !t.sp || t.used) continue;
-    if (t.sp === SP.sh){ for (var x=0;x<N;x++) add(r, x); fx.push({t:0, kind:'row', i:r, c:RANGE[t.k].c}); }
-    else if (t.sp === SP.sv){ for (var y=0;y<N;y++) add(y, c); fx.push({t:0, kind:'col', i:c, c:RANGE[t.k].c}); }
+    if (t.sp === SP.sh){ for (var x=0;x<N;x++) add(r, x); fx.push({t:0, kind:'laser', vert:false, r:r, c:c}); }
+    else if (t.sp === SP.sv){ for (var y=0;y<N;y++) add(y, c); fx.push({t:0, kind:'laser', vert:true, r:r, c:c}); }
     else if (t.sp === SP.wrap){
       for (var dy=-1;dy<=1;dy++) for (var dx=-1;dx<=1;dx++) add(r+dy, c+dx);
       fx.push({t:0, kind:'ring', x:(c+.5)*cell, y:(r+.5)*cell, r:3}); echoes.push({r:r, c:c});
+    } else if (t.sp === SP.bomb){
+      for (var by=-2; by<=2; by++) for (var bx=-2; bx<=2; bx++) add(r+by, c+bx);
+      fx.push({t:0, kind:'ring', x:(c+.5)*cell, y:(r+.5)*cell, r:5, hot:true}); shake = 1;
     } else if (t.sp === SP.rain){
       var k = commonest(marked);
       eachTile(function(u, rr, cc){ if (u.k === k && !u.dead) { add(rr, cc); fx.push({t:0, kind:'bolt', x1:(c+.5)*cell, y1:(r+.5)*cell, x2:(cc+.5)*cell, y2:(rr+.5)*cell}); } });
@@ -671,6 +722,11 @@ function comboCells(cb, r1, c1, r2, c2){
   else if (cb.type === 'cross'){ for (var i=0;i<N;i++){ add(r2, i); add(i, c2); } fx.push({t:0, kind:'row', i:r2, c:'#ffffff'}); fx.push({t:0, kind:'col', i:c2, c:'#ffffff'}); }
   else if (cb.type === 'fat'){ for (var d=-1; d<=1; d++) for (var j=0;j<N;j++){ add(r2+d, j); add(j, c2+d); }
     fx.push({t:0, kind:'row', i:r2, c:'#ffe08a'}); fx.push({t:0, kind:'col', i:c2, c:'#ffe08a'}); }
+  else if (cb.type === 'bomb5' || cb.type === 'bomb7'){
+    var at = (B[r1][c1] && B[r1][c1].sp === SP.bomb) ? [r1, c1] : [r2, c2], rad = cb.type === 'bomb7' ? 3 : 2;
+    for (var by=-rad; by<=rad; by++) for (var bx=-rad; bx<=rad; bx++) add(at[0]+by, at[1]+bx);
+    fx.push({t:0, kind:'ring', x:(at[1]+.5)*cell, y:(at[0]+.5)*cell, r:rad*2+1, hot:true}); shake = 1; buzz([30,20,60]);
+  }
   else if (cb.type === 'big'){ for (var dy=-2; dy<=2; dy++) for (var dx=-2; dx<=2; dx++) add(r2+dy, c2+dx); fx.push({t:0, kind:'ring', x:(c2+.5)*cell, y:(r2+.5)*cell, r:5}); }
   /* the two that were swapped have done their work in the combination: they do not fire a second time on their own */
   [B[r1][c1], B[r2][c2]].forEach(function(t){ if (t && (t.sp === SP.rain || (cb.type !== 'rainStripe' && cb.type !== 'rainWrap'))) t.used = 1; });
@@ -728,7 +784,8 @@ function resolveMatches(){
 function finishSet(marked, made){
   var keep = {}; made.forEach(function(m){ keep[m.r+','+m.c] = m; delete marked[m.r+','+m.c]; });
   var n = Object.keys(marked).length, mult = Math.min(5, Math.max(1, cascade));
-  var pts = n * 60 * mult;
+  var pts = n * 60 * mult, bonus = 0;
+  made.forEach(function(m){ bonus += PRINT_BONUS[m.sp] * mult; });          /* a laser, wrapped, rainbow or bomb pays as it is printed */
   var sx = 0, sy = 0, cnt = 0;
   Object.keys(marked).forEach(function(k){
     var a = k.split(','), r = +a[0], c = +a[1], t = B[r][c]; if (!t) return;
@@ -736,26 +793,29 @@ function finishSet(marked, made){
     burst((c+.5)*cell, (r+.5)*cell, t.k >= 0 ? RANGE[t.k].c : '#ffffff', 4, .8);
   });
   made.forEach(function(m){
-    var t = B[m.r][m.c]; t.sp = m.sp; t.sc = 1.45; if (m.sp === SP.rain) t.k = -1;
+    var t = B[m.r][m.c]; t.sp = m.sp; t.sc = 1.45; if (m.sp === SP.rain) t.k = -1; if (m.sp === SP.bomb) t.k = -2;
     burst((m.c+.5)*cell, (m.r+.5)*cell, '#ffffff', 10, 1.1); fx.push({t:0, kind:'ring', x:(m.c+.5)*cell, y:(m.r+.5)*cell, r:1.6});
   });
   cleared += cnt;
   var mx = cnt ? sx/cnt : 3.5, my = cnt ? sy/cnt : 3.5;
   if (pts) floats.push({t:0, x:(mx+.5)*cell, y:(my+.5)*cell, txt:'+' + fmt(pts), big:n >= 6, c:n >= 6 ? '#ffe08a' : '#ffffff'});
   if (cascade > 1 && BANNER[Math.min(5, cascade)]) floats.push({t:0, x:W/2, y:H*.2, txt:BANNER[Math.min(5, cascade)] + (cascade > 2 ? '  ×' + Math.min(5, cascade) : ''), big:true, c:'#ffd98a'});
-  made.forEach(function(m){ floats.push({t:0, x:(m.c+.5)*cell, y:(m.r+.2)*cell, txt:m.sp === SP.rain ? 'RAINBOW' : m.sp === SP.wrap ? 'WRAPPED' : 'STRIPED', c:'#ffffff', big:false}); });
+  made.forEach(function(m, i){ floats.push({t:0, x:(m.c+.5)*cell, y:(m.r+.2)*cell - i*cell*.45, txt:PRINT_NAME[m.sp] + ' BONUS +' + fmt(PRINT_BONUS[m.sp]*mult), c:'#ffe08a', big:false}); });
   shake = Math.max(shake, Math.min(.8, .12 + n*.03)); buzz(n >= 7 ? [14,24,30] : 12);
-  addScore(pts);
+  addScore(pts + bonus);
   if (phase === 'won') return;
   phase = 'clearing'; phaseT = 0; hud();
 }
 /* the cleared packs go; the ones above fall; new ones drop in from the top */
 function gravity(){
+  var haveBomb = false; eachTile(function(t){ if (t.sp === SP.bomb && !t.dead) haveBomb = true; });
+  var drop = !haveBomb && swaps >= 3 && Math.random() < .08, dropped = false;      /* one bomb at most on the board, now and then */
   for (var c=0;c<N;c++){
     var w = N-1, r;
     for (r=N-1;r>=0;r--){ var t = B[r][c]; if (!t) continue; if (t.dead) { B[r][c] = null; continue; } if (w !== r) { B[r][c] = null; put(w, c, t, false); } w--; }
-    for (r=w;r>=0;r--){ var nt = mk((Math.random()*KINDS)|0, 0); put(r, c, nt, false); nt.x = c; nt.y = -(w - r + 1) - .3 - Math.random()*.25; }
+    for (r=w;r>=0;r--){ var nt = (drop && !dropped && Math.random() < .2) ? (dropped = true, mk(-2, SP.bomb)) : mk((Math.random()*KINDS)|0, 0); put(r, c, nt, false); nt.x = c; nt.y = -(w - r + 1) - .3 - Math.random()*.25; }
   }
+  if (dropped) floats.push({t:0, x:W/2, y:H*.3, txt:'💣 A bomb dropped in', big:false, c:'#ffd9a0'});
   phase = 'falling'; phaseT = 0;
 }
 function fireEchoes(){
@@ -963,6 +1023,12 @@ function drawTile(t){
   if (t.a !== 1) g.globalAlpha = Math.max(0, t.a);
   g.drawImage(spr, x, y, size, size);
   if (t.a !== 1) g.globalAlpha = 1;
+  if (t.sp === SP.bomb && !t.dead && !RM){                                      /* the spark at the end of the fuse */
+    var fx0 = x + size*.6755, fy0 = y + size*.1785, fl = .6 + .4*Math.sin(nowT/1000*17 + t.ph);
+    g.save(); g.globalCompositeOperation = 'lighter';
+    var sg = g.createRadialGradient(fx0, fy0, 0, fx0, fy0, cell*.13*fl + cell*.04); sg.addColorStop(0,'rgba(255,240,170,.95)'); sg.addColorStop(1,'rgba(255,120,30,0)');
+    g.fillStyle = sg; g.fillRect(fx0 - cell*.2, fy0 - cell*.2, cell*.4, cell*.4); g.restore();
+  }
   if (t.sp === SP.rain && !t.dead && !RM){                                    /* a few twinkles on the rainbow */
     g.save(); g.globalCompositeOperation = 'lighter';
     for (var i=0;i<3;i++){ var a = nowT/1000*1.6 + i*2.1 + t.ph, r = cell*.3 + cell*.12*Math.sin(a*1.7), sx = t.x*cell + cell/2 + Math.cos(a)*r, sy = t.y*cell + cell/2 + Math.sin(a)*r;
@@ -1000,8 +1066,17 @@ function render(){
       var gr = horiz ? g.createLinearGradient(0, pos, 0, pos + cell) : g.createLinearGradient(pos, 0, pos + cell, 0);
       gr.addColorStop(0, hex(e.c.length === 7 ? e.c : '#ffffff', 0)); gr.addColorStop(.5, 'rgba(255,255,255,.95)'); gr.addColorStop(1, hex(e.c.length === 7 ? e.c : '#ffffff', 0));
       g.fillStyle = gr; if (horiz) g.fillRect(0, pos + (cell - th)/2, W, th); else g.fillRect(pos + (cell - th)/2, 0, th, H);
+    } else if (e.kind === 'laser'){
+      var pr = Math.min(1, e.t/.16), lx = (e.c+.5)*cell, ly = (e.r+.5)*cell, th = cell*(.6 - .36*k);
+      g.globalAlpha = Math.min(1, a*1.7);
+      if (!e.vert){ var xa = Math.max(0, lx - pr*W), xb = Math.min(W, lx + pr*W), lg = g.createLinearGradient(0, ly - th, 0, ly + th);
+        lg.addColorStop(0,'rgba(255,40,90,0)'); lg.addColorStop(.5,'rgba(255,70,120,.95)'); lg.addColorStop(1,'rgba(255,40,90,0)');
+        g.fillStyle = lg; g.fillRect(xa, ly - th, xb - xa, th*2); g.fillStyle = '#fff'; g.fillRect(xa, ly - th*.17, xb - xa, th*.34); }
+      else { var ya = Math.max(0, ly - pr*H), yb = Math.min(H, ly + pr*H), lg2 = g.createLinearGradient(lx - th, 0, lx + th, 0);
+        lg2.addColorStop(0,'rgba(255,40,90,0)'); lg2.addColorStop(.5,'rgba(255,70,120,.95)'); lg2.addColorStop(1,'rgba(255,40,90,0)');
+        g.fillStyle = lg2; g.fillRect(lx - th, ya, th*2, yb - ya); g.fillStyle = '#fff'; g.fillRect(lx - th*.17, ya, th*.34, yb - ya); }
     } else if (e.kind === 'ring'){
-      g.lineWidth = cell*(.2*a + .03); g.strokeStyle = '#ffe9b0'; g.beginPath(); g.arc(e.x, e.y, cell*(.3 + k*e.r*.55), 0, 6.2832); g.stroke();
+      g.lineWidth = cell*(.2*a + .03); g.strokeStyle = e.hot ? '#ffb24a' : '#ffe9b0'; g.beginPath(); g.arc(e.x, e.y, cell*(.3 + k*e.r*.55), 0, 6.2832); g.stroke();
     } else if (e.kind === 'bolt'){
       g.lineWidth = Math.max(2, cell*.07*a); g.strokeStyle = '#fff'; g.shadowColor = '#9fe3ff'; g.shadowBlur = cell*.25;
       g.beginPath(); g.moveTo(e.x1, e.y1); g.lineTo((e.x1+e.x2)/2 + Math.sin(i*7)*cell*.2, (e.y1+e.y2)/2 + Math.cos(i*5)*cell*.2); g.lineTo(e.x2, e.y2); g.stroke();

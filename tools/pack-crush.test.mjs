@@ -54,7 +54,7 @@ async function open(vp, touch, dsf, gift){
 const snap=p=>p.evaluate(()=>window.__packcrush.snapshot());
 const until=async(p,fn,ms=9000)=>{ const t=Date.now(); while(Date.now()-t<ms){ if(await p.evaluate(fn)) return true; await sleep(30);} return false; };
 const quiet=p=>until(p,()=>['play','over','won','levelend'].includes(window.__packcrush.state()),20000);
-const SPN={sh:1,sv:2,wrap:3,rain:4};
+const SPN={sh:1,sv:2,wrap:3,rain:4,bomb:5};
 
 /* a board with no run and no move to speak of: kinds step by one along a row and by two down a column */
 const base=(r,c)=>(c+2*r)%6;
@@ -64,6 +64,7 @@ function scenario(name){
   if(name==='three'){ set(3,0,0);set(3,1,0);set(3,2,5);set(3,3,0); return {R,S,swap:[3,2,3,3]}; }
   if(name==='four'){  set(3,0,0);set(3,1,0);set(3,2,5);set(3,3,0); return {R,S,swap:[3,2,2,2]}; }
   if(name==='five'){  set(3,0,0);set(3,1,0);set(3,2,5);set(3,3,0);set(3,4,0); return {R,S,swap:[3,2,2,2]}; }
+  if(name==='six'){   set(3,0,0);set(3,1,0);set(3,2,5);set(3,3,0);set(3,4,0);set(3,5,0);set(3,6,4); return {R,S,swap:[3,2,2,2]}; }
   if(name==='L'){     set(3,0,0);set(3,1,0);set(3,2,5);set(3,3,0);set(4,2,0);set(5,2,0); return {R,S,swap:[3,2,3,3]}; }
   if(name==='none'){  return {R,S,swap:[0,0,0,1]}; }
   return {R,S};
@@ -85,6 +86,7 @@ const VPS=[
   ['TV 1920x1080',1920,1080,false,1],['TV 4K 3840x2160',3840,2160,false,1],['desktop 1366x768',1366,768,false,1],
   ['tablet upright 820x1180',820,1180,true,2],['tablet on its side 1180x820',1180,820,true,2],
   ['phone upright 390x844',390,844,true,3],['small phone 360x640',360,640,true,3],['phone on its side 844x390',844,390,true,3],
+  ['tall kiosk 1080x1920',1080,1920,true,1],['tall TV 4K 2160x3840',2160,3840,false,1],['squarer desktop 1280x1024',1280,1024,false,1],['tablet upright small 768x1024',768,1024,true,2],
 ];
 for (const [name,w,h,touch,dsf] of VPS){
   const {c,p,errs}=await open({width:w,height:h},touch,dsf);
@@ -103,11 +105,13 @@ for (const [name,w,h,touch,dsf] of VPS){
   });
   const hit=(a,b)=>a&&b&&a.l<b.r-1&&a.r>b.l+1&&a.t<b.b-1&&a.b>b.t+1;
   chk(name+': the whole board is on screen, and the page does not scroll', m.cab.l>=0&&m.cab.t>=0&&m.cab.r<=m.iw&&m.cab.b<=m.ih && m.sw<=m.iw && m.sh<=m.ih, {cab:m.cab,iw:m.iw,ih:m.ih,sw:m.sw,sh:m.sh});
+  const cabSide=Math.min(m.cab.r-m.cab.l,m.cab.b-m.cab.t);
+  chk(name+': the board is big: '+Math.round(cabSide)+'px, '+Math.round(100*cabSide/Math.min(m.iw,m.ih))+'% of the short side', cabSide>=0.62*Math.min(m.iw,m.ih), {cabSide,iw:m.iw,ih:m.ih});
   chk(name+': every side card (stats, goal, specials) is fully on screen', m.side.every(c=>c.t>=-1&&c.b<=m.ih+1&&c.l>=-1&&c.r<=m.iw+1), m.side);
   chk(name+': a pack is big enough to read ('+m.snap.cell+'px)', m.snap.cell>=(h<=700?30:40), m.snap.cell);
   chk(name+': the board does not sit under the pads or the Back and Ranking buttons', !hit(m.cab,m.padL&&m.padL.vis?m.padL:null)&&!hit(m.cab,m.padR&&m.padR.vis?m.padR:null)&&!hit(m.cab,m.back)&&!hit(m.cab,m.show), m);
   chk(name+': the pad buttons do not cover the Back or Ranking buttons', !hit(m.btnL&&m.btnL.vis?m.btnL:null,m.back)&&!hit(m.btnR&&m.btnR.vis?m.btnR:null,m.show)&&!hit(m.btnL&&m.btnL.vis?m.btnL:null,m.show)&&!hit(m.btnR&&m.btnR.vis?m.btnR:null,m.back), m);
-  chk(name+': the hint and shuffle pads are there on a touch screen and gone on a desktop screen', touch ? (m.padL.vis&&m.padR.vis) : (!m.padL.vis&&!m.padR.vis), {touch,padL:m.padL});
+  chk(name+': the hint and shuffle pads are there on a touch screen or an upright one, and gone on a wide desktop screen', touch||h>w ? (m.padL.vis&&m.padR.vis) : (!m.padL.vis&&!m.padR.vis), {touch,padL:m.padL});
   chk(name+': drawn at device resolution (canvas '+m.cw+'x'+m.ch+' for '+Math.round(m.cv.w)+'x'+Math.round(m.cv.h)+' CSS px)', m.cw>=Math.round(m.cv.w)*2-2 && m.ch>=Math.round(m.cv.h)*2-2, {cw:m.cw,cvw:m.cv.w});
   chk(name+': all 6 packshots loaded and baked into glass blocks', m.snap.loaded===6 && m.snap.sprites>=24, m.snap);
   chk(name+': no page errors', errs.length===0, errs);
@@ -160,7 +164,7 @@ console.log('\nswapping');
 }
 
 /* ───────────────────────── 4. making specials */
-console.log('\nstriped, wrapped and rainbow packs');
+console.log('\nlaser, wrapped, rainbow and bomb packs');
 {
   const {c,p,errs}=await open({width:1366,height:768},false,1);
   await newGame(p,'play');
@@ -168,11 +172,16 @@ console.log('\nstriped, wrapped and rainbow packs');
     await until(p,()=>window.__packcrush.phase()==='clearing');
     return p.evaluate(()=>({b:window.__packcrush.board(),s:window.__packcrush.snapshot()})); };
   let r=await made('four');
-  chk('four in a line prints a striped pack where the swap was, in the pack it was made of', r.b[3][2] && r.b[3][2].sp===SPN.sv && r.b[3][2].t===0 && r.s.cleared===3, r.b[3][2]);
+  chk('four in a line prints a laser pack where the swap was, in the pack it was made of', r.b[3][2] && r.b[3][2].sp===SPN.sv && r.b[3][2].t===0 && r.s.cleared===3, r.b[3][2]);
+  chk('...and pays the 4-line bonus on top of the three packs (3 x 60 + 400)', r.s.score===580, r.s.score);
   r=await made('L');
   chk('an L (here a T of four and three) prints a wrapped pack at the corner', r.b[3][2] && r.b[3][2].sp===SPN.wrap && r.b[3][2].t===0 && r.s.cleared===5, {at:r.b[3][2],cleared:r.s.cleared});
   r=await made('five');
   chk('five in a line prints a rainbow pack', r.b[3][2] && r.b[3][2].sp===SPN.rain && r.s.cleared===4, {at:r.b[3][2],cleared:r.s.cleared});
+  chk('...and pays the rainbow bonus (4 x 60 + 800)', r.s.score===1040, r.s.score);
+  r=await made('six');
+  chk('six in a line prints a bomb', r.b[3][2] && r.b[3][2].sp===SPN.bomb && r.s.cleared===5, {at:r.b[3][2],cleared:r.s.cleared});
+  chk('...and pays the bomb bonus (5 x 60 + 1,200)', r.s.score===1500, r.s.score);
   await quiet(p);
   chk('and the board carries on whole', (await snap(p)).tiles===64);
   chk('no page errors', errs.length===0, errs);
@@ -188,19 +197,27 @@ console.log('\nspecials, swapped');
   const fire=async(sp,swap)=>{ await newGame(p,'play'); const R=rows0(); await p.evaluate(([R,S])=>window.__packcrush.set(R,S),[R,sp]); await doSwap(p,swap);
     await until(p,()=>window.__packcrush.phase()==='clearing'); const s=await snap(p); await quiet(p); return s; };
   let s=await fire({'3,3':SPN.sh,'3,4':SPN.sv},[3,3,3,4]);
-  chk('striped + striped: a whole row and a whole column go (15 packs)', s.cleared===15, s.cleared);
+  chk('laser + laser: a whole row and a whole column go (15 packs)', s.cleared===15, s.cleared);
   s=await fire({'3,3':SPN.wrap,'3,4':SPN.wrap},[3,3,3,4]);
   chk('wrapped + wrapped: a 5x5 blast (25 packs)', s.cleared===25, s.cleared);
   s=await fire({'3,3':SPN.sh,'3,4':SPN.wrap},[3,3,3,4]);
-  chk('striped + wrapped: three rows and three columns (39 packs)', s.cleared===39, s.cleared);
+  chk('laser + wrapped: three rows and three columns (39 packs)', s.cleared===39, s.cleared);
   const k4=(await p.evaluate(()=>{ const R=Array.from({length:8},(_,r)=>Array.from({length:8},(_,c)=>(c+2*r)%6)); return R.flat().filter(k=>k===4).length; }));
   s=await fire({'3,3':SPN.rain},[3,3,3,4]);
   chk('rainbow + a pack: every pack of that kind goes, and the rainbow ('+(k4+1)+')', s.cleared===k4+1, {cleared:s.cleared,k4});
   s=await fire({'3,3':SPN.rain,'3,4':SPN.rain},[3,3,3,4]);
   chk('rainbow + rainbow: the whole board', s.cleared===64, s.cleared);
+  s=await fire({'3,3':SPN.bomb},[3,3,3,4]);
+  chk('a bomb swapped with a plain pack: a 5x5 blast (25 packs)', s.cleared===25, s.cleared);
+  s=await fire({'3,3':SPN.bomb,'3,4':SPN.bomb},[3,3,3,4]);
+  chk('bomb + bomb: a 7x7 blast (49 packs)', s.cleared===49, s.cleared);
+  s=await fire({'3,3':SPN.bomb,'3,4':SPN.sh},[3,3,3,4]);
+  chk('bomb + laser: three rows and three columns (39 packs)', s.cleared===39, s.cleared);
+  s=await fire({'3,3':SPN.bomb,'3,4':SPN.rain},[3,3,3,4]);
+  chk('bomb + rainbow: the whole board', s.cleared===64, s.cleared);
   s=await fire({'3,3':SPN.rain,'3,4':SPN.sh},[3,3,3,4]);
-  chk('rainbow + striped: every pack of its kind turns striped and fires, far more than a plain clear', s.cleared>2*k4+10, {cleared:s.cleared,k4});
-  chk('a striped pack beside a plain one is not a move on its own', await (async()=>{ const R=rows0(); await p.evaluate(([R,S])=>window.__packcrush.set(R,S),[R,{'3,3':SPN.sh}]); const before=(await snap(p)).moves;
+  chk('rainbow + laser: every pack of its kind turns into a laser and fires, far more than a plain clear', s.cleared>2*k4+10, {cleared:s.cleared,k4});
+  chk('a laser beside a plain pack is not a move on its own', await (async()=>{ const R=rows0(); await p.evaluate(([R,S])=>window.__packcrush.set(R,S),[R,{'3,3':SPN.sh}]); const before=(await snap(p)).moves;
     await doSwap(p,[3,3,3,4]); await until(p,()=>window.__packcrush.state()==='play'); await sleep(200); return (await snap(p)).moves===before; })());
   chk('no page errors', errs.length===0, errs);
   await c.close();
