@@ -28,17 +28,14 @@ html,body{margin:0;height:100%;background:#04101f;color:var(--ink);font-family:I
   radial-gradient(120% 90% at 78% 8%,#12407a 0%,transparent 55%),
   radial-gradient(90% 80% at 8% 92%,#2b1d5c 0%,transparent 52%),
   linear-gradient(160deg,#03112a,#06203f 55%,#030b1a)}
-.sky i{position:absolute;border-radius:50%;opacity:.55;will-change:transform}
-.sky i:nth-child(1){width:70vmax;height:70vmax;left:-24vmax;top:-22vmax;background:radial-gradient(circle,rgba(26,111,196,.75),transparent 66%);animation:drift1 38s ease-in-out infinite alternate}
-.sky i:nth-child(2){width:62vmax;height:62vmax;right:-22vmax;bottom:-24vmax;background:radial-gradient(circle,rgba(106,63,201,.62),transparent 66%);animation:drift2 46s ease-in-out infinite alternate}
-.sky i:nth-child(3){width:44vmax;height:44vmax;left:30%;top:22%;background:radial-gradient(circle,rgba(25,182,216,.34),transparent 66%);animation:drift3 52s ease-in-out infinite alternate}
+.sky i{position:absolute;border-radius:50%;opacity:.55}
+.sky i:nth-child(1){width:70vmax;height:70vmax;left:-24vmax;top:-22vmax;background:radial-gradient(circle,rgba(26,111,196,.75),transparent 66%);animation:none}
+.sky i:nth-child(2){width:62vmax;height:62vmax;right:-22vmax;bottom:-24vmax;background:radial-gradient(circle,rgba(106,63,201,.62),transparent 66%);animation:none}
+.sky i:nth-child(3){width:44vmax;height:44vmax;left:30%;top:22%;background:radial-gradient(circle,rgba(25,182,216,.34),transparent 66%);animation:none}
 .sky:after{content:'';position:absolute;inset:0;opacity:.55;background-image:
   radial-gradient(circle,#fff 0 .9px,transparent 1.3px),radial-gradient(circle,#9fe3ff 0 .8px,transparent 1.2px);
   background-size:131px 131px,197px 197px;background-position:17px 29px,71px 83px;
   -webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 0,transparent 82%);mask-image:radial-gradient(ellipse at 50% 40%,#000 0,transparent 82%)}
-@keyframes drift1{to{transform:translate3d(9vmax,7vmax,0) scale(1.15)}}
-@keyframes drift2{to{transform:translate3d(-8vmax,-6vmax,0) scale(1.1)}}
-@keyframes drift3{to{transform:translate3d(-6vmax,5vmax,0) scale(1.3)}}
 @media (pointer:coarse){.sky i{animation:none;will-change:auto}.sky i:nth-child(3){display:none}.sky:after{display:none}}
 
 /* ── layout: header over [stats | board | next], the board takes what is left */
@@ -99,7 +96,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
 .cab{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:clamp(16px,2.6vmin,30px);
   background:linear-gradient(180deg,rgba(12,40,76,.78),rgba(5,20,42,.88));border:1px solid rgba(160,215,255,.26);
   box-shadow:0 30px 90px rgba(0,6,22,.65),0 0 0 6px rgba(255,255,255,.035),0 0 80px rgba(48,150,230,.16),inset 0 1px 0 rgba(255,255,255,.16);overflow:hidden}
-#game{display:block;touch-action:none;outline:none}
+#game{display:block;touch-action:none;outline:none;contain:paint;transform:translateZ(0)}
 
 /* overlays sit over the cabinet and fade; nothing is display-toggled mid-frame */
 .screen{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;padding:clamp(10px,2vmin,28px);text-align:center;-webkit-overflow-scrolling:touch;
@@ -552,7 +549,10 @@ function hud(){
 }
 
 /* ── moves ───────────────────────────────────────────────────────────── */
-function gravity(){ return Math.min(16, 1.4 + .62*(level-1)); }  /* cells a second: quicker than before, and quicker every level */
+/* cells a second. The ramp is steeper than the first release (was 1.4 + .62/level,
+   capped at 16): every level from 2 on is faster, and the cap is reached at level 14
+   instead of 25, so a good run keeps escalating instead of flattening out. */
+function gravity(){ return Math.min(22, 1.9 + .95*(level-1)); }
 function lockDelay(){ return Math.max(.2, .5 - .03*(level-1)); }
 function tryMove(dx){
   if (state !== 'play' || !cur) return false;

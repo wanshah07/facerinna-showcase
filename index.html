@@ -3200,10 +3200,22 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
               </div>
             </a>
           </div>
+          <div class="cg-item" role="group" aria-label="Pack Crush" data-game="pack-crush">
+            <a class="cg-card" href="pack-crush-4k.html" data-art="10">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">10</span>
+              <div class="cg-cap">
+                <h4>Pack Crush</h4>
+                <em>Match · Line up · Clear</em>
+                <p>Swap two neighbouring packs to line up three or more. Four prints a striped pack, five a rainbow, an L or a T a flare — clear the target before your moves run out.</p>
+                <span class="cc-play">▶ Play Pack Crush</span>
+              </div>
+            </a>
+          </div>
           <div class="cg-item" role="group" aria-label="Lucky Wheel" data-game="lucky-wheel">
             <a class="cg-card" href="lucky-wheel.html" data-art="8">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
-              <span class="cg-num">09</span>
+              <span class="cg-num">11</span>
               <div class="cg-cap">
                 <h4>Lucky Wheel</h4>
                 <em>One spin per phone</em>
@@ -5635,7 +5647,8 @@ const GALLERY_DOCS = [
     {a:'#2A1B5E', b:'#8D6BF0', ic:'🔦'},
     {a:'#0E4B7E', b:'#7EC8F5', ic:'🏃‍♂️'},
     {a:'#5A2A0E', b:'#FFB15C', ic:'🎡'},
-    {a:'#10305A', b:'#66D0FF', ic:'🧩'}
+    {a:'#10305A', b:'#66D0FF', ic:'🧩'},
+    {a:'#3A1230', b:'#FF8AD0', ic:'💥'}
   ];
   /* Eight 600x800 canvases with a 230px emoji each cost a long job if drawn together at
      load, and the gallery is well below the fold. Paint them one per turn once the page
@@ -7483,6 +7496,7 @@ function launchConfetti(){
         if(on('skin-iq')) lines.push('🧠 <b>Skin IQ Challenge</b> — 5 questions, score 4+ for a reward → <a href="#game">play here</a>');
         if(arcade.length) lines.push((arcade.length===1?arcade[0]:arcade.slice(0,-1).join(', ')+' &amp; '+arcade[arcade.length-1])+' — '+(arcade.length===1?'a 3D arcade challenge':['','','two','three','four','five'][arcade.length]+' 3D arcade challenges')+' on our spinning game wheel → <a href="#game">see '+(arcade.length===1?'it':'them all')+'</a>');
         if(on('pack-drop')) lines.push('🧩 <b>Pack Drop</b> — stack the FACERINNA packs and clear whole rows, smooth and in full HD → <a href="pack-drop-4k.html">play here</a>');
+        if(on('pack-crush')) lines.push('💥 <b>Pack Crush</b> — match three FACERINNA packs, with striped, flare and rainbow specials → <a href="pack-crush-4k.html">play here</a>');
         if(on('uv-card')) lines.push('🔦 <b>UV Card</b> — pick a brochure, slide the UV light, reveal your number → <a href="uv-card.html">play here</a>');
         if(on('lucky-wheel')) lines.push('🎡 <b>Lucky Wheel</b> — one spin per phone for a gift from today’s stock → <a href="lucky-wheel.html">spin here</a>');
         /* counted from the wheel itself, so a game added there is counted here too */
