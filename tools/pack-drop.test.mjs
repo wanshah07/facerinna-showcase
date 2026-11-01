@@ -31,6 +31,7 @@ const tap=(p,a)=>p.keyboard.press(KEY[a]);
 /* `gift` stands in for the booth script: {on, need} answers the config call, and a claim hands back a code */
 async function open(vp, touch, dsf, gift){
   const c=await b.newContext({viewport:vp,isMobile:touch,hasTouch:touch,deviceScaleFactor:dsf});
+  await c.route(u=>!u.href.startsWith(BASE), r=>r.abort());       // nothing leaves for the real scripts: a test run must not put names on the live ranking
   await c.addInitScript((api)=>{ window.__BOOTH_API=api; try{ localStorage.setItem('fx.player','Tester'); }catch(e){} }, gift?BASE+'/api':'');
   const calls=[];
   if(gift) await c.route(BASE+'/api', async route=>{
@@ -48,7 +49,7 @@ async function open(vp, touch, dsf, gift){
   await p.goto(BASE+'/pack-drop-4k.html',{waitUntil:'load'});
   await p.waitForFunction(()=>window.__packdrop && window.__packdrop.snapshot().loaded>=19,null,{timeout:8000}).catch(()=>{});
   /* give the name the way a visitor does, so the Ranking button is there as it is for them */
-  await p.fill('#fxrName','Tester').catch(()=>{}); await p.click('#fxrGo').catch(()=>{}); await sleep(250);
+  await sleep(250);                       /* the name is asked once, and 'Tester' is already held: no gate to get past */
   return {c,p,errs,calls};
 }
 

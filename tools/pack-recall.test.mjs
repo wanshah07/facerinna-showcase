@@ -27,6 +27,7 @@ const b=await chromium.launch();
 /* `gift` stands in for the booth script: {on, need} answers the config call, and a claim hands back a code */
 async function open(vp, touch, dsf, gift){
   const c=await b.newContext({viewport:vp,isMobile:touch,hasTouch:touch,deviceScaleFactor:dsf});
+  await c.route(u=>!u.href.startsWith(BASE), r=>r.abort());       // nothing leaves for the real scripts: a test run must not put names on the live ranking
   await c.addInitScript((api)=>{ window.__BOOTH_API=api; try{ localStorage.setItem('fx.player','Tester'); }catch(e){}
     window.__rafs=0; const raf=window.requestAnimationFrame.bind(window); window.requestAnimationFrame=cb=>raf(t=>{ window.__rafs++; cb(t); }); }, gift?BASE+'/api':'');
   const calls=[];
@@ -44,7 +45,7 @@ async function open(vp, touch, dsf, gift){
   p.on('console',m=>{ if(m.type()==='error' && !/cloudflare|rum|ERR_FAILED|sw\.js|404|script\.google|net::/i.test(m.text())) errs.push(m.text()); });
   await p.goto(BASE+'/pack-recall-4k.html',{waitUntil:'load'});
   await p.waitForFunction(()=>window.__packrecall && window.__packrecall.snapshot().loaded>=8,null,{timeout:8000}).catch(()=>{});
-  await p.fill('#fxrName','Tester').catch(()=>{}); await p.click('#fxrGo').catch(()=>{}); await sleep(250);
+  await sleep(250);                       /* the name is asked once, and 'Tester' is already held: no gate to get past */
   return {c,p,errs,calls};
 }
 const snap=p=>p.evaluate(()=>window.__packrecall.snapshot());
@@ -275,8 +276,8 @@ console.log('\npause, keys, idle');
   await toPlay(p);
   /* the keyboard: arrows to a block, space to turn it over */
   const cs=await cardsOf(p); const at=cs.find(x=>x.slot===5);
-  await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowRight'); await p.keyboard.press('Space'); await sleep(200);
-  chk('arrows move to a block and space turns it over', (await cardsOf(p))[at.i].up===true);
+  await sleep(300); await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowRight'); await p.keyboard.press('Space');
+  chk('arrows move to a block and space turns it over', await p.waitForFunction(i=>window.__packrecall.cards()[i].up===true, at.i, {timeout:3000}).then(()=>true).catch(()=>false));
   await sleep(2600);
   const r0=await p.evaluate(()=>window.__rafs); await sleep(1500); const r1=await p.evaluate(()=>window.__rafs);
   chk('a settled Packs round does not redraw at all ('+(r1-r0)+' frames in 1.5 s)', r1-r0<=4, r1-r0);

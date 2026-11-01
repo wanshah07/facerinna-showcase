@@ -58,7 +58,7 @@ async function facy(saved){
   const {c,p,errs}=await phone(saved);
   await p.addInitScript(()=>{ window.__BOOTH_API='http://127.0.0.1:1/down'; });
   await p.goto(BASE+'/facy-run.html',{waitUntil:'load'}); await sleep(400);
-  await p.click('#fxrGo').catch(()=>{});
+  await p.click('#fxrGo',{timeout:500}).catch(()=>{});   /* a name already held means no gate */
   await p.evaluate(()=>{ window.__facy.start(); window.__facy.setScore(6200); window.__facy.end(); });
   await sleep(2500);
   const v=await facyPanel(p); return {c,p,errs,v};

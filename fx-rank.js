@@ -10,13 +10,20 @@
  * through the day with nothing to host and nothing to go down. It is per
  * browser and per game — that is the point at a booth, not a limitation.
  *
- * It shows as a popup that takes itself away after ten seconds, so the result
- * screen the game already draws is not pushed around, and a small corner button
- * brings it back at any time — before a run as much as after one.
+ * It is a popup that comes up ONLY when the player taps the corner Ranking
+ * button, takes itself away after ten seconds, and is one element that button
+ * opens and closes: it never opens over a game by itself, and a run ending does
+ * not pop it up. (A game that wants the old behaviour, the board coming up once
+ * as the run ends, sets FX_RANK.manual = false.)
+ *
+ * The name is asked for once per device. It is remembered, the games after the
+ * first open straight in, and the popup says who is playing with a Change button
+ * for a shared booth screen where the next visitor takes over.
  */
 (function () {
   var CFG = window.FX_RANK;
   if (!CFG) return;
+  var MANUAL = CFG.manual !== false;   /* the board comes up when it is tapped, not when a run ends */
 
   var NAME_KEY = 'fx.player';
   var BOARD_KEY = 'fx.rank.' + CFG.id;
@@ -226,6 +233,10 @@
     '.fxr-nm{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
     '.fxr-sc{flex:none;font-variant-numeric:tabular-nums}' +
     '.fxr-note{margin:10px 0 0;font-size:12px;font-weight:700;color:rgba(255,255,255,.55)}' +
+    '.fxr-who b{color:#fff;font-weight:800}' +
+    '.fxr-chg{font:inherit;font-size:11px;font-weight:800;letter-spacing:.04em;color:#9FD8FF;background:rgba(255,255,255,.08);' +
+      'border:1px solid rgba(255,255,255,.18);border-radius:99px;padding:3px 11px;margin-left:6px;cursor:pointer}' +
+    '.fxr-chg:active{transform:translateY(1px)}' +
     /* the way back to the popup once it has gone; sits under it, never behind */
     '.fxr-show{position:fixed;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:76;border:0;cursor:pointer;' +
       'font:inherit;font-weight:800;font-size:13px;letter-spacing:.04em;' +
@@ -319,7 +330,7 @@
     }, true);
   });
   /* a booth tablet opens the keyboard on focus, which is what we want here */
-  setTimeout(function () { try { input.focus(); } catch (e) {} }, 120);
+  setTimeout(function () { if (!gate.classList.contains('hidden')) { try { input.focus(); } catch (e) {} } }, 120);
 
   /* ---- the way back ---------------------------------------------------- */
 
@@ -412,6 +423,11 @@
   show.setAttribute('aria-label', 'Show the booth ranking');
   document.body.appendChild(show);
 
+  /* The name is asked for once. With one already held the gate never comes up and
+     the Ranking button is there from the first frame; the popup has a Change
+     button for the next person at a shared screen. */
+  if (player) { gate.classList.add('hidden'); show.classList.add('on'); }
+
   var lastRun = null;                 // the run the note is about, if there is one
   var hideT = null;
 
@@ -438,6 +454,15 @@
   }
 
   pop.querySelector('.fxr-x').addEventListener('click', closePop);
+  popBody.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!(t && t.classList && t.classList.contains('fxr-chg'))) return;
+    closePop();
+    input.value = player;                          /* one tap on Continue keeps the same name */
+    err.textContent = '';
+    gate.classList.remove('hidden'); show.classList.remove('on');
+    try { input.focus(); input.select(); } catch (x) {}
+  });
   show.addEventListener('click', function () {
     if (pop.classList.contains('on')) closePop(); else openPop();
   });
@@ -466,8 +491,9 @@
       if (String(rows[i].n).toLowerCase() === me) { myPos = i + 1; break; }
     }
     var html = '<h3>Booth ranking</h3>';
+    var who = player ? '<p class="fxr-note fxr-who">Playing as <b>' + esc(player) + '</b> <button class="fxr-chg" type="button">Change</button></p>' : '';
     if (!rows.length) {
-      html += '<p class="fxr-note">No scores yet — yours will be the first.</p>';
+      html += '<p class="fxr-note">No scores yet — yours will be the first.</p>' + who;
       popBody.innerHTML = html;
       return;
     }
@@ -497,15 +523,16 @@
       ? 'Everyone at the booth.'
       : 'This device only' + (waiting ? ' \u00B7 ' + waiting + ' score' +
           (waiting > 1 ? 's' : '') + ' waiting to send' : '') + '.') + '</p>';
-    popBody.innerHTML = html;
+    popBody.innerHTML = html + who;
   }
 
   function render(justScored, prevBest) {
     lastRun = { score: justScored, prev: prevBest };
     /* A game can ask for the board to stay out of the way: the run is still booked
        and sent, and the popup is made ready, but it only comes up when the player
-       taps the Ranking button. FX_RANK = { ..., manual: true } */
-    if (CFG.manual) { fill(); refresh(); return; }
+       taps the Ranking button, which is now every game's way unless it asks for
+       FX_RANK = { ..., manual: false } */
+    if (MANUAL) { fill(); refresh(); return; }
     openPop();
   }
 

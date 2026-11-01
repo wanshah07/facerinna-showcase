@@ -14,6 +14,7 @@
    The QR code is read back by a decoder that shares no code with the
    encoder -- OpenCV, from the pixels the page draws -- and the text it
    reads has to be the whole redeem address. */
+import { ROOT } from './paths.mjs';
 import pkg from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -60,6 +61,7 @@ await new Promise(r=>srv.listen(PORT,'127.0.0.1',r));
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 async function open_(vp, mob, api){
   const c=await b.newContext({viewport:vp,isMobile:mob,hasTouch:mob,deviceScaleFactor:mob?2:1});
+  await c.route(u=>!u.href.startsWith(BASE) && !u.href.startsWith('data:') && !u.href.startsWith('blob:'), r=>r.abort());   // nothing leaves for the real booth scripts
   await c.addInitScript(a=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.player','Tester'); }catch(e){} }, api===undefined ? API : api);
   const p=await c.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
@@ -67,7 +69,7 @@ async function open_(vp, mob, api){
   await p.waitForTimeout(400);
   /* the ranking's name gate is up first on every game, prefilled; a visitor
      presses Continue, and so does this */
-  const gate=await p.$('#fxrGo'); if(gate) { await gate.click(); await p.waitForTimeout(150); }
+  if(await p.isVisible('#fxrGo')){ await p.click('#fxrGo'); await p.waitForTimeout(150); }   /* a name already held means no gate */
   return {c,p,errs};
 }
 
@@ -122,10 +124,11 @@ const DESKTOP='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like G
 const IPADOS='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
 async function openAs(opt){
   const c=await b.newContext({viewport:opt.vp, screen:opt.vp, userAgent:opt.ua, isMobile:false, hasTouch:!!opt.touch, deviceScaleFactor:1});
+  await c.route(u=>!u.href.startsWith(BASE) && !u.href.startsWith('data:') && !u.href.startsWith('blob:'), r=>r.abort());   // nothing leaves for the real booth scripts
   await c.addInitScript(a=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.player','Tester'); }catch(e){} }, '');
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto(BASE+'/facy-run.html',{waitUntil:'load'}); await p.waitForTimeout(300);
-  const gate=await p.$('#fxrGo'); if(gate){ await gate.click(); await p.waitForTimeout(150); }
+  if(await p.isVisible('#fxrGo')){ await p.click('#fxrGo'); await p.waitForTimeout(150); }
   return {c,p,errs};
 }
 const padState=p=>p.evaluate(()=>({ pad:getComputedStyle(document.getElementById('ctl')).display!=='none',
@@ -376,7 +379,6 @@ console.log('\nthe QR code, read back by a decoder');
   fs.writeFileSync(file, Buffer.from(png.split(',')[1],'base64'));
   const py=spawnSync('python3',['-c',`
 import cv2, sys
-import { ROOT, PAGE } from './paths.mjs';
 img=cv2.imread(sys.argv[1]); big=cv2.resize(img,None,fx=3,fy=3,interpolation=cv2.INTER_NEAREST)
 val,_,_=cv2.QRCodeDetector().detectAndDecode(big); print(val)`, file],{encoding:'utf8'});
   const read=(py.stdout||'').trim();

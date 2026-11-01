@@ -58,6 +58,7 @@ await new Promise(r=>srv.listen(PORT,'127.0.0.1',r));
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 async function open_(page, device){
   const c=await b.newContext({viewport:{width:900,height:800}});
+  await c.route(u=>!u.href.startsWith(BASE) && !u.href.startsWith('data:') && !u.href.startsWith('blob:'), r=>r.abort());   // nothing leaves for the real scripts
   await c.addInitScript(([a,d])=>{ window.__BOOTH_API=a; window.__REDEEM_URL='https://my.facerinna.com/redeem.html';
     try{ if(d) localStorage.setItem('fx.device', d); localStorage.setItem('fx.player','Tester'); }catch(e){} }, [API, device||'']);
   const p=await c.newPage();
