@@ -10,7 +10,7 @@
  * day to day you should not need to, because pages are fetched from the
  * network first and everything else is revalidated in the background.
  */
-const VERSION = 'facerinna-2026-10-31a';
+const VERSION = 'facerinna-2026-11-01a';
 
 /* How long a page load waits on the network before falling back to the
    stored copy. This is time to first byte, not the whole download -- fetch()
@@ -33,6 +33,7 @@ const CORE = [
   './uv-card.html',
   './facy-run.html',
   './pack-drop-4k.html',
+  './pack-crush-4k.html',
   './docs/facerinna-logo-white.webp',
   './lucky-wheel.html',
   './redeem.html',

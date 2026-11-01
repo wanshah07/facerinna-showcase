@@ -100,21 +100,22 @@ console.log('\nsmooth movement, frame by frame');
   await p.evaluate(()=>window.__packdrop.start("play"));
   await sleep(1400);                                   /* let it glide in, then watch it fall */
   const mark=await p.evaluate(()=>window.__fr.length);
-  await sleep(2600);
+  await sleep(1100);                                   /* the piece is still high: from level 1 it now falls fast enough to land before a longer wait */
+  const tapAt=await p.evaluate(()=>window.__fr.length);   /* the sideways move is looked for after this point, not at the piece spawning */
   await tap(p,'right'); await sleep(700);
   await p.evaluate(()=>window.__packdrop.forceNow('tube')); await sleep(250);   /* a jar is square and does not turn, so bring a tube */
   await tap(p,'rotate'); await sleep(900);
   const fr=await p.evaluate(()=>window.__fr);
   const fall=fr.slice(mark, mark+90).filter((f,i,a)=>i===0||f.x===a[i-1].x);
-  /* speed over a tenth of a second, in cells a second: it must be the gravity (about 1.4 cells/s at level 1), whatever the frame rate.
+  /* speed over a tenth of a second, in cells a second: it must be the gravity (about 1.9 cells/s at level 1), whatever the frame rate.
      Single frames are not compared: a busy machine drops a frame now and then and the game, which runs on the clock, catches up. */
   const sp=[]; for(let i=0;i+6<fall.length;i+=3){ const dt=(fall[i+6].t-fall[i].t)/1000; if(dt>0.05 && fall[i+6].y===fall[i].y) sp.push((fall[i+6].vy-fall[i].vy)/dt); }
   const med=sp.slice().sort((a,b)=>a-b)[Math.floor(sp.length/2)], mx=Math.max(...sp.map(Math.abs)), mn=Math.min(...sp);
-  chk('falling is a steady speed, not a stepping one (median '+med.toFixed(2)+' cells/s, range '+mn.toFixed(2)+' to '+mx.toFixed(2)+')', sp.length>=6 && med>1.0 && med<2.0 && mn>0.6 && mx<3, {n:sp.length,med,mn,mx});
+  chk('falling is a steady speed, not a stepping one (median '+med.toFixed(2)+' cells/s, range '+mn.toFixed(2)+' to '+mx.toFixed(2)+')', sp.length>=6 && med>1.0 && med<2.5 && mn>0.6 && mx<3.4, {n:sp.length,med,mn,mx});
   const moving=fall.slice(1).filter((f,i)=>f.vy>fall[i].vy+1e-4).length;
   chk('the picture moves on nearly every frame it draws ('+moving+' of '+(fall.length-1)+')', moving/(fall.length-1)>0.9, {moving,n:fall.length});
   /* the one move to the right: the visual column eases over the time it should */
-  const x0=fr.findIndex((f,i)=>i>0&&f.x>fr[i-1].x);
+  const x0=fr.findIndex((f,i)=>i>=tapAt&&f.x>fr[i-1].x);
   const seg=fr.slice(x0-1,x0+34), t0=seg[0].t, base=seg[0].vx;
   const t95=seg.find(f=>f.vx-base>=.95); const tMid=seg.find(f=>f.vx-base>=.5);
   chk('a sideways move glides: half way after '+Math.round(tMid.t-t0)+' ms, there after '+Math.round(t95.t-t0)+' ms', t95.t-t0>=70 && t95.t-t0<=400 && tMid.t-t0>=15, {mid:tMid.t-t0,full:t95.t-t0});
@@ -372,7 +373,7 @@ console.log('\nbonus pack, bomb, save, speed');
   const {c,p,errs}=await open({width:1366,height:768},false,1);
   await p.evaluate(()=>window.__packdrop.start('play')); await sleep(200);
   const g=await p.evaluate(()=>[1,2,3,5,8,12,20].map(n=>+window.__packdrop.gravityAt(n).toFixed(2)));
-  chk('the fall gets quicker every level, and is quicker than before even at level 1 ('+g.join(', ')+' cells/s)', g[0]>=1.35 && g.every((v,i)=>i===0||v>g[i-1]) && g.slice(0,6).every((v,i)=>i===0||v>g[i-1]+0.3) && g[g.length-1]<=16, g);
+  chk('the fall gets quicker every level, and is quicker than before even at level 1 ('+g.join(', ')+' cells/s)', g[0]>=1.35 && g.every((v,i)=>i===0||v>g[i-1]) && g.slice(0,6).every((v,i)=>i===0||v>g[i-1]+0.3) && g[g.length-1]<=22, g);
   await p.evaluate(()=>{ window.__packdrop.fill(9,0,6); });
   await p.evaluate(()=>window.__packdrop.forceNow('bar')); await tap(p,'hard'); await sleep(1500);
   const lv=await p.evaluate(()=>window.__packdrop.snapshot());
