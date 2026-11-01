@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04101f">
+<title>Pack Crush · FACERINNA</title>
+<link rel="preload" as="image" href="docs/facerinna-logo-white.webp">
+<style>
+@font-face{font-family:'Inter';font-weight:400;font-display:swap;src:url(fonts/inter-400.woff2) format('woff2')}
+@font-face{font-family:'Inter';font-weight:600;font-display:swap;src:url(fonts/inter-600.woff2) format('woff2')}
+@font-face{font-family:'Inter';font-weight:700;font-display:swap;src:url(fonts/inter-700.woff2) format('woff2')}
+@font-face{font-family:'Fraunces';font-weight:100 900;font-display:swap;src:url(fonts/fraunces-variable.woff2) format('woff2')}
+:root{
+  --ink:#eef8ff;--mut:#9cc0d8;--line:rgba(160,215,255,.18);--blue:#3fb4ee;--blue2:#7fd5ff;--gold:#ffd98a;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+  --safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);
+  --gap:clamp(10px,1.6vmin,28px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#04101f;color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-text-size-adjust:100%}
+
+/* the room: same as Pack Drop's, so the two games read as one stand.
+   It animates with transform only, and holds still on a coarse pointer. */
+.sky{position:fixed;inset:0;z-index:0;overflow:hidden;background:
+  radial-gradient(120% 90% at 78% 8%,#12407a 0%,transparent 55%),
+  radial-gradient(90% 80% at 8% 92%,#2b1d5c 0%,transparent 52%),
+  linear-gradient(160deg,#03112a,#06203f 55%,#030b1a)}
+.sky i{position:absolute;border-radius:50%;opacity:.55}
+.sky i:nth-child(1){width:70vmax;height:70vmax;left:-24vmax;top:-22vmax;background:radial-gradient(circle,rgba(26,111,196,.75),transparent 66%);animation:none}
+.sky i:nth-child(2){width:62vmax;height:62vmax;right:-22vmax;bottom:-24vmax;background:radial-gradient(circle,rgba(106,63,201,.62),transparent 66%);animation:none}
+.sky i:nth-child(3){width:44vmax;height:44vmax;left:30%;top:22%;background:radial-gradient(circle,rgba(25,182,216,.34),transparent 66%);animation:none}
+.sky:after{content:'';position:absolute;inset:0;opacity:.55;background-image:
+  radial-gradient(circle,#fff 0 .9px,transparent 1.3px),radial-gradient(circle,#9fe3ff 0 .8px,transparent 1.2px);
+  background-size:131px 131px,197px 197px;background-position:17px 29px,71px 83px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 0,transparent 82%);mask-image:radial-gradient(ellipse at 50% 40%,#000 0,transparent 82%)}
+@media (pointer:coarse){.sky i{animation:none;will-change:auto}.sky i:nth-child(3){display:none}.sky:after{display:none}}
+
+.app{position:relative;z-index:1;height:100vh;height:100dvh;display:grid;
+  padding:calc(var(--safe-t) + var(--gap)) calc(var(--safe-r) + var(--gap)) calc(var(--safe-b) + var(--gap)) calc(var(--safe-l) + var(--gap));
+  gap:var(--gap);
+  grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr);
+  grid-template-areas:"hd hd hd" "left board right"}
+.hd{grid-area:hd;display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.hd .r{display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:clamp(12px,2vmin,26px);min-width:0}
+.brand img{height:clamp(22px,4.2vmin,52px);width:auto;display:block;filter:drop-shadow(0 2px 10px rgba(63,180,238,.35))}
+.brand span{display:block;padding-left:clamp(12px,2vmin,26px);border-left:1px solid var(--line)}
+.brand b{display:block;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.6vmin,44px);letter-spacing:.01em;line-height:1.05}
+.brand small{display:block;font-size:clamp(9px,1.25vmin,13px);letter-spacing:.34em;text-transform:uppercase;color:var(--blue2);font-weight:700;margin-bottom:3px}
+.tag{font-size:clamp(11px,1.5vmin,14px);font-weight:700;letter-spacing:.06em;padding:.45em 1em;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--line);white-space:nowrap}
+.tag[hidden]{display:none}
+.tag.gift{background:linear-gradient(180deg,rgba(255,201,74,.3),rgba(255,160,50,.16));border-color:rgba(255,201,74,.55);color:#ffe8b0}
+.left{grid-area:left;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:var(--gap);min-width:0}
+.right{grid-area:right;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:var(--gap);min-width:0}
+.board{grid-area:board;position:relative;min-width:0;min-height:0;display:grid;place-items:center}
+
+.card{background:linear-gradient(165deg,rgba(40,90,150,.5),rgba(12,36,72,.55));border:1px solid var(--line);
+  border-radius:clamp(14px,2.2vmin,26px);padding:clamp(12px,2vmin,26px);width:min(100%,clamp(150px,24vmin,340px));
+  box-shadow:0 18px 50px rgba(0,5,20,.35),inset 0 1px 0 rgba(255,255,255,.12)}
+.card h3{margin:0 0 .5em;font-size:clamp(9px,1.3vmin,13px);letter-spacing:.3em;text-transform:uppercase;color:var(--blue2);font-weight:700}
+.stat{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:.35em 0;border-top:1px solid rgba(160,215,255,.1)}
+.stat:first-of-type{border-top:0}
+.stat span{font-size:clamp(10px,1.5vmin,15px);color:var(--mut);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.stat b{font-variant-numeric:tabular-nums;font-size:clamp(18px,3.4vmin,40px);font-weight:700;line-height:1.1}
+.stat.big b{font-size:clamp(22px,4.2vmin,54px);background:linear-gradient(180deg,#fff,#a9e2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lvl{height:5px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:.7em}
+.lvl i{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,var(--blue),var(--blue2));transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.giftbox{margin-top:.8em;padding-top:.7em;border-top:1px solid rgba(255,201,74,.3)}
+.giftbox[hidden]{display:none}
+.giftbox .gl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:clamp(10px,1.4vmin,14px);color:#ffe8b0;font-weight:700;letter-spacing:.04em}
+.giftbox .lvl i{background:linear-gradient(90deg,#ffb02e,var(--gold))}
+
+.btn{appearance:none;border:1px solid var(--line);border-radius:999px;padding:.72em 1.5em;font:inherit;font-weight:700;
+  font-size:clamp(12px,1.7vmin,17px);letter-spacing:.02em;color:var(--ink);background:rgba(255,255,255,.08);cursor:pointer;
+  transition:transform .12s ease,background .2s ease,border-color .2s ease;min-height:44px;touch-action:manipulation}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:linear-gradient(180deg,#3fb4ee,#1d7fc4);border-color:rgba(180,235,255,.5);color:#04121f;box-shadow:0 10px 26px rgba(35,150,220,.35)}
+.btn.gold{background:linear-gradient(180deg,#ffd98a,#f0a92e);border-color:rgba(255,230,170,.7);color:#2a1a02;box-shadow:0 10px 26px rgba(230,160,40,.32)}
+.btn.ghost{background:rgba(255,255,255,.06)}
+.btn.sm{padding:.5em 1em;font-size:clamp(11px,1.4vmin,14px);min-height:38px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn small{display:block;font-weight:600;font-size:.78em;opacity:.8;letter-spacing:.01em}
+
+/* the board cabinet */
+.cab{position:relative;border-radius:clamp(18px,2.6vmin,32px);padding:clamp(8px,1.4vmin,18px);
+  background:linear-gradient(170deg,rgba(24,64,112,.65),rgba(8,22,46,.75));border:1px solid var(--line);
+  box-shadow:0 30px 80px rgba(0,6,20,.5),inset 0 1px 0 rgba(255,255,255,.14)}
+#game{display:block;border-radius:clamp(12px,2vmin,24px);touch-action:none;outline:none;cursor:pointer;
+  contain:paint;transform:translateZ(0)}
+#game:focus-visible{box-shadow:0 0 0 3px var(--blue2)}
+
+.screen{position:absolute;inset:0;display:grid;place-items:center;padding:clamp(12px,2.4vmin,34px);
+  background:radial-gradient(circle at 50% 30%,rgba(10,34,66,.9),rgba(3,10,24,.96));border-radius:inherit;z-index:5;
+  animation:fadeIn .28s ease}
+.screen.hidden{display:none}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.screen .in{max-width:min(560px,92%);text-align:center}
+.screen .cap{margin:0 0 .35em;font-size:clamp(9px,1.5vmin,14px);letter-spacing:.34em;text-transform:uppercase;color:var(--blue2);font-weight:700}
+.screen h2{margin:0 0 .5em;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(22px,4.2vmin,46px);line-height:1.1}
+.screen p{margin:0 0 .9em;color:var(--mut);font-size:clamp(12px,1.7vmin,17px);line-height:1.5}
+.screen .big{margin:.1em 0;font-size:clamp(34px,7vmin,84px);font-weight:700;font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,#fff,#a9e2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.screen .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:1em 0 0}
+.screen .btns.col{flex-direction:column;align-items:stretch}
+.screen .btns.col .btn{width:100%}
+.screen .mini{display:flex;gap:1.4em;justify-content:center;margin:.9em 0 0}
+.screen .mini div{text-align:center}
+.screen .mini b{display:block;font-size:clamp(16px,2.6vmin,26px);font-variant-numeric:tabular-nums}
+.screen .mini span{font-size:clamp(9px,1.2vmin,12px);letter-spacing:.2em;text-transform:uppercase;color:var(--mut)}
+.screen .note{font-size:clamp(11px,1.4vmin,14px);color:var(--mut);margin:.9em 0 0}
+.screen .rk{font-size:clamp(10px,1.3vmin,13px);color:var(--mut);margin:.9em 0 0}
+.screen.win{background:radial-gradient(circle at 50% 38%,rgba(70,48,6,.85),rgba(14,8,2,.96))}
+.screen.win .cap{color:var(--gold)}
+.screen h2.winner{display:none;font-size:clamp(24px,5vmin,56px);background:linear-gradient(180deg,#fff6d6,#ffc94a);
+  -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.1em}
+.screen.win h2.winner{display:block}
+.screen.win .big{text-shadow:0 0 60px rgba(255,190,60,.7)}
+
+.help{list-style:none;margin:0;padding:0;font-size:clamp(10px,1.4vmin,14px);color:var(--mut);line-height:1.7}
+.help li{margin:.15em 0}
+kbd{font:inherit;font-size:.92em;padding:.05em .4em;border:1px solid var(--line);border-radius:5px;background:rgba(255,255,255,.07)}
+.help.touch,.touchonly{display:none}
+@media (pointer:coarse){.help.kbd,.kbdonly{display:none}.help.touch,.touchonly{display:block}}
+
+/* the mobile pads: only where a pointer is coarse, and only over the board's sides */
+.pad{display:none;position:absolute;bottom:calc(var(--safe-b) + 10px);z-index:4;gap:8px}
+@media (pointer:coarse){
+  .pad{display:flex}
+  .pad.padL{left:calc(var(--safe-l) + 10px)}
+  .pad.padR{right:calc(var(--safe-r) + 10px)}
+}
+.pb{width:clamp(46px,7vmin,64px);height:clamp(46px,7vmin,64px);border-radius:50%;border:1px solid var(--line);
+  background:rgba(12,36,72,.72);color:var(--ink);display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(6px)}
+.pb svg{width:52%;height:52%;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.pb:active{transform:scale(.94)}
+
+/* phones: board on top, stats in a strip under it, pads floating over the board corners */
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"hd" "board" "left"}
+  .right{display:none}
+  .left{grid-area:left;align-items:stretch;justify-content:center}
+  .left .card{width:100%;display:grid;grid-template-columns:repeat(4,1fr);gap:0 8px;align-items:center;padding:.7em .9em}
+  .left .card h3{grid-column:1/-1;margin:0 0 .3em}
+  .left .stat{border-top:0;padding:.1em 0;flex-direction:column;align-items:flex-start;gap:0}
+  .left .stat b{font-size:clamp(16px,4.6vw,22px)}
+  .left .stat.big b{font-size:clamp(18px,5.4vw,26px)}
+  .left .stat span{font-size:9px;letter-spacing:.12em}
+  .left .lvl,.left .giftbox{grid-column:1/-1}
+  .giftbox{margin-top:.4em;padding-top:.4em}
+  .brand small{display:none}
+  .brand b{font-size:clamp(17px,4.6vw,24px)}
+  .brand img{height:clamp(20px,5vw,28px)}
+  .screen h2{font-size:clamp(20px,5.6vw,30px)}
+  .screen p{font-size:clamp(11px,3vw,14px)}
+  .screen .big{font-size:clamp(28px,9vw,52px)}
+  .screen h2.winner{font-size:clamp(20px,6.6vw,34px)}
+  .screen .btns .btn{flex:1 1 auto}
+}
+@media (max-height:520px) and (orientation:landscape){
+  .brand small{display:none}
+  .hd{padding-bottom:0}
+  .screen .in{max-width:96%}
+  .screen h2{font-size:clamp(18px,4vh,26px);margin-bottom:.25em}
+  .screen p{margin-bottom:.4em}
+  .screen .mini{margin-top:.4em}
+}
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<div class="app" id="app">
+  <header class="hd">
+    <div class="brand"><img src="docs/facerinna-logo-white.webp" alt="FACERINNA" width="1200" height="318"><span><small>Dermatologist Care</small><b>Pack Crush</b></span></div>
+    <div class="r"><span class="tag" id="modeTag" hidden></span><button class="btn ghost sm" id="pauseBtn" type="button">Pause</button></div>
+  </header>
+
+  <aside class="left">
+    <div class="card">
+      <h3>Routine</h3>
+      <div class="stat big"><span>Score</span><b id="score">0</b></div>
+      <div class="stat"><span>Level</span><b id="level">1</b></div>
+      <div class="stat"><span>Moves</span><b id="moves">25</b></div>
+      <div class="stat"><span>Best</span><b id="best">0</b></div>
+      <div class="lvl" aria-hidden="true"><i id="lvlBar"></i></div>
+      <div class="giftbox" id="giftBox" hidden><div class="gl"><span>🎁 Gift at</span><b id="giftNeedTxt">0</b></div><div class="lvl" aria-hidden="true"><i id="giftBar"></i></div></div>
+    </div>
+  </aside>
+
+  <main class="board" id="boardWrap">
+    <div class="cab" id="cab">
+      <canvas id="game" tabindex="0" aria-label="Pack Crush board. Drag a pack onto its neighbour, or tap two packs, to swap them. Line up three or more of the same pack."></canvas>
+
+      <div class="screen" id="start">
+        <div class="in">
+          <p class="cap">HD Match Lab</p>
+          <h2>Line up the routine.</h2>
+          <p>Swap two neighbouring packs to line up three or more. Four in a row prints a striped pack, five prints a rainbow pack, and an L or a T prints a flare. Reach the target before your moves run out.</p>
+          <div class="btns col">
+            <button class="btn gold" id="goGift" type="button">🎁 Redeem gift<small id="giftSub">Checking the gift desk…</small></button>
+            <button class="btn pri" id="goPlay" type="button">Normal play<small>Endless · no target</small></button>
+          </div>
+          <p class="note" id="giftNote"></p>
+        </div>
+      </div>
+
+      <div class="screen hidden" id="paused">
+        <div class="in"><p class="cap">Paused</p><h2>Take a breath.</h2>
+          <div class="btns"><button class="btn pri" id="resume" type="button">Resume</button><button class="btn ghost" id="menu2" type="button">Change mode</button></div></div>
+      </div>
+
+      <div class="screen hidden" id="result" role="dialog" aria-modal="true" aria-labelledby="rHead">
+        <div class="in">
+          <p class="cap" id="rHead">Routine complete</p>
+          <h2 class="winner" id="rWin">You are a winner! 🎉</h2>
+          <p class="big" id="rScore">0</p>
+          <p class="cap" style="color:var(--mut)">points</p>
+          <p class="sub" id="rSub"></p>
+          <div class="mini"><div><b id="rLines">0</b><span>Matches</span></div><div><b id="rLevel">1</b><span>Level</span></div><div><b id="rBest">0</b><span>Best</span></div></div>
+          <div class="btns"><button class="btn pri" id="again" type="button">Play again</button><button class="btn ghost" id="menu" type="button">Change mode</button></div>
+          <p class="rk">Tap <b>🏆 Ranking</b> to see where you stand.</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="pad padL" aria-label="Board help">
+      <button class="pb" data-a="hint" id="hintBtn" type="button" aria-label="Show a move">
+        <svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.5.4.8 1 .8 1.6V16h5.6v-.6c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3z"/></svg>
+      </button>
+    </nav>
+    <nav class="pad padR" aria-label="Board actions">
+      <button class="pb" data-a="shuffle" id="shuffleBtn" type="button" aria-label="Shuffle the board">
+        <svg viewBox="0 0 24 24"><path d="M4 7h4l8 10h4"/><path d="M17 4l3 3-3 3"/><path d="M4 17h4l2-2.5"/><path d="M17 14l3 3-3 3"/></svg>
+      </button>
+    </nav>
+  </main>
+
+  <aside class="right">
+    <div class="card">
+      <h3>Target</h3>
+      <div class="stat"><span>Goal</span><b id="goal">0</b></div>
+      <div class="stat"><span>To go</span><b id="toGo">0</b></div>
+      <div class="stat"><span>Matches</span><b id="lines">0</b></div>
+      <div class="stat"><span>Combo</span><b id="combo">×1</b></div>
+    </div>
+    <div class="card how">
+      <h3>How it prints</h3>
+      <ul class="help">
+        <li><b style="color:#a9e2ff">▮ Striped</b> — 4 in a line, clears its row or column</li>
+        <li><b style="color:#ffd98a">✦ Flare</b> — an L or a T, clears 3×3 around it</li>
+        <li><b style="color:#e98cff">◉ Rainbow</b> — 5 in a line, clears every pack of the one you swap it with</li>
+      </ul>
+      <ul class="help kbd" style="margin-top:.7em"><li><kbd>H</kbd> hint · <kbd>S</kbd> shuffle · <kbd>P</kbd> pause</li></ul>
+      <ul class="help touch" style="margin-top:.7em"><li><b>Drag</b> a pack onto its neighbour, or <b>tap two</b> packs.</li></ul>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Pack Crush — a match-3 played with the FACERINNA range.
+
+   Same cabinet as Pack Drop: the state moves in whole cells, nothing is drawn
+   at a whole cell, and every position on screen chases its target with an ease
+   that depends only on elapsed time. Board tiles are pre-rendered once per size,
+   so a swap costs two blits instead of a re-render of the pack.
+
+   Rule set (the Candy Crush grammar, mapped onto the range):
+     3 in a line            → clear
+     4 in a line            → striped pack: clears its whole row or column
+     L or T (5 in two arms) → flare: clears the 3×3 around it
+     5 in a straight line   → rainbow: clears every pack of the type it is
+                              swapped with (or of the most common type when
+                              it is cleared by a neighbour)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+var N = 8;                                   /* 8×8, the shape everyone knows */
+var RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+var COARSE = !!(window.matchMedia && matchMedia('(pointer:coarse)').matches);
+var GOLD = '#FFC94A';
+
+var RANGE = [
+  {s:'10-niacinamide-3-txa-bright-dark-spot-serum',  c:'#4898D8', n:'Niacinamide serum'},
+  {s:'2-salicylic-acid-acne-serum',                  c:'#12A79B', n:'Salicylic serum'},
+  {s:'retinol-anti-aging-serum',                     c:'#B4557C', n:'Retinol serum'},
+  {s:'ceramide-b5-balancing-moisturizer',            c:'#3FA7D6', n:'Ceramide cream'},
+  {s:'5-b5-intensive-barrier-cream',                 c:'#F0C25A', n:'Barrier cream'},
+  {s:'physical-defense-barrier-serum-sunscreen-spf50', c:'#E8A13B', n:'Sunscreen'}
+];
+var KINDS = RANGE.length;
+var SPECIAL = {none:0, stripeH:1, stripeV:2, flare:3, rainbow:4};
+
+var $ = function(id){ return document.getElementById(id); };
+var cv = $('game'), wrapEl = $('boardWrap'), g = cv.getContext('2d');
+var elScore=$('score'), elLevel=$('level'), elMoves=$('moves'), elBest=$('best'), lvlBar=$('lvlBar');
+var elGoal=$('goal'), elToGo=$('toGo'), elLines=$('lines'), elCombo=$('combo');
+var giftBox=$('giftBox'), giftBar=$('giftBar'), giftNeedTxt=$('giftNeedTxt'), modeTag=$('modeTag');
+var fmt = function(n){ return Math.round(n).toLocaleString('en-US'); };
+
+/* ── state ───────────────────────────────────────────────────────────── */
+var cell = 56, dpr = 2, W = 8*56, H = 8*56;
+var board = null;                            /* board[r][c] = tile | null */
+var state = 'idle';                          /* idle | play | busy | won | over | pause | over-anim */
+var sel = null;                              /* the first tapped tile {r,c} */
+var score = 0, movesLeft = 25, level = 1, matchesMade = 0, goal = 0, combo = 0;
+var best = 0, shown = 0, mode = 'play', need = 0, giftNeed = null, giftOn = false, giftState = 'wait';
+var anim = null;                             /* the running phase */
+var swapA = null, swapB = null;              /* the two tiles in a swap */
+var hintPair = null, hintT = 0;
+var particles = [], floats = [], rings = [], shake = 0;
+var tileCache = {}, bgCv = null, lastHud = '', lastCombo = 0, lastScoreText = '';
+var drag = null, lastFrame = 0, raf = 0, ghostT = 0;
+try { best = parseInt(localStorage.getItem('fx.packcrush.best') || '0', 10) || 0; } catch (e) {}
+function saveBest(){ try { localStorage.setItem('fx.packcrush.best', String(best)); } catch (e) {} }
+
+/* product art, decoded once; a missing file falls back to a drawn gem */
+RANGE.forEach(function(p){
+  var im = new Image(); im.decoding = 'async'; im.src = 'products/' + p.s + '.webp';
+  p.img = im; p.ok = false;
+  im.onload = function(){ p.ok = true; tileCache = {}; if (state === 'idle' || state === 'pause') render(); else kick(); };
+});
+
+/* ── sizing ──────────────────────────────────────────────────────────── */
+function fit(){
+  var r = wrapEl.getBoundingClientRect();
+  /* leave room for the cabinet padding and, on a phone, the floating pads */
+  var padX = COARSE ? 12 : 44, padY = COARSE ? 12 : 44;
+  var c = Math.max(22, Math.floor(Math.min((r.width - padX) / N, (r.height - padY) / N)));
+  /* Never force a multiplier the screen does not have: on a dpr-1 monitor a
+     floor of 2 quadruples the pixels for nothing, and a 1488px canvas is what
+     drops this to 13 fps in a software rasteriser. The cap scales with dpr. */
+  var native = window.devicePixelRatio || 1;
+  var d = Math.min(COARSE ? 2 : 3, Math.max(1, native));
+  if (native >= 2) d = Math.min(d, 2);          /* a 3x phone gains nothing past 2x */
+  var budget = COARSE ? 4e6 : 6e6;
+  while (d > 1 && (c*N*d) * (c*N*d) > budget) d -= .5;
+  if (c === cell && d === dpr && cv.width) return;
+  cell = c; dpr = d; W = cell*N; H = cell*N;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+  tileCache = {}; bgCv = null;
+  render();
+}
+var fitQ = 0;
+function fitSoon(){ if (!fitQ) fitQ = requestAnimationFrame(function(){ fitQ = 0; fit(); }); }
+addEventListener('resize', fitSoon, {passive:true});
+addEventListener('orientationchange', function(){ setTimeout(fit, 120); });
+
+/* ── tile art: one offscreen canvas per (kind, special, radius) ───────── */
+function tileArt(kind, special, rad){
+  var key = kind + '|' + special + '|' + Math.round(rad*dpr) + '|' + dpr;
+  var hit = tileCache[key]; if (hit) return hit;
+  var s = Math.round(rad*2), n = Math.max(2, Math.round(s*dpr));
+  var c = document.createElement('canvas'); c.width = c.height = n;
+  var x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  var p = RANGE[kind], r = rad;
+
+  /* the tile is a rounded glass slab, so the board reads as a shelf of packs */
+  x.save();
+  x.beginPath(); roundRect(x, 1.5, 1.5, s-3, s-3, r*.34); x.closePath();
+  var grd = x.createLinearGradient(0, 0, 0, s);
+  grd.addColorStop(0, 'rgba(255,255,255,.16)');
+  grd.addColorStop(1, 'rgba(255,255,255,.03)');
+  x.fillStyle = grd; x.fill();
+  x.strokeStyle = 'rgba(180,225,255,.18)'; x.lineWidth = 1; x.stroke();
+  x.restore();
+
+  /* the pack itself */
+  if (p.ok && p.img.naturalWidth){
+    var iw = p.img.naturalWidth, ih = p.img.naturalHeight;
+    var box = s * .72, k = Math.min(box/iw, box/ih);
+    var dw = iw*k, dh = ih*k;
+    x.save();
+    x.shadowColor = 'rgba(0,8,24,.5)'; x.shadowBlur = s*.10; x.shadowOffsetY = s*.035;
+    x.drawImage(p.img, (s-dw)/2, (s-dh)/2, dw, dh);
+    x.restore();
+  } else {
+    x.beginPath(); x.arc(s/2, s/2, s*.26, 0, 7); x.fillStyle = p.c; x.fill();
+    x.strokeStyle = 'rgba(255,255,255,.5)'; x.lineWidth = 2; x.stroke();
+  }
+
+  /* specials get a printed mark, never a colour change: the pack stays legible */
+  if (special === SPECIAL.stripeH || special === SPECIAL.stripeV){
+    x.save();
+    x.globalCompositeOperation = 'lighter';
+    x.fillStyle = 'rgba(255,255,255,.85)';
+    if (special === SPECIAL.stripeH){
+      for (var i=-1;i<3;i++) x.fillRect(0, s*.30 + i*s*.20, s, s*.055);
+    } else {
+      for (var j=-1;j<3;j++) x.fillRect(s*.30 + j*s*.20, 0, s*.055, s);
+    }
+    x.restore();
+  } else if (special === SPECIAL.flare){
+    x.save(); x.translate(s/2, s/2); x.rotate(-Math.PI/4);
+    x.fillStyle = 'rgba(255,225,150,.95)';
+    x.fillRect(-s*.10, -s*.34, s*.20, s*.68); x.fillRect(-s*.34, -s*.10, s*.68, s*.20);
+    x.restore();
+  } else if (special === SPECIAL.rainbow){
+    x.save(); x.translate(s/2, s/2);
+    var cols = ['#ff7a59','#ffd24a','#7be08a','#5ad2f4','#a98cff','#ff8ad0'];
+    for (var a=0;a<6;a++){
+      x.beginPath(); x.arc(0, 0, s*.30, a*Math.PI/3 + .06, (a+1)*Math.PI/3 - .06);
+      x.strokeStyle = cols[a]; x.lineWidth = s*.075; x.lineCap = 'round'; x.stroke();
+    }
+    x.beginPath(); x.arc(0, 0, s*.10, 0, 7); x.fillStyle = 'rgba(255,255,255,.92)'; x.fill();
+    x.restore();
+  }
+  tileCache[key] = c; return c;
+}
+function roundRect(x, a, b, w, h, r){
+  r = Math.min(r, w/2, h/2);
+  x.moveTo(a+r, b); x.lineTo(a+w-r, b); x.quadraticCurveTo(a+w, b, a+w, b+r);
+  x.lineTo(a+w, b+h-r); x.quadraticCurveTo(a+w, b+h, a+w-r, b+h);
+  x.lineTo(a+r, b+h); x.quadraticCurveTo(a, b+h, a, b+h-r);
+  x.lineTo(a, b+r); x.quadraticCurveTo(a, b, a+r, b);
+}
+
+/* ── board plumbing ──────────────────────────────────────────────────── */
+function tile(kind, special){ return {t:kind, sp:special|0, px:0, py:0, sc:1, a:1, flash:0}; }
+function each(fn){ for (var r=0;r<N;r++) for (var c=0;c<N;c++) fn(board[r][c], r, c); }
+function inB(r,c){ return r>=0 && r<N && c>=0 && c<N; }
+
+function freshBoard(){
+  board = [];
+  for (var r=0;r<N;r++){ board.push(new Array(N).fill(null)); }
+  for (var r2=0;r2<N;r2++) for (var c2=0;c2<N;c2++){
+    var tries = 0, k;
+    do { k = (Math.random()*KINDS)|0; tries++; }
+    while (tries < 40 && (
+      (c2>=2 && board[r2][c2-1] && board[r2][c2-2] && board[r2][c2-1].t===k && board[r2][c2-2].t===k) ||
+      (r2>=2 && board[r2-1][c2] && board[r2-2][c2] && board[r2-1][c2].t===k && board[r2-2][c2].t===k)));
+    board[r2][c2] = tile(k, SPECIAL.none);
+  }
+  if (!anyMove()) return freshBoard();       /* a dead board is not a board */
+  return board;
+}
+
+/* every cell in the same pack, plus any special still standing */
+function matchRuns(){
+  var runs = [];
+  /* horizontal */
+  for (var r=0;r<N;r++){
+    var c=0;
+    while (c<N){
+      var t = board[r][c]; if (!t) { c++; continue; }
+      var e=c;
+      while (e+1<N && board[r][e+1] && board[r][e+1].t===t.t) e++;
+      if (e-c+1 >= 3) runs.push({dir:'h', r:r, c0:c, c1:e, n:e-c+1, kind:t.t});
+      c = e+1;
+    }
+  }
+  /* vertical */
+  for (var c2=0;c2<N;c2++){
+    var r2=0;
+    while (r2<N){
+      var t2 = board[r2][c2]; if (!t2) { r2++; continue; }
+      var e2=r2;
+      while (e2+1<N && board[e2+1][c2] && board[e2+1][c2].t===t2.t) e2++;
+      if (e2-r2+1 >= 3) runs.push({dir:'v', r0:r2, r1:e2, c:c2, n:e2-r2+1, kind:t2.t});
+      r2 = e2+1;
+    }
+  }
+  return runs;
+}
+
+/* group the runs that share a cell into clusters: that is how an L or a T is found */
+function clusters(runs){
+  var cells = {}, list = [], out = [];
+  runs.forEach(function(run, ri){
+    var key = run.dir + ri, seen = [];
+    var cellsOf = [];
+    if (run.dir === 'h') for (var c=run.c0;c<=run.c1;c++) cellsOf.push([run.r, c]);
+    else for (var r=run.r0;r<=run.r1;r++) cellsOf.push([r, run.c]);
+    cellsOf.forEach(function(rc){ var k = rc[0]+','+rc[1]; (cells[k] = cells[k] || []).push(ri); });
+  });
+  /* union-find over runs that touch the same cell */
+  var parent = runs.map(function(_, i){ return i; });
+  function find(a){ while (parent[a]!==a) { parent[a]=parent[parent[a]]; a=parent[a]; } return a; }
+  function union(a,b){ var ra=find(a), rb=find(b); if (ra!==rb) parent[rb]=ra; }
+  Object.keys(cells).forEach(function(k){
+    var ids = cells[k];
+    for (var i=1;i<ids.length;i++) union(ids[0], ids[i]);
+  });
+  var groups = {};
+  runs.forEach(function(_, i){ var root = find(i); (groups[root] = groups[root] || []).push(i); });
+  Object.keys(groups).forEach(function(root){
+    var ids = groups[root], set = {}, hMax = 0, vMax = 0, hasH = false, hasV = false, kind = runs[ids[0]].kind;
+    ids.forEach(function(i){
+      var run = runs[i];
+      if (run.dir === 'h'){ hasH = true; hMax = Math.max(hMax, run.n); for (var c=run.c0;c<=run.c1;c++) set[run.r+','+c] = 1; }
+      else { hasV = true; vMax = Math.max(vMax, run.n); for (var r=run.r0;r<=run.r1;r++) set[r+','+run.c] = 1; }
+    });
+    out.push({cells:Object.keys(set).map(function(k){ var a=k.split(','); return [+a[0], +a[1]]; }),
+              kind:kind, hasH:hasH, hasV:hasV, hMax:hMax, vMax:vMax, runs:ids.length});
+  });
+  return out;
+}
+
+function specialFor(cl){
+  var total = cl.cells.length;
+  if (cl.hasH && cl.hasV) return {sp:SPECIAL.flare, at:cl.cells[Math.floor(cl.cells.length/2)]};
+  if (Math.max(cl.hMax, cl.vMax) >= 5) return {sp:SPECIAL.rainbow, at:cl.cells[Math.floor(cl.cells.length/2)]};
+  if (Math.max(cl.hMax, cl.vMax) === 4){
+    var horizontal = cl.hMax >= cl.vMax;
+    return {sp:horizontal ? SPECIAL.stripeH : SPECIAL.stripeV, at:cl.cells[Math.floor(cl.cells.length/2)]};
+  }
+  return null;
+}
+
+/* does any swap produce a match? used for the dead-board check and the hint */
+function anyMove(){
+  function swapTry(r1,c1,r2,c2){
+    var a = board[r1][c1], b = board[r2][c2];
+    if (!a || !b) return false;
+    board[r1][c1] = b; board[r2][c2] = a;
+    var ok = matchRuns().length > 0 || a.sp === SPECIAL.rainbow || b.sp === SPECIAL.rainbow;
+    board[r1][c1] = a; board[r2][c2] = b;
+    return ok;
+  }
+  for (var r=0;r<N;r++) for (var c=0;c<N;c++){
+    if (c+1<N && swapTry(r,c,r,c+1)) return {r1:r,c1:c,r2:r,c2:c+1};
+    if (r+1<N && swapTry(r,c,r+1,c)) return {r1:r,c1:c,r2:r+1,c2:c};
+  }
+  return null;
+}
+
+/* ── scoring ─────────────────────────────────────────────────────────── */
+function addScore(n){
+  if (state === 'won' || state === 'over') return;
+  score += n;
+  if (mode === 'gift' && need > 0 && score >= need) win();
+}
+
+/* ── the resolve loop: clear → fall → check, until the board is quiet ─── */
+/* a and b are CELLS ({r, c}); the tiles come from the board, so nothing here can
+   hand a wrapper object to the grid. Passing {r,c,t} once put those wrappers on
+   the board and the renderer then read `.ok` off an undefined pack. */
+function beginSwap(a, b, cb){
+  var ta = board[a.r][a.c], tb = board[b.r][b.c];
+  if (!ta || !tb) return;
+  swapA = a; swapB = b;
+  var ar=a.r, ac=a.c, br=b.r, bc=b.c;
+
+  function put(x, y, r, c){ board[r][c] = x; x.px = (c - y.c) * cell; x.py = (r - y.r) * cell; }
+
+  if (ta.sp === SPECIAL.rainbow || tb.sp === SPECIAL.rainbow){
+    anim = {kind:'rainbow', t:0, dur:RM ? .02 : .42, ta:ta, tb:tb, cb:cb,
+            done:function(){ ta.px = ta.py = 0; tb.px = tb.py = 0; combo = 0; resolve(); }};
+    state = 'busy'; kick(); return;
+  }
+
+  /* move them, then look: a swap that matches nothing goes back */
+  board[ar][ac] = tb; board[br][bc] = ta;
+  tb.px = (ac - bc) * cell; tb.py = (ar - br) * cell;
+  ta.px = (bc - ac) * cell; ta.py = (br - ar) * cell;
+
+  function revert(){
+    board[ar][ac] = ta; board[br][bc] = tb;
+    ta.px = (bc - ac) * cell; ta.py = (br - ar) * cell;
+    tb.px = (ac - bc) * cell; tb.py = (ar - br) * cell;
+    anim = {kind:'swapback', t:0, dur:RM ? .02 : .14, px:[ta, tb],
+            done:function(){ ta.px = ta.py = tb.px = tb.py = 0; state = 'play'; combo = 0; hud(); kick(); }};
+    state = 'busy'; kick();
+  }
+
+  anim = {kind:'swap', t:0, dur:RM ? .02 : .13, px:[ta, tb],
+          done:function(){
+            ta.px = ta.py = tb.px = tb.py = 0;
+            if (matchRuns().length){ combo = 0; resolve(); }
+            else if (cb) cb(false);
+            else revert();
+          }};
+  state = 'busy'; kick();
+}
+
+function resolve(){
+  var runs = matchRuns();
+  if (!runs.length){ settle(); return; }
+  var cls = clusters(runs);
+  var clear = {}, made = [], pts = 0;
+  combo++;
+  var mult = Math.min(6, combo);
+
+  cls.forEach(function(cl){
+    cl.cells.forEach(function(rc){ clear[rc[0]+','+rc[1]] = 1; });
+    var sp = specialFor(cl);
+    if (sp) made.push(sp);
+  });
+  /* a special that sits inside a cleared cell fires and takes its neighbours with it */
+  var fired = {}, queue = Object.keys(clear).map(function(k){ var a=k.split(','); return [+a[0],+a[1]]; });
+  for (var qi=0; qi<queue.length; qi++){
+    var rc = queue[qi], t = board[rc[0]][rc[1]];
+    if (!t || fired[rc[0]+','+rc[1]]) continue;
+    fired[rc[0]+','+rc[1]] = 1;
+    if (t.sp === SPECIAL.stripeH){ for (var c=0;c<N;c++) if (c!==rc[1]) { board[rc[0]][c] && (fired[rc[0]+','+c] = fired[rc[0]+','+c]); clear[rc[0]+','+c] = 1; queue.push([rc[0], c]); } }
+    else if (t.sp === SPECIAL.stripeV){ for (var r=0;r<N;r++) if (r!==rc[0]) { clear[r+','+rc[1]] = 1; queue.push([r, rc[1]]); } }
+    else if (t.sp === SPECIAL.flare){ for (var dy=-1;dy<=1;dy++) for (var dx=-1;dx<=1;dx++) if (dx||dy) { clear[(rc[0]+dy)+','+(rc[1]+dx)] = 1; if (inB(rc[0]+dy, rc[1]+dx)) queue.push([rc[0]+dy, rc[1]+dx]); } }
+    else if (t.sp === SPECIAL.rainbow){
+      var want = mostCommon();
+      for (var rr=0;rr<N;rr++) for (var cc=0;cc<N;cc++) if (board[rr][cc] && board[rr][cc].t === want && !clear[rr+','+cc]) { clear[rr+','+cc] = 1; queue.push([rr,cc]); }
+    }
+  }
+
+  var n = Object.keys(clear).length;
+  pts = (60*n + 20*Math.max(0, n-3)*2) * level * mult;
+  matchesMade += cls.length;
+  var mid = midOf(clear);
+  floats.push({t:0, x:(mid[1]+.5)*cell, y:(mid[0]+.5)*cell, txt:'+' + fmt(pts), big:n>=6, c: n>=6 ? '#ffe08a' : '#eef8ff'});
+  if (mult > 1) floats.push({t:0, x:(mid[1]+.5)*cell, y:(mid[0]+.5)*cell - cell*.55, txt:'×' + mult + ' COMBO', c:'#ffd98a'});
+
+  Object.keys(clear).forEach(function(k){
+    var a = k.split(','), r = +a[0], c = +a[1];
+    var t = board[r][c]; if (!t) return;
+    burst((c+.5)*cell, (r+.5)*cell, RANGE[t.t].c, 4, .8);
+    t.a = .001; t.sc = .2;                    /* the clear is a shrink, not a pop */
+  });
+  shake = Math.max(shake, Math.min(.7, .18 + n*.02));
+  buzz(n >= 6 ? [18,26,34] : 16);
+  addScore(pts);
+  if (state === 'won') return;
+
+  anim = {kind:'clear', t:0, dur:RM ? .04 : .17, clear:clear, made:made,
+          done:function(){
+            Object.keys(clear).forEach(function(k){ var a=k.split(','); board[+a[0]][+a[1]] = null; });
+            made.forEach(function(sp){
+              var rc = sp.at; var r = rc[0], c = rc[1];
+              if (!inB(r,c)) return;
+              if (!board[r][c]) board[r][c] = tile(0, sp.sp);
+              else board[r][c].sp = sp.sp;
+            });
+            fall();
+          }};
+  state = 'busy'; kick();
+}
+
+function fall(){
+  var moved = false;
+  for (var c=0;c<N;c++){
+    var write = N-1;
+    for (var r=N-1;r>=0;r--){
+      var t = board[r][c];
+      if (!t) continue;
+      if (write !== r){
+        board[write][c] = t; board[r][c] = null;
+        t.py -= (write - r) * cell;            /* it starts where it was */
+        moved = true;
+      }
+      write--;
+    }
+    /* refill from the top */
+    for (var w=write; w>=0; w--){
+      var nt = tile((Math.random()*KINDS)|0, SPECIAL.none);
+      nt.py = -(write - w + 1) * cell;
+      board[w][c] = nt; moved = true;
+    }
+  }
+  if (!moved){ settle(); return; }
+  anim = {kind:'fall', t:0, dur:RM ? .04 : .24,
+          done:function(){ resolve(); }};
+  state = 'busy'; kick();
+}
+
+function settle(){
+  hintPair = null; combo = 0;
+  if (state === 'won') return;
+  var mv = anyMove();
+  if (!mv){
+    floats.push({t:0, x:W/2, y:H*.45, txt:'No moves — reshuffling', c:'#9cc0d8'});
+    shuffleBoard(true);
+    return;
+  }
+  if (movesLeft <= 0 && mode === 'play'){ finish('out'); return; }
+  state = 'play';
+  hud(); kick();
+}
+
+function mostCommon(){
+  var count = new Array(KINDS).fill(0);
+  each(function(t){ if (t) count[t.t]++; });
+  var bi = 0; for (var i=1;i<KINDS;i++) if (count[i] > count[bi]) bi = i;
+  return bi;
+}
+function midOf(clear){
+  var sumR=0, sumC=0, n=0;
+  Object.keys(clear).forEach(function(k){ var a=k.split(','); sumR += +a[0]; sumC += +a[1]; n++; });
+  return n ? [sumR/n, sumC/n] : [N/2, N/2];
+}
+
+function shuffleBoard(keepScore){
+  for (var attempt=0; attempt<30; attempt++){
+    var kinds = [];
+    each(function(t){ if (t) kinds.push(t.t); });
+    for (var i=kinds.length-1;i>0;i--){ var j=(Math.random()*(i+1))|0; var tmp=kinds[i]; kinds[i]=kinds[j]; kinds[j]=tmp; }
+    var k2 = 0;
+    for (var r=0;r<N;r++) for (var c=0;c<N;c++) if (board[r][c]) board[r][c].t = kinds[k2++];
+    if (!matchRuns().length && anyMove()) break;
+  }
+  each(function(t){ if (t) { t.py = -cell*.4; t.sc = .85; } });
+  anim = {kind:'fall', t:0, dur:RM ? .05 : .3, done:function(){
+    if (!matchRuns().length) { state = 'play'; hud(); kick(); }
+    else resolve();
+  }};
+  state = 'busy'; kick();
+}
+
+/* ── a game ──────────────────────────────────────────────────────────── */
+function startGame(m){
+  mode = m === 'gift' ? 'gift' : 'play';
+  need = mode === 'gift' ? (giftNeed || 0) : 0;
+  score = 0; movesLeft = 25; level = 1; matchesMade = 0; shown = 0; combo = 0; sel = null;
+  hintPair = null; particles = []; floats = []; rings = []; shake = 0; drag = null;
+  goal = mode === 'play' ? targetFor(1) : need;
+  freshBoard();
+  state = 'play';
+  elScore.textContent = '0';
+  $('start').classList.add('hidden'); $('paused').classList.add('hidden'); $('result').className = 'screen hidden';
+  modeTag.hidden = false;
+  modeTag.textContent = mode === 'gift' ? '🎁 Redeem gift' : 'Normal play';
+  modeTag.className = 'tag' + (mode === 'gift' ? ' gift' : '');
+  giftBox.hidden = mode !== 'gift';
+  if (mode === 'gift'){ giftNeedTxt.textContent = fmt(need); giftBar.style.transform = 'scaleX(0)'; }
+  lastHud = ''; hud();
+  try { cv.focus({preventScroll:true}); } catch (e) {}
+  kick();
+}
+function targetFor(lv){ return 1400 + (lv-1) * 900; }
+
+function toMenu(){
+  state = 'idle'; sel = null; drag = null;
+  $('result').className = 'screen hidden'; $('paused').classList.add('hidden'); $('start').classList.remove('hidden');
+  modeTag.hidden = true; giftBox.hidden = true; refreshGift(false);
+  hud(); kick();
+}
+
+function win(){
+  state = 'won';
+  confetti(); shake = Math.max(shake, .9); buzz([60,40,60,60,140]);
+  floats.push({t:0, x:W/2, y:H*.34, txt:'🎁 WINNER!', big:true, c:'#ffe08a'});
+  finish('win');
+}
+
+function finish(kind){
+  if (state !== 'won') state = 'over';
+  sel = null; drag = null;
+  var fresh = score > best; if (fresh){ best = score; saveBest(); }
+  $('rScore').textContent = String(score);
+  $('rLines').textContent = matchesMade; $('rLevel').textContent = level;
+  $('rBest').textContent = fmt(best); $('rBest').className = fresh ? 'new' : '';
+  var head = fresh && score > 0 ? 'New personal best' : 'Routine complete', sub = '';
+  if (kind === 'win'){ head = 'Gift unlocked'; sub = 'You reached ' + fmt(need) + ' points. Your gift is ready — claim it below.'; }
+  else if (kind === 'level'){ head = 'Target reached'; sub = 'Level ' + level + ' printed. Keep going for a higher score.'; }
+  else if (mode === 'gift' && need){ head = 'So close!'; sub = fmt(Math.max(0, need - score)) + ' more points for the gift. Go again!'; }
+  else if (kind === 'out'){ sub = 'Moves ran out with ' + fmt(Math.max(0, goal - score)) + ' to go.'; }
+  $('rHead').textContent = head; $('rSub').textContent = sub; $('rSub').style.display = sub ? '' : 'none';
+  elScore.textContent = fmt(score); shown = score;
+  if (mode === 'gift' && need) giftBar.style.transform = 'scaleX(' + Math.min(1, score/need) + ')';
+  hud();
+  setTimeout(function(){
+    if (state !== 'won' && state !== 'over') return;
+    $('result').className = 'screen' + (kind === 'win' ? ' win' : '');
+    try { $('again').focus({preventScroll:true}); } catch (e) {}
+  }, RM ? 0 : (kind === 'win' ? 1100 : 560));
+  if (kind !== 'win') buzz([30, 40, 30]);
+  kick();
+}
+
+function hud(){
+  var s = level + '|' + movesLeft + '|' + matchesMade + '|' + Math.max(best, score) + '|' + goal;
+  var toGo = Math.max(0, goal - score);
+  elToGo.textContent = fmt(toGo);
+  elCombo.textContent = '×' + Math.max(1, Math.min(6, combo));
+  if (s === lastHud) return;
+  lastHud = s;
+  elLevel.textContent = level; elMoves.textContent = movesLeft;
+  elLines.textContent = matchesMade; elBest.textContent = fmt(Math.max(best, score));
+  elGoal.textContent = fmt(goal);
+  lvlBar.style.transform = 'scaleX(' + Math.max(0, Math.min(1, score / Math.max(1, goal))) + ')';
+}
+
+/* ── input: drag a pack onto its neighbour, or tap two ───────────────── */
+function cellAt(clientX, clientY){
+  var r = cv.getBoundingClientRect();
+  var c = Math.floor((clientX - r.left) / (r.width / N));
+  var rr = Math.floor((clientY - r.top) / (r.height / N));
+  return inB(rr, c) ? {r:rr, c:c} : null;
+}
+function pick(r, c, x, y){
+  if (state !== 'play') return;
+  if (!sel){ sel = {r:r, c:c}; drag = {r:r, c:c, x:x, y:y, moved:false}; buzz(6); kick(); return; }
+  if (sel.r === r && sel.c === c){ sel = null; drag = null; kick(); return; }
+  var adjacent = Math.abs(sel.r - r) + Math.abs(sel.c - c) === 1;
+  var a = board[sel.r][sel.c], b = board[r][c];
+  hintPair = null;
+  if (adjacent && a && b){
+    var from = {r:sel.r, c:sel.c}, to = {r:r, c:c};
+    sel = null; drag = null;
+    beginSwap(from, to);
+  } else {
+    sel = {r:r, c:c}; drag = {r:r, c:c, x:x, y:y, moved:false}; buzz(6); kick();
+  }
+}
+
+cv.addEventListener('pointerdown', function(e){
+  if (e.button != null && e.button > 0) return;
+  var rc = cellAt(e.clientX, e.clientY); if (!rc) return;
+  if (state === 'pause' || state === 'idle' || state === 'over' || state === 'won') return;
+  e.preventDefault();
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+  pick(rc.r, rc.c, e.clientX, e.clientY);
+}, {passive:false});
+
+cv.addEventListener('pointermove', function(e){
+  if (!drag || state !== 'play') return;
+  var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  var step = cv.getBoundingClientRect().width / N;
+  if (Math.abs(dx) < step*.45 && Math.abs(dy) < step*.45) return;
+  drag.moved = true;
+  var dr = Math.abs(dy) > Math.abs(dx) ? (dy > 0 ? 1 : -1) : 0;
+  var dc = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 1 : -1) : 0;
+  var tr = drag.r + dr, tc = drag.c + dc;
+  if (!inB(tr, tc)) return;
+  var a = board[drag.r][drag.c], b = board[tr][tc];
+  if (!a || !b) return;
+  var from = {r:drag.r, c:drag.c}, to = {r:tr, c:tc};
+  drag = null; sel = null;
+  beginSwap(from, to);
+  e.preventDefault();
+}, {passive:false});
+
+cv.addEventListener('pointerup', function(){ drag = null; });
+cv.addEventListener('pointercancel', function(){ drag = null; });
+
+document.addEventListener('keydown', function(e){
+  var k = e.key.toLowerCase();
+  if (k === 'h'){ hint(); e.preventDefault(); }
+  else if (k === 's'){ if (state === 'play') shuffleBoard(); e.preventDefault(); }
+  else if (k === 'p' || k === 'escape'){ togglePause(); e.preventDefault(); }
+});
+function togglePause(){
+  if (state === 'play' || state === 'busy'){ state = 'pause'; $('paused').classList.remove('hidden'); }
+  else if (state === 'pause'){ $('paused').classList.add('hidden'); state = 'play'; kick(); }
+}
+function hint(){
+  if (state !== 'play') return;
+  hintPair = anyMove(); hintT = 0; kick();
+  if (!hintPair) floats.push({t:0, x:W/2, y:H*.5, txt:'No move — press shuffle', c:'#9cc0d8'});
+}
+function buzz(p){ try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+
+/* ── the loop ────────────────────────────────────────────────────────── */
+function kick(){ if (!raf){ lastFrame = 0; raf = requestAnimationFrame(frame); } }
+/* a parked loop still needs one frame after anything that changes the picture */
+function nudge(){ render(); kick(); }
+function frame(t){
+  raf = 0;
+  var dt = lastFrame ? Math.min(.05, (t - lastFrame)/1000) : 1/60;
+  lastFrame = t;
+  update(dt); render();
+  /* stay awake only while something is moving; a settled board parks the loop */
+  if (anim || busy() || hintPair) raf = requestAnimationFrame(frame);
+}
+/* Does anything on the board need a new frame? A settled board is a still
+   picture; redrawing it 60 times a second only makes the compositor re-upload a
+   744px canvas every frame, which is what a software rasteriser cannot afford.
+   The loop stays awake while a tile is easing home, a special is flashing, or a
+   counter is still moving. */
+function busy(){
+  if (particles.length || floats.length || rings.length || shake > .01) return true;
+  if (anim || (hintPair && hintT < 4)) return true;
+  if (Math.abs(shown - score) > .5) return true;
+  for (var r=0;r<N;r++) for (var c=0;c<N;c++){
+    var t = board[r][c];
+    if (t && (t.px || t.py || t.sc !== 1 || t.a !== 1)) return true;
+  }
+  return false;
+}
+function ease(rate, dt){ return 1 - Math.exp(-rate*dt); }
+
+function update(dt){
+  hintT += dt;
+  if (anim){
+    anim.t += dt;
+    var p = Math.min(1, anim.t / anim.dur);
+    if (anim.kind === 'swap' || anim.kind === 'swapback'){
+      var k = ease(20, dt);
+      anim.px.forEach(function(t){ t.px += (0 - t.px) * k; t.py += (0 - t.py) * k; });
+    } else if (anim.kind === 'rainbow'){
+      var q = ease(18, dt);
+      anim.tb.px += (anim.ta.px - anim.tb.px) * q; anim.tb.py += (anim.ta.py - anim.tb.py) * q;
+    }
+    if (p >= 1){ var a = anim; anim = null; if (a.done) a.done(); else if (a.cb) a.cb(true); }
+  }
+  /* every tile chases its target: screen positions are never snapped to a cell */
+  var k2 = ease(26, dt);
+  each(function(t){
+    if (!t) return;
+    t.px += (0 - t.px) * k2;
+    t.py += (0 - t.py) * k2;
+    t.sc += (1 - t.sc) * ease(16, dt);
+    t.a += (1 - t.a) * ease(20, dt);
+    if (Math.abs(t.px) < .01) t.px = 0;
+    if (Math.abs(t.py) < .01) t.py = 0;
+  });
+  /* counters chase, so the score never jumps */
+  /* Only write the DOM when the printed number actually changes. A textContent
+     write per frame invalidates layout, and the page repaints the whole blurred
+     cabinet behind the canvas: measured 55 fps idle vs 13 fps while the counter
+     was ticking. The counter still eases; it just does it in at most a few dozen
+     steps instead of 60 a second. */
+  if (shown !== score){
+    shown += (score - shown) * ease(9, dt);
+    if (Math.abs(score - shown) < .6) shown = score;
+    var printed = fmt(shown);
+    if (printed !== lastScoreText){ lastScoreText = printed; elScore.textContent = printed; }
+  }
+  /* particles */
+  for (var i=particles.length-1;i>=0;i--){
+    var p2 = particles[i]; p2.life += dt; p2.x += p2.vx*dt; p2.y += p2.vy*dt; p2.vy += 900*dt;
+    if (p2.life >= p2.max) particles.splice(i,1);
+  }
+  for (var f=floats.length-1;f>=0;f--){ var fl=floats[f]; fl.t += dt; if (fl.t > 1.15) floats.splice(f,1); }
+  for (var rI=rings.length-1;rI>=0;rI--){ rings[rI].t += dt; if (rings[rI].t > .55) rings.splice(rI,1); }
+  if (shake > .01) shake *= Math.pow(.0016, dt); else shake = 0;
+}
+
+function render(){
+  var sx = 0, sy = 0;
+  if (shake > .01){ sx = (Math.random()-.5) * shake * cell * .28; sy = (Math.random()-.5) * shake * cell * .28; }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  /* the shelf: painted once per size, never per frame */
+  if (!bgCv){
+    bgCv = document.createElement('canvas');
+    bgCv.width = cv.width; bgCv.height = cv.height;
+    var b = bgCv.getContext('2d');
+    b.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var grd = b.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0, '#0a2murky'.replace('murky','244')); grd.addColorStop(1, '#04101f');
+    b.fillStyle = grd; b.fillRect(0, 0, W, H);
+    /* cell wells: one faint rounded square each, so the grid is implied not drawn */
+    for (var r=0;r<N;r++) for (var c=0;c<N;c++){
+      b.beginPath();
+      roundRect(b, c*cell + cell*.06, r*cell + cell*.06, cell*.88, cell*.88, cell*.2);
+      b.fillStyle = (r+c) % 2 ? 'rgba(255,255,255,.022)' : 'rgba(255,255,255,.042)';
+      b.fill();
+    }
+  }
+  g.save(); g.translate(sx, sy);
+  g.drawImage(bgCv, 0, 0, W, H);
+
+  /* hint ring under two tiles */
+  if (hintPair && (hintT % 1.2) < .8){
+    [[hintPair.r1, hintPair.c1], [hintPair.r2, hintPair.c2]].forEach(function(rc){
+      g.beginPath();
+      roundRect(g, rc[1]*cell + cell*.05, rc[0]*cell + cell*.05, cell*.9, cell*.9, cell*.22);
+      g.strokeStyle = 'rgba(255,217,138,.85)'; g.lineWidth = 3; g.stroke();
+    });
+  }
+  /* selection */
+  if (sel && !anim){
+    g.beginPath();
+    roundRect(g, sel.c*cell + cell*.04, sel.r*cell + cell*.04, cell*.92, cell*.92, cell*.24);
+    g.strokeStyle = 'rgba(127,213,255,.95)'; g.lineWidth = 3.5; g.stroke();
+  }
+
+  /* tiles */
+  var rad = cell*.44;
+  for (var r2=0;r2<N;r2++) for (var c2=0;c2<N;c2++){
+    var t = board[r2][c2]; if (!t) continue;
+    var x = c2*cell + t.px, y = r2*cell + t.py;
+    var art = tileArt(t.t, t.sp, rad);
+    var sz = cell * t.sc;
+    g.globalAlpha = Math.max(0, Math.min(1, t.a));
+    g.drawImage(art, x + (cell - sz)/2, y + (cell - sz)/2, sz, sz);
+    g.globalAlpha = 1;
+  }
+
+  /* particles, rings, floats */
+  particles.forEach(function(p){
+    var k = 1 - p.life/p.max;
+    g.globalAlpha = Math.max(0, k);
+    g.fillStyle = p.c;
+    g.beginPath(); g.arc(p.x, p.y, p.r*k, 0, 7); g.fill();
+  });
+  g.globalAlpha = 1;
+  rings.forEach(function(rg){
+    var k = rg.t/.55;
+    g.beginPath(); g.arc(rg.x, rg.y, cell*(.4 + k*2.2), 0, 7);
+    g.strokeStyle = 'rgba(255,214,140,' + (1-k)*.75 + ')'; g.lineWidth = 4*(1-k)+.5; g.stroke();
+  });
+  floats.forEach(function(f){
+    var k = f.t/1.15, y = f.y - k*cell*.9;
+    g.globalAlpha = Math.max(0, 1 - k*k);
+    g.font = '700 ' + Math.round((f.big ? cell*.52 : cell*.38)) + 'px Inter, system-ui, sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = f.c || '#eef8ff';
+    g.shadowColor = 'rgba(0,8,24,.85)'; g.shadowBlur = 10;
+    g.fillText(f.txt, f.x, y);
+    g.shadowBlur = 0;
+  });
+  g.globalAlpha = 1;
+
+  /* paused veil */
+  if (state === 'pause'){
+    g.fillStyle = 'rgba(3,10,24,.55)'; g.fillRect(0, 0, W, H);
+  }
+  g.restore();
+}
+
+function burst(x, y, color, n, power){
+  if (RM || particles.length > (COARSE ? 130 : 220)) return;
+  for (var i=0;i<n;i++){
+    var a = Math.random()*Math.PI*2, s2 = (50 + Math.random()*150)*power*cell/56;
+    particles.push({x:x, y:y, vx:Math.cos(a)*s2, vy:Math.sin(a)*s2 - 60*power*cell/56,
+                    life:0, max:.5+Math.random()*.45, r:(1.4+Math.random()*2.4)*cell/56, c:color});
+  }
+}
+function confetti(){
+  if (RM) return;
+  var cols = ['#ffd24a','#ff7a59','#5ad2f4','#7be08a','#ffffff','#e98cff'];
+  for (var i=0;i<(COARSE ? 60 : 120);i++){
+    particles.push({x:Math.random()*W, y:-Math.random()*H*.3, vx:(Math.random()-.5)*140*cell/56,
+                    vy:(60+Math.random()*170)*cell/56, life:0, max:1.5+Math.random()*1.5,
+                    r:(2+Math.random()*3)*cell/56, c:cols[i%cols.length]});
+  }
+}
+
+/* ── buttons ─────────────────────────────────────────────────────────── */
+$('goPlay').addEventListener('click', function(){ startGame('play'); });
+$('again').addEventListener('click', function(){ startGame(mode === 'gift' && giftState === 'ready' && giftNeed ? 'gift' : 'play'); });
+$('menu').addEventListener('click', toMenu);
+$('menu2').addEventListener('click', toMenu);
+$('resume').addEventListener('click', togglePause);
+$('pauseBtn').addEventListener('click', togglePause);
+$('hintBtn').addEventListener('click', hint);
+$('shuffleBtn').addEventListener('click', function(){ if (state === 'play') shuffleBoard(); });
+
+/* ── the gift desk (same contract as Pack Drop: fx-gift solves `need`) ─ */
+/* A slow first answer must not overwrite a newer one. The boot call and a tap on
+   Redeem can both be in flight; without the token the older reply lands last and
+   the desk shows "not reachable" while it is in fact ready. */
+var giftSeq = 0;
+function refreshGift(force){
+  var fg = window.fxGift, sub = $('giftSub'), note = $('giftNote'), btn = $('goGift');
+  if (!fg) { giftState = 'wait'; sub.textContent = 'Checking the gift desk…'; return; }
+  if (force && fg.forget) fg.forget();          /* force means ask again, not read the 60 s cache */
+  var seq = ++giftSeq;
+  giftState = 'wait'; sub.textContent = 'Checking the gift desk…'; note.textContent = '';
+  fg.settings().then(function(cfg){
+    if (seq !== giftSeq) return;                 /* a newer ask is already in flight */
+    if (!cfg) { giftState = 'offline'; giftNeed = null; giftOn = false; sub.textContent = 'Gift desk not reachable';
+      note.textContent = 'Tap Redeem gift to try again, or play normally.'; btn.disabled = false; return; }
+    giftOn = /^(yes|y|true|1|on)$/i.test(String(cfg.gift_active || 'no'));
+    giftNeed = fg.needFor(cfg, 'pack-crush');
+    if (!giftOn){ giftState = 'off'; sub.textContent = 'Gifts are not on right now'; btn.disabled = true;
+      note.textContent = 'You can still play normally and join the ranking.'; }
+    else if (!giftNeed){ giftState = 'unset'; sub.textContent = 'No gift target set for this game'; btn.disabled = true;
+      note.textContent = 'Ask the FACERINNA team. Normal play is open.'; }
+    else { giftState = 'ready'; sub.textContent = 'Reach ' + fmt(giftNeed) + ' points to win'; btn.disabled = false;
+      note.textContent = 'The game stops the moment you reach it.'; }
+  }).catch(function(){
+    if (seq !== giftSeq) return;
+    giftState = 'offline'; giftNeed = null; sub.textContent = 'Gift desk not reachable'; btn.disabled = false;
+    note.textContent = 'Tap Redeem gift to try again, or play normally.';
+  });
+}
+$('goGift').addEventListener('click', function(){
+  if (giftState === 'ready' && giftNeed) startGame('gift');
+  else if (giftState !== 'off' && giftState !== 'unset') refreshGift(true);
+});
+
+/* ── boot ────────────────────────────────────────────────────────────── */
+freshBoard();
+state = 'idle';
+goal = targetFor(1);
+hud();
+fit();
+refreshGift(false);
+kick();
+
+/* the test hook: a headless check drives the board through this, the same way
+   Pack Drop exposes window.__packdrop */
+window.__packcrush = {
+  start: startGame,
+  refreshGift: refreshGift,
+  state: function(){ return state; },
+  board: function(){ return board.map(function(row){ return row.map(function(t){ return t ? {t:t.t, sp:t.sp} : null; }); }); },
+  find: function(){ return anyMove(); },
+  swap: function(r1,c1,r2,c2){ beginSwap({r:r1,c:c1}, {r:r2,c:c2}); },
+  snapshot: function(){ return {state:state, mode:mode, need:need, giftNeed:giftNeed, giftState:giftState,
+    score:score, moves:movesLeft, level:level, goal:goal, cell:cell, dpr:dpr, cw:cv.width, ch:cv.height,
+    tiles:(board||[]).reduce(function(n,row){ return n + row.filter(Boolean).length; }, 0)}; }
+};
+})();
+</script>
+<script>window.FX_RANK={id:'pack-crush',name:'Pack Crush',result:'#result',score:'#rScore',manual:true,giftGate:function(){ return !!(window.__packcrush && window.__packcrush.snapshot().mode === 'gift'); }};</script>
+<script src="fx-rank.js"></script>
+<script src="fx-gift.js"></script>
+<script>
+if ('serviceWorker' in navigator)
+  addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
+</script>
+<script src="fx-games.js" data-game="pack-crush"></script>
+<script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9218ecd43aea410c856a9270cb580f34"}'></script>
+<script defer src="fx-visit.js"></script>
+</body>
+</html>
