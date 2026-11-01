@@ -269,7 +269,7 @@ var GIFT_MAX_SCORE = 100000;
    a gift for luck sits oddly beside one for a good run -- it hands out its
    own prize already. */
 var GIFT_GAMES = ['match-lab', 'pack-match', 'shelf-shot', 'deep-lab',
-                  'lab-run', 'facy-run', 'pack-drop', 'pack-crush', 'skin-iq'];   /* the same ceiling booth-scores.gs applies */
+                  'lab-run', 'facy-run', 'pack-drop', 'pack-crush', 'pack-recall', 'skin-iq'];   /* the same ceiling booth-scores.gs applies */
 
 /* Every game on the booth page, in the order the wheel shows them. The id is
    what games_off holds, what the scores and gifts call the game, and what the
@@ -285,6 +285,7 @@ var GAMES = [
   ['facy-run',   'Facy Run'],
   ['pack-drop',  'Pack Drop'],
   ['pack-crush', 'Pack Crush'],
+  ['pack-recall', 'Pack Recall'],
   ['lucky-wheel', 'Lucky Wheel']
 ];
 /* The Lucky Wheel is not scored: anybody may spin, once per device, while the

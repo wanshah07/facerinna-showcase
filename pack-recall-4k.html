@@ -7,6 +7,8 @@
 <title>Pack Recall · FACERINNA</title>
 <link rel="preload" as="image" href="docs/facerinna-logo-white.webp">
 <style>
+
+
 @font-face{font-family:'Inter';font-weight:400;font-display:swap;src:url(fonts/inter-400.woff2) format('woff2')}
 @font-face{font-family:'Inter';font-weight:600;font-display:swap;src:url(fonts/inter-600.woff2) format('woff2')}
 @font-face{font-family:'Inter';font-weight:700;font-display:swap;src:url(fonts/inter-700.woff2) format('woff2')}
@@ -15,145 +17,218 @@
   --ink:#eef8ff;--mut:#9cc0d8;--line:rgba(160,215,255,.18);--blue:#3fb4ee;--blue2:#7fd5ff;--gold:#ffd98a;
   --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
   --safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);
-  --gap:clamp(10px,1.6vmin,28px);
+  --gap:clamp(10px,1.6vmin,61.6px);
+  --side:clamp(150px,24.5vmin,540px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#04101f;color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-text-size-adjust:100%}
 
-/* the room: the same gradient cabinet as Pack Drop and Pack Crush, held still —
-   the drifting blobs cost 5x the frame budget on a wide screen (measured), so
-   they are static here from the start. */
+/* ── the room: a deep clinical blue with slow light drifting behind the board.
+   It moves with transform only. On a phone or tablet it holds still: a few huge
+   moving layers are the first thing a small GPU runs out of. */
 .sky{position:fixed;inset:0;z-index:0;overflow:hidden;background:
   radial-gradient(120% 90% at 78% 8%,#12407a 0%,transparent 55%),
   radial-gradient(90% 80% at 8% 92%,#2b1d5c 0%,transparent 52%),
   linear-gradient(160deg,#03112a,#06203f 55%,#030b1a)}
 .sky i{position:absolute;border-radius:50%;opacity:.55}
-.sky i:nth-child(1){width:70vmax;height:70vmax;left:-24vmax;top:-22vmax;background:radial-gradient(circle,rgba(26,111,196,.75),transparent 66%)}
-.sky i:nth-child(2){width:62vmax;height:62vmax;right:-22vmax;bottom:-24vmax;background:radial-gradient(circle,rgba(106,63,201,.62),transparent 66%)}
-.sky i:nth-child(3){width:44vmax;height:44vmax;left:30%;top:22%;background:radial-gradient(circle,rgba(25,182,216,.34),transparent 66%)}
+.sky i:nth-child(1){width:70vmax;height:70vmax;left:-24vmax;top:-22vmax;background:radial-gradient(circle,rgba(26,111,196,.75),transparent 66%);animation:none}
+.sky i:nth-child(2){width:62vmax;height:62vmax;right:-22vmax;bottom:-24vmax;background:radial-gradient(circle,rgba(106,63,201,.62),transparent 66%);animation:none}
+.sky i:nth-child(3){width:44vmax;height:44vmax;left:30%;top:22%;background:radial-gradient(circle,rgba(25,182,216,.34),transparent 66%);animation:none}
 .sky:after{content:'';position:absolute;inset:0;opacity:.55;background-image:
   radial-gradient(circle,#fff 0 .9px,transparent 1.3px),radial-gradient(circle,#9fe3ff 0 .8px,transparent 1.2px);
   background-size:131px 131px,197px 197px;background-position:17px 29px,71px 83px;
   -webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 0,transparent 82%);mask-image:radial-gradient(ellipse at 50% 40%,#000 0,transparent 82%)}
-@media (pointer:coarse){.sky:after{display:none}.sky i:nth-child(3){display:none}}
+@media (pointer:coarse){.sky i{animation:none;will-change:auto}.sky i:nth-child(3){display:none}.sky:after{display:none}}
 
+/* ── layout: header over [stats | board | next], the board takes what is left */
 .app{position:relative;z-index:1;height:100vh;height:100dvh;display:grid;
   padding:calc(var(--safe-t) + var(--gap)) calc(var(--safe-r) + var(--gap)) calc(var(--safe-b) + var(--gap)) calc(var(--safe-l) + var(--gap));
   gap:var(--gap);
-  grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) minmax(0,1fr);
+  grid-template-columns:var(--side) minmax(0,1fr) var(--side);
   grid-template-rows:auto minmax(0,1fr);
   grid-template-areas:"hd hd hd" "left board right"}
 .hd{grid-area:hd;display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
 .hd .r{display:flex;align-items:center;gap:10px}
-.brand{display:flex;align-items:center;gap:clamp(12px,2vmin,26px);min-width:0}
-.brand img{height:clamp(22px,4.2vmin,52px);width:auto;display:block;filter:drop-shadow(0 2px 10px rgba(63,180,238,.35))}
-.brand span{display:block;padding-left:clamp(12px,2vmin,26px);border-left:1px solid var(--line)}
-.brand b{display:block;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.6vmin,44px);letter-spacing:.01em;line-height:1.05}
-.brand small{display:block;font-size:clamp(9px,1.25vmin,13px);letter-spacing:.34em;text-transform:uppercase;color:var(--blue2);font-weight:700;margin-bottom:3px}
-.tag{font-size:clamp(11px,1.5vmin,14px);font-weight:700;letter-spacing:.06em;padding:.45em 1em;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--line);white-space:nowrap}
+.brand{display:flex;align-items:center;gap:clamp(12px,2vmin,57.2px);min-width:0}
+.brand img{height:clamp(22px,4.2vmin,114.4px);width:auto;display:block;filter:drop-shadow(0 2px 10px rgba(63,180,238,.35))}
+.brand span{display:block;padding-left:clamp(12px,2vmin,57.2px);border-left:1px solid var(--line)}
+.brand b{display:block;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.6vmin,96.8px);letter-spacing:.01em;line-height:1.05}
+.brand small{display:block;font-size:clamp(9px,1.25vmin,28.6px);letter-spacing:.34em;text-transform:uppercase;color:var(--blue2);font-weight:700;margin-bottom:3px}
+.tag{font-size:clamp(11px,1.5vmin,30.8px);font-weight:700;letter-spacing:.06em;padding:.45em 1em;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--line);white-space:nowrap}
 .tag[hidden]{display:none}
 .tag.gift{background:linear-gradient(180deg,rgba(255,201,74,.3),rgba(255,160,50,.16));border-color:rgba(255,201,74,.55);color:#ffe8b0}
 .left{grid-area:left;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:var(--gap);min-width:0}
 .right{grid-area:right;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:var(--gap);min-width:0}
-.board{grid-area:board;position:relative;min-width:0;min-height:0;display:grid;place-items:center}
+.board{grid-area:board;position:relative;min-width:0;min-height:0}
+.padL{grid-area:padL}.padR{grid-area:padR}
 
 .card{background:linear-gradient(165deg,rgba(40,90,150,.5),rgba(12,36,72,.55));border:1px solid var(--line);
-  border-radius:clamp(14px,2.2vmin,26px);padding:clamp(12px,2vmin,26px);width:min(100%,clamp(150px,24vmin,340px));
+  border-radius:clamp(14px,2.2vmin,57.2px);padding:clamp(12px,2vmin,57.2px);width:min(100%,clamp(150px,24vmin,748px));
   box-shadow:0 18px 50px rgba(0,5,20,.35),inset 0 1px 0 rgba(255,255,255,.12)}
-.card h3{margin:0 0 .5em;font-size:clamp(9px,1.3vmin,13px);letter-spacing:.3em;text-transform:uppercase;color:var(--blue2);font-weight:700}
+.card h3{margin:0 0 .5em;font-size:clamp(9px,1.3vmin,28.6px);letter-spacing:.3em;text-transform:uppercase;color:var(--blue2);font-weight:700}
 .stat{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:.35em 0;border-top:1px solid rgba(160,215,255,.1)}
 .stat:first-of-type{border-top:0}
-.stat span{font-size:clamp(10px,1.5vmin,15px);color:var(--mut);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
-.stat b{font-variant-numeric:tabular-nums;font-size:clamp(18px,3.4vmin,40px);font-weight:700;line-height:1.1}
-.stat.big b{font-size:clamp(22px,4.2vmin,54px);background:linear-gradient(180deg,#fff,#a9e2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat span{font-size:clamp(10px,1.5vmin,33px);color:var(--mut);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.stat b{font-variant-numeric:tabular-nums;font-size:clamp(18px,3.4vmin,88px);font-weight:700;line-height:1.1}
+.stat.big{flex-wrap:wrap}
+.stat.big b{font-size:clamp(22px,4.2vmin,118.8px);background:linear-gradient(180deg,#fff,#a9e2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .lvl{height:5px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:.7em}
 .lvl i{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,var(--blue),var(--blue2));transition:transform .5s cubic-bezier(.2,.8,.2,1)}
 .giftbox{margin-top:.8em;padding-top:.7em;border-top:1px solid rgba(255,201,74,.3)}
 .giftbox[hidden]{display:none}
-.giftbox .gl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:clamp(10px,1.4vmin,14px);color:#ffe8b0;font-weight:700;letter-spacing:.04em}
-.giftbox .lvl i{background:linear-gradient(90deg,#ffb02e,var(--gold))}
+.giftbox .gl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:clamp(10px,1.4vmin,30.8px);color:#ffe8b0;font-weight:700;letter-spacing:.04em}
+.giftbox .gl b{font-variant-numeric:tabular-nums;font-size:1.25em}
+.giftbox .lvl{margin-top:.45em;height:7px}
+.giftbox .lvl i{background:linear-gradient(90deg,#ffb93d,#ffe08a);transition:none}
+.help{margin:0;padding:0;list-style:none;font-size:clamp(11px,1.5vmin,33px);line-height:1.7;color:var(--mut)}
+.help b{color:var(--ink);font-weight:600}
+.help.touch{display:none}
+kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;border:1px solid rgba(160,215,255,.3);border-bottom-width:2px;background:rgba(255,255,255,.08);font:600 .86em Inter,sans-serif;text-align:center;color:var(--ink)}
 
-.btn{appearance:none;border:1px solid var(--line);border-radius:999px;padding:.72em 1.5em;font:inherit;font-weight:700;
-  font-size:clamp(12px,1.7vmin,17px);letter-spacing:.02em;color:var(--ink);background:rgba(255,255,255,.08);cursor:pointer;
-  transition:transform .12s ease,background .2s ease,border-color .2s ease;min-height:44px;touch-action:manipulation}
-.btn:active{transform:scale(.97)}
-.btn.pri{background:linear-gradient(180deg,#3fb4ee,#1d7fc4);border-color:rgba(180,235,255,.5);color:#04121f;box-shadow:0 10px 26px rgba(35,150,220,.35)}
-.btn.gold{background:linear-gradient(180deg,#ffd98a,#f0a92e);border-color:rgba(255,230,170,.7);color:#2a1a02;box-shadow:0 10px 26px rgba(230,160,40,.32)}
-.btn.ghost{background:rgba(255,255,255,.06)}
-.btn.sm{padding:.5em 1em;font-size:clamp(11px,1.4vmin,14px);min-height:38px}
-.btn[disabled]{opacity:.45;cursor:not-allowed}
-.btn small{display:block;font-weight:600;font-size:.78em;opacity:.8;letter-spacing:.01em}
+/* the board: a rounded glass cabinet. The canvas is sized here in CSS pixels
+   and drawn at device resolution, so a 4K screen gets a 4K picture. */
+.cab{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:clamp(16px,2.6vmin,66px);
+  background:linear-gradient(180deg,rgba(12,40,76,.78),rgba(5,20,42,.88));border:1px solid rgba(160,215,255,.26);
+  box-shadow:0 30px 90px rgba(0,6,22,.65),0 0 0 6px rgba(255,255,255,.035),0 0 80px rgba(48,150,230,.16),inset 0 1px 0 rgba(255,255,255,.16);overflow:hidden}
+#game{display:block;touch-action:none;outline:none;contain:paint;transform:translateZ(0)}
 
-.cab{position:relative;border-radius:clamp(18px,2.6vmin,32px);padding:clamp(8px,1.4vmin,18px);
-  background:linear-gradient(170deg,rgba(24,64,112,.65),rgba(8,22,46,.75));border:1px solid var(--line);
-  box-shadow:0 30px 80px rgba(0,6,20,.5),inset 0 1px 0 rgba(255,255,255,.14)}
-#game{display:block;border-radius:clamp(12px,2vmin,24px);touch-action:none;outline:none;cursor:pointer;
-  contain:paint;transform:translateZ(0)}
-#game:focus-visible{box-shadow:0 0 0 3px var(--blue2)}
+/* overlays sit over the cabinet and fade; nothing is display-toggled mid-frame */
+.screen{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;padding:clamp(10px,2vmin,61.6px);text-align:center;-webkit-overflow-scrolling:touch;
+  background:radial-gradient(circle at 50% 40%,rgba(6,28,56,.78),rgba(3,10,24,.94));
+  transition:opacity .35s ease,visibility 0s;overflow-y:auto}
+.screen.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .3s ease,visibility 0s .3s}
+.screen .in{max-width:30em;margin:auto;transition:transform .5s cubic-bezier(.2,.9,.25,1.1)}
+.screen.hidden .in{transform:translateY(14px) scale(.97)}
+.screen h2{margin:.1em 0 .25em;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.4vmin,92.4px);line-height:1.12}
+.screen p{margin:.4em 0 1em;color:var(--mut);font-size:clamp(12px,1.8vmin,39.6px);line-height:1.55}
+.screen .big{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:clamp(48px,11vmin,286px);line-height:1;margin:.04em 0 .02em;color:#fff;font-variant-numeric:tabular-nums;
+  text-shadow:0 0 50px rgba(80,190,255,.55)}
+.screen .cap{margin:0;letter-spacing:.3em;text-transform:uppercase;font-size:clamp(10px,1.4vmin,30.8px);color:var(--blue2);font-weight:700}
+.mini{display:flex;justify-content:center;gap:clamp(14px,3vmin,74.8px);margin:1em 0 1.2em}
+.mini div{min-width:3.6em}.mini b{display:block;font-size:clamp(18px,3vmin,66px);font-variant-numeric:tabular-nums}.mini span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.mini b.new{color:var(--gold)}
+.screen p.rk{margin:1.1em 0 0;font-size:clamp(11px,1.5vmin,30.8px)}.rk b{color:var(--ink);font-weight:600}
+.screen p.note{margin:1.1em 0 0;font-size:clamp(11px,1.45vmin,29.7px);min-height:1.5em}
+.screen p.sub{margin:.2em 0 .4em}
+.btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btns.col{flex-direction:column;align-items:stretch;gap:16px;max-width:22em;margin:0 auto}
+.btn{font:inherit;font-weight:700;letter-spacing:.02em;border:0;border-radius:999px;padding:.95em 2em;min-height:48px;cursor:pointer;color:#05243b;background:#e3f6ff;
+  font-size:clamp(14px,2vmin,44px);touch-action:manipulation;transition:transform .15s cubic-bezier(.2,.9,.3,1.3),box-shadow .2s,background .2s}
+.btn.pri{background:linear-gradient(180deg,#6fd2ff,#2fa6e6);color:#031d33;box-shadow:0 8px 0 #1a77ad,0 18px 40px rgba(31,150,225,.4)}
+.btn.pri:hover{transform:translateY(-2px)}.btn.pri:active{transform:translateY(5px);box-shadow:0 3px 0 #1a77ad,0 8px 20px rgba(31,150,225,.35)}
+.btn.gold{background:linear-gradient(180deg,#ffe28a,#ffb12e);color:#3a2300;box-shadow:0 8px 0 #c47a08,0 18px 40px rgba(255,170,40,.4)}
+.btn.gold:hover{transform:translateY(-2px)}.btn.gold:active{transform:translateY(5px);box-shadow:0 3px 0 #c47a08,0 8px 20px rgba(255,170,40,.35)}
+.btn[disabled]{opacity:.5;cursor:default;transform:none!important}
+.btn.ghost{background:rgba(255,255,255,.08);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{background:rgba(255,255,255,.14)}
+.btn.sm{min-height:42px;padding:.55em 1.3em;font-size:clamp(12px,1.6vmin,33px)}
+.btn small{display:block;font-weight:600;font-size:.62em;letter-spacing:.04em;opacity:.8;margin-top:.2em}
+:focus-visible{outline:3px solid #ffe183;outline-offset:3px}
 
-.screen{position:absolute;inset:0;display:grid;place-items:center;padding:clamp(12px,2.4vmin,34px);
-  background:radial-gradient(circle at 50% 30%,rgba(10,34,66,.92),rgba(3,10,24,.96));border-radius:inherit;z-index:5;
-  animation:fadeIn .28s ease;overflow:auto}
-.screen.hidden{display:none}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-.screen .in{max-width:min(560px,92%);text-align:center}
-.screen .cap{margin:0 0 .35em;font-size:clamp(9px,1.5vmin,14px);letter-spacing:.34em;text-transform:uppercase;color:var(--blue2);font-weight:700}
-.screen h2{margin:0 0 .5em;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(22px,4.2vmin,46px);line-height:1.1}
-.screen p{margin:0 0 .9em;color:var(--mut);font-size:clamp(12px,1.7vmin,17px);line-height:1.5}
-.screen .big{margin:.1em 0;font-size:clamp(34px,7vmin,84px);font-weight:700;font-variant-numeric:tabular-nums;
-  background:linear-gradient(180deg,#fff,#a9e2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.screen .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:1em 0 0}
-.screen .btns.col{flex-direction:column;align-items:stretch}
-.screen .btns.col .btn{width:100%}
-.screen .mini{display:flex;gap:1.4em;justify-content:center;margin:.9em 0 0}
-.screen .mini div{text-align:center}
-.screen .mini b{display:block;font-size:clamp(16px,2.6vmin,26px);font-variant-numeric:tabular-nums}
-.screen .mini span{font-size:clamp(9px,1.2vmin,12px);letter-spacing:.2em;text-transform:uppercase;color:var(--mut)}
-.screen .note{font-size:clamp(11px,1.4vmin,14px);color:var(--mut);margin:.9em 0 0}
-.screen .rk{font-size:clamp(10px,1.3vmin,13px);color:var(--mut);margin:.9em 0 0}
-.screen.win{background:radial-gradient(circle at 50% 38%,rgba(70,48,6,.88),rgba(14,8,2,.96))}
+/* the winner: the result screen turns gold */
+.screen.win{background:radial-gradient(circle at 50% 38%,rgba(70,48,6,.82),rgba(14,8,2,.95))}
 .screen.win .cap{color:var(--gold)}
-.screen h2.winner{display:none;font-size:clamp(24px,5vmin,56px);background:linear-gradient(180deg,#fff6d6,#ffc94a);
-  -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.1em}
+.screen h2.winner{display:none;font-size:clamp(26px,5.2vmin,127.6px);background:linear-gradient(180deg,#fff6d6,#ffc94a);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.1em}
 .screen.win h2.winner{display:block}
 .screen.win .big{text-shadow:0 0 60px rgba(255,190,60,.7)}
 
-.help{list-style:none;margin:0;padding:0;font-size:clamp(10px,1.4vmin,14px);color:var(--mut);line-height:1.7}
-.help li{margin:.15em 0}
-kbd{font:inherit;font-size:.92em;padding:.05em .4em;border:1px solid var(--line);border-radius:5px;background:rgba(255,255,255,.07)}
-.help.touch{display:none}
-@media (pointer:coarse){.help.kbd{display:none}.help.touch{display:block}}
+/* touch pad: shown only where a finger is the controller */
+.pad{display:none;gap:clamp(8px,1.6vmin,35.2px);align-items:center;justify-content:center}
+.pb{position:relative;width:clamp(56px,9.5vmin,202.4px);height:clamp(56px,9.5vmin,202.4px);border-radius:26%;border:1px solid var(--line);color:var(--ink);cursor:pointer;touch-action:none;padding:0;
+  background:linear-gradient(165deg,rgba(90,140,200,.45),rgba(30,60,110,.45));display:grid;place-items:center;
+  box-shadow:0 8px 24px rgba(0,5,20,.35),inset 0 1px 0 rgba(255,255,255,.14);
+  transition:transform .09s ease,background .12s ease}
+.pb.on{transform:scale(.92);background:linear-gradient(165deg,rgba(111,210,255,.5),rgba(47,166,230,.25))}
+.pb svg{width:44%;height:44%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 
-@media (max-width:760px){
-  .app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto;
-    grid-template-areas:"hd" "board" "left"}
-  .right{display:none}
-  .left{grid-area:left;align-items:stretch;justify-content:center}
-  .left .card{width:100%;display:grid;grid-template-columns:repeat(4,1fr);gap:0 8px;align-items:center;padding:.7em .9em}
-  .left .card h3{grid-column:1/-1;margin:0 0 .3em}
-  .left .stat{border-top:0;padding:.1em 0;flex-direction:column;align-items:flex-start;gap:0}
-  .left .stat b{font-size:clamp(16px,4.6vw,22px)}
-  .left .stat.big b{font-size:clamp(18px,5.4vw,26px)}
-  .left .stat span{font-size:9px;letter-spacing:.12em}
-  .left .lvl,.left .giftbox{grid-column:1/-1}
-  .giftbox{margin-top:.4em;padding-top:.4em}
-  .brand small{display:none}
-  .brand b{font-size:clamp(17px,4.6vw,24px)}
-  .brand img{height:clamp(20px,5vw,28px)}
-  .screen h2{font-size:clamp(20px,5.6vw,30px)}
-  .screen p{font-size:clamp(11px,3vw,14px)}
-  .screen .big{font-size:clamp(28px,9vw,52px)}
-  .screen h2.winner{font-size:clamp(20px,6.6vw,34px)}
-  .screen .btns .btn{flex:1 1 auto}
+/* ── how it adapts ─────────────────────────────────────────────────────── */
+/* a finger is the controller (phone, tablet, kiosk): the pad appears under the side cards */
+@media (pointer:coarse){
+  .padL,.padR{display:flex}.help.kbd{display:none}.help.touch{display:block}
+  .app{grid-template-areas:"hd hd hd" "left board right" "padL board padR";grid-template-rows:auto minmax(0,1fr) auto}
+  .left,.right{justify-content:flex-start}
+  .padL,.padR{align-self:end;padding-bottom:66px}
+  .padL{justify-self:end}.padR{justify-self:start}
 }
-@media (max-height:520px) and (orientation:landscape){
-  .brand small{display:none}
-  .screen .in{max-width:96%}
-  .screen h2{font-size:clamp(18px,4vh,26px);margin-bottom:.25em}
-  .screen p{margin-bottom:.4em}
-  .screen .mini{margin-top:.4em}
+/* upright and narrow: one column, stats above the board, pad below it */
+@media (orientation:portrait){
+  .app{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto minmax(0,1fr) auto;
+    grid-template-areas:"hd hd" "left right" "board board" "padL padR";gap:clamp(6px,1.4vh,26.4px)}
+  .padL,.padR{display:flex;padding-bottom:66px;align-self:end;gap:8px}.padL{justify-self:start}.padR{justify-self:end}
+  .pb{width:clamp(46px,13.2vw,136.4px);height:clamp(46px,13.2vw,136.4px)}
+  .help.kbd{display:none}.help.touch{display:block}
+  .brand span{display:none}.brand img{height:clamp(20px,3.4vh,74.8px)}
+  .left{flex-direction:row;align-items:stretch;justify-content:flex-start;gap:8px}
+  .left .card{width:auto;flex:1 1 0;padding:8px 12px;border-radius:14px;display:grid;grid-template-columns:1fr 1fr;align-content:center;gap:4px 14px}
+  .left .card h3{display:none}
+  .left .stat{flex-direction:column;align-items:flex-start;gap:0;border:0;padding:0}
+  .left .stat span{font-size:10px}.left .stat b{font-size:clamp(18px,3.2vh,61.6px)}.left .stat.big b{font-size:clamp(20px,3.6vh,70.4px)}
+  .left .lvl{display:none}
+  .left .giftbox{grid-column:1 / -1;margin:2px 0 0;padding-top:6px}.left .giftbox .lvl{display:block}
+    .right{flex-direction:row;align-items:center;justify-content:flex-end}
+  .right .card{padding:8px 10px;width:auto}.right .card h3{display:none}.right .card.how,.left .card.tools{display:none}
+  .tag{padding:.35em .8em}
+  .screen .btns:not(.col) .btn{padding:.7em 1.2em;min-height:44px;font-size:14px}
+  .screen .mini{margin:.6em 0 .9em}.screen p.rk{margin-top:.8em}
+  .screen h2.winner{font-size:clamp(22px,4.4vh,74.8px)}
 }
+/* a phone on its side: board in the middle, a pad under each thumb */
+@media (orientation:landscape) and (max-height:560px){
+  .app{grid-template-columns:var(--side) minmax(0,1fr) var(--side);grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"hd hd hd" "left board right" "padL board padR";gap:8px}
+  .brand span{display:none}.brand img{height:22px}
+  .card{padding:8px 12px;width:min(100%,200px)}.card h3{margin-bottom:.2em}.stat b{font-size:clamp(16px,5vh,57.2px)}.stat.big b{font-size:clamp(20px,6.5vh,74.8px)}
+  .left .lvl,.right .card.how,.left .card.tools{display:none}.left .giftbox .lvl{display:block}
+  .padL,.padR{align-self:center;padding-bottom:0;gap:6px}
+  .padL{justify-self:start;padding-left:66px}                /* clear of the Booth button, which sits at the bottom left */
+  .fxr-show,.fxr-back{padding:0!important;width:46px!important;height:46px!important;border-radius:50%!important;font-size:18px!important;line-height:44px!important;text-align:center!important}
+  .fxr-show .fxr-lbl,.fxr-back .fxr-lbl{display:none!important}   /* icons only, so the two corner buttons stay off the pads */
+  .pb{width:clamp(40px,11.8vh,132px);height:clamp(40px,11.8vh,132px)}
+  .screen .big{font-size:clamp(34px,13vh,176px)}.screen h2{font-size:clamp(16px,5.5vh,61.6px)}.screen p{margin:.2em 0 .6em;font-size:clamp(11px,3.4vh,33px)}
+  .mini{margin:.4em 0 .6em}.btn{padding:.6em 1.6em;min-height:42px}.btn.pri{box-shadow:0 5px 0 #1a77ad,0 12px 28px rgba(31,150,225,.35)}.btn.gold{box-shadow:0 5px 0 #c47a08,0 12px 28px rgba(255,170,40,.35)}
+  .btns.col{flex-direction:row;max-width:none}
+  /* the board is narrow here: the result keeps to what fits across it */
+  .screen{padding:8px}.screen .mini,.screen p.rk,.screen .cap + .cap{display:none}
+  .screen h2.winner{font-size:clamp(16px,6.4vh,57.2px)}.screen .big{font-size:clamp(30px,11vh,132px)}.screen p.sub{font-size:11px;margin:.2em 0 .5em}
+  .screen .btns .btn{padding:.55em 1.1em;min-height:38px;font-size:13px}.btns{gap:8px}
+}
+@media (orientation:portrait) and (min-height:1500px){
+  .app{grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-areas:"hd hd" "left right" "board board" "how how" "padL padR"}
+  .right{display:contents}
+  .right .card.goalcard{grid-area:right}
+  .right .card.how{display:block;grid-area:how;width:auto;padding:1.4vmin 2.4vmin}
+  .right .card.how h3{display:block}
+  .leg{font-size:2.3vmin}.help{font-size:2.1vmin}
+  .padL,.padR{padding-bottom:70px}
+}
+@media (prefers-reduced-motion:reduce){.sky i{animation:none}.screen,.screen .in,.lvl i{transition-duration:.01ms!important}}
+@media (hover:none){.btn.pri:hover,.btn.gold:hover{transform:none}}
+
+/* ── Pack Recall ─────────────────────────────────────────────────────────── */
+#game{cursor:pointer}
+.stat b.low{color:#ffb199}
+.tools{display:flex;gap:10px;flex-wrap:wrap}.tools .btn{flex:1 1 auto}
+.leg{margin:0;padding:0;list-style:none;font-size:clamp(11px,1.45vmin,33px);line-height:1.55;color:var(--mut)}
+.leg li{margin:.35em 0}.leg b{color:var(--ink);font-weight:600}
+.leg i{font-style:normal;display:inline-block;width:1.2em;text-align:center}
+.stars{display:flex;gap:10px;justify-content:center;margin:.2em 0 .3em;font-size:clamp(34px,7vmin,140.8px);line-height:1}
+.stars i{font-style:normal;color:rgba(255,255,255,.18);transition:color .4s,transform .5s cubic-bezier(.2,1.6,.3,1),text-shadow .4s}
+.stars i.on{color:#ffc94a;text-shadow:0 0 28px rgba(255,190,60,.8);transform:scale(1.12)}
+.stars i:nth-child(2){transition-delay:.15s}.stars i:nth-child(3){transition-delay:.3s}
+.pb.pad-shuffle .n{position:absolute;right:6px;bottom:3px;font-size:10px;font-weight:700;color:var(--mut)}
+@media (pointer:coarse){.tools{display:none}}
+@media (orientation:portrait){
+  .left .card.tools{display:none}
+  .right{flex-direction:row;align-items:stretch;justify-content:flex-end}
+  .right .card.goalcard{display:grid;grid-template-columns:1fr 1fr;align-content:center;gap:4px 14px;padding:8px 12px;width:auto}
+  .right .card.goalcard .stat{flex-direction:column;align-items:flex-start;gap:0;border:0;padding:0}
+  .right .card.goalcard .stat span{font-size:10px}.right .card.goalcard .stat b{font-size:clamp(16px,2.8vh,52.8px)}
+  .right .card.goalcard .stat.cmb{display:none}
+  .padL,.padR{padding-bottom:66px}
+}
+
+
 </style>
 </head>
 <body>
@@ -170,25 +245,28 @@ kbd{font:inherit;font-size:.92em;padding:.05em .4em;border:1px solid var(--line)
       <h3>Routine</h3>
       <div class="stat big"><span>Score</span><b id="score">0</b></div>
       <div class="stat"><span>Level</span><b id="level">1</b></div>
-      <div class="stat"><span>Pairs</span><b id="pairs">0</b></div>
+      <div class="stat"><span>Tries</span><b id="tries">9</b></div>
       <div class="stat"><span>Best</span><b id="best">0</b></div>
       <div class="lvl" aria-hidden="true"><i id="lvlBar"></i></div>
       <div class="giftbox" id="giftBox" hidden><div class="gl"><span>🎁 Gift at</span><b id="giftNeedTxt">0</b></div><div class="lvl" aria-hidden="true"><i id="giftBar"></i></div></div>
+    </div>
+    <div class="card tools">
+      <button class="btn ghost sm" data-a="peek" type="button">👁 Peek · −1 try</button>
     </div>
   </aside>
 
   <main class="board" id="boardWrap">
     <div class="cab" id="cab">
-      <canvas id="game" tabindex="0" aria-label="Pack Recall board. Tap two cards to turn them face up; matching packs stay open."></canvas>
+      <canvas id="game" tabindex="0" aria-label="Pack Recall board. Tap two blocks to turn them over and find a pair. Arrow keys move, space turns a block over."></canvas>
 
       <div class="screen" id="start">
         <div class="in">
           <p class="cap">HD Recall Lab</p>
           <h2>Remember the routine.</h2>
-          <p>Every card turns face up for a moment — then they all close. Tap two to find a pair. Each level the cards show for a shorter time. From level 2 a recall round puts a question card against its answer, and the cards keep sliding to new places while you look.</p>
+          <p>Every block turns face up for a moment, then they all close. Tap two to find a pair before your tries run out. Each level they show for less time, and every other level is a recall round: a question pairs with its answer, and the blocks slide to new places.</p>
           <div class="btns col">
             <button class="btn gold" id="goGift" type="button">🎁 Redeem gift<small id="giftSub">Checking the gift desk…</small></button>
-            <button class="btn pri" id="goPlay" type="button">Normal play<small>Endless · no target</small></button>
+            <button class="btn pri" id="goPlay" type="button">Normal play<small>Level by level · until the tries run out</small></button>
           </div>
           <p class="note" id="giftNote"></p>
         </div>
@@ -199,6 +277,8 @@ kbd{font:inherit;font-size:.92em;padding:.05em .4em;border:1px solid var(--line)
           <div class="btns"><button class="btn pri" id="resume" type="button">Resume</button><button class="btn ghost" id="menu2" type="button">Change mode</button></div></div>
       </div>
 
+      <!-- the result screen: the booth ranking and the gift panel attach to this
+           element and read #rScore, so it keeps this id and the `hidden` class -->
       <div class="screen hidden" id="result" role="dialog" aria-modal="true" aria-labelledby="rHead">
         <div class="in">
           <p class="cap" id="rHead">Routine complete</p>
@@ -215,360 +295,317 @@ kbd{font:inherit;font-size:.92em;padding:.05em .4em;border:1px solid var(--line)
   </main>
 
   <aside class="right">
-    <div class="card">
-      <h3>Target</h3>
-      <div class="stat"><span>Goal</span><b id="goal">0</b></div>
-      <div class="stat"><span>To go</span><b id="toGo">0</b></div>
+    <div class="card goalcard">
+      <h3>This round</h3>
+      <div class="stat"><span>Pairs</span><b id="pairs">0/8</b></div>
       <div class="stat"><span>Round</span><b id="round">Packs</b></div>
-      <div class="stat"><span>Streak</span><b id="streak">×1</b></div>
+      <div class="stat cmb"><span>Streak</span><b id="streak">×1</b></div>
     </div>
     <div class="card how">
       <h3>How it runs</h3>
-      <ul class="help">
-        <li><b style="color:#a9e2ff">Packs</b> — every card turns up, then closes</li>
-        <li><b style="color:#a9e2ff">Recall</b> — from level 2, a question and its answer are the pair</li>
-        <li><b style="color:#ffd98a">Shuffle</b> — in a recall round the cards slide to new places</li>
-        <li>Each level the cards show for less time</li>
+      <ul class="leg">
+        <li><i>🃏</i><b>Packs</b> — two blocks of the same pack are a pair</li>
+        <li><i>❓</i><b>Recall</b> — a question pairs with its answer, and the blocks slide to new places</li>
+        <li><i>★</i><b>Gold pair</b> — a bonus when you find it</li>
+        <li><i>👁</i><b>Peek</b> — every block turns over for a moment, for one try</li>
+        <li><i>⏱</i>Each level the blocks show for less time</li>
       </ul>
-      <ul class="help kbd" style="margin-top:.7em"><li><kbd>P</kbd> pause · <kbd>Esc</kbd> menu</li></ul>
-      <ul class="help touch" style="margin-top:.7em"><li><b>Tap</b> two cards to turn them up.</li></ul>
+      <ul class="help kbd" style="margin-top:.7em"><li><kbd>←↑↓→</kbd> <kbd>Space</kbd> move &amp; turn over</li><li><kbd>H</kbd> peek · <kbd>P</kbd> pause</li></ul>
+      <ul class="help touch" style="margin-top:.7em"><li><b>Tap</b> two blocks to turn them over.</li></ul>
     </div>
   </aside>
+
+  <nav class="pad padL" aria-label="Peek">
+    <button class="pb" data-a="peek" type="button" aria-label="Peek: turn every block over for a moment, costs one try"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+  </nav>
+  <nav class="pad padR" aria-label="Pause">
+    <button class="pb" data-a="pause" type="button" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M8 5v14"/><path d="M16 5v14"/></svg></button>
+  </nav>
 </div>
 
 <script>
 (function(){
 'use strict';
 
-/* ═══════════════════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════════════════════════════
    Pack Recall — a memory game on the FACERINNA range.
 
-   Two round kinds, alternating by level:
-     Packs  — eight product pairs. All cards are shown for `previewMs`, then
-              closed; find them. previewMs shrinks every level.
-     Recall — from level 2, a question card pairs with an answer card drawn
-              from our own catalogue, and the cards keep sliding to new slots
-              while you play (the solitaire scatter).
+   Every pack sits in a glass block, wrapped the way Pack Drop and Pack Crush wrap
+   theirs. Sixteen blocks, eight pairs. They all turn face up for a moment, then
+   close: find the pairs before the tries run out.
 
-   Same cabinet as Pack Drop and Pack Crush, and the same gift desk, ranking
-   and Redeem/Normal buttons. The board parks its frame loop when nothing is
-   moving, so a settled grid costs nothing.
-   ═══════════════════════════════════════════════════════════════════════ */
+     Packs rounds   (levels 1, 3, 5 ...)  two blocks of the same pack are a pair.
+     Recall rounds  (levels 2, 4, 6 ...)  a question block pairs with its answer
+                    block, and the unmatched blocks keep sliding to new places, so
+                    the grid you memorised is not the grid you are looking at.
+
+   Each level the blocks show for less time. A wrong pair costs a try. The run
+   ends when the tries do. A gold pair pays a bonus. Peek turns every block over
+   for a moment, once per try you can spare.
+
+   Smooth: every block is a spring on its place, and a flip is one clock-based
+   ease, so the turn looks the same at 30, 60 or 144 frames a second.
+   Sharp: the canvas is backed by device pixels and every block face is baked once
+   at the size it is drawn, the product scaled down in halving steps.
+   Light: the loop parks whenever nothing is moving.
+   ════════════════════════════════════════════════════════════════════════ */
 
 var COLS = 4, ROWS = 4;
 var RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 var COARSE = !!(window.matchMedia && matchMedia('(pointer:coarse)').matches);
 var GOLD = '#FFC94A';
 
-/* eight packs, because a 4x4 grid is eight pairs and every pair must be a
-   different product — a repeated pack would make two pairs indistinguishable and
-   turn a correct match into a wrong one. */
+/* Eight packs with a clue each. The clue is the active the name of the pack states,
+   and no two of the eight share one, so a question has exactly one answer. */
 var RANGE = [
-  {s:'10-niacinamide-3-txa-bright-dark-spot-serum',  c:'#4898D8', n:'10% Niacinamide Serum',   key:'Niacinamide + TXA'},
-  {s:'2-salicylic-acid-acne-serum',                  c:'#12A79B', n:'2% Salicylic Serum',      key:'Salicylic acid'},
-  {s:'retinol-anti-aging-serum',                     c:'#B4557C', n:'Retinol Serum',           key:'Retinol'},
-  {s:'ceramide-b5-balancing-moisturizer',            c:'#3FA7D6', n:'Ceramide Moisturizer',    key:'Ceramide'},
-  {s:'5-b5-intensive-barrier-cream',                 c:'#F0C25A', n:'B5 Barrier Cream',        key:'Pro-vitamin B5'},
-  {s:'physical-defense-barrier-serum-sunscreen-spf50', c:'#E8A13B', n:'Physical Defense SPF50', key:'SPF 50'},
-  {s:'low-ph-b5-gel-cleanser',                       c:'#7C9CC2', n:'Low-pH Gel Cleanser',     key:'pH balanced'},
-  {s:'ceramide-b5-balancing-toner',                  c:'#5AB0C8', n:'Ceramide Toner',          key:'Toner'}
+  {s:'10-niacinamide-3-txa-bright-dark-spot-serum',    c:'#3F8DE0', n:'10% Niacinamide Serum',    key:'Niacinamide + TXA'},
+  {s:'2-salicylic-acid-acne-serum',                    c:'#1DB98A', n:'2% Salicylic Acid Serum',  key:'Salicylic acid'},
+  {s:'retinol-anti-aging-serum',                       c:'#D2508A', n:'Retinol Serum',            key:'Retinol'},
+  {s:'ceramide-b5-balancing-moisturizer',              c:'#8B6FE0', n:'Ceramide Moisturizer',     key:'Ceramide'},
+  {s:'5-b5-centella-calming-gel-cream',                c:'#2BB8D6', n:'Centella Gel Cream',       key:'Centella'},
+  {s:'amino-acid-ph-balanced-cream-cleanser',          c:'#F0764A', n:'Amino Acid Cleanser',      key:'Amino acid'},
+  {s:'physical-defense-barrier-serum-sunscreen-spf50', c:'#F2C94C', n:'Physical Defense SPF50',   key:'SPF 50'},
+  {s:'low-ph-b5-gel-cleanser',                         c:'#B8C4D8', n:'Low pH Gel Cleanser',      key:'Low pH'}
 ];
 
+/* ── DOM ─────────────────────────────────────────────────────────────── */
 var $ = function(id){ return document.getElementById(id); };
-var cv = $('game'), wrapEl = $('boardWrap'), g = cv.getContext('2d');
-var elScore=$('score'), elLevel=$('level'), elPairs=$('pairs'), elBest=$('best'), lvlBar=$('lvlBar');
-var elGoal=$('goal'), elToGo=$('toGo'), elRound=$('round'), elStreak=$('streak');
+var cv = $('game'), cab = $('cab'), wrapEl = $('boardWrap'), g = cv.getContext('2d');
+var elScore=$('score'), elLevel=$('level'), elTries=$('tries'), elBest=$('best'), lvlBar=$('lvlBar');
+var elPairs=$('pairs'), elRound=$('round'), elStreak=$('streak');
 var giftBox=$('giftBox'), giftBar=$('giftBar'), giftNeedTxt=$('giftNeedTxt'), modeTag=$('modeTag');
 var fmt = function(n){ return Math.round(n).toLocaleString('en-US'); };
 
 /* ── state ───────────────────────────────────────────────────────────── */
-var cell = 96, dpr = 2, W = COLS*96, H = ROWS*96, pad = 0;
-var cards = [];                 /* {pair, kind, face, up, matched, slot, x, y, tx, ty, flip, sc, a} */
-var state = 'idle';             /* idle | preview | play | busy | won | over | pause */
-var level = 1, score = 0, shown = 0, pairsMade = 0, pairsTotal = 0, streak = 0;
-var goal = 0, best = 0, mode = 'play', need = 0, giftNeed = null, giftOn = false, giftState = 'wait', giftSeq = 0;
-var previewMs = 2200, shuffleMs = 0, shuffleT = 0, previewT = 0;
-var firstPick = null, secondPick = null, flipT = 0, revealBack = 0;
-var kind = 'packs';             /* packs | recall */
-var particles = [], floats = [], shake = 0;
-var faceCache = {}, backCv = null, lastHud = '', lastScoreText = '';
-var lastFrame = 0, raf = 0;
+var cell = 96, dpr = 2, W = COLS*96, H = ROWS*96;
+var cards = [];            /* {pair, face, up, matched, slot, x, y, tx, ty, vx, vy, flip, sc, a, gold, ph} */
+var state = 'idle';        /* idle | preview | play | check | peek | clear | won | over | pause */
+var pausedFrom = 'play';
+var level = 1, score = 0, shown = 0, pairsMade = 0, found = 0, pairsTotal = 8, streak = 0, tries = 0, triesMax = 0;
+var best = 0, mode = 'play', need = 0, giftNeed = null, giftOn = false, giftState = 'wait', giftSeq = 0;
+var previewMs = 2200, shuffleMs = 0, shuffleT = 0, previewT = 0, checkT = 0, peekT = 0, clearT = 0, scatterT = 0;
+var first = null, second = null, kind = 'packs', kb = 0, kbOn = false;
+var parts = [], floats = [], shake = 0, shaking = false;
+var sprites = {}, bgCv = null, warmQ = [], warmT = 0;
+var last = 0, raf = 0, nowT = 0, lastDraw = 0, lastHud = '', lastScoreText = '';
 try { best = parseInt(localStorage.getItem('fx.packrecall.best') || '0', 10) || 0; } catch (e) {}
 function saveBest(){ try { localStorage.setItem('fx.packrecall.best', String(best)); } catch (e) {} }
 
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ sprites = {}; kick(); });   /* the lettering is baked into the faces, so bake it once the fonts are in */
 RANGE.forEach(function(p){
   var im = new Image(); im.decoding = 'async'; im.src = 'products/' + p.s + '.webp';
   p.img = im; p.ok = false;
-  im.onload = function(){ p.ok = true; faceCache = {}; render(); };
+  im.onload = function(){ p.ok = true; sprites = {}; warmSoon(); kick(); };
 });
 
-/* ── sizing: square cells, never a multiplier the screen does not have ── */
+/* ── level rules ─────────────────────────────────────────────────────── */
+function previewFor(l){ return Math.max(700, 2200 - (l-1)*220); }
+function shuffleFor(l){ return (l >= 2 && l % 2 === 0) ? Math.max(2200, 5000 - (l-2)*500) : 0; }
+function triesFor(l){ return Math.max(5, 9 - Math.floor((l-1)/2)); }
+
+/* ── sizing: CSS size from the room available, backing store from the screen ── */
 function fit(){
   var r = wrapEl.getBoundingClientRect();
-  pad = COARSE ? 10 : 40;
-  var c = Math.max(40, Math.floor(Math.min((r.width - pad) / COLS, (r.height - pad) / ROWS)));
-  var native = window.devicePixelRatio || 1;
-  var d = Math.min(COARSE ? 2 : 3, Math.max(1, native));
-  if (native >= 2) d = Math.min(d, 2);
-  var budget = COARSE ? 4e6 : 6e6;
+  var c = Math.max(40, Math.floor(Math.min(r.width / COLS, r.height / ROWS)));
+  var d = Math.min(COARSE ? 2 : 3, Math.max(2, window.devicePixelRatio || 1)), budget = COARSE ? 5e6 : 18e6;
   while (d > 1 && (c*COLS*d) * (c*ROWS*d) > budget) d -= .5;
   if (c === cell && d === dpr && cv.width) return;
+  var scale = c / cell;
   cell = c; dpr = d; W = cell*COLS; H = cell*ROWS;
   cv.style.width = W + 'px'; cv.style.height = H + 'px';
   cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
-  faceCache = {}; backCv = null;
-  layout(true);
-  render();
+  sprites = {}; bgCv = null;
+  cards.forEach(function(cd){ cd.x *= scale; cd.y *= scale; cd.vx = cd.vy = 0; });
+  layout(false); warmSoon(); render();
 }
 var fitQ = 0;
 function fitSoon(){ if (!fitQ) fitQ = requestAnimationFrame(function(){ fitQ = 0; fit(); }); }
-addEventListener('resize', fitSoon, {passive:true});
-addEventListener('orientationchange', function(){ setTimeout(fit, 120); });
 
-/* ── the two card faces, drawn once per size ─────────────────────────── */
-function roundRect(x, a, b, w, h, r){
-  r = Math.min(r, w/2, h/2);
-  x.moveTo(a+r, b); x.lineTo(a+w-r, b); x.quadraticCurveTo(a+w, b, a+w, b+r);
-  x.lineTo(a+w, b+h-r); x.quadraticCurveTo(a+w, b+h, a+w-r, b+h);
-  x.lineTo(a+r, b+h); x.quadraticCurveTo(a, b+h, a, b+h-r);
-  x.lineTo(a, b+r); x.quadraticCurveTo(a, b, a+r, b);
+/* ── a block: a pane of coloured glass wrapped round the face ──────────── */
+function hex(c, a){ var n = parseInt(c.slice(1),16); return 'rgba(' + (n>>16) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')'; }
+function rrect(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function paintBlock(c, s, color, strong){
+  var m = s*.045, r = s*.15, w = s - 2*m;
+  rrect(c, m, m, w, w, r); c.fillStyle = 'rgba(6,20,44,.5)'; c.fill();
+  var gr = c.createLinearGradient(0, m, w, m + w); gr.addColorStop(0, hex(color, strong ? .92 : .84)); gr.addColorStop(1, hex(color, strong ? .56 : .44));
+  c.fillStyle = gr; c.fill();
+  c.save(); rrect(c, m, m, w, w, r); c.clip();
+  var gl = c.createLinearGradient(0, m, 0, m + s*.5); gl.addColorStop(0,'rgba(255,255,255,.34)'); gl.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle = gl; c.fillRect(m, m, w, s*.5);
+  var sh = c.createLinearGradient(0, m + w*.55, 0, m + w); sh.addColorStop(0,'rgba(0,0,0,0)'); sh.addColorStop(1,'rgba(0,10,30,.34)');
+  c.fillStyle = sh; c.fillRect(m, m + w*.55, w, w*.45);
+  c.restore();
+  rrect(c, m, m, w, w, r); c.lineWidth = Math.max(1, s*.024); c.strokeStyle = strong ? 'rgba(255,240,190,.95)' : 'rgba(255,255,255,.58)'; c.stroke();
+  c.beginPath(); c.arc(m + w*.14, m + w*.13, w*.04, 0, 6.2832); c.fillStyle = 'rgba(255,255,255,.55)'; c.fill();
+}
+/* the product, scaled once in halving steps with its shadow baked in */
+function packSprite(p, box, s){
+  if (!p.ok) return null;
+  var key = p.s + '|' + Math.round(box) + '|' + dpr, sp = sprites[key]; if (sp) return sp;
+  var im = p.img, k = Math.min(box / im.naturalWidth, box / im.naturalHeight);
+  var w = Math.max(1, Math.round(im.naturalWidth * k * dpr)), h = Math.max(1, Math.round(im.naturalHeight * k * dpr));
+  var src = im, sw = im.naturalWidth, sh = im.naturalHeight;
+  while (sw / 2 > w) { var half = document.createElement('canvas'); sw = Math.ceil(sw/2); sh = Math.ceil(sh/2); half.width = sw; half.height = sh;
+    var hc = half.getContext('2d'); hc.imageSmoothingQuality = 'high'; hc.drawImage(src, 0, 0, sw, sh); src = half; }
+  var blur = Math.max(2, Math.round(s*.1*dpr)), pad = Math.ceil(blur*1.6);
+  var out = document.createElement('canvas'); out.width = w + 2*pad; out.height = h + 2*pad;
+  var oc = out.getContext('2d'); oc.imageSmoothingQuality = 'high';
+  oc.shadowColor = 'rgba(0,10,30,.55)'; oc.shadowBlur = blur; oc.shadowOffsetY = Math.round(s*.03*dpr);
+  oc.drawImage(src, pad, pad, w, h);
+  sp = {cv:out, tw:(w + 2*pad)/dpr, th:(h + 2*pad)/dpr}; sprites[key] = sp; return sp;
+}
+function star(c, cx, cy, r){
+  c.save(); c.translate(cx, cy); c.beginPath();
+  for (var i=0;i<10;i++){ var a = -Math.PI/2 + i*Math.PI/5, rad = i%2 ? r*.46 : r; c.lineTo(Math.cos(a)*rad, Math.sin(a)*rad); }
+  c.closePath(); c.fillStyle = '#fff4c2'; c.strokeStyle = '#d98a00'; c.lineWidth = Math.max(1, r*.2); c.stroke(); c.fill(); c.restore();
 }
 
-function cardBack(){
-  if (backCv) return backCv;
-  var s = Math.round(cell), n = Math.max(2, Math.round(s*dpr));
-  var c = document.createElement('canvas'); c.width = c.height = n;
-  var x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
-  var m = s*.05, w = s - m*2;
-  x.save();
-  x.beginPath(); roundRect(x, m, m, w, w, s*.14); x.closePath(); x.clip();
-  var grd = x.createLinearGradient(m, m, m + w, m + w);
-  grd.addColorStop(0, '#12457a'); grd.addColorStop(.55, '#0c2d54'); grd.addColorStop(1, '#08203c');
-  x.fillStyle = grd; x.fillRect(m, m, w, w);
-  /* the print pattern: a faint diagonal weave, so a face-down grid is not flat */
-  x.strokeStyle = 'rgba(150,215,255,.10)'; x.lineWidth = 1;
-  for (var i = -w; i < w; i += Math.max(7, s*.10)){
-    x.beginPath(); x.moveTo(m+i, m); x.lineTo(m+i+w, m+w); x.stroke();
+/* the back of a block: dark glass with the print on it */
+function backSprite(){
+  var px = Math.round(cell*dpr), key = 'back|' + px, hit = sprites[key]; if (hit) return hit;
+  var cvs = document.createElement('canvas'); cvs.width = cvs.height = px;
+  var c = cvs.getContext('2d'); c.setTransform(px/cell, 0, 0, px/cell, 0, 0); var s = cell, m = s*.045, w = s - 2*m;
+  rrect(c, m, m, w, w, s*.15);
+  var gr = c.createLinearGradient(m, m, m + w, m + w); gr.addColorStop(0,'#1a5a9a'); gr.addColorStop(.55,'#0d3560'); gr.addColorStop(1,'#08213f');
+  c.fillStyle = gr; c.fill();
+  c.save(); rrect(c, m, m, w, w, s*.15); c.clip();
+  c.strokeStyle = 'rgba(150,215,255,.12)'; c.lineWidth = Math.max(1, s*.012);
+  for (var i = -w; i < w; i += s*.1) { c.beginPath(); c.moveTo(m+i, m); c.lineTo(m+i+w, m+w); c.stroke(); }
+  var gl = c.createLinearGradient(0, m, 0, m + s*.5); gl.addColorStop(0,'rgba(255,255,255,.2)'); gl.addColorStop(1,'rgba(255,255,255,0)'); c.fillStyle = gl; c.fillRect(m, m, w, s*.5);
+  c.restore();
+  c.beginPath(); c.arc(s/2, s/2, w*.22, 0, 6.2832); c.lineWidth = Math.max(1.5, s*.02); c.strokeStyle = 'rgba(127,213,255,.5)'; c.stroke();
+  c.fillStyle = 'rgba(190,232,255,.9)'; c.font = '700 ' + Math.round(w*.3) + 'px Fraunces, Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('F', s/2, s/2 + w*.02);
+  rrect(c, m, m, w, w, s*.15); c.lineWidth = Math.max(1.5, s*.026); c.strokeStyle = 'rgba(160,215,255,.5)'; c.stroke();
+  sprites[key] = cvs; return cvs;
+}
+/* fit words to the block: the biggest size that wraps to three lines inside it */
+function fitText(c, text, maxW, maxFs, minFs){
+  var fs = maxFs, lines = [];
+  for (; fs >= minFs; fs -= 1){
+    c.font = '700 ' + fs + 'px Inter, system-ui, sans-serif'; lines = []; var cur = '';
+    String(text).split(' ').forEach(function(wd){ var t = cur ? cur + ' ' + wd : wd; if (c.measureText(t).width > maxW && cur) { lines.push(cur); cur = wd; } else cur = t; });
+    if (cur) lines.push(cur);
+    var widest = 0; lines.forEach(function(ln){ widest = Math.max(widest, c.measureText(ln).width); });
+    if (lines.length <= 3 && widest <= maxW) break;
   }
-  x.beginPath(); x.arc(s/2, s/2, w*.22, 0, 7);
-  x.strokeStyle = 'rgba(127,213,255,.45)'; x.lineWidth = Math.max(1.5, s*.018); x.stroke();
-  x.beginPath(); x.arc(s/2, s/2, w*.07, 0, 7);
-  x.fillStyle = 'rgba(127,213,255,.55)'; x.fill();
-  x.restore();
-  x.beginPath(); roundRect(x, m, m, w, w, s*.14);
-  x.strokeStyle = 'rgba(160,215,255,.35)'; x.lineWidth = 1.5; x.stroke();
-  backCv = c; return c;
+  return {fs:fs, lines:lines.slice(0, 3)};
 }
-
-/* face = {img: index} for a pack, or {title, small} for a question/answer card */
-function cardFace(face, tint){
-  var key = (face.img != null ? 'i' + face.img : 't:' + face.title + '|' + (face.small || '')) + '|' + tint + '|' + Math.round(cell*dpr);
-  var hit = faceCache[key]; if (hit) return hit;
-  var s = Math.round(cell), n = Math.max(2, Math.round(s*dpr));
-  var c = document.createElement('canvas'); c.width = c.height = n;
-  var x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
-  var m = s*.05, w = s - m*2;
-  x.save();
-  x.beginPath(); roundRect(x, m, m, w, w, s*.14); x.closePath(); x.clip();
-  var grd = x.createLinearGradient(m, m, m, m+w);
-  grd.addColorStop(0, 'rgba(255,255,255,.20)'); grd.addColorStop(1, 'rgba(255,255,255,.05)');
-  x.fillStyle = grd; x.fillRect(m, m, w, w);
-  x.fillStyle = 'rgba(255,255,255,.05)'; x.fillRect(m, m, w, w);
-
-  if (face.img != null){
-    var p = RANGE[face.img];
-    if (p.ok && p.img.naturalWidth){
-      var iw = p.img.naturalWidth, ih = p.img.naturalHeight;
-      var box = w*.74, k = Math.min(box/iw, box/ih), dw = iw*k, dh = ih*k;
-      x.save();
-      x.shadowColor = 'rgba(0,8,24,.45)'; x.shadowBlur = s*.09; x.shadowOffsetY = s*.03;
-      x.drawImage(p.img, m + (w-dw)/2, m + (w-dh)/2, dw, dh);
-      x.restore();
-    } else {
-      x.beginPath(); x.arc(s/2, s/2, w*.28, 0, 7); x.fillStyle = p.c; x.fill();
-    }
+/* a face: a pack in glass, or a question or answer in glass */
+function faceSprite(face, gold){
+  var px = Math.round(cell*dpr), key = 'f|' + (face.role === 'img' ? 'i' + face.i : face.role + face.i) + '|' + (gold ? 'g' : '') + '|' + px + '|' + (RANGE[face.i].ok ? 1 : 0);
+  var hit = sprites[key]; if (hit) return hit;
+  var cvs = document.createElement('canvas'); cvs.width = cvs.height = px;
+  var c = cvs.getContext('2d'); c.setTransform(px/cell, 0, 0, px/cell, 0, 0); var s = cell, m = s*.045, w = s - 2*m, p = RANGE[face.i];
+  if (face.role === 'img'){
+    paintBlock(c, s, gold ? GOLD : p.c, gold);
+    var ps = packSprite(p, s*.76, s); if (ps) c.drawImage(ps.cv, (s - ps.tw)/2, (s - ps.th)/2 + s*.01, ps.tw, ps.th);
+    if (gold) star(c, s*.8, s*.2, s*.1);
   } else {
-    /* a question/answer card: the words are the face, so they get the whole card */
     var isQ = face.role === 'q';
-    x.fillStyle = isQ ? 'rgba(18,52,92,.55)' : 'rgba(255,201,74,.14)';
-    x.fillRect(m, m, w, w);
-    x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.fillStyle = isQ ? '#a9e2ff' : GOLD;
-    x.font = '700 ' + Math.round(w*.075) + 'px Inter, system-ui, sans-serif';
-    x.fillText(isQ ? 'QUESTION' : 'ANSWER', s/2, m + w*.17);
-    x.fillStyle = '#eef8ff';
-    /* Fit the words to the card instead of guessing a size from their length:
-       "Niacinamide + TXA" is short but wide, and at a 90px cell the guess ran
-       straight off the side. Try sizes from large down, keep the first that
-       wraps to at most three lines inside the card, and fall back to the
-       smallest rather than clipping. */
-    var inner = w*.84, fs = Math.round(w*.150), lines = [], lh;
-    for (; fs >= Math.round(w*.075); fs -= 1){
-      x.font = '700 ' + fs + 'px Inter, system-ui, sans-serif';
-      lines = []; var cur = '';
-      String(face.title).split(' ').forEach(function(wd){
-        var test = cur ? cur + ' ' + wd : wd;
-        if (x.measureText(test).width > inner && cur){ lines.push(cur); cur = wd; }
-        else cur = test;
-      });
-      if (cur) lines.push(cur);
-      var widest = 0;
-      lines.forEach(function(ln){ widest = Math.max(widest, x.measureText(ln).width); });
-      if (lines.length <= 3 && widest <= inner) break;
-    }
-    if (lines.length > 3){ lines = lines.slice(0, 3); }
-    lh = fs*1.14;
-    var y0 = s/2 - (lines.length-1)*lh/2;
-    lines.forEach(function(ln, i){ x.fillText(ln, s/2, y0 + i*lh); });
-    if (face.small){
-      x.fillStyle = 'rgba(156,192,216,.95)';
-      x.font = '600 ' + Math.round(w*.062) + 'px Inter, system-ui, sans-serif';
-      x.fillText(face.small, s/2, m + w*.86);
-    }
+    paintBlock(c, s, isQ ? '#3F8DE0' : GOLD, !isQ);
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = isQ ? '#dff1ff' : '#3a2600'; c.font = '700 ' + Math.round(w*.075) + 'px Inter, system-ui, sans-serif';
+    c.fillText(isQ ? 'QUESTION' : 'ANSWER', s/2, m + w*.15);
+    var title = isQ ? p.key : p.n, y0, ft = fitText(c, title, w*.8, Math.round(w*.15), Math.round(w*.07));
+    var lh = ft.fs*1.14; c.fillStyle = isQ ? '#ffffff' : '#2a1b00'; c.font = '700 ' + ft.fs + 'px Inter, system-ui, sans-serif';
+    if (isQ){ y0 = s/2 + w*.03 - (ft.lines.length-1)*lh/2; ft.lines.forEach(function(ln, i){ c.fillText(ln, s/2, y0 + i*lh); });
+      c.fillStyle = 'rgba(223,241,255,.85)'; c.font = '600 ' + Math.round(w*.066) + 'px Inter, system-ui, sans-serif'; c.fillText('which pack?', s/2, m + w*.87); }
+    else { var ps2 = packSprite(p, s*.34, s); if (ps2) c.drawImage(ps2.cv, (s - ps2.tw)/2, m + w*.2, ps2.tw, ps2.th);
+      y0 = s*.7 - (ft.lines.length-1)*lh/2; ft.lines.forEach(function(ln, i){ c.fillText(ln, s/2, y0 + i*lh); }); }
   }
-  x.restore();
-  x.beginPath(); roundRect(x, m, m, w, w, s*.14);
-  x.strokeStyle = 'rgba(160,215,255,.42)'; x.lineWidth = 1.5; x.stroke();
-  faceCache[key] = c; return c;
+  sprites[key] = cvs; return cvs;
+}
+function warmSoon(){ clearTimeout(warmT); warmT = setTimeout(warmStart, 60); }
+function warmStart(){
+  warmQ = [function(){ backSprite(); }];
+  RANGE.forEach(function(p, i){ warmQ.push(function(){ faceSprite({role:'img', i:i}, false); }); });
+  (function pump(){ var t0 = performance.now(); while (warmQ.length && performance.now() - t0 < 5) warmQ.shift()(); if (warmQ.length) warmT = setTimeout(pump, 8); })();
 }
 
 /* ── a round ─────────────────────────────────────────────────────────── */
-function pairCount(){ return (COLS*ROWS)/2; }
-
-/* eight items, each used once: either a pack index or a question/answer pair */
-function deckFor(roundKind){
-  if (roundKind === 'packs'){
-    var idx = RANGE.map(function(_, i){ return i; });
-    for (var i=idx.length-1;i>0;i--){ var j=(Math.random()*(i+1))|0; var t=idx[i]; idx[i]=idx[j]; idx[j]=t; }
-    return idx.slice(0, pairCount()).map(function(pi){
-      return [{img:pi, role:'img'}, {img:pi, role:'img'}];
-    });
-  }
-  /* recall: question card + its answer, both from our own catalogue. The pairing
-     is the product name and the ingredient line printed on it — a fact about the
-     pack, not a claim about what it does. */
-  var pool = RANGE.map(function(_, i){ return i; });
-  for (var k=pool.length-1;k>0;k--){ var q=(Math.random()*(k+1))|0; var tmp=pool[k]; pool[k]=pool[q]; pool[q]=tmp; }
-  return pool.slice(0, pairCount()).map(function(pi){
-    var p = RANGE[pi];
-    return [{img:null, role:'q', title:p.key, small:'which pack?'},
-            {img:null, role:'a', title:p.n, small:p.key}];
-  });
-}
-
-function slotXY(i){
-  var c = i % COLS, r = Math.floor(i / COLS);
-  return { x: c*cell, y: r*cell };
-}
-
-function layout(reset){
-  cards.forEach(function(cd, i){
-    var p = slotXY(cd.slot);
-    if (reset){ cd.x = p.x; cd.y = p.y; }
-    cd.tx = p.x; cd.ty = p.y;
-  });
-}
+function shuffled(a){ a = a.slice(); for (var i=a.length-1;i>0;i--){ var j = (Math.random()*(i+1))|0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function slotXY(i){ return {x:(i % COLS)*cell, y:Math.floor(i / COLS)*cell}; }
+function layout(snap){ cards.forEach(function(cd){ var p = slotXY(cd.slot); cd.tx = p.x; cd.ty = p.y; if (snap) { cd.x = p.x; cd.y = p.y; cd.vx = cd.vy = 0; } }); }
 
 function buildRound(){
   kind = (level >= 2 && level % 2 === 0) ? 'recall' : 'packs';
-  var deck = deckFor(kind);
+  var idx = shuffled(RANGE.map(function(_, i){ return i; })).slice(0, pairsTotal), n = 0;
+  var slots = shuffled(Array.apply(null, Array(COLS*ROWS)).map(function(_, i){ return i; }));
+  var goldPair = kind === 'packs' ? (Math.random()*idx.length)|0 : -1;
   cards = [];
-  var slots = [];
-  for (var i=0;i<COLS*ROWS;i++) slots.push(i);
-  for (var s=slots.length-1;s>0;s--){ var j=(Math.random()*(s+1))|0; var t=slots[s]; slots[s]=slots[j]; slots[j]=t; }
-  var n = 0;
-  deck.forEach(function(pair){
-    pair.forEach(function(face){
-      var slot = slots[n++];
-      var p = slotXY(slot);
-      cards.push({pair: cards.length >> 1, kind: kind, face: face, up: true, matched: false,
-                  slot: slot, x: p.x, y: p.y, tx: p.x, ty: p.y, flip: 1, sc: 1, a: 1});
+  idx.forEach(function(pi, pn){
+    var faces = kind === 'packs' ? [{role:'img', i:pi}, {role:'img', i:pi}] : [{role:'q', i:pi}, {role:'a', i:pi}];
+    faces.forEach(function(face){
+      cards.push({pair:pn, face:face, up:true, matched:false, slot:slots[n++], x:0, y:0, tx:0, ty:0, vx:0, vy:0, flip:1, sc:1, a:1, gold:pn === goldPair, ph:Math.random()*6.28});
     });
   });
-  pairsTotal = pairCount();
-  firstPick = null; secondPick = null;
-  /* the faster-every-level part: fewer milliseconds face up, and a tighter
-     shuffle in a recall round */
-  previewMs = Math.max(700, 2200 - (level-1) * 220);
-  shuffleMs = kind === 'recall' ? Math.max(2200, 5000 - (level-2) * 500) : 0;
-  shuffleT = 0; previewT = 0;
-  state = 'preview';
-  hud();
-  kick();
+  layout(true);
+  cards.forEach(function(cd, i){ cd.x = (COLS-1)*cell/2; cd.y = (ROWS-1)*cell/2; cd.sc = .3; cd.a = 0; });   /* dealt out from the middle */
+  found = 0; streak = 0; first = second = null; tries = triesMax = triesFor(level);
+  previewMs = previewFor(level); shuffleMs = shuffleFor(level);
+  previewT = -.5; scatterT = 0; state = 'preview'; kb = 0;
+  floats.push({t:0, x:W/2, y:H*.46, txt:'Level ' + level + (kind === 'recall' ? ' · recall' : ''), big:true, c:'#ffffff'});
+  if (kind === 'recall') floats.push({t:0, x:W/2, y:H*.46 + cell*.7, txt:'questions and answers pair up', c:'#cfe8ff', big:false});
+  lastHud = ''; hud(); kick();
 }
-
 function startGame(m){
   mode = m === 'gift' ? 'gift' : 'play';
   need = mode === 'gift' ? (giftNeed || 0) : 0;
-  level = 1; score = 0; shown = 0; pairsMade = 0; streak = 0;
-  goal = mode === 'play' ? targetFor(1) : need;
-  particles = []; floats = []; shake = 0;
-  elScore.textContent = '0'; lastScoreText = '';
-  $('start').classList.add('hidden'); $('paused').classList.add('hidden'); $('result').className = 'screen hidden';
-  modeTag.hidden = false;
-  modeTag.textContent = mode === 'gift' ? '🎁 Redeem gift' : 'Normal play';
-  modeTag.className = 'tag' + (mode === 'gift' ? ' gift' : '');
-  giftBox.hidden = mode !== 'gift';
-  if (mode === 'gift'){ giftNeedTxt.textContent = fmt(need); giftBar.style.transform = 'scaleX(0)'; }
-  lastHud = ''; hud();
+  level = 1; score = 0; shown = 0; pairsMade = 0; parts = []; floats = []; shake = 0;
+  elScore.textContent = '0'; lastScoreText = '0';
+  ['start','paused'].forEach(function(id){ $(id).classList.add('hidden'); }); $('result').className = 'screen hidden';
+  modeTag.hidden = false; modeTag.textContent = mode === 'gift' ? '🎁 Redeem gift' : 'Normal play'; modeTag.className = 'tag' + (mode === 'gift' ? ' gift' : '');
+  giftBox.hidden = mode !== 'gift'; if (mode === 'gift') { giftNeedTxt.textContent = fmt(need); giftBar.style.transform = 'scaleX(0)'; }
   buildRound();
   try { cv.focus({preventScroll:true}); } catch (e) {}
 }
-function targetFor(lv){ return 1400 + (lv-1) * 900; }
-
 function toMenu(){
-  state = 'idle'; cards = [];
+  state = 'idle'; first = second = null;
   $('result').className = 'screen hidden'; $('paused').classList.add('hidden'); $('start').classList.remove('hidden');
-  modeTag.hidden = true; giftBox.hidden = true; refreshGift(false);
-  hud(); render(); kick();
+  modeTag.hidden = true; giftBox.hidden = true; refreshGift(false); kick();
 }
-
+/* every point goes through here, so the gift line is checked the moment it is crossed */
 function addScore(n){
   if (state === 'won' || state === 'over') return;
   score += n;
   if (mode === 'gift' && need > 0 && score >= need) win();
 }
-
 function win(){
-  state = 'won';
-  confetti(); shake = Math.max(shake, .9); buzz([60,40,60,60,140]);
+  state = 'won'; first = second = null;
+  confetti(); shake = Math.max(shake, .9); buzz([60,40,60,40,140]);
   floats.push({t:0, x:W/2, y:H*.34, txt:'🎁 WINNER!', big:true, c:'#ffe08a'});
   finish('win');
 }
-
-function finish(kindOfEnd){
+function finish(why){
   if (state !== 'won') state = 'over';
-  firstPick = secondPick = null;
-  var fresh = score > best; if (fresh){ best = score; saveBest(); }
-  $('rScore').textContent = String(score);
-  $('rPairs').textContent = pairsMade; $('rLevel').textContent = level;
-  $('rBest').textContent = fmt(best); $('rBest').className = fresh ? 'new' : '';
+  first = second = null;
+  var fresh = score > best; if (fresh) { best = score; saveBest(); }
+  $('rScore').textContent = String(score);                       /* set before the screen shows: the booth ranking reads it on that edge */
+  $('rPairs').textContent = pairsMade; $('rLevel').textContent = level; $('rBest').textContent = fmt(best); $('rBest').className = fresh ? 'new' : '';
   var head = fresh && score > 0 ? 'New personal best' : 'Routine complete', sub = '';
-  if (kindOfEnd === 'win'){ head = 'Gift unlocked'; sub = 'You reached ' + fmt(need) + ' points. Your gift is ready — claim it below.'; }
-  else if (mode === 'gift' && need){ head = 'So close!'; sub = fmt(Math.max(0, need - score)) + ' more points for the gift. Go again!'; }
+  if (why === 'win') { head = 'Gift unlocked'; sub = 'You reached ' + fmt(need) + ' points. Your gift is ready — claim it below.'; }
+  else if (mode === 'gift' && need) { head = 'So close!'; sub = fmt(Math.max(0, need - score)) + ' more points for the gift. Go again!'; }
+  else if (why === 'out') sub = 'Out of tries on level ' + level + ' with ' + (pairsTotal - found) + ' pairs still to find.';
   $('rHead').textContent = head; $('rSub').textContent = sub; $('rSub').style.display = sub ? '' : 'none';
-  elScore.textContent = fmt(score); shown = score;
+  elScore.textContent = fmt(score); lastScoreText = elScore.textContent; shown = score;
   if (mode === 'gift' && need) giftBar.style.transform = 'scaleX(' + Math.min(1, score/need) + ')';
   hud();
+  if (why === 'out') cards.forEach(function(cd){ if (!cd.matched) cd.up = true; });          /* show what was missed */
   setTimeout(function(){
     if (state !== 'won' && state !== 'over') return;
-    $('result').className = 'screen' + (kindOfEnd === 'win' ? ' win' : '');
+    $('result').className = 'screen' + (why === 'win' ? ' win' : '');         /* one change, so the ranking and the gift see the screen once */
     try { $('again').focus({preventScroll:true}); } catch (e) {}
-  }, RM ? 0 : (kindOfEnd === 'win' ? 1100 : 560));
-  if (kindOfEnd !== 'win') buzz([30, 40, 30]);
+  }, RM ? 0 : (why === 'win' ? 1100 : 1300));
+  if (why !== 'win') buzz([30, 40, 30]);
   kick();
 }
-
 function hud(){
-  var s = level + '|' + pairsMade + '|' + Math.max(best, score) + '|' + goal + '|' + kind;
-  elToGo.textContent = fmt(Math.max(0, goal - score));
-  elRound.textContent = kind === 'recall' ? 'Recall' : 'Packs';
-  elStreak.textContent = '×' + Math.max(1, Math.min(6, streak || 1));
-  if (s === lastHud) return;
-  lastHud = s;
-  elLevel.textContent = level; elPairs.textContent = pairsMade;
-  elBest.textContent = fmt(Math.max(best, score)); elGoal.textContent = fmt(goal);
-  lvlBar.style.transform = 'scaleX(' + Math.max(0, Math.min(1, score / Math.max(1, goal))) + ')';
+  var s = level + '|' + tries + '|' + found + '|' + Math.max(best, score) + '|' + kind + '|' + Math.min(6, streak);
+  if (s === lastHud) return; lastHud = s;
+  elLevel.textContent = level; elTries.textContent = tries; elBest.textContent = fmt(Math.max(best, score));
+  elPairs.textContent = found + '/' + pairsTotal; elRound.textContent = kind === 'recall' ? 'Recall' : 'Packs'; elStreak.textContent = '×' + Math.max(1, Math.min(6, streak || 1));
+  lvlBar.style.transform = 'scaleX(' + (found / pairsTotal) + ')';
+  elTries.classList.toggle('low', state !== 'idle' && tries <= 2);
 }
 
 /* ── play ────────────────────────────────────────────────────────────── */
@@ -576,330 +613,284 @@ function tap(i){
   if (state !== 'play') return;
   var cd = cards[i];
   if (!cd || cd.matched || cd.up) return;
-  cd.up = true; cd.flip = 0; buzz(6); kick();
-  /* must test against null, not falsiness: index 0 is a real card, and
-     `!firstPick` silently rejected it, so card 0 could never open a pair */
-  if (firstPick === null){ firstPick = i; return; }
-  secondPick = i;
-  var a = cards[firstPick], b = cards[secondPick];
+  cd.up = true; buzz(6); kbOn = false;
+  /* test against null, not falsiness: card 0 is a real card, and `!first` rejected it */
+  if (first === null) { first = i; kick(); return; }
+  second = i;
+  var a = cards[first], b = cards[second];
   if (a.pair === b.pair){
-    /* a pair: hold both open, score, and let the streak build */
-    streak = Math.min(6, streak + 1);
-    var pts = (120 + 40*streak) * level;
-    a.matched = b.matched = true;
-    pairsMade++;
-    floats.push({t:0, x:(a.x + b.x)/2 + cell/2, y:(a.y + b.y)/2 + cell/2, txt:'+' + fmt(pts),
-                 big: streak >= 3, c: streak >= 3 ? '#ffe08a' : '#eef8ff'});
-    burst(a.x + cell/2, a.y + cell/2, RANGE[a.face.img != null ? a.face.img : 3].c, 8, 1);
-    burst(b.x + cell/2, b.y + cell/2, GOLD, 8, 1);
-    shake = Math.max(shake, .2);
-    firstPick = null; secondPick = null;
-    addScore(pts);
+    streak = Math.min(6, streak + 1); found++; pairsMade++;
+    var pts = (120 + 40*streak) * level, gold = a.gold ? 500 * level : 0;
+    a.matched = b.matched = true; a.sc = b.sc = 1.18;
+    var mx = (a.tx + b.tx)/2 + cell/2, my = (a.ty + b.ty)/2 + cell/2;
+    floats.push({t:0, x:mx, y:my, txt:'+' + fmt(pts), big:streak >= 3, c:streak >= 3 ? '#ffe08a' : '#ffffff'});
+    if (gold) floats.push({t:0, x:mx, y:my + cell*.5, txt:'★ GOLD PAIR +' + fmt(gold), c:'#ffe08a', big:false});
+    if (streak >= 2) floats.push({t:0, x:W/2, y:H*.16, txt:'Streak ×' + streak, big:false, c:'#ffd98a'});
+    burst(a.tx + cell/2, a.ty + cell/2, a.gold ? GOLD : RANGE[a.face.i].c, 10, 1); burst(b.tx + cell/2, b.ty + cell/2, b.gold ? GOLD : RANGE[b.face.i].c, 10, 1);
+    shake = Math.max(shake, .2); buzz(14);
+    first = second = null;
+    addScore(pts + gold);
     if (state === 'won') return;
-    hud();
-    if (cards.every(function(c){ return c.matched; })) { state = 'busy'; revealBack = .5; kick(); }
-    else kick();
+    if (found >= pairsTotal){
+      var bonus = tries * 150 * level;
+      if (bonus) floats.push({t:0, x:W/2, y:H*.4, txt:'Tries left +' + fmt(bonus), big:true, c:'#ffe08a'});
+      addScore(bonus);
+      if (state === 'won') return;
+      state = 'clear'; clearT = RM ? .3 : 1.5; confetti(.4);
+    }
+    hud(); kick();
   } else {
-    /* no pair: both close again after a beat, and the streak resets */
-    streak = 0;
-    state = 'busy'; revealBack = RM ? .05 : Math.max(.28, .62 - level*.03); kick();
+    streak = 0; tries--; state = 'check'; checkT = RM ? .05 : Math.max(.45, .85 - level*.03);
+    floats.push({t:0, x:W/2, y:H*.08, txt:'Not a pair · −1 try', c:'#ffb199', big:false}); buzz([20,30]);
+    hud(); kick();
   }
 }
-
-function nextLevel(){
-  level++;
-  goal = mode === 'play' ? targetFor(level) : need;
-  floats.push({t:0, x:W/2, y:H*.4, txt:'Level ' + level + (level % 2 === 0 ? ' · recall' : ' · faster'), big:true});
-  buzz([20,20,20]);
-  buildRound();
+/* turn every closed block over for a moment; it costs a try, never the last one */
+function peek(){
+  if (state !== 'play') return;
+  if (tries <= 1) { floats.push({t:0, x:W/2, y:H*.08, txt:'Keep your last try', c:'#cfe8ff', big:false}); kick(); return; }
+  tries--; state = 'peek'; peekT = RM ? .25 : .95; hud();
+  cards.forEach(function(cd){ if (!cd.matched) cd.up = true; });
+  floats.push({t:0, x:W/2, y:H*.08, txt:'Peek · −1 try', c:'#cfe8ff', big:false}); kick();
 }
-
-/* the solitaire scatter: unmatched cards trade slots, so the grid you memorised
-   is not the grid you are looking at */
 function scatter(){
-  var free = [];
-  cards.forEach(function(cd, i){ if (!cd.matched) free.push(i); });
-  if (free.length < 2) return;
-  var slots = free.map(function(i){ return cards[i].slot; });
-  for (var i=slots.length-1;i>0;i--){ var j=(Math.random()*(i+1))|0; var t=slots[i]; slots[i]=slots[j]; slots[j]=t; }
+  var free = []; cards.forEach(function(cd, i){ if (!cd.matched) free.push(i); });
+  if (free.length < 3) return;
+  var slots = shuffled(free.map(function(i){ return cards[i].slot; }));
   free.forEach(function(ci, n){ cards[ci].slot = slots[n]; });
-  layout(false);
-  floats.push({t:0, x:W/2, y:H*.06, txt:'the cards move', c:'#ffd98a'});
-  kick();
+  layout(false); floats.push({t:0, x:W/2, y:H*.08, txt:'the cards move', c:'#ffd98a', big:false}); kick();
 }
+function nextLevel(){ level++; buildRound(); }
 
 /* ── input ───────────────────────────────────────────────────────────── */
-function indexAt(clientX, clientY){
-  var r = cv.getBoundingClientRect();
-  var c = Math.floor((clientX - r.left) / (r.width / COLS));
-  var rr = Math.floor((clientY - r.top) / (r.height / ROWS));
-  if (c < 0 || c >= COLS || rr < 0 || rr >= ROWS) return -1;
-  var target = { x: c*cell, y: rr*cell };
-  /* the grid moved under the finger in a recall round, so hit-test the cards at
-     their CURRENT place, not the slot index */
-  var best = -1, bestD = Infinity;
+/* a block is hit where it is drawn now: in a recall round the grid moves under a finger */
+function hitAt(x, y){
+  var r = cv.getBoundingClientRect(), px = (x - r.left) * (W / r.width), py = (y - r.top) * (H / r.height), bi = -1, bd = Infinity;
   cards.forEach(function(cd, i){
-    var dx = Math.abs(cd.x - target.x) + Math.abs(cd.y - target.y);
-    if (dx < bestD){ bestD = dx; best = i; }
+    var inside = px >= cd.x && px <= cd.x + cell && py >= cd.y && py <= cd.y + cell;
+    if (inside) { var d = Math.abs(px - cd.x - cell/2) + Math.abs(py - cd.y - cell/2); if (d < bd) { bd = d; bi = i; } }
   });
-  return bestD <= cell*.75 ? best : -1;
+  return bi;
 }
-
 cv.addEventListener('pointerdown', function(e){
   if (e.button != null && e.button > 0) return;
-  if (state === 'pause' || state === 'idle' || state === 'over' || state === 'won' || state === 'preview') return;
+  if (state !== 'play') return;
   e.preventDefault();
-  var i = indexAt(e.clientX, e.clientY);
-  if (i >= 0) tap(i);
+  var i = hitAt(e.clientX, e.clientY); if (i >= 0) tap(i);
 }, {passive:false});
-
-document.addEventListener('keydown', function(e){
-  var k = e.key.toLowerCase();
-  if (k === 'p' || k === 'escape'){ togglePause(); e.preventDefault(); }
+cv.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+addEventListener('keydown', function(e){
+  if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+  var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (k === 'p' || k === 'Escape') { e.preventDefault(); togglePause(); return; }
+  if (e.target && e.target.tagName === 'BUTTON' && (k === ' ' || k === 'Enter')) return;
+  if (state !== 'play') return;
+  if (k === 'h') { e.preventDefault(); peek(); return; }
+  var d = {ArrowLeft:[0,-1], ArrowRight:[0,1], ArrowUp:[-1,0], ArrowDown:[1,0]}[k];
+  if (d){ e.preventDefault(); kbOn = true; var r = Math.floor(kb / COLS) + d[0], c = kb % COLS + d[1];
+    r = Math.max(0, Math.min(ROWS-1, r)); c = Math.max(0, Math.min(COLS-1, c)); kb = r*COLS + c; kick(); return; }
+  if (k === ' ' || k === 'Enter') { e.preventDefault(); kbOn = true;
+    var at = -1; cards.forEach(function(cd, i){ if (cd.slot === kb) at = i; }); if (at >= 0) tap(at); }
 });
 function togglePause(){
-  if (state === 'play' || state === 'busy' || state === 'preview'){ state = 'pause'; $('paused').classList.remove('hidden'); kick(); }
-  else if (state === 'pause'){ $('paused').classList.add('hidden'); state = 'play'; kick(); }
+  if (state === 'play' || state === 'preview' || state === 'check' || state === 'peek' || state === 'clear') { pausedFrom = state; state = 'pause'; $('paused').classList.remove('hidden'); try { $('resume').focus({preventScroll:true}); } catch (e) {} }
+  else if (state === 'pause') { state = pausedFrom; $('paused').classList.add('hidden'); kick(); }
 }
 function buzz(p){ try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+[].forEach.call(document.querySelectorAll('[data-a]'), function(b){ b.addEventListener('click', function(){ if (b.dataset.a === 'peek') peek(); else if (b.dataset.a === 'pause') togglePause(); }); });
+$('goPlay').addEventListener('click', function(){ startGame('play'); });
+$('goGift').addEventListener('click', function(){ if (giftState === 'ready' && giftNeed) startGame('gift'); else if (giftState !== 'off' && giftState !== 'unset') refreshGift(true); });
+$('again').addEventListener('click', function(){ startGame(mode === 'gift' && giftState === 'ready' && giftNeed ? 'gift' : 'play'); });
+$('menu').addEventListener('click', toMenu); $('menu2').addEventListener('click', toMenu);
+$('resume').addEventListener('click', togglePause); $('pauseBtn').addEventListener('click', togglePause);
+document.addEventListener('visibilitychange', function(){ if (document.hidden && (state === 'play' || state === 'preview')) togglePause(); });
+
+/* ── effects ─────────────────────────────────────────────────────────── */
+function burst(x, y, color, n, power){
+  if (RM || parts.length > (COARSE ? 140 : 260)) return;
+  for (var i=0;i<n;i++){ var a = Math.random()*6.2832, s = (50 + Math.random()*150)*power*cell/96;
+    parts.push({x:x, y:y, vx:Math.cos(a)*s, vy:Math.sin(a)*s - 60*power*cell/96, life:0, max:.5+Math.random()*.45, r:(1.4+Math.random()*2.4)*cell/96, c:color, g:1}); }
+}
+function confetti(amount){
+  if (RM) return;
+  var cols = ['#ffd24a','#ff7a59','#5ad2f4','#7be08a','#ffffff','#e98cff'], n = Math.round((COARSE ? 70 : 130) * (amount || 1));
+  for (var i=0;i<n;i++) parts.push({x:Math.random()*W, y:-Math.random()*H*.3, vx:(Math.random()-.5)*160*cell/96, vy:(60+Math.random()*180)*cell/96, life:0, max:1.6+Math.random()*1.6, r:(2+Math.random()*3)*cell/96, c:cols[i%cols.length], sq:true, rot:Math.random()*6, vr:(Math.random()-.5)*12, g:.5});
+}
 
 /* ── the loop ────────────────────────────────────────────────────────── */
-function kick(){ if (!raf){ lastFrame = 0; raf = requestAnimationFrame(frame); } }
+function kick(){ if (!raf) { last = 0; raf = requestAnimationFrame(frame); } }
 function frame(t){
-  raf = 0;
-  var dt = lastFrame ? Math.min(.05, (t - lastFrame)/1000) : 1/60;
-  lastFrame = t;
-  update(dt); render();
-  if (moving()) raf = requestAnimationFrame(frame);
+  raf = 0; nowT = t;
+  var dt = last ? Math.min(.05, (t - last)/1000) : 1/60; last = t;
+  update(dt);
+  var mv = moving();
+  if (mv || t - lastDraw >= 48) { render(); lastDraw = t; }
+  if (mv || timing()) raf = requestAnimationFrame(frame);
 }
-/* anything still in motion? a settled grid parks the loop entirely */
+/* a clock is running (the preview, a recall round's slide timer): keep counting, at a gentle rate */
+function timing(){ return state === 'preview' || state === 'check' || state === 'peek' || state === 'clear' || (state === 'play' && shuffleMs > 0); }
 function moving(){
-  if (state === 'preview') return true;
-  if (state === 'busy' && revealBack > 0) return true;
-  if (particles.length || floats.length || shake > .01) return true;
-  if (Math.abs(shown - score) > .5) return true;
-  for (var i=0;i<cards.length;i++){
-    var cd = cards[i];
-    if (cd.flip !== 1) return true;
-    if (Math.abs(cd.x - cd.tx) > .4 || Math.abs(cd.y - cd.ty) > .4) return true;
-    if (cd.a !== 1) return true;
-  }
+  if (parts.length || floats.length || shake > .01 || Math.abs(shown - score) > .5) return true;
+  if (state === 'preview' || state === 'check' || state === 'peek' || state === 'clear') return true;
+  for (var i=0;i<cards.length;i++){ var cd = cards[i], tf = cd.up || cd.matched ? 1 : 0;
+    if (Math.abs(cd.flip - tf) > .004 || Math.abs(cd.x - cd.tx) > .004*cell || Math.abs(cd.y - cd.ty) > .004*cell || Math.abs(cd.vx) + Math.abs(cd.vy) > .05*cell || Math.abs(cd.sc - 1) > .004 || Math.abs(cd.a - 1) > .004) return true; }
   return false;
 }
-function ease(rate, dt){ return 1 - Math.exp(-rate*dt); }
-
+var ease = function(rate, dt){ return 1 - Math.exp(-rate*dt); };
 function update(dt){
-  /* preview: hold every card face up, then close them together */
+  nowT = nowT || performance.now();
+  /* every block is a spring on its place */
+  var steps = dt > .025 ? 2 : 1, h = dt/steps;
+  for (var s=0;s<steps;s++) cards.forEach(function(cd){
+    var K = 300, C = 26;
+    cd.vx += (K*(cd.tx - cd.x) - C*cd.vx)*h; cd.vy += (K*(cd.ty - cd.y) - C*cd.vy)*h;
+    cd.x += cd.vx*h; cd.y += cd.vy*h;
+  });
+  cards.forEach(function(cd){
+    var tf = cd.up || cd.matched ? 1 : 0; cd.flip += (tf - cd.flip) * ease(16, dt); if (Math.abs(tf - cd.flip) < .004) cd.flip = tf;
+    cd.sc += (1 - cd.sc) * ease(11, dt); cd.a += (1 - cd.a) * ease(14, dt);
+  });
   if (state === 'preview'){
     previewT += dt;
-    if (previewT >= previewMs/1000){
-      cards.forEach(function(cd){ cd.up = false; cd.flip = 0; });
-      state = 'play';
-      shuffleT = 0;
-      kick();
+    if (previewT >= previewMs/1000){ cards.forEach(function(cd){ cd.up = false; }); state = 'play'; scatterT = 0; hud(); }
+  } else if (state === 'play' && shuffleMs > 0){
+    scatterT += dt; if (scatterT >= shuffleMs/1000) { scatterT = 0; scatter(); }
+  } else if (state === 'check'){
+    checkT -= dt;
+    if (checkT <= 0){
+      [first, second].forEach(function(i){ if (i != null && cards[i] && !cards[i].matched) cards[i].up = false; });
+      first = second = null;
+      if (tries <= 0) finish('out');
+      else { state = 'play'; hud(); }
     }
+  } else if (state === 'peek'){
+    peekT -= dt;
+    if (peekT <= 0){ cards.forEach(function(cd, i){ if (!cd.matched && i !== first) cd.up = false; }); state = 'play'; hud(); }
+  } else if (state === 'clear'){
+    clearT -= dt; if (clearT <= 0) nextLevel();
   }
-  /* the recall scatter */
-  if (state === 'play' && shuffleMs > 0){
-    shuffleT += dt;
-    if (shuffleT >= shuffleMs/1000){
-      shuffleT = 0;
-      scatter();
-    }
-  }
-  /* a wrong pair closes again */
-  if (state === 'busy' && revealBack > 0){
-    revealBack -= dt;
-    if (revealBack <= 0){
-      revealBack = 0;
-      var done = cards.every(function(c){ return c.matched; });
-      if (done){ nextLevel(); }
-      else {
-        [firstPick, secondPick].forEach(function(i){ if (i != null && cards[i] && !cards[i].matched){ cards[i].up = false; cards[i].flip = 0; } });
-        firstPick = null; secondPick = null;
-        state = 'play';
-        kick();
-      }
-    }
-  }
-  /* flip easing: 0 = closed, 1 = open */
-  cards.forEach(function(cd){
-    var target = cd.up ? 1 : 0;
-    cd.flip += (target - cd.flip) * ease(22, dt);
-    if (Math.abs(target - cd.flip) < .01) cd.flip = target;
-    cd.x += (cd.tx - cd.x) * ease(16, dt);
-    cd.y += (cd.ty - cd.y) * ease(16, dt);
-    if (Math.abs(cd.tx - cd.x) < .4) cd.x = cd.tx;
-    if (Math.abs(cd.ty - cd.y) < .4) cd.y = cd.ty;
-  });
   if (shown !== score){
-    shown += (score - shown) * ease(9, dt);
-    if (Math.abs(score - shown) < .6) shown = score;
-    var printed = fmt(shown);
-    if (printed !== lastScoreText){ lastScoreText = printed; elScore.textContent = printed; }
+    shown += (score - shown) * ease(9, dt); if (Math.abs(score - shown) < .6) shown = score;
+    var printed = fmt(shown); if (printed !== lastScoreText) { lastScoreText = printed; elScore.textContent = printed; }
+    if (mode === 'gift' && need) giftBar.style.transform = 'scaleX(' + Math.min(1, shown/need) + ')';
+    if (score > best) hud();
   }
-  for (var i=particles.length-1;i>=0;i--){
-    var p = particles[i]; p.life += dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 900*dt;
-    if (p.life >= p.max) particles.splice(i,1);
-  }
-  for (var f=floats.length-1;f>=0;f--){ floats[f].t += dt; if (floats[f].t > 1.15) floats.splice(f,1); }
-  if (shake > .01) shake *= Math.pow(.0016, dt); else shake = 0;
+  for (var i=parts.length-1;i>=0;i--){ var p = parts[i]; p.life += dt; if (p.life >= p.max) { parts.splice(i,1); continue; }
+    p.vy += 900*dt*cell/96*(p.g == null ? 1 : p.g); p.x += p.vx*dt; p.y += p.vy*dt; if (p.sq) p.rot += p.vr*dt; }
+  for (var f=floats.length-1;f>=0;f--){ floats[f].t += dt; if (floats[f].t > 1.3) floats.splice(f,1); }
+  shake *= Math.exp(-dt*7); if (shake < .01) shake = 0;
+  if (shake && !RM) { var n = performance.now(), sh = shake * cell/96;
+    cab.style.transform = 'translate(calc(-50% + ' + ((Math.sin(n*.09)*3 + Math.sin(n*.23)*2)*sh).toFixed(2) + 'px),calc(-50% + ' + (Math.cos(n*.11)*3*sh).toFixed(2) + 'px))'; shaking = true; }
+  else if (shaking) { cab.style.transform = ''; shaking = false; }
 }
 
-function render(){
-  var sx = 0, sy = 0;
-  if (shake > .01){ sx = (Math.random()-.5) * shake * cell * .25; sy = (Math.random()-.5) * shake * cell * .25; }
-  g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.clearRect(0, 0, W, H);
-  g.save(); g.translate(sx, sy);
-
-  /* the shelf: one faint well per slot, drawn straight to the canvas — it is 16
-     rounded rects, not a bitmap, so it cannot go stale when the grid moves */
-  for (var s=0;s<COLS*ROWS;s++){
-    var p = slotXY(s);
-    g.beginPath(); roundRect(g, p.x + cell*.03, p.y + cell*.03, cell*.94, cell*.94, cell*.14);
-    g.fillStyle = (Math.floor(s/COLS) + s%COLS) % 2 ? 'rgba(255,255,255,.022)' : 'rgba(255,255,255,.04)';
-    g.fill();
-  }
-
-  var back = cardBack();
-  for (var i=0;i<cards.length;i++){
-    var cd = cards[i];
-    /* a flip is a horizontal squash through zero, which is what a turning card
-       looks like from the front */
-    var k = Math.cos(cd.flip * Math.PI);       /* 1 closed..-1 open */
-    var sxk = Math.abs(k);
-    var face = cd.flip > .5 ? cardFace(cd.face, cd.face.role) : back;
-    g.save();
-    g.globalAlpha = cd.a;
-    g.translate(cd.x + cell/2, cd.y + cell/2);
-    g.scale(Math.max(.02, sxk), 1);
-    if (cd.matched) g.globalAlpha = .55;
-    g.drawImage(face, -cell/2, -cell/2, cell, cell);
-    g.restore();
-    if (cd.matched){
-      g.beginPath(); roundRect(g, cd.x + cell*.05, cd.y + cell*.05, cell*.9, cell*.9, cell*.14);
-      g.strokeStyle = 'rgba(255,217,138,.85)'; g.lineWidth = 2.5; g.stroke();
-    }
-  }
-
-  particles.forEach(function(pt){
-    var kk = 1 - pt.life/pt.max;
-    g.globalAlpha = Math.max(0, kk); g.fillStyle = pt.c;
-    g.beginPath(); g.arc(pt.x, pt.y, pt.r*kk, 0, 7); g.fill();
-  });
-  g.globalAlpha = 1;
-  floats.forEach(function(f){
-    var kk = f.t/1.15, y = f.y - kk*cell*.8;
-    g.globalAlpha = Math.max(0, 1 - kk*kk);
-    g.font = '700 ' + Math.round((f.big ? cell*.40 : cell*.28)) + 'px Inter, system-ui, sans-serif';
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = f.c || '#eef8ff';
-    g.shadowColor = 'rgba(0,8,24,.85)'; g.shadowBlur = 10;
-    g.fillText(f.txt, f.x, y); g.shadowBlur = 0;
-  });
-  g.globalAlpha = 1;
-
-  /* the preview countdown: a bar across the top of the grid, so the player can
-     see how much longer they have */
-  if (state === 'preview'){
-    var left = Math.max(0, 1 - previewT/(previewMs/1000));
-    g.fillStyle = 'rgba(255,217,138,.85)';
-    g.fillRect(0, 0, W*left, Math.max(3, cell*.045));
-  }
-  if (state === 'pause'){ g.fillStyle = 'rgba(3,10,24,.55)'; g.fillRect(0, 0, W, H); }
+/* ── drawing ─────────────────────────────────────────────────────────── */
+function paintBg(){
+  var l = document.createElement('canvas'); l.width = cv.width; l.height = cv.height; var c = l.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+  for (var s=0;s<COLS*ROWS;s++){ var p = slotXY(s); rrect(c, p.x + cell*.04, p.y + cell*.04, cell*.92, cell*.92, cell*.17);
+    c.fillStyle = (Math.floor(s/COLS) + s%COLS) % 2 ? 'rgba(140,210,255,.05)' : 'rgba(140,210,255,.09)'; c.fill(); }
+  return l;
+}
+function drawCard(cd, i){
+  var k = Math.cos(cd.flip * Math.PI), open = cd.flip > .5, face = open ? faceSprite(cd.face, cd.gold) : backSprite();
+  var turn = Math.sin(cd.flip * Math.PI), sx = Math.max(.03, Math.abs(k)), sc = cd.sc * (1 + .12*turn);
+  var cx = cd.x + cell/2, cy = cd.y + cell/2;
+  g.save(); g.globalAlpha = Math.max(0, Math.min(1, cd.a));
+  if (turn > .02){ g.fillStyle = 'rgba(0,10,30,' + (.28*turn) + ')'; g.beginPath(); g.ellipse(cx, cy + cell*(.46 + .08*turn), cell*.4*sx*sc, cell*.07, 0, 0, 6.2832); g.fill(); }   /* the shadow it throws as it lifts */
+  g.translate(cx, cy); g.transform(1, turn*.1*(open ? -1 : 1), 0, 1, 0, 0);          /* a lean as it turns, none at rest */ g.scale(sx*sc, sc);
+  g.drawImage(face, -cell/2, -cell/2, cell, cell);
   g.restore();
-}
-
-function burst(x, y, color, n, power){
-  if (RM || particles.length > (COARSE ? 120 : 200)) return;
-  for (var i=0;i<n;i++){
-    var a = Math.random()*Math.PI*2, s2 = (50 + Math.random()*140)*power*cell/96;
-    particles.push({x:x, y:y, vx:Math.cos(a)*s2, vy:Math.sin(a)*s2 - 60*power*cell/96,
-                    life:0, max:.5+Math.random()*.45, r:(1.4+Math.random()*2.4)*cell/96, c:color});
+  if (cd.matched){
+    var pu = .5 + .5*Math.sin(nowT/1000*3.2 + cd.ph);
+    g.save(); g.globalAlpha = .55 + .35*pu; rrect(g, cd.x + cell*.035, cd.y + cell*.035, cell*.93, cell*.93, cell*.17); g.lineWidth = Math.max(2, cell*.035); g.strokeStyle = '#ffd98a'; g.stroke(); g.restore();
   }
 }
-function confetti(){
-  if (RM) return;
-  var cols = ['#ffd24a','#ff7a59','#5ad2f4','#7be08a','#ffffff','#e98cff'];
-  for (var i=0;i<(COARSE ? 60 : 120);i++){
-    particles.push({x:Math.random()*W, y:-Math.random()*H*.3, vx:(Math.random()-.5)*140*cell/96,
-                    vy:(60+Math.random()*170)*cell/96, life:0, max:1.5+Math.random()*1.5,
-                    r:(2+Math.random()*3)*cell/96, c:cols[i%cols.length]});
-  }
+function render(){
+  g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  if (!bgCv) bgCv = paintBg();
+  g.drawImage(bgCv, 0, 0, W, H);
+  /* the block the keyboard is on */
+  if (kbOn && state === 'play'){ var kp = slotXY(kb); g.save(); rrect(g, kp.x + cell*.02, kp.y + cell*.02, cell*.96, cell*.96, cell*.18); g.lineWidth = Math.max(2, cell*.04); g.strokeStyle = 'rgba(255,255,255,.85)'; g.setLineDash([cell*.12, cell*.1]); g.stroke(); g.restore(); }
+  var top = [];
+  cards.forEach(function(cd, i){ if (cd.flip > .02 && cd.flip < .98 || Math.abs(cd.x - cd.tx) > .05*cell || Math.abs(cd.y - cd.ty) > .05*cell) top.push([cd, i]); else drawCard(cd, i); });
+  top.forEach(function(t){ drawCard(t[0], t[1]); });
+  if (state === 'preview' && previewT >= 0){                                     /* the time left to look */
+    var left = Math.max(0, 1 - previewT/(previewMs/1000)); g.save(); g.fillStyle = 'rgba(255,217,138,.9)'; g.fillRect(0, 0, W*left, Math.max(3, cell*.05)); g.restore(); }
+  if (parts.length){ g.save(); g.globalCompositeOperation = 'lighter';
+    for (var j=0;j<parts.length;j++){ var p = parts[j], a2 = 1 - p.life/p.max; g.fillStyle = hex(p.c, a2*.9);
+      if (p.sq) { g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.fillRect(-p.r, -p.r*.6, p.r*2, p.r*1.2); g.restore(); }
+      else { g.beginPath(); g.arc(p.x, p.y, p.r*(.4+a2*.6), 0, 6.2832); g.fill(); } }
+    g.restore(); }
+  for (var f=0;f<floats.length;f++){ var fl = floats[f], kk = fl.t/1.3, a3 = kk < .15 ? kk/.15 : 1 - Math.pow((kk-.15)/.85, 2);
+    var fx = Math.min(W - cell*.6, Math.max(cell*.6, fl.x)), ty = fl.y - kk*cell*.8;
+    g.save(); g.globalAlpha = Math.max(0, a3); g.font = '700 ' + Math.round(cell*(fl.big ? .38 : .26)) + 'px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = Math.max(2, cell*.07); g.strokeStyle = 'rgba(8,30,70,.85)'; g.lineJoin = 'round';
+    g.strokeText(fl.txt, fx, ty); g.fillStyle = fl.c || '#fff'; g.fillText(fl.txt, fx, ty); g.restore(); }
 }
 
-/* ── buttons ─────────────────────────────────────────────────────────── */
-$('goPlay').addEventListener('click', function(){ startGame('play'); });
-$('again').addEventListener('click', function(){ startGame(mode === 'gift' && giftState === 'ready' && giftNeed ? 'gift' : 'play'); });
-$('menu').addEventListener('click', toMenu);
-$('menu2').addEventListener('click', toMenu);
-$('resume').addEventListener('click', togglePause);
-$('pauseBtn').addEventListener('click', togglePause);
-
-/* ── the gift desk: the same contract as Pack Drop and Pack Crush ────── */
+/* ── the gift desk: what the booth script says this game must score ─────── */
 function refreshGift(force){
   var fg = window.fxGift, sub = $('giftSub'), note = $('giftNote'), btn = $('goGift');
   if (!fg) { giftState = 'wait'; sub.textContent = 'Checking the gift desk…'; return; }
   if (force && fg.forget) fg.forget();
-  var seq = ++giftSeq;
+  var seq = ++giftSeq;                                    /* a slow answer must not land on top of a newer one */
   giftState = 'wait'; sub.textContent = 'Checking the gift desk…'; note.textContent = '';
   fg.settings().then(function(cfg){
     if (seq !== giftSeq) return;
-    if (!cfg) { giftState = 'offline'; giftNeed = null; giftOn = false; sub.textContent = 'Gift desk not reachable';
-      note.textContent = 'Tap Redeem gift to try again, or play normally.'; btn.disabled = false; return; }
+    if (!cfg) { giftState = 'offline'; giftNeed = null; giftOn = false; sub.textContent = 'Gift desk not reachable'; note.textContent = 'Tap Redeem gift to try again, or play normally.'; btn.disabled = false; return; }
     giftOn = /^(yes|y|true|1|on)$/i.test(String(cfg.gift_active || 'no'));
     giftNeed = fg.needFor(cfg, 'pack-recall');
-    if (!giftOn){ giftState = 'off'; sub.textContent = 'Gifts are not on right now'; btn.disabled = true;
-      note.textContent = 'You can still play normally and join the ranking.'; }
-    else if (!giftNeed){ giftState = 'unset'; sub.textContent = 'No gift target set for this game'; btn.disabled = true;
-      note.textContent = 'Ask the FACERINNA team. Normal play is open.'; }
-    else { giftState = 'ready'; sub.textContent = 'Reach ' + fmt(giftNeed) + ' points to win'; btn.disabled = false;
-      note.textContent = 'The game stops the moment you reach it.'; }
+    if (!giftOn) { giftState = 'off'; sub.textContent = 'Gifts are not on right now'; btn.disabled = true; note.textContent = 'You can still play normally and join the ranking.'; }
+    else if (!giftNeed) { giftState = 'unset'; sub.textContent = 'No gift target set for this game'; btn.disabled = true; note.textContent = 'Ask the FACERINNA team. Normal play is open.'; }
+    else { giftState = 'ready'; sub.textContent = 'Reach ' + fmt(giftNeed) + ' points to win'; btn.disabled = false; note.textContent = 'The game stops the moment you reach it.'; }
   }).catch(function(){
     if (seq !== giftSeq) return;
-    giftState = 'offline'; giftNeed = null; sub.textContent = 'Gift desk not reachable'; btn.disabled = false;
-    note.textContent = 'Tap Redeem gift to try again, or play normally.';
+    giftState = 'offline'; giftNeed = null; giftOn = false; sub.textContent = 'Gift desk not reachable'; btn.disabled = false; note.textContent = 'Tap Redeem gift to try again, or play normally.';
   });
 }
-$('goGift').addEventListener('click', function(){
-  if (giftState === 'ready' && giftNeed) startGame('gift');
-  else if (giftState !== 'off' && giftState !== 'unset') refreshGift(true);
-});
+addEventListener('load', function(){ refreshGift(false); });
 
-/* ── boot ────────────────────────────────────────────────────────────── */
-state = 'idle';
-goal = targetFor(1);
-hud();
-fit();
-refreshGift(false);
-render();
-kick();
+/* ── start ───────────────────────────────────────────────────────────── */
+elBest.textContent = fmt(best);
+tries = triesMax = triesFor(1);
+(function(){                                            /* something pretty behind the start screen: a closed grid */
+  var slots = shuffled(Array.apply(null, Array(COLS*ROWS)).map(function(_, i){ return i; }));
+  for (var i=0;i<COLS*ROWS;i++) cards.push({pair:i>>1, face:{role:'img', i:i>>1}, up:false, matched:false, slot:slots[i], x:0, y:0, tx:0, ty:0, vx:0, vy:0, flip:0, sc:1, a:1, gold:false, ph:i});
+})();
+fit(); layout(true); hud(); render();
+if (window.ResizeObserver) new ResizeObserver(fitSoon).observe(wrapEl); else addEventListener('resize', fitSoon);
+addEventListener('orientationchange', function(){ setTimeout(fit, 120); });
 
+/* a handle for the tests; the page itself does not use it */
 window.__packrecall = {
-  start: startGame,
-  refreshGift: refreshGift,
-  tap: tap,
-  state: function(){ return state; },
-  cards: function(){ return cards.map(function(c){ return {pair:c.pair, up:c.up, matched:c.matched, slot:c.slot,
-    img:c.face.img, role:c.face.role, title:c.face.title || null, x:Math.round(c.x), y:Math.round(c.y)}; }); },
-  /* a headless check needs to finish a round without waiting for the preview bar */
-  skipPreview: function(){ if (state === 'preview'){ previewT = previewMs/1000; } kick(); },
-  snapshot: function(){ return {state:state, mode:mode, kind:kind, level:level, score:score, pairs:pairsMade,
-    pairsTotal:pairsTotal, goal:goal, need:need, giftNeed:giftNeed, giftState:giftState,
-    previewMs:previewMs, shuffleMs:shuffleMs, cell:cell, dpr:dpr, cw:cv.width, ch:cv.height,
-    cards:cards.length, matched:cards.filter(function(c){ return c.matched; }).length}; }
+  start:startGame, refreshGift:refreshGift, tap:tap, peek:peek, state:function(){ return state; },
+  cards:function(){ return cards.map(function(c, i){ return {i:i, pair:c.pair, up:c.up, matched:c.matched, slot:c.slot, role:c.face.role, img:c.face.role === 'img' ? c.face.i : null,
+    pack:c.face.i, title:c.face.role === 'q' ? RANGE[c.face.i].key : c.face.role === 'a' ? RANGE[c.face.i].n : null, gold:c.gold, x:Math.round(c.x), y:Math.round(c.y), tx:Math.round(c.tx), ty:Math.round(c.ty)}; }); },
+  skipPreview:function(){ if (state === 'preview') previewT = previewMs/1000 + .01; kick(); },
+  addScore:addScore, setTries:function(n){ tries = n; lastHud = ''; hud(); }, scatter:scatter,
+  snapshot:function(){ return {state:state, mode:mode, kind:kind, level:level, score:score, pairs:pairsMade, found:found, pairsTotal:pairsTotal, tries:tries, streak:streak,
+    need:need, giftNeed:giftNeed, giftState:giftState, previewMs:previewMs, shuffleMs:shuffleMs, cell:cell, dpr:dpr, cw:cv.width, ch:cv.height, cards:cards.length,
+    matched:cards.filter(function(c){ return c.matched; }).length, loaded:RANGE.filter(function(p){ return p.ok; }).length, sprites:Object.keys(sprites).length}; }
 };
 })();
+
 </script>
+
+<!-- booth ranking: the player's name before a run; the board comes up only when the
+     player taps the Ranking button (manual), never over the game on its own. The gift
+     is offered only in Redeem gift mode (giftGate). It reads #rScore when #result
+     loses its `hidden` class. -->
 <script>window.FX_RANK={id:'pack-recall',name:'Pack Recall',result:'#result',score:'#rScore',manual:true,giftGate:function(){ return !!(window.__packrecall && window.__packrecall.snapshot().mode === 'gift'); }};</script>
 <script src="fx-rank.js"></script>
 <script src="fx-gift.js"></script>
 <script>
+/* Registered from every page: a visitor can arrive on any of them straight from
+   a QR code, and whichever they land on has to work when the hall wifi does not. */
 if ('serviceWorker' in navigator)
   addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
 </script>
 <script src="fx-games.js" data-game="pack-recall"></script>
+<!-- Cloudflare Web Analytics: page views only, no cookies, no browser storage. -->
 <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9218ecd43aea410c856a9270cb580f34"}'></script>
 <script defer src="fx-visit.js"></script>
 </body>
