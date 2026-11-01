@@ -185,8 +185,11 @@ const crushFps = await desk.evaluate(() => new Promise(res => {
   };
   requestAnimationFrame(tick);
 }));
+/* Ratio only, no absolute floor: the SwiftShader ceiling here swings between 5
+   and 15 fps depending on what else the box is doing, so a fixed number would
+   fail on a busy machine without the game having changed. */
 ok('pack crush · 1920: no slower than the shipped Pack Drop',
-   crushFps >= Math.max(8, shippedFps * 0.7),
+   crushFps >= Math.max(2, shippedFps * 0.7),
    `crush ${crushFps} fps vs shipped pack drop ${shippedFps} fps (software rasteriser)`);
 console.log(`note  this container has no GPU: ${shippedFps} fps is the shipped game's own ceiling here`);
 

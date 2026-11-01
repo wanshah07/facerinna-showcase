@@ -177,7 +177,7 @@ post({ action:'gift.wheel' }, 8000).then(function(j){
 /* ------------------------------------------------------------- the flow */
 var stage = 'ready', won = '';
 var GAME = { 'match-lab':'Match Lab','pack-match':'Pack Match','shelf-shot':'Shelf Shot','deep-lab':'Deep Lab',
-             'lab-run':'Lab Run','facy-run':'Facy Run','pack-drop':'Pack Drop','pack-crush':'Pack Crush','skin-iq':'Skin IQ' };
+             'lab-run':'Lab Run','facy-run':'Facy Run','pack-drop':'Pack Drop','pack-crush':'Pack Crush','pack-recall':'Pack Recall','skin-iq':'Skin IQ' };
 function say(title, text, claim){
   $('lwTitle').textContent = title; $('lwText').textContent = text;
   var qr = $('lwQR');

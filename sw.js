@@ -34,6 +34,7 @@ const CORE = [
   './facy-run.html',
   './pack-drop-4k.html',
   './pack-crush-4k.html',
+  './pack-recall-4k.html',
   './docs/facerinna-logo-white.webp',
   './lucky-wheel.html',
   './redeem.html',
