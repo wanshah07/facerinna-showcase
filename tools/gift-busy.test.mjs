@@ -51,7 +51,7 @@ console.log('Facy Run');
   claims=[{ok:false,reason:'busy'},{ok:false,reason:'busy'},GOOD];
   const {c,p,errs}=await mk();
   await p.goto(BASE+'/facy-run.html',{waitUntil:'load'}); await sleep(400);
-  await p.click('#fxrGo').catch(()=>{});
+  await p.click('#fxrGo',{timeout:500}).catch(()=>{});   /* a name already held means no gate */
   await p.evaluate(()=>{ window.__facy.start(); window.__facy.setScore(6200); window.__facy.end(); });
   chk('a gift-winning run offers the claim button', await until(()=>p.evaluate(()=>document.getElementById('claimBtn').style.display==='inline-block')));
   await p.click('#claimBtn');

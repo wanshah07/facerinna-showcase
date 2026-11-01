@@ -52,12 +52,13 @@ async function session(mode, name, seed){
   }, seed);
   await pg.goto(`http://127.0.0.1:${P}/`,{waitUntil:'domcontentloaded'});
   await pg.waitForTimeout(300);
-  /* The name gate always shows, pre-filled for a returning player -- it is a
-     confirm-your-name step, not a first-run-only one. Nothing else appears
-     until it is submitted, so a test that skips it is testing a screen no
-     player ever sees. */
-  await pg.fill('#fxrName', name);
-  await pg.click('#fxrGo');
+  /* The name is asked for once: a device that already holds one goes straight in,
+     and only a first visit meets the gate. */
+  const gateUp = await pg.evaluate(()=>!document.querySelector('.fxr-gate').classList.contains('hidden'));
+  if (gateUp) {
+    await pg.fill('#fxrName', name);
+    await pg.click('#fxrGo');
+  }
   await pg.waitForTimeout(150);
   return {pg, ctx, posts, gets, errs};
 }
@@ -106,6 +107,7 @@ console.log('\nnetwork hangs: the popup does not');
   const s = await session('hang','Lim',{name:'Lim'});
   const t0 = Date.now();
   await play(s.pg, 55);
+  await s.pg.click('.fxr-show');
   await s.pg.waitForSelector('.fxr-pop.on', {timeout: 4000});
   const drawn = Date.now()-t0;
   const t = await popText(s.pg);
@@ -158,6 +160,36 @@ console.log('\nopening the board: fresh rows are reused, stale ones re-asked');
   await s.pg.click('.fxr-show');
   await s.pg.waitForTimeout(600);
   check('opening once they are stale does re-ask', s.gets.length > afterLoad);
+  await s.ctx.close();
+}
+
+console.log('\nthe popup comes up when it is tapped, and only then; the name is asked once');
+{
+  const s = await session('ok','Dewi',null);                       // a first visit: the gate is up and is filled in
+  const popOn = ()=>s.pg.evaluate(()=>document.querySelector('.fxr-pop').classList.contains('on'));
+  check('a finished run does not pop the board up by itself', (await play(s.pg, 140), await s.pg.waitForTimeout(700), !(await popOn())));
+  check('and the shared rows are ready for when it is tapped', (await popText(s.pg)).includes('Zara'));
+  await s.pg.click('.fxr-show'); await s.pg.waitForTimeout(400);
+  check('tapping Ranking opens it', await popOn());
+  check('it is one popup, not several', await s.pg.evaluate(()=>document.querySelectorAll('.fxr-pop').length===1 && document.querySelectorAll('.fxr-show').length===1));
+  await s.pg.click('.fxr-show'); await s.pg.waitForTimeout(400);
+  check('tapping Ranking again puts it away', !(await popOn()));
+  await play(s.pg, 90).catch(()=>{}); await s.pg.evaluate(()=>{ const o=document.getElementById('over'); o.classList.add('hidden'); });
+  await s.pg.evaluate(()=>{ document.getElementById('fScore').textContent='150'; document.getElementById('over').classList.remove('hidden'); });
+  await s.pg.waitForTimeout(700);
+  check('a second run does not pop it up either', !(await popOn()));
+  await s.pg.click('.fxr-show'); await s.pg.waitForTimeout(300);
+  check('it says who is playing, with a way to change it', await s.pg.evaluate(()=>/Playing as\s+Dewi/.test(document.querySelector('.fxr-pop').innerText) && !!document.querySelector('.fxr-chg')));
+
+  /* the name is asked for once: a reload of the same device goes straight in */
+  await s.pg.reload({waitUntil:'domcontentloaded'}); await s.pg.waitForTimeout(500);
+  check('on the next visit the name is not asked again, and the Ranking button is already there', await s.pg.evaluate(()=>document.querySelector('.fxr-gate').classList.contains('hidden') && getComputedStyle(document.querySelector('.fxr-show')).display!=='none'));
+  await s.pg.click('.fxr-show'); await s.pg.waitForTimeout(300);
+  await s.pg.click('.fxr-chg'); await s.pg.waitForTimeout(250);
+  check('Change brings the name up again, with the old one in it', await s.pg.evaluate(()=>!document.querySelector('.fxr-gate').classList.contains('hidden') && document.getElementById('fxrName').value==='Dewi'));
+  await s.pg.fill('#fxrName','Eko'); await s.pg.click('#fxrGo'); await s.pg.waitForTimeout(200);
+  const before=s.posts.length; await play(s.pg, 160); await s.pg.waitForTimeout(500);
+  check('and the next score goes in under the new name', s.posts.length>before && s.posts[s.posts.length-1].body.name==='Eko');
   await s.ctx.close();
 }
 

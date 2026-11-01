@@ -30,6 +30,7 @@ const b=await chromium.launch();
 /* `gift` stands in for the booth script: {on, need} answers the config call, and a claim hands back a code */
 async function open(vp, touch, dsf, gift){
   const c=await b.newContext({viewport:vp,isMobile:touch,hasTouch:touch,deviceScaleFactor:dsf});
+  await c.route(u=>!u.href.startsWith(BASE), r=>r.abort());       // nothing leaves for the real scripts: a test run must not put names on the live ranking
   await c.addInitScript((api)=>{ window.__BOOTH_API=api; try{ localStorage.setItem('fx.player','Tester'); }catch(e){}
     window.__rafs=0; const raf=window.requestAnimationFrame.bind(window); window.requestAnimationFrame=cb=>raf(t=>{ window.__rafs++; cb(t); }); }, gift?BASE+'/api':'');
   const calls=[];
@@ -48,7 +49,7 @@ async function open(vp, touch, dsf, gift){
   await p.goto(BASE+'/pack-crush-4k.html',{waitUntil:'load'});
   await p.waitForFunction(()=>window.__packcrush && window.__packcrush.snapshot().loaded>=6,null,{timeout:8000}).catch(()=>{});
   /* give the name the way a visitor does, so the Ranking button is there as it is for them */
-  await p.fill('#fxrName','Tester').catch(()=>{}); await p.click('#fxrGo').catch(()=>{}); await sleep(250);
+  await sleep(250);                       /* the name is asked once, and 'Tester' is already held: no gate to get past */
   return {c,p,errs,calls};
 }
 const snap=p=>p.evaluate(()=>window.__packcrush.snapshot());
