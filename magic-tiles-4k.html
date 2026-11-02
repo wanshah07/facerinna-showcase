@@ -192,6 +192,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
   .screen{padding:8px}.screen .mini,.screen p.rk,.screen .cap + .cap{display:none}
   .screen h2.winner{font-size:clamp(16px,6.4vh,57.2px)}.screen .big{font-size:clamp(30px,11vh,132px)}.screen p.sub{font-size:11px;margin:.2em 0 .5em}
   .screen .btns .btn{padding:.55em 1.1em;min-height:38px;font-size:13px}.btns{gap:8px}
+  .screen .lede{display:none}
 }
 @media (orientation:portrait) and (min-height:1500px){
   .app{grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-areas:"hd hd" "left right" "board board" "how how" "padL padR"}
@@ -202,6 +203,8 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
   .leg{font-size:2.3vmin}.help{font-size:2.1vmin}
   .padL,.padR{padding-bottom:70px}
 }
+/* upright: leave the bottom corners to the Booth and Ranking buttons */
+@media (orientation:portrait){.app{padding-bottom:calc(var(--safe-b) + 64px)}}
 @media (prefers-reduced-motion:reduce){.sky i{animation:none}.screen,.screen .in,.lvl i{transition-duration:.01ms!important}}
 @media (hover:none){.btn.pri:hover,.btn.gold:hover{transform:none}}
 
@@ -261,7 +264,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
         <div class="in">
           <p class="cap">Colour Lab HD</p>
           <h2>Catch the colour.</h2>
-          <p>Coloured tiles fall down four lanes. Tap a tile as it crosses the bright line at the bottom. Miss one and you lose a life — three lives, then the run ends. Every level the tiles fall faster.</p>
+          <p class="lede">Coloured tiles fall down four lanes. Tap a tile as it crosses the bright line at the bottom. Miss one and you lose a life. Three lives, then the run ends. Every level the tiles fall faster.</p>
           <div class="btns col">
             <button class="btn gold" id="goGift" type="button">🎁 Redeem gift<small id="giftSub">Checking the gift desk…</small></button>
             <button class="btn pri" id="goPlay" type="button">Normal play<small>Level by level · three lives</small></button>
@@ -327,7 +330,7 @@ var PALETTE=[
   {c:'#FF7A3D', n:'ember'}
 ];
 
-var cell=90,dpr=2,W=360,H=540;
+var cell=90,dpr=2,W=360,H=540,sized=false;
 var state='idle',level=1,score=0,shown=0,lives=3,best=0,mode='play',need=0,giftNeed=null,giftState='wait',giftSeq=0;
 var goal=0,tiles=[],particles=[],floats=[],laneFlash=[0,0,0,0],shake=0,combo=0,bestCombo=0;
 var speedPx=150,spawnLeft=0,lastFrame=0,raf=0,lastScoreText='';
@@ -344,15 +347,14 @@ function fit(){
   var byH=(r.height-pad)*ratio/LANES;
   var cw=Math.floor(Math.max(38,Math.min(byW,byH)));
   var native=window.devicePixelRatio||1;
-  var d=Math.min(COARSE?2:3,Math.max(1,native));
-  if(native>=2)d=Math.min(d,2);
-  var budget=COARSE?4e6:6e6;
+  var d=Math.min(COARSE?2:3,Math.max(2,native));
+  var budget=COARSE?5e6:18e6;
   while(d>1&&(cw*LANES*d)*(cw*LANES*d*1.6)>budget)d-=.5;
-  if(cw===cell&&d===dpr&&cv.width)return;
-  cell=cw;dpr=d;W=cell*LANES;H=Math.round(cell*LANES/ratio);
+  if(sized&&cw===cell&&d===dpr)return;
+  sized=true;cell=cw;dpr=d;W=cell*LANES;H=Math.round(cell*LANES/ratio);
   cv.style.width=W+'px';cv.style.height=H+'px';
   cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
-  render();
+  tileSprites={};lanesImg=null;render();
 }
 var fitQ=0;
 function fitSoon(){if(!fitQ)fitQ=requestAnimationFrame(function(){fitQ=0;fit()})}
@@ -517,7 +519,7 @@ function update(dt){
       var t=tiles[i];
       if(t.dead&&t.sc<=0.05){tiles.splice(i,1);continue}
       if(t.dead){t.sc+= (0-t.sc)*ease(18,dt);continue}
-      t.y+=speedPx*dt;
+      t.y+=speedPx*dt*(H/640);          /* the speed is quoted for a 640 px board and scales with the one on screen */
       if(t.y>hitY()+th*0.55){t.dead=true;t.sc=1;loseLife();if(state!=='play')break}
       if(t.y>H+th){tiles.splice(i,1)}
     }
@@ -548,29 +550,20 @@ function render(){
   g.clearRect(0,0,W,H);
   g.save();g.translate(sx,sy);
 
+  g.drawImage(lanesCv(),0,0,W,H);
   for(var l=0;l<LANES;l++){
-    g.fillStyle=(l%2)?'rgba(255,255,255,.030)':'rgba(255,255,255,.055)';
-    g.fillRect(l*cell,0,cell,H);
     if(laneFlash[l]>0){
       g.fillStyle='rgba(127,213,255,'+(laneFlash[l]*0.22)+')';
       g.fillRect(l*cell,0,cell,H);
     }
   }
-  var hy=hitY();
-  g.strokeStyle='rgba(127,213,255,.75)';g.lineWidth=Math.max(2,cell*.035);
-  g.beginPath();g.moveTo(0,hy);g.lineTo(W,hy);g.stroke();
-  g.fillStyle='rgba(127,213,255,.10)';g.fillRect(0,hy-2,W,4);
 
   tiles.forEach(function(t){
-    var x=t.lane*cell+cell*.05, w=cell*.90, hh=t.h;
-    var a=t.dead?Math.max(0,t.sc):1;
+    var sp=tileSprite(t.col),a=t.dead?Math.max(0,t.sc):1;
+    var x=t.lane*cell+cell*.05,k=t.dead?(1+(1-a)*.25):1;
     g.globalAlpha=a;
-    var grd=g.createLinearGradient(x,t.y,x,t.y+hh);
-    var col=PALETTE[t.col].c;
-    grd.addColorStop(0,col);grd.addColorStop(1,shade(col,-28));
-    g.beginPath();rr(g,x,t.y,w,hh,Math.min(14,cell*.14));
-    g.fillStyle=grd;g.fill();
-    g.strokeStyle='rgba(255,255,255,.35)';g.lineWidth=1.5;g.stroke();
+    var w=cell*.90*k,h=t.h*k;
+    g.drawImage(sp,x-(w-cell*.90)/2,t.y-(h-t.h)/2,w,h);
     g.globalAlpha=1;
   });
 
@@ -592,6 +585,55 @@ function render(){
   g.globalAlpha=1;
   if(state==='pause'){g.fillStyle='rgba(3,10,24,.55)';g.fillRect(0,0,W,H)}
   g.restore();
+}
+/* The lanes and the glowing hit line are baked once; a tile is a baked glass slab per
+   colour. Every frame is then a few drawImage calls, however big the screen. */
+var tileSprites={},lanesImg=null;
+function hexa(c,a){var n=parseInt(c.slice(1),16);return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')'}
+function tileSprite(col){
+  var key=col+'|'+cell+'|'+dpr,sp=tileSprites[key];if(sp)return sp;
+  var w=cell*.90,h=tileH(),c0=PALETTE[col].c;
+  sp=document.createElement('canvas');sp.width=Math.ceil(w*dpr);sp.height=Math.ceil(h*dpr);
+  var c=sp.getContext('2d');c.scale(dpr,dpr);
+  var m=Math.max(1.5,cell*.035),r=Math.min(cell*.16,h*.3);
+  c.save();c.beginPath();c.shadowColor=hexa(c0,.55);c.shadowBlur=cell*.10;
+  rr(c,m,m,w-2*m,h-2*m,r);c.fillStyle='rgba(6,20,44,.5)';c.fill();c.restore();
+  var gr=c.createLinearGradient(0,m,0,h-m);gr.addColorStop(0,hexa(c0,.96));gr.addColorStop(1,hexa(c0,.58));
+  c.beginPath();rr(c,m,m,w-2*m,h-2*m,r);c.fillStyle=gr;c.fill();
+  c.save();c.beginPath();rr(c,m,m,w-2*m,h-2*m,r);c.clip();
+  var gl=c.createLinearGradient(0,m,0,m+h*.5);gl.addColorStop(0,'rgba(255,255,255,.42)');gl.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=gl;c.fillRect(m,m,w,h*.5);
+  var sh=c.createLinearGradient(0,h*.6,0,h);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,10,30,.32)');
+  c.fillStyle=sh;c.fillRect(m,h*.6,w,h*.4);
+  c.restore();
+  c.beginPath();rr(c,m,m,w-2*m,h-2*m,r);c.lineWidth=Math.max(1.2,cell*.022);c.strokeStyle='rgba(255,255,255,.62)';c.stroke();
+  c.beginPath();c.arc(m+w*.12,m+h*.2,Math.max(1.5,cell*.03),0,7);c.fillStyle='rgba(255,255,255,.6)';c.fill();
+  tileSprites[key]=sp;return sp;
+}
+function lanesCv(){
+  var key=cell+'|'+dpr+'|'+W+'|'+H;
+  if(lanesImg&&lanesImg.key===key)return lanesImg;
+  var b=document.createElement('canvas');b.width=Math.ceil(W*dpr);b.height=Math.ceil(H*dpr);
+  var c=b.getContext('2d');c.scale(dpr,dpr);
+  for(var l=0;l<LANES;l++){
+    var lg=c.createLinearGradient(0,0,0,H);
+    lg.addColorStop(0,(l%2)?'rgba(255,255,255,.020)':'rgba(255,255,255,.045)');lg.addColorStop(1,(l%2)?'rgba(80,160,255,.06)':'rgba(80,160,255,.11)');
+    c.fillStyle=lg;c.fillRect(l*cell,0,cell,H);
+    if(l){c.fillStyle='rgba(160,215,255,.10)';c.fillRect(l*cell-.5,0,1,H)}
+  }
+  var hy=hitY(),zh=Math.max(58,cell*.78);
+  var hg=c.createLinearGradient(0,hy-zh*.9,0,hy+zh*.35);
+  hg.addColorStop(0,'rgba(127,213,255,0)');hg.addColorStop(.78,'rgba(127,213,255,.20)');hg.addColorStop(1,'rgba(127,213,255,0)');
+  c.fillStyle=hg;c.fillRect(0,hy-zh*.9,W,zh*1.25);
+  c.strokeStyle='rgba(160,225,255,.9)';c.lineWidth=Math.max(2,cell*.035);c.shadowColor='rgba(100,200,255,.9)';c.shadowBlur=cell*.12;
+  c.beginPath();c.moveTo(0,hy);c.lineTo(W,hy);c.stroke();c.shadowBlur=0;
+  for(var q=0;q<LANES;q++){
+    c.beginPath();rr(c,q*cell+cell*.1,hy+cell*.07,cell*.8,Math.max(10,cell*.12),cell*.06);
+    c.fillStyle='rgba(160,225,255,.16)';c.fill();
+    c.fillStyle='rgba(235,248,255,.85)';c.font='700 '+Math.round(cell*.17)+'px Inter, system-ui, sans-serif';c.textAlign='center';c.textBaseline='middle';
+    if(!COARSE)c.fillText(String(q+1),q*cell+cell/2,hy+cell*.07+Math.max(10,cell*.12)/2+.5);
+  }
+  b.key=key;lanesImg=b;return b;
 }
 function rr(x,a,b,w,h,r){r=Math.min(r,w/2,h/2);
   x.moveTo(a+r,b);x.lineTo(a+w-r,b);x.quadraticCurveTo(a+w,b,a+w,b+r);
@@ -668,6 +710,8 @@ $('goGift').addEventListener('click',function(){
 
 state='idle';goal=targetFor(1);
 hud();fit();refreshGift(false);render();kick();
+/* fx-gift.js loads after this script: ask the gift desk again once the page is whole */
+addEventListener('load',function(){refreshGift(false)});
 
 window.__magictiles={
   start:startGame,refreshGift:refreshGift,tapLane:tapLane,

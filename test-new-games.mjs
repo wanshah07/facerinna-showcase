@@ -69,7 +69,7 @@ async function open(file, api, viewport = { width: 390, height: 844 }) {
 
   const start = await page.evaluate(() => window.__magictiles.snapshot());
   ok('magic tiles: starts with three lives', start.lives === 3, `lives=${start.lives}`);
-  ok('magic tiles: four lanes', start.cell > 0 && start.cw === start.cell * 4, `cw=${start.cw} cell=${start.cell}`);
+  ok('magic tiles: four lanes', start.cell > 0 && start.cw === start.cell * 4 * start.dpr, `cw=${start.cw} cell=${start.cell}`);
 
   // tiles fall: the count grows and a tile's y increases between samples
   await page.waitForTimeout(900);

@@ -192,6 +192,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
   .screen{padding:8px}.screen .mini,.screen p.rk,.screen .cap + .cap{display:none}
   .screen h2.winner{font-size:clamp(16px,6.4vh,57.2px)}.screen .big{font-size:clamp(30px,11vh,132px)}.screen p.sub{font-size:11px;margin:.2em 0 .5em}
   .screen .btns .btn{padding:.55em 1.1em;min-height:38px;font-size:13px}.btns{gap:8px}
+  .screen .lede{display:none}
 }
 @media (orientation:portrait) and (min-height:1500px){
   .app{grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-areas:"hd hd" "left right" "board board" "how how" "padL padR"}
@@ -202,6 +203,8 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
   .leg{font-size:2.3vmin}.help{font-size:2.1vmin}
   .padL,.padR{padding-bottom:70px}
 }
+/* upright: leave the bottom corners to the Booth and Ranking buttons */
+@media (orientation:portrait){.app{padding-bottom:calc(var(--safe-b) + 64px)}}
 @media (prefers-reduced-motion:reduce){.sky i{animation:none}.screen,.screen .in,.lvl i{transition-duration:.01ms!important}}
 @media (hover:none){.btn.pri:hover,.btn.gold:hover{transform:none}}
 
@@ -263,7 +266,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
         <div class="in">
           <p class="cap">Slice Lab HD</p>
           <h2>Swipe. Don't hit the bomb.</h2>
-          <p>FACERINNA packs are tossed up and fall back down. Drag across a pack to slice it. Three misses and the run ends, and a black bomb pack costs you a life if you slice it. Every level they come faster.</p>
+          <p class="lede">FACERINNA packs are tossed up and fall back down. Drag across a pack to slice it. Three misses and the run ends, and a black bomb pack costs you a life if you slice it. Every level they come faster.</p>
           <div class="btns col">
             <button class="btn gold" id="goGift" type="button">🎁 Redeem gift<small id="giftSub">Checking the gift desk…</small></button>
             <button class="btn pri" id="goPlay" type="button">Normal play<small>Level by level · three misses</small></button>
@@ -331,10 +334,10 @@ var RANGE=[
 ];
 RANGE.forEach(function(p){
   var im=new Image();im.decoding='async';im.src='products/'+p.s+'.webp';
-  p.img=im;p.ok=false;im.onload=function(){p.ok=true;render()};
+  p.img=im;p.ok=false;im.onload=function(){p.ok=true;packSprites={};render()};
 });
 
-var cell=90,dpr=1,W=360,H=640;
+var cell=90,dpr=1,W=360,H=640,sized=false;
 var state='idle',level=1,score=0,shown=0,misses=0,best=0,mode='play',need=0,giftNeed=null,giftState='wait',giftSeq=0;
 var goal=0,items=[],halves=[],particles=[],floats=[],shake=0,combo=0,bestCombo=0,bombs=3;
 var spawnLeft=0,lastFrame=0,raf=0,lastScoreText='';
@@ -348,33 +351,37 @@ function fit(){
   var w=Math.max(220,Math.min(r.width-pad,(r.height-pad)*0.62));
   var h=Math.max(320,Math.min(r.height-pad,w/0.62));
   var native=window.devicePixelRatio||1;
-  var d=Math.min(COARSE?2:3,Math.max(1,native));
-  if(native>=2)d=Math.min(d,2);
-  var budget=COARSE?4e6:6e6;
+  var d=Math.min(COARSE?2:3,Math.max(2,native));
+  var budget=COARSE?5e6:18e6;
   while(d>1&&(w*d)*(h*d)>budget)d-=.5;
-  if(Math.round(w)===W&&Math.round(h)===H&&d===dpr&&cv.width)return;
-  W=Math.round(w);H=Math.round(h);dpr=d;
+  if(sized&&Math.round(w)===W&&Math.round(h)===H&&d===dpr)return;
+  sized=true;W=Math.round(w);H=Math.round(h);dpr=d;
   cv.style.width=W+'px';cv.style.height=H+'px';
   cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
-  render();
+  packSprites={};render();
 }
 var fitQ=0;
 function fitSoon(){if(!fitQ)fitQ=requestAnimationFrame(function(){fitQ=0;fit()})}
 addEventListener('resize',fitSoon,{passive:true});
 addEventListener('orientationchange',function(){setTimeout(fit,120)});
 
-function packSize(){return Math.max(54,Math.min(112,W*0.20))}
+/* Everything here is measured against the board, not in fixed pixels: a pack is a fifth of
+   its width, a throw rises to about three quarters of its height, and gravity pulls at a
+   multiple of its height. So a 4K cabinet and a small phone play the same game. */
+function packSize(){return Math.max(54,W*0.26)}
+function grav(){return H*1.5}
+function UI(){return Math.max(.8,W/360)}
 
 function spawn(){
-  var n=1+((Math.random()<(0.30+level*0.03))?1:0);
+  var n=1+((Math.random()<(0.40+level*0.04))?1:0)+((Math.random()<(0.10+level*0.03))?1:0);
   for(var i=0;i<n;i++){
     var sz=packSize();
     var isBomb=(level>=2&&Math.random()<0.12);
     var fromLeft=Math.random()<0.5;
-    var vx=(fromLeft?1:-1)*(W*0.5+Math.random()*W*0.35);
-    var vy=-(H*1.55+Math.random()*H*0.45);
+    var vx=(fromLeft?1:-1)*(W*(0.30+Math.random()*0.35));
+    var vy=-(H*(1.40+Math.random()*0.40));
     items.push({
-      x:fromLeft? W*0.18 : W*0.82,
+      x:(fromLeft? W*0.18 : W*0.82)+(Math.random()-.5)*W*.12,
       y:H+sz*0.6,
       vx:vx, vy:vy,
       rot:(Math.random()-.5)*0.6, vr:(Math.random()-.5)*1.6,
@@ -488,8 +495,8 @@ function sliceAlong(x1,y1,x2,y2){
 function cutHalves(it){
   if(RM)return;
   for(var k=0;k<2;k++){
-    halves.push({x:it.x,y:it.y,vx:it.vx*0.5+(k?90:-90),vy:it.vy*0.4,
-      size:it.size,idx:it.idx,side:k,rot:it.rot,vr:(k?2.4:-2.4),t:0});
+    halves.push({x:it.x,y:it.y,vx:it.vx*0.5+(k?.25:-.25)*W,vy:it.vy*0.4,
+      size:it.size,idx:it.idx,side:k,rot:it.rot,vr:(k?2.6:-2.6),t:0});
   }
 }
 function endRun(){
@@ -506,16 +513,16 @@ cv.addEventListener('pointerdown',function(e){
   if(state!=='play')return;
   e.preventDefault();
   dragging=true;trail=[];
-  var p=posAt(e);trail.push(p);
+  var p=posAt(e);p.t=performance.now();trail.push(p);
   try{cv.setPointerCapture(e.pointerId)}catch(err){}
 },{passive:false});
 cv.addEventListener('pointermove',function(e){
   if(!dragging||state!=='play')return;
   e.preventDefault();
-  var p=posAt(e);
+  var p=posAt(e);p.t=performance.now();
   var last=trail[trail.length-1];
   trail.push(p);
-  if(trail.length>24)trail.shift();
+  if(trail.length>40)trail.shift();
   if(last)sliceAlong(last.x,last.y,p.x,p.y);
 },{passive:false});
 function endDrag(){dragging=false}
@@ -553,12 +560,12 @@ function ease(r,dt){return 1-Math.exp(-r*dt)}
 
 function update(dt){
   if(state==='play'){
-    var gap=Math.max(.85,1.9-(level-1)*0.09);
+    var gap=Math.max(.75,1.35-(level-1)*0.07);
     spawnLeft-=dt;
     if(spawnLeft<=0){spawn();spawnLeft=gap}
     for(var i=items.length-1;i>=0;i--){
       var it=items[i];
-      it.vy+=620*dt;
+      it.vy+=grav()*dt;
       it.x+=it.vx*dt;it.y+=it.vy*dt;it.rot+=it.vr*dt;
       if(it.x<it.size*0.4){it.x=it.size*0.4;it.vx=Math.abs(it.vx)*0.8}
       if(it.x>W-it.size*0.4){it.x=W-it.size*0.4;it.vx=-Math.abs(it.vx)*0.8}
@@ -574,10 +581,12 @@ function update(dt){
     }
   }
   for(var h=halves.length-1;h>=0;h--){
-    var q=halves[h];q.t+=dt;q.vy+=620*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.rot+=q.vr*dt;
+    var q=halves[h];q.t+=dt;q.vy+=grav()*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.rot+=q.vr*dt;
     if(q.y>H+q.size)halves.splice(h,1);
   }
-  particles.forEach(function(p){p.life+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=900*dt});
+  var nowT=performance.now();
+  while(trail.length&&nowT-trail[0].t>220)trail.shift();
+  particles.forEach(function(p){p.life+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=grav()*1.3*dt});
   particles=particles.filter(function(p){return p.life<p.max});
   floats.forEach(function(f){f.t+=dt});
   floats=floats.filter(function(f){return f.t<1.15});
@@ -603,85 +612,102 @@ function render(){
   g.fillStyle=glow;g.fillRect(0,0,W,H);
 
   halves.forEach(function(q){
-    var p=RANGE[q.idx];if(!p)return;
+    var sp=packSprite(q.idx,q.size);if(!sp)return;
     g.save();g.globalAlpha=Math.max(0,1-q.t/1.1);
     g.translate(q.x,q.y);g.rotate(q.rot);
     g.beginPath();
     if(q.side===0)g.rect(-q.size/2,-q.size/2,q.size/2,q.size);
     else g.rect(0,-q.size/2,q.size/2,q.size);
     g.clip();
-    drawPack(p,-q.size/2,-q.size/2,q.size,q.size);
+    g.drawImage(sp,-sp.width/dpr/2,-sp.height/dpr/2,sp.width/dpr,sp.height/dpr);
     g.restore();g.globalAlpha=1;
   });
 
   items.forEach(function(it){
+    var sp=packSprite(it.bomb?-1:it.idx,it.size);if(!sp)return;
     g.save();g.translate(it.x,it.y);g.rotate(it.rot);
-    if(it.bomb){
-      var r=it.size*0.40;
-      g.beginPath();g.arc(0,0,r,0,7);
-      var bg=g.createRadialGradient(-r*.3,-r*.3,r*.1,0,0,r);
-      bg.addColorStop(0,'#3a3a44');bg.addColorStop(1,'#0c0c12');
-      g.fillStyle=bg;g.fill();
-      g.strokeStyle='rgba(255,120,120,.75)';g.lineWidth=2;g.stroke();
-      g.fillStyle='#ff8f8f';g.font='700 '+(r*0.8)+'px Inter, system-ui, sans-serif';
-      g.textAlign='center';g.textBaseline='middle';g.fillText('✕',0,1);
-    }else{
-      var p=RANGE[it.idx];
-      drawPack(p,-it.size/2,-it.size/2,it.size,it.size);
-    }
+    g.drawImage(sp,-sp.width/dpr/2,-sp.height/dpr/2,sp.width/dpr,sp.height/dpr);
     g.restore();
   });
 
+  /* the blade: a glowing streak that fades from the tip back to nothing */
   if(trail.length>1){
-    g.strokeStyle='rgba(255,255,255,.55)';g.lineWidth=3;g.lineCap='round';
-    g.beginPath();g.moveTo(trail[0].x,trail[0].y);
-    for(var i=1;i<trail.length;i++)g.lineTo(trail[i].x,trail[i].y);
-    g.stroke();
+    var nt=performance.now(),u=UI();
+    g.lineCap='round';
+    for(var i=1;i<trail.length;i++){
+      var age=Math.min(1,(nt-trail[i].t)/220);
+      g.strokeStyle='rgba(190,235,255,'+(.85*(1-age))+')';g.lineWidth=(2+7*(1-age))*u*.7;
+      g.beginPath();g.moveTo(trail[i-1].x,trail[i-1].y);g.lineTo(trail[i].x,trail[i].y);g.stroke();
+    }
   }
 
   particles.forEach(function(p){
     var kk=1-p.life/p.max;
     g.globalAlpha=Math.max(0,kk);g.fillStyle=p.c;
-    g.beginPath();g.arc(p.x,p.y,p.r*kk,0,7);g.fill();
+    g.beginPath();g.arc(p.x,p.y,p.r*kk*UI(),0,7);g.fill();
   });
   g.globalAlpha=1;
   floats.forEach(function(f){
-    var kk=f.t/1.15,y=f.y-kk*40;
+    var kk=f.t/1.15,y=f.y-kk*40*UI();
     g.globalAlpha=Math.max(0,1-kk*kk);
-    g.font='700 '+Math.round(f.big?26:20)+'px Inter, system-ui, sans-serif';
+    g.font='700 '+Math.round((f.big?26:20)*UI())+'px Inter, system-ui, sans-serif';
     g.textAlign='center';g.textBaseline='middle';
     g.fillStyle=f.c||'#eef8ff';
-    g.shadowColor='rgba(0,8,24,.85)';g.shadowBlur=10;
+    g.shadowColor='rgba(0,8,24,.85)';g.shadowBlur=10*UI();
     g.fillText(f.txt,f.x,y);g.shadowBlur=0;
   });
   g.globalAlpha=1;
 
   /* misses as pips, so the run's state is legible without reading the panel */
   for(var b=0;b<3;b++){
-    g.beginPath();g.arc(W-16-b*16,16,5,0,7);
+    g.beginPath();g.arc(W-16*UI()-b*16*UI(),16*UI(),5*UI(),0,7);
     g.fillStyle=b<misses?'#ff6b6b':'rgba(255,255,255,.22)';g.fill();
   }
   if(state==='pause'){g.fillStyle='rgba(3,10,24,.55)';g.fillRect(0,0,W,H)}
   g.restore();
 }
 
-function drawPack(p,x,y,w,h){
-  if(p&&p.ok&&p.img.naturalWidth){
-    var iw=p.img.naturalWidth,ih=p.img.naturalHeight;
-    var k=Math.min(w/iw,h/ih);
-    var dw=iw*k,dh=ih*k;
-    g.drawImage(p.img,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
+/* A pack in flight is baked once per product and size at the screen's real resolution:
+   a soft halo in the product's colour, the product with its own shadow, and a
+   gloss. The bomb is a glass sphere with a lit fuse. */
+var packSprites={};
+function packSprite(idx,size){
+  var key=idx+'|'+Math.round(size)+'|'+dpr+'|'+((idx>=0&&RANGE[idx].ok)?1:0);
+  var sp=packSprites[key];if(sp)return sp;
+  var box=Math.ceil(size*1.5);
+  sp=document.createElement('canvas');sp.width=Math.ceil(box*dpr);sp.height=Math.ceil(box*dpr);
+  var c=sp.getContext('2d');c.scale(dpr,dpr);c.translate(box/2,box/2);
+  var r=size*.5;
+  if(idx<0){
+    var bg=c.createRadialGradient(-r*.3,-r*.35,r*.05,0,0,r*.85);
+    bg.addColorStop(0,'#4a4a58');bg.addColorStop(1,'#08080e');
+    c.save();c.shadowColor='rgba(255,70,70,.7)';c.shadowBlur=size*.22;
+    c.beginPath();c.arc(0,0,r*.8,0,7);c.fillStyle=bg;c.fill();c.restore();
+    c.lineWidth=Math.max(2,size*.035);c.strokeStyle='rgba(255,120,120,.85)';c.beginPath();c.arc(0,0,r*.8,0,7);c.stroke();
+    c.fillStyle='#ff8f8f';c.font='700 '+Math.round(r*.9)+'px Inter, system-ui, sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('\u2715',0,r*.04);
+    c.beginPath();c.moveTo(r*.45,-r*.62);c.quadraticCurveTo(r*.75,-r*.95,r*.95,-r*.78);c.lineWidth=size*.04;c.strokeStyle='#d9b27a';c.stroke();
+    c.beginPath();c.arc(r*.95,-r*.78,size*.05,0,7);c.fillStyle='#ffd24a';c.shadowColor='#ffd24a';c.shadowBlur=size*.12;c.fill();
   }else{
-    g.beginPath();g.arc(x+w/2,y+h/2,w*0.40,0,7);
-    g.fillStyle=(p&&p.c)||'#4898D8';g.fill();
+    var p=RANGE[idx];
+    var hg=c.createRadialGradient(0,0,r*.1,0,0,r*1.2);
+    hg.addColorStop(0,p.c+'88');hg.addColorStop(1,p.c+'00');
+    c.fillStyle=hg;c.beginPath();c.arc(0,0,r*1.2,0,7);c.fill();
+    if(p.ok&&p.img.naturalWidth){
+      var iw=p.img.naturalWidth,ih=p.img.naturalHeight,k=Math.min(size/iw,size/ih),dw=iw*k,dh=ih*k;
+      c.shadowColor='rgba(0,10,30,.55)';c.shadowBlur=size*.1;c.shadowOffsetY=size*.04;
+      c.drawImage(p.img,-dw/2,-dh/2,dw,dh);
+    }else{
+      c.beginPath();c.arc(0,0,r*.8,0,7);c.fillStyle=p.c;c.fill();
+    }
   }
+  packSprites[key]=sp;return sp;
 }
 
 function burst(x,y,color,n,power){
   if(RM||particles.length>(COARSE?120:200))return;
   for(var i=0;i<n;i++){
-    var a=Math.random()*Math.PI*2,s2=(50+Math.random()*150)*power;
-    particles.push({x:x,y:y,vx:Math.cos(a)*s2,vy:Math.sin(a)*s2-60*power,
+    var a=Math.random()*Math.PI*2,s2=(50+Math.random()*150)*power*UI();
+    particles.push({x:x,y:y,vx:Math.cos(a)*s2,vy:Math.sin(a)*s2-60*power*UI(),
       life:0,max:.5+Math.random()*.5,r:1.5+Math.random()*3,c:color});
   }
 }
@@ -689,8 +715,8 @@ function confetti(){
   if(RM)return;
   var cols=['#ffd24a','#ff7a59','#5ad2f4','#7be08a','#ffffff','#e98cff'];
   for(var i=0;i<(COARSE?60:120);i++){
-    particles.push({x:Math.random()*W,y:-Math.random()*H*.3,vx:(Math.random()-.5)*140,
-      vy:60+Math.random()*170,life:0,max:1.5+Math.random()*1.5,
+    particles.push({x:Math.random()*W,y:-Math.random()*H*.3,vx:(Math.random()-.5)*140*UI(),
+      vy:(60+Math.random()*170)*UI(),life:0,max:1.5+Math.random()*1.5,
       r:2+Math.random()*3,c:cols[i%cols.length]});
   }
 }
@@ -745,6 +771,8 @@ $('goGift').addEventListener('click',function(){
 
 state='idle';goal=targetFor(1);
 hud();fit();refreshGift(false);render();kick();
+/* fx-gift.js loads after this script: ask the gift desk again once the page is whole */
+addEventListener('load',function(){refreshGift(false)});
 
 /* put one bomb in flight, so the bomb rule can be tested without waiting for the
    12% roll to come up. Test-only. */
