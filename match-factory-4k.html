@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04101f">
+<title>Match Factory · FACERINNA</title>
+<link rel="preload" as="image" href="docs/facerinna-logo-white.webp">
+<style>
+
+
+@font-face{font-family:'Inter';font-weight:400;font-display:swap;src:url(fonts/inter-400.woff2) format('woff2')}
+@font-face{font-family:'Inter';font-weight:600;font-display:swap;src:url(fonts/inter-600.woff2) format('woff2')}
+@font-face{font-family:'Inter';font-weight:700;font-display:swap;src:url(fonts/inter-700.woff2) format('woff2')}
+@font-face{font-family:'Fraunces';font-weight:100 900;font-display:swap;src:url(fonts/fraunces-variable.woff2) format('woff2')}
+:root{
+  --ink:#eef8ff;--mut:#9cc0d8;--line:rgba(160,215,255,.18);--blue:#3fb4ee;--blue2:#7fd5ff;--gold:#ffd98a;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+  --safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);
+  --gap:clamp(10px,1.6vmin,61.6px);
+  --side:clamp(150px,24.5vmin,540px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#04101f;color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-text-size-adjust:100%}
+
+/* ── the room: a deep clinical blue with slow light drifting behind the board.
+   It moves with transform only. On a phone or tablet it holds still: a few huge
+   moving layers are the first thing a small GPU runs out of. */
+.sky{position:fixed;inset:0;z-index:0;overflow:hidden;background:
+  radial-gradient(120% 90% at 78% 8%,#12407a 0%,transparent 55%),
+  radial-gradient(90% 80% at 8% 92%,#2b1d5c 0%,transparent 52%),
+  linear-gradient(160deg,#03112a,#06203f 55%,#030b1a)}
+.sky i{position:absolute;border-radius:50%;opacity:.55}
+.sky i:nth-child(1){width:70vmax;height:70vmax;left:-24vmax;top:-22vmax;background:radial-gradient(circle,rgba(26,111,196,.75),transparent 66%);animation:none}
+.sky i:nth-child(2){width:62vmax;height:62vmax;right:-22vmax;bottom:-24vmax;background:radial-gradient(circle,rgba(106,63,201,.62),transparent 66%);animation:none}
+.sky i:nth-child(3){width:44vmax;height:44vmax;left:30%;top:22%;background:radial-gradient(circle,rgba(25,182,216,.34),transparent 66%);animation:none}
+.sky:after{content:'';position:absolute;inset:0;opacity:.55;background-image:
+  radial-gradient(circle,#fff 0 .9px,transparent 1.3px),radial-gradient(circle,#9fe3ff 0 .8px,transparent 1.2px);
+  background-size:131px 131px,197px 197px;background-position:17px 29px,71px 83px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 0,transparent 82%);mask-image:radial-gradient(ellipse at 50% 40%,#000 0,transparent 82%)}
+@media (pointer:coarse){.sky i{animation:none;will-change:auto}.sky i:nth-child(3){display:none}.sky:after{display:none}}
+
+/* ── layout: header over [stats | board | next], the board takes what is left */
+.app{position:relative;z-index:1;height:100vh;height:100dvh;display:grid;
+  padding:calc(var(--safe-t) + var(--gap)) calc(var(--safe-r) + var(--gap)) calc(var(--safe-b) + var(--gap)) calc(var(--safe-l) + var(--gap));
+  gap:var(--gap);
+  grid-template-columns:var(--side) minmax(0,1fr) var(--side);
+  grid-template-rows:auto minmax(0,1fr);
+  grid-template-areas:"hd hd hd" "left board right"}
+.hd{grid-area:hd;display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.hd .r{display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:clamp(12px,2vmin,57.2px);min-width:0}
+.brand img{height:clamp(22px,4.2vmin,114.4px);width:auto;display:block;filter:drop-shadow(0 2px 10px rgba(63,180,238,.35))}
+.brand span{display:block;padding-left:clamp(12px,2vmin,57.2px);border-left:1px solid var(--line)}
+.brand b{display:block;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.6vmin,96.8px);letter-spacing:.01em;line-height:1.05}
+.brand small{display:block;font-size:clamp(9px,1.25vmin,28.6px);letter-spacing:.34em;text-transform:uppercase;color:var(--blue2);font-weight:700;margin-bottom:3px}
+.tag{font-size:clamp(11px,1.5vmin,30.8px);font-weight:700;letter-spacing:.06em;padding:.45em 1em;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--line);white-space:nowrap}
+.tag[hidden]{display:none}
+.tag.gift{background:linear-gradient(180deg,rgba(255,201,74,.3),rgba(255,160,50,.16));border-color:rgba(255,201,74,.55);color:#ffe8b0}
+.left{grid-area:left;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:var(--gap);min-width:0}
+.right{grid-area:right;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:var(--gap);min-width:0}
+.board{grid-area:board;position:relative;min-width:0;min-height:0}
+.padL{grid-area:padL}.padR{grid-area:padR}
+
+.card{background:linear-gradient(165deg,rgba(40,90,150,.5),rgba(12,36,72,.55));border:1px solid var(--line);
+  border-radius:clamp(14px,2.2vmin,57.2px);padding:clamp(12px,2vmin,57.2px);width:min(100%,clamp(150px,24vmin,748px));
+  box-shadow:0 18px 50px rgba(0,5,20,.35),inset 0 1px 0 rgba(255,255,255,.12)}
+.card h3{margin:0 0 .5em;font-size:clamp(9px,1.3vmin,28.6px);letter-spacing:.3em;text-transform:uppercase;color:var(--blue2);font-weight:700}
+.stat{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:.35em 0;border-top:1px solid rgba(160,215,255,.1)}
+.stat:first-of-type{border-top:0}
+.stat span{font-size:clamp(10px,1.5vmin,33px);color:var(--mut);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.stat b{font-variant-numeric:tabular-nums;font-size:clamp(18px,3.4vmin,88px);font-weight:700;line-height:1.1}
+.stat.big{flex-wrap:wrap}
+.stat.big b{font-size:clamp(22px,4.2vmin,118.8px);background:linear-gradient(180deg,#fff,#a9e2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lvl{height:5px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:.7em}
+.lvl i{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,var(--blue),var(--blue2));transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.giftbox{margin-top:.8em;padding-top:.7em;border-top:1px solid rgba(255,201,74,.3)}
+.giftbox[hidden]{display:none}
+.giftbox .gl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:clamp(10px,1.4vmin,30.8px);color:#ffe8b0;font-weight:700;letter-spacing:.04em}
+.giftbox .gl b{font-variant-numeric:tabular-nums;font-size:1.25em}
+.giftbox .lvl{margin-top:.45em;height:7px}
+.giftbox .lvl i{background:linear-gradient(90deg,#ffb93d,#ffe08a);transition:none}
+.help{margin:0;padding:0;list-style:none;font-size:clamp(11px,1.5vmin,33px);line-height:1.7;color:var(--mut)}
+.help b{color:var(--ink);font-weight:600}
+.help.touch{display:none}
+kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;border:1px solid rgba(160,215,255,.3);border-bottom-width:2px;background:rgba(255,255,255,.08);font:600 .86em Inter,sans-serif;text-align:center;color:var(--ink)}
+
+/* the board: a rounded glass cabinet. The canvas is sized here in CSS pixels
+   and drawn at device resolution, so a 4K screen gets a 4K picture. */
+.cab{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:clamp(16px,2.6vmin,66px);
+  background:linear-gradient(180deg,rgba(12,40,76,.78),rgba(5,20,42,.88));border:1px solid rgba(160,215,255,.26);
+  box-shadow:0 30px 90px rgba(0,6,22,.65),0 0 0 6px rgba(255,255,255,.035),0 0 80px rgba(48,150,230,.16),inset 0 1px 0 rgba(255,255,255,.16);overflow:hidden}
+#game{display:block;touch-action:none;outline:none;contain:paint;transform:translateZ(0)}
+
+/* overlays sit over the cabinet and fade; nothing is display-toggled mid-frame */
+.screen{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;padding:clamp(10px,2vmin,61.6px);text-align:center;-webkit-overflow-scrolling:touch;
+  background:radial-gradient(circle at 50% 40%,rgba(6,28,56,.78),rgba(3,10,24,.94));
+  transition:opacity .35s ease,visibility 0s;overflow-y:auto}
+.screen.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .3s ease,visibility 0s .3s}
+.screen .in{max-width:30em;margin:auto;transition:transform .5s cubic-bezier(.2,.9,.25,1.1)}
+.screen.hidden .in{transform:translateY(14px) scale(.97)}
+.screen h2{margin:.1em 0 .25em;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.4vmin,92.4px);line-height:1.12}
+.screen p{margin:.4em 0 1em;color:var(--mut);font-size:clamp(12px,1.8vmin,39.6px);line-height:1.55}
+.screen .big{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:clamp(48px,11vmin,286px);line-height:1;margin:.04em 0 .02em;color:#fff;font-variant-numeric:tabular-nums;
+  text-shadow:0 0 50px rgba(80,190,255,.55)}
+.screen .cap{margin:0;letter-spacing:.3em;text-transform:uppercase;font-size:clamp(10px,1.4vmin,30.8px);color:var(--blue2);font-weight:700}
+.mini{display:flex;justify-content:center;gap:clamp(14px,3vmin,74.8px);margin:1em 0 1.2em}
+.mini div{min-width:3.6em}.mini b{display:block;font-size:clamp(18px,3vmin,66px);font-variant-numeric:tabular-nums}.mini span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.mini b.new{color:var(--gold)}
+.screen p.rk{margin:1.1em 0 0;font-size:clamp(11px,1.5vmin,30.8px)}.rk b{color:var(--ink);font-weight:600}
+.screen p.note{margin:1.1em 0 0;font-size:clamp(11px,1.45vmin,29.7px);min-height:1.5em}
+.screen p.sub{margin:.2em 0 .4em}
+.btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btns.col{flex-direction:column;align-items:stretch;gap:16px;max-width:22em;margin:0 auto}
+.btn{font:inherit;font-weight:700;letter-spacing:.02em;border:0;border-radius:999px;padding:.95em 2em;min-height:48px;cursor:pointer;color:#05243b;background:#e3f6ff;
+  font-size:clamp(14px,2vmin,44px);touch-action:manipulation;transition:transform .15s cubic-bezier(.2,.9,.3,1.3),box-shadow .2s,background .2s}
+.btn.pri{background:linear-gradient(180deg,#6fd2ff,#2fa6e6);color:#031d33;box-shadow:0 8px 0 #1a77ad,0 18px 40px rgba(31,150,225,.4)}
+.btn.pri:hover{transform:translateY(-2px)}.btn.pri:active{transform:translateY(5px);box-shadow:0 3px 0 #1a77ad,0 8px 20px rgba(31,150,225,.35)}
+.btn.gold{background:linear-gradient(180deg,#ffe28a,#ffb12e);color:#3a2300;box-shadow:0 8px 0 #c47a08,0 18px 40px rgba(255,170,40,.4)}
+.btn.gold:hover{transform:translateY(-2px)}.btn.gold:active{transform:translateY(5px);box-shadow:0 3px 0 #c47a08,0 8px 20px rgba(255,170,40,.35)}
+.btn[disabled]{opacity:.5;cursor:default;transform:none!important}
+.btn.ghost{background:rgba(255,255,255,.08);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{background:rgba(255,255,255,.14)}
+.btn.sm{min-height:42px;padding:.55em 1.3em;font-size:clamp(12px,1.6vmin,33px)}
+.btn small{display:block;font-weight:600;font-size:.62em;letter-spacing:.04em;opacity:.8;margin-top:.2em}
+:focus-visible{outline:3px solid #ffe183;outline-offset:3px}
+
+/* the winner: the result screen turns gold */
+.screen.win{background:radial-gradient(circle at 50% 38%,rgba(70,48,6,.82),rgba(14,8,2,.95))}
+.screen.win .cap{color:var(--gold)}
+.screen h2.winner{display:none;font-size:clamp(26px,5.2vmin,127.6px);background:linear-gradient(180deg,#fff6d6,#ffc94a);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:.1em}
+.screen.win h2.winner{display:block}
+.screen.win .big{text-shadow:0 0 60px rgba(255,190,60,.7)}
+
+/* touch pad: shown only where a finger is the controller */
+.pad{display:none;gap:clamp(8px,1.6vmin,35.2px);align-items:center;justify-content:center}
+.pb{position:relative;width:clamp(56px,9.5vmin,202.4px);height:clamp(56px,9.5vmin,202.4px);border-radius:26%;border:1px solid var(--line);color:var(--ink);cursor:pointer;touch-action:none;padding:0;
+  background:linear-gradient(165deg,rgba(90,140,200,.45),rgba(30,60,110,.45));display:grid;place-items:center;
+  box-shadow:0 8px 24px rgba(0,5,20,.35),inset 0 1px 0 rgba(255,255,255,.14);
+  transition:transform .09s ease,background .12s ease}
+.pb.on{transform:scale(.92);background:linear-gradient(165deg,rgba(111,210,255,.5),rgba(47,166,230,.25))}
+.pb svg{width:44%;height:44%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+
+/* ── how it adapts ─────────────────────────────────────────────────────── */
+/* a finger is the controller (phone, tablet, kiosk): the pad appears under the side cards */
+@media (pointer:coarse){
+  .padL,.padR{display:flex}.help.kbd{display:none}.help.touch{display:block}
+  .app{grid-template-areas:"hd hd hd" "left board right" "padL board padR";grid-template-rows:auto minmax(0,1fr) auto}
+  .left,.right{justify-content:flex-start}
+  .padL,.padR{align-self:end;padding-bottom:66px}
+  .padL{justify-self:end}.padR{justify-self:start}
+}
+/* upright and narrow: one column, stats above the board, pad below it */
+@media (orientation:portrait){
+  .app{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto minmax(0,1fr) auto;
+    grid-template-areas:"hd hd" "left right" "board board" "padL padR";gap:clamp(6px,1.4vh,26.4px)}
+  .padL,.padR{display:flex;padding-bottom:66px;align-self:end;gap:8px}.padL{justify-self:start}.padR{justify-self:end}
+  .pb{width:clamp(46px,13.2vw,136.4px);height:clamp(46px,13.2vw,136.4px)}
+  .help.kbd{display:none}.help.touch{display:block}
+  .brand span{display:none}.brand img{height:clamp(20px,3.4vh,74.8px)}
+  .left{flex-direction:row;align-items:stretch;justify-content:flex-start;gap:8px}
+  .left .card{width:auto;flex:1 1 0;padding:8px 12px;border-radius:14px;display:grid;grid-template-columns:1fr 1fr;align-content:center;gap:4px 14px}
+  .left .card h3{display:none}
+  .left .stat{flex-direction:column;align-items:flex-start;gap:0;border:0;padding:0}
+  .left .stat span{font-size:10px}.left .stat b{font-size:clamp(18px,3.2vh,61.6px)}.left .stat.big b{font-size:clamp(20px,3.6vh,70.4px)}
+  .left .lvl{display:none}
+  .left .giftbox{grid-column:1 / -1;margin:2px 0 0;padding-top:6px}.left .giftbox .lvl{display:block}
+    .right{flex-direction:row;align-items:center;justify-content:flex-end}
+  .right .card{padding:8px 10px;width:auto}.right .card h3{display:none}.right .card.how,.left .card.tools{display:none}
+  .tag{padding:.35em .8em}
+  .screen .btns:not(.col) .btn{padding:.7em 1.2em;min-height:44px;font-size:14px}
+  .screen .mini{margin:.6em 0 .9em}.screen p.rk{margin-top:.8em}
+  .screen h2.winner{font-size:clamp(22px,4.4vh,74.8px)}
+}
+/* a phone on its side: board in the middle, a pad under each thumb */
+@media (orientation:landscape) and (max-height:560px){
+  .app{grid-template-columns:var(--side) minmax(0,1fr) var(--side);grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"hd hd hd" "left board right" "padL board padR";gap:8px}
+  .brand span{display:none}.brand img{height:22px}
+  .card{padding:8px 12px;width:min(100%,200px)}.card h3{margin-bottom:.2em}.stat b{font-size:clamp(16px,5vh,57.2px)}.stat.big b{font-size:clamp(20px,6.5vh,74.8px)}
+  .left .lvl,.right .card.how,.left .card.tools{display:none}.left .giftbox .lvl{display:block}
+  .padL,.padR{align-self:center;padding-bottom:0;gap:6px}
+  .padL{justify-self:start;padding-left:66px}                /* clear of the Booth button, which sits at the bottom left */
+  .fxr-show,.fxr-back{padding:0!important;width:46px!important;height:46px!important;border-radius:50%!important;font-size:18px!important;line-height:44px!important;text-align:center!important}
+  .fxr-show .fxr-lbl,.fxr-back .fxr-lbl{display:none!important}   /* icons only, so the two corner buttons stay off the pads */
+  .pb{width:clamp(40px,11.8vh,132px);height:clamp(40px,11.8vh,132px)}
+  .screen .big{font-size:clamp(34px,13vh,176px)}.screen h2{font-size:clamp(16px,5.5vh,61.6px)}.screen p{margin:.2em 0 .6em;font-size:clamp(11px,3.4vh,33px)}
+  .mini{margin:.4em 0 .6em}.btn{padding:.6em 1.6em;min-height:42px}.btn.pri{box-shadow:0 5px 0 #1a77ad,0 12px 28px rgba(31,150,225,.35)}.btn.gold{box-shadow:0 5px 0 #c47a08,0 12px 28px rgba(255,170,40,.35)}
+  .btns.col{flex-direction:row;max-width:none}
+  /* the board is narrow here: the result keeps to what fits across it */
+  .screen{padding:8px}.screen .mini,.screen p.rk,.screen .cap + .cap{display:none}
+  .screen h2.winner{font-size:clamp(16px,6.4vh,57.2px)}.screen .big{font-size:clamp(30px,11vh,132px)}.screen p.sub{font-size:11px;margin:.2em 0 .5em}
+  .screen .btns .btn{padding:.55em 1.1em;min-height:38px;font-size:13px}.btns{gap:8px}
+}
+@media (orientation:portrait) and (min-height:1500px){
+  .app{grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-areas:"hd hd" "left right" "board board" "how how" "padL padR"}
+  .right{display:contents}
+  .right .card.goalcard{grid-area:right}
+  .right .card.how{display:block;grid-area:how;width:auto;padding:1.4vmin 2.4vmin}
+  .right .card.how h3{display:block}
+  .leg{font-size:2.3vmin}.help{font-size:2.1vmin}
+  .padL,.padR{padding-bottom:70px}
+}
+@media (prefers-reduced-motion:reduce){.sky i{animation:none}.screen,.screen .in,.lvl i{transition-duration:.01ms!important}}
+@media (hover:none){.btn.pri:hover,.btn.gold:hover{transform:none}}
+
+/* ── Pack Recall ─────────────────────────────────────────────────────────── */
+#game{cursor:pointer}
+.stat b.low{color:#ffb199}
+.tools{display:flex;gap:10px;flex-wrap:wrap}.tools .btn{flex:1 1 auto}
+.leg{margin:0;padding:0;list-style:none;font-size:clamp(11px,1.45vmin,33px);line-height:1.55;color:var(--mut)}
+.leg li{margin:.35em 0}.leg b{color:var(--ink);font-weight:600}
+.leg i{font-style:normal;display:inline-block;width:1.2em;text-align:center}
+.stars{display:flex;gap:10px;justify-content:center;margin:.2em 0 .3em;font-size:clamp(34px,7vmin,140.8px);line-height:1}
+.stars i{font-style:normal;color:rgba(255,255,255,.18);transition:color .4s,transform .5s cubic-bezier(.2,1.6,.3,1),text-shadow .4s}
+.stars i.on{color:#ffc94a;text-shadow:0 0 28px rgba(255,190,60,.8);transform:scale(1.12)}
+.stars i:nth-child(2){transition-delay:.15s}.stars i:nth-child(3){transition-delay:.3s}
+.pb.pad-shuffle .n{position:absolute;right:6px;bottom:3px;font-size:10px;font-weight:700;color:var(--mut)}
+@media (pointer:coarse){.tools{display:none}}
+@media (orientation:portrait){
+  .left .card.tools{display:none}
+  .right{flex-direction:row;align-items:stretch;justify-content:flex-end}
+  .right .card.goalcard{display:grid;grid-template-columns:1fr 1fr;align-content:center;gap:4px 14px;padding:8px 12px;width:auto}
+  .right .card.goalcard .stat{flex-direction:column;align-items:flex-start;gap:0;border:0;padding:0}
+  .right .card.goalcard .stat span{font-size:10px}.right .card.goalcard .stat b{font-size:clamp(16px,2.8vh,52.8px)}
+  .right .card.goalcard .stat.cmb{display:none}
+  .padL,.padR{padding-bottom:66px}
+}
+
+
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<div class="app" id="app">
+  <header class="hd">
+    <div class="brand"><img src="docs/facerinna-logo-white.webp" alt="FACERINNA" width="1200" height="318"><span><small>Dermatologist Care</small><b>Match Factory</b></span></div>
+    <div class="r"><span class="tag" id="modeTag" hidden></span><button class="btn ghost sm" id="pauseBtn" type="button">Pause</button></div>
+  </header>
+
+  <aside class="left">
+    <div class="card">
+      <h3>Routine</h3>
+      <div class="stat big"><span>Score</span><b id="score">0</b></div>
+      <div class="stat"><span>Level</span><b id="level">1</b></div>
+      <div class="stat"><span>Moves</span><b id="tries">0</b></div>
+      <div class="stat"><span>Best</span><b id="best">0</b></div>
+      <div class="lvl" aria-hidden="true"><i id="lvlBar"></i></div>
+      <div class="giftbox" id="giftBox" hidden><div class="gl"><span>🎁 Gift at</span><b id="giftNeedTxt">0</b></div><div class="lvl" aria-hidden="true"><i id="giftBar"></i></div></div>
+    </div>
+    <div class="card tools">
+      <button class="btn ghost sm" id="rotateBtn" type="button">🔄 Turn the bench</button>
+    </div>
+  </aside>
+
+  <main class="board" id="boardWrap">
+    <div class="cab" id="cab">
+      <canvas id="game" tabindex="0" aria-label="Match Factory board. Drag a pack onto a neighbouring one to move it; three matching packs leave the bench."></canvas>
+
+      <div class="screen" id="start">
+        <div class="in">
+          <p class="cap">Factory Floor 3D</p>
+          <h2>Three of a kind, off the line.</h2>
+          <p>A bench of FACERINNA packs seen at an angle. Drag a pack onto a neighbour to move it. Three the same side by side leave the bench and new ones drop in. Clear the target before your moves run out.</p>
+          <div class="btns col">
+            <button class="btn gold" id="goGift" type="button">🎁 Redeem gift<small id="giftSub">Checking the gift desk…</small></button>
+            <button class="btn pri" id="goPlay" type="button">Normal play<small>Level by level · limited moves</small></button>
+          </div>
+          <p class="note" id="giftNote"></p>
+        </div>
+      </div>
+
+      <div class="screen hidden" id="paused">
+        <div class="in"><p class="cap">Paused</p><h2>Take a breath.</h2>
+          <div class="btns"><button class="btn pri" id="resume" type="button">Resume</button><button class="btn ghost" id="menu2" type="button">Change mode</button></div></div>
+      </div>
+
+      <div class="screen hidden" id="result" role="dialog" aria-modal="true" aria-labelledby="rHead">
+        <div class="in">
+          <p class="cap" id="rHead">Routine complete</p>
+          <h2 class="winner" id="rWin">You are a winner! 🎉</h2>
+          <p class="big" id="rScore">0</p>
+          <p class="cap" style="color:var(--mut)">points</p>
+          <p class="sub" id="rSub"></p>
+          <div class="mini"><div><b id="rCombo">0</b><span>Best combo</span></div><div><b id="rLevel">1</b><span>Level</span></div><div><b id="rBest">0</b><span>Best</span></div></div>
+          <div class="btns"><button class="btn pri" id="again" type="button">Play again</button><button class="btn ghost" id="menu" type="button">Change mode</button></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="right">
+    <div class="card goalcard">
+      <h3>Target</h3>
+      <div class="stat"><span>Goal</span><b id="goal">0</b></div>
+      <div class="stat"><span>To go</span><b id="toGo">0</b></div>
+      <div class="stat"><span>Combo</span><b id="streak">×1</b></div>
+    </div>
+  </aside>
+</div>
+<script>
+(function(){
+'use strict';
+/* Match Factory — match-3 on an isometric bench, using the real product art
+   drawn as a standing carton so it reads as a 3D package rather than a flat
+   tile. Drag a pack onto a neighbour to swap; three in a line leave. Same
+   cabinet, gift desk and ranking as the rest of the stand.
+
+   Performance rules carried over from the sibling games: the frame loop parks
+   when nothing moves, the score only writes the DOM when the printed number
+   changes, and the backing store never forces a multiplier the screen lacks. */
+var COLS=8,ROWS=8;
+var RM=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+var COARSE=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
+var $=function(id){return document.getElementById(id)};
+var cv=$('game'), wrapEl=$('boardWrap'), g=cv.getContext('2d');
+var elScore=$('score'), elLevel=$('level'), elTries=$('tries'), elBest=$('best'),
+    elGoal=$('goal'), elToGo=$('toGo'), elStreak=$('streak'), lvlBar=$('lvlBar');
+var giftBox=$('giftBox'), giftBar=$('giftBar'), giftNeedTxt=$('giftNeedTxt'), modeTag=$('modeTag');
+var fmt=function(n){return Math.round(n).toLocaleString('en-US')};
+
+var RANGE=[
+  {s:'10-niacinamide-3-txa-bright-dark-spot-serum',  c:'#4898D8'},
+  {s:'2-salicylic-acid-acne-serum',                  c:'#12A79B'},
+  {s:'retinol-anti-aging-serum',                     c:'#B4557C'},
+  {s:'ceramide-b5-balancing-moisturizer',            c:'#3FA7D6'},
+  {s:'5-b5-intensive-barrier-cream',                 c:'#F0C25A'},
+  {s:'physical-defense-barrier-serum-sunscreen-spf50', c:'#E8A13B'}
+];
+RANGE.forEach(function(p){
+  var im=new Image();im.decoding='async';im.src='products/'+p.s+'.webp';
+  p.img=im;p.ok=false;im.onload=function(){p.ok=true;faceCache={};render()};
+});
+
+/* height of the bench in cells: one row costs 0.31 (the isometric squeeze)
+   plus a skew tail. fit() and the canvas size MUST use the same number. */
+/* vertical span: the far row sits (COLS+ROWS-2)*0.31 cells down from the
+   near row, plus the carton's own height. Using ROWS*0.31 clipped the
+   bottom rows off the canvas. */
+var HG=(COLS+ROWS-2)*0.31+1.30;
+var cell=52,dpr=1,W=COLS*52,H=Math.round(52*HG);
+var state='idle',level=1,score=0,shown=0,moves=0,best=0,mode='play',need=0,giftNeed=null,giftState='wait',giftSeq=0;
+var goal=0,board=[],sel=null,drag=null,anim=null,particles=[],floats=[],rings=[],shake=0,combo=0,bestCombo=0;
+var lastFrame=0,raf=0,lastScoreText='',faceCache={};
+
+try{best=parseInt(localStorage.getItem('fx.matchfactory.best')||'0',10)||0}catch(e){}
+function saveBest(){try{localStorage.setItem('fx.matchfactory.best',String(best))}catch(e){}}
+
+function fit(){
+  var r=wrapEl.getBoundingClientRect();
+  var pad=COARSE?10:40;
+  /* the bench is drawn at a 2:1 isometric skew, so it is wider than it is tall:
+     reserve room for the skew when picking the cell */
+  /* the bench is skewed, so a cell costs ~1.02 of width but only ~0.31 of height
+     per row plus the skew tail. Solve for width, then for height, and take the
+     smaller of the two so the bench fills the cabinet instead of floating in it. */
+  var byW=(r.width-pad)/(COLS*1.02);
+  var byH=(r.height-pad)/HG;
+  var c=Math.max(22,Math.floor(Math.min(byW,byH)));
+  var native=window.devicePixelRatio||1;
+  var d=Math.min(COARSE?2:3,Math.max(1,native));
+  if(native>=2)d=Math.min(d,2);
+  var bw=c*COLS, bh=c*HG;
+  var budget=COARSE?4e6:6e6;
+  while(d>1&&(bw*d)*(bh*d)>budget)d-=.5;
+  if(c===cell&&d===dpr&&cv.width)return;
+  cell=c;dpr=d;
+  W=Math.round(bw);H=Math.round(bh);
+  cv.style.width=W+'px';cv.style.height=H+'px';
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+  faceCache={};render();
+}
+var fitQ=0;
+function fitSoon(){if(!fitQ)fitQ=requestAnimationFrame(function(){fitQ=0;fit()})}
+addEventListener('resize',fitSoon,{passive:true});
+
+/* isometric placement: x grows right, y grows down, the board is squeezed
+   vertically so it reads as a bench seen from above and in front */
+function isoX(c,r){return (c-r)*cell*0.5 + W/2}
+function isoY(c,r){return (c+r)*cell*0.31}
+function packW(){return cell*1.02}
+function packH(){return cell*1.30}
+
+function idx(c,r){return r*COLS+c}
+function get(c,r){
+  if(c<0||c>=COLS||r<0||r>=ROWS)return null;
+  var v=board[idx(c,r)];
+  /* an empty board leaves undefined, not null; the renderer runs before the
+     first newBoard(), and 'undefined !== null' let it fall through to RANGE[undefined] */
+  return (v===undefined)?null:v;
+}
+function set(c,r,v){board[idx(c,r)]=v}
+
+function newBoard(){
+  board=new Array(COLS*ROWS).fill(null);
+  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+    var v;
+    var guard=0;
+    do{v=(Math.random()*RANGE.length)|0;guard++}
+    while(guard<20&&(
+      (c>=2&&get(c-1,r)===v&&get(c-2,r)===v)||
+      (r>=2&&get(c,r-1)===v&&get(c,r-2)===v)));
+    set(c,r,v);
+  }
+  if(!findMoves().length)newBoard();
+}
+
+function findLine(){
+  var runs=[];
+  for(var r=0;r<ROWS;r++){
+    var c=0;
+    while(c<COLS){
+      var v=get(c,r);if(v===null){c++;continue}
+      var e=c+1;while(e<COLS&&get(e,r)===v)e++;
+      if(e-c>=3)runs.push({dir:'h',c:c,r:r,n:e-c,v:v});
+      c=e;
+    }
+  }
+  for(var c2=0;c2<COLS;c2++){
+    var r2=0;
+    while(r2<ROWS){
+      var v2=get(c2,r2);if(v2===null){r2++;continue}
+      var e2=r2+1;while(e2<ROWS&&get(c2,e2)===v2)e2++;
+      if(e2-r2>=3)runs.push({dir:'v',c:c2,r:r2,n:e2-r2,v:v2});
+      r2=e2;
+    }
+  }
+  return runs;
+}
+function findMoves(){
+  var out=[];
+  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
+    [[1,0],[0,1]].forEach(function(d){
+      var c2=c+d[0],r2=r+d[1];
+      if(c2>=COLS||r2>=ROWS)return;
+      var a=get(c,r),b=get(c2,r2);
+      if(a===null||b===null||a===b)return;
+      set(c,r,b);set(c2,r2,a);
+      if(findLine().length)out.push({c1:c,r1:r,c2:c2,r2:r2});
+      set(c,r,a);set(c2,r2,b);
+    });
+  }
+  return out;
+}
+
+function startGame(m){
+  mode=(m==='gift')?'gift':'play';
+  need=mode==='gift'?(giftNeed||0):0;
+  level=1;score=0;shown=0;combo=0;bestCombo=0;
+  moves=30;
+  goal=mode==='play'?targetFor(1):need;
+  sel=null;drag=null;anim=null;particles=[];floats=[];rings=[];shake=0;
+  $('start').classList.add('hidden');$('paused').classList.add('hidden');$('result').className='screen hidden';
+  modeTag.hidden=false;
+  modeTag.textContent=mode==='gift'?'🎁 Redeem gift':'Normal play';
+  modeTag.className='tag'+(mode==='gift'?' gift':'');
+  giftBox.hidden=mode!=='gift';
+  if(mode==='gift'){giftNeedTxt.textContent=fmt(need);giftBar.style.transform='scaleX(0)'}
+  newBoard();
+  state='play';hud();kick();
+  try{cv.focus({preventScroll:true})}catch(e){}
+}
+function targetFor(lv){return 700+(lv-1)*550}
+
+function toMenu(){
+  state='idle';board=[];
+  $('result').className='screen hidden';$('paused').classList.add('hidden');$('start').classList.remove('hidden');
+  modeTag.hidden=true;giftBox.hidden=true;refreshGift(false);
+  hud();render();kick();
+}
+function addScore(n){
+  if(state==='won'||state==='over')return;
+  score+=n;
+  if(mode==='gift'&&need>0&&score>=need)win();
+}
+function win(){
+  state='won';confetti();shake=Math.max(shake,.9);buzz([60,40,60,60,140]);
+  floats.push({t:0,x:W/2,y:H*0.30,txt:'🎁 WINNER!',big:true,c:'#ffe08a'});
+  finish('win');
+}
+function finish(kindOfEnd){
+  if(state!=='won')state='over';
+  var fresh=score>best;if(fresh){best=score;saveBest()}
+  $('rScore').textContent=String(score);
+  $('rCombo').textContent=bestCombo;$('rLevel').textContent=level;
+  $('rBest').textContent=fmt(best);$('rBest').className=fresh?'new':'';
+  var head=fresh&&score>0?'New personal best':'Routine complete',sub='';
+  if(kindOfEnd==='win'){head='Gift unlocked';sub='You reached '+fmt(need)+' points. Your gift is ready.'}
+  else if(mode==='gift'&&need){head='So close!';sub=fmt(Math.max(0,need-score))+' more points for the gift. Go again!'}
+  $('rHead').textContent=head;$('rSub').textContent=sub;$('rSub').style.display=sub?'':'none';
+  elScore.textContent=fmt(score);shown=score;
+  if(mode==='gift'&&need)giftBar.style.transform='scaleX('+Math.min(1,score/need)+')';
+  hud();
+  setTimeout(function(){
+    if(state!=='won'&&state!=='over')return;
+    $('result').className='screen'+(kindOfEnd==='win'?' win':'');
+    try{$('again').focus({preventScroll:true})}catch(e){}
+  },RM?0:(kindOfEnd==='win'?1100:520));
+  if(kindOfEnd!=='win')buzz([30,40,30]);
+  kick();
+}
+function hud(){
+  var s=level+'|'+moves+'|'+Math.max(best,score)+'|'+goal;
+  elToGo.textContent=fmt(Math.max(0,goal-score));
+  elStreak.textContent='×'+Math.max(1,Math.min(9,combo||1));
+  if(s===hud._k)return;hud._k=s;
+  elLevel.textContent=level;elTries.textContent=moves;
+  elBest.textContent=fmt(Math.max(best,score));elGoal.textContent=fmt(goal);
+  lvlBar.style.transform='scaleX('+Math.max(0,Math.min(1,score/Math.max(1,goal)))+')';
+}
+
+function hitTest(px,py){
+  /* pick the pack whose drawn carton contains the point: the bench is skewed, so
+     a rectangular grid test would be off by half a cell on the far side */
+  var bw=packW(),bh=packH();
+  for(var r=ROWS-1;r>=0;r--)for(var c=COLS-1;c>=0;c--){
+    var x=isoX(c,r)-bw/2, y=isoY(c,r)-bh*0.72;
+    if(px>=x&&px<=x+bw&&py>=y&&py<=y+bh)return{c:c,r:r};
+  }
+  return null;
+}
+
+function tap(c,r){
+  if(state!=='play'||anim)return;
+  if(sel===null){sel={c:c,r:r};buzz(6);kick();return}
+  var dc=Math.abs(sel.c-c),dr=Math.abs(sel.r-r);
+  var first=sel;sel=null;
+  if(dc+dr!==1){sel={c:c,r:r};kick();return}
+  attemptSwap(first.c,first.r,c,r);
+}
+
+function attemptSwap(c1,r1,c2,r2){
+  var a=get(c1,r1),b=get(c2,r2);
+  if(a===null||b===null)return;
+  set(c1,r1,b);set(c2,r2,a);
+  if(!findLine().length){
+    set(c1,r1,a);set(c2,r2,b);
+    floats.push({t:0,x:isoX(c1,r1),y:isoY(c1,r1),txt:'no line',c:'#ffb0b0'});
+    shake=Math.max(shake,.35);kick();
+    return;
+  }
+  moves--;hud();
+  resolveBoard();
+}
+
+function resolveBoard(){
+  var runs=findLine();
+  if(!runs.length){
+    /* refill and settle, then hand control back */
+    refill();
+    anim=null;
+    if(state==='play'&&moves<=0)endRun();
+    kick();
+    return;
+  }
+  var cleared={};
+  runs.forEach(function(rn){
+    for(var i=0;i<rn.n;i++){
+      var c=rn.dir==='h'?rn.c+i:rn.c;
+      var r=rn.dir==='h'?rn.r:rn.r+i;
+      cleared[idx(c,r)]=true;
+    }
+  });
+  var n=Object.keys(cleared).length;
+  combo=Math.min(9,(combo||0)+1);bestCombo=Math.max(bestCombo,combo);
+  var pts=(60+30*combo)*(1+(n-3)*0.35)*level;
+  addScore(Math.round(pts));
+  Object.keys(cleared).forEach(function(k){
+    var i=+k, c=i%COLS, r=(i/COLS)|0;
+    var v=board[i];
+    if(v!==null)burst(isoX(c,r),isoY(c,r),RANGE[v].c,7,1);
+    rings.push({x:isoX(c,r),y:isoY(c,r),t:0,v:v});
+    board[i]=null;
+  });
+  floats.push({t:0,x:W/2,y:H*0.16,txt:'+'+fmt(pts)+(n>3?' ×'+n:''),big:combo>=3,c:combo>=3?'#ffe08a':'#eef8ff'});
+  shake=Math.max(shake,.25);hud();
+  anim={kind:'clear',t:0,max:RM?0.02:0.22};
+  kick();
+}
+
+function refill(){
+  for(var c=0;c<COLS;c++){
+    var write=ROWS-1;
+    for(var r=ROWS-1;r>=0;r--){
+      var v=get(c,r);
+      if(v!==null){set(c,write,v);if(write!==r)set(c,r,null);write--}
+    }
+    for(var r2=write;r2>=0;r2--){
+      var nv;
+      var guard=0;
+      /* avoid handing the player a board that already contains a line */
+      do{nv=(Math.random()*RANGE.length)|0;guard++}
+      while(guard<12&&(
+        (c>=2&&get(c-1,r2)===nv&&get(c-2,r2)===nv)||
+        (r2<ROWS-1&&get(c,r2+1)===nv&&r2<ROWS-2&&get(c,r2+2)===nv)));
+      set(c,r2,nv);
+    }
+  }
+  if(!findMoves().length){shuffle();}
+}
+
+function shuffle(){
+  var all=[];
+  for(var i=0;i<board.length;i++)if(board[i]!==null)all.push(board[i]);
+  for(var k=all.length-1;k>0;k--){var j=(Math.random()*(k+1))|0;var t=all[k];all[k]=all[j];all[j]=t}
+  for(var i2=0;i2<board.length;i2++)if(board[i2]!==null)board[i2]=all.pop();
+  if(!findMoves().length)newBoard();
+  floats.push({t:0,x:W/2,y:H*0.2,txt:'bench shuffled',c:'#ffd98a'});
+}
+
+function endRun(){
+  if(state==='over'||state==='won')return;
+  state='over';
+  floats.push({t:0,x:W/2,y:H*0.42,txt:'Out of moves',big:true,c:'#ff9b9b'});
+  finish('over');
+}
+
+/* input: drag a pack onto a neighbour, or tap two */
+cv.addEventListener('pointerdown',function(e){
+  if(e.button!=null&&e.button>0)return;
+  if(state!=='play'||anim)return;
+  e.preventDefault();
+  var r=cv.getBoundingClientRect();
+  var h2=hitTest(e.clientX-r.left,e.clientY-r.top);
+  if(!h2)return;
+  drag={from:h2,x:e.clientX-r.left,y:e.clientY-r.top};
+  try{cv.setPointerCapture(e.pointerId)}catch(err){}
+},{passive:false});
+cv.addEventListener('pointerup',function(e){
+  if(!drag||state!=='play'){drag=null;return}
+  var r=cv.getBoundingClientRect();
+  var to=hitTest(e.clientX-r.left,e.clientY-r.top);
+  var from=drag.from;drag=null;
+  if(to&&(Math.abs(to.c-from.c)+Math.abs(to.r-from.r)===1)){
+    attemptSwap(from.c,from.r,to.c,to.r);
+  }else{
+    tap(from.c,from.r);
+  }
+});
+cv.addEventListener('pointercancel',function(){drag=null});
+
+document.addEventListener('keydown',function(e){
+  var k=e.key.toLowerCase();
+  if(k==='p'||k==='escape'){togglePause();e.preventDefault()}
+});
+function togglePause(){
+  if(state==='play'){state='pause';$('paused').classList.remove('hidden');kick()}
+  else if(state==='pause'){$('paused').classList.add('hidden');state='play';kick()}
+}
+function buzz(p){try{if(navigator.vibrate)navigator.vibrate(p)}catch(e){}}
+
+function kick(){if(!raf){lastFrame=0;raf=requestAnimationFrame(frame)}}
+function frame(t){
+  raf=0;
+  var dt=lastFrame?Math.min(.05,(t-lastFrame)/1000):1/60;
+  lastFrame=t;
+  update(dt);render();
+  if(moving())raf=requestAnimationFrame(frame);
+}
+function moving(){
+  if(state==='play')return true;
+  if(anim||particles.length||floats.length||rings.length||shake>.01)return true;
+  if(Math.abs(shown-score)>.5)return true;
+  return false;
+}
+function ease(r,dt){return 1-Math.exp(-r*dt)}
+
+function update(dt){
+  if(anim){
+    anim.t+=dt;
+    if(anim.t>=anim.max){
+      if(anim.kind==='clear'){anim=null;refill();combo=0;hud()}
+      else anim=null;
+      kick();
+    }
+  }
+  rings.forEach(function(r){r.t+=dt});
+  rings=rings.filter(function(r){return r.t<0.5});
+  particles.forEach(function(p){p.life+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=900*dt});
+  particles=particles.filter(function(p){return p.life<p.max});
+  floats.forEach(function(f){f.t+=dt});
+  floats=floats.filter(function(f){return f.t<1.15});
+  if(shake>.01)shake*=Math.pow(.0016,dt);else shake=0;
+  if(shown!==score){
+    shown+=(score-shown)*ease(9,dt);
+    if(Math.abs(score-shown)<.6)shown=score;
+    var printed=fmt(shown);
+    if(printed!==lastScoreText){lastScoreText=printed;elScore.textContent=printed}
+  }
+}
+
+/* a carton drawn in perspective: front face, a light top face and a shadow, so a
+   flat product photo reads as a standing pack on a bench */
+function carton(x,y,w,h,color,img){
+  var d=w*0.16, dy=-h*0.10;
+  g.save();
+  g.shadowColor='rgba(0,8,24,.45)';g.shadowBlur=w*0.18;g.shadowOffsetY=h*0.10;
+  g.beginPath();
+  g.moveTo(x,y);
+  g.lineTo(x+w,y);
+  g.lineTo(x+w,y+h);
+  g.lineTo(x,y+h);
+  g.closePath();
+  var grd=g.createLinearGradient(x,y,x,y+h);
+  grd.addColorStop(0,'rgba(255,255,255,.96)');
+  grd.addColorStop(1,'rgba(232,242,250,.92)');
+  g.fillStyle=grd;g.fill();
+  g.restore();
+  g.beginPath();
+  g.moveTo(x,y);g.lineTo(x+d,y+dy);g.lineTo(x+w+d,y+dy);g.lineTo(x+w,y);
+  g.closePath();
+  g.fillStyle='rgba(255,255,255,.55)';g.fill();
+  if(img&&img.ok&&img.img.naturalWidth){
+    var iw=img.img.naturalWidth,ih=img.img.naturalHeight;
+    var k=Math.min((w*0.82)/iw,(h*0.82)/ih);
+    var dw=iw*k,dh=ih*k;
+    g.drawImage(img.img,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
+  }else{
+    g.beginPath();g.arc(x+w/2,y+h/2,w*0.30,0,7);
+    g.fillStyle=color||'#4898D8';g.fill();
+  }
+  g.strokeStyle='rgba(63,180,238,.35)';g.lineWidth=1.2;
+  g.strokeRect(x,y,w,h);
+  g.beginPath();
+  g.moveTo(x,y);g.lineTo(x+d,y+dy);g.lineTo(x+w+d,y+dy);g.lineTo(x+w,y);
+  g.strokeStyle='rgba(255,255,255,.5)';g.stroke();
+}
+
+function render(){
+  var sx=0,sy=0;
+  if(shake>.01){sx=(Math.random()-.5)*shake*12;sy=(Math.random()-.5)*shake*12}
+  g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,W,H);
+  g.save();g.translate(sx,sy);
+
+  /* the bench: a faint skewed slab under the packs */
+  g.beginPath();
+  g.moveTo(isoX(0,0)-cell*0.55, isoY(0,0)-cell*0.20);
+  g.lineTo(isoX(COLS-1,0)+cell*0.55, isoY(COLS-1,0)-cell*0.20);
+  g.lineTo(isoX(COLS-1,ROWS-1)+cell*0.55, isoY(COLS-1,ROWS-1)+cell*0.42);
+  g.lineTo(isoX(0,ROWS-1)-cell*0.55, isoY(0,ROWS-1)+cell*0.42);
+  g.closePath();
+  g.fillStyle='rgba(20,60,110,.30)';g.fill();
+  g.strokeStyle='rgba(127,213,255,.22)';g.lineWidth=1.5;g.stroke();
+
+  for(var r=0;r<ROWS;r++){
+    for(var c=0;c<COLS;c++){
+      var v=get(c,r);
+      if(v===null||v===undefined)continue;
+      var x=isoX(c,r)-packW()/2, y=isoY(c,r)-packH()*0.72;
+      carton(x,y,packW(),packH(),RANGE[v].c,RANGE[v]);
+    }
+  }
+  if(sel){
+    var xx=isoX(sel.c,sel.r)-packW()/2, yy=isoY(sel.c,sel.r)-packH()*0.72;
+    g.strokeStyle='rgba(255,217,138,.95)';g.lineWidth=2.5;
+    g.strokeRect(xx-2,yy-2,packW()+4,packH()+4);
+  }
+  rings.forEach(function(rg){
+    var k=rg.t/0.5;
+    g.globalAlpha=Math.max(0,1-k);
+    g.strokeStyle=rg.v!=null?RANGE[rg.v].c:'#fff';g.lineWidth=2;
+    g.beginPath();g.arc(rg.x,rg.y,cell*(0.3+k*0.6),0,7);g.stroke();
+  });
+  g.globalAlpha=1;
+  particles.forEach(function(p){
+    var kk=1-p.life/p.max;
+    g.globalAlpha=Math.max(0,kk);g.fillStyle=p.c;
+    g.beginPath();g.arc(p.x,p.y,p.r*kk,0,7);g.fill();
+  });
+  g.globalAlpha=1;
+  floats.forEach(function(f){
+    var kk=f.t/1.15,y=f.y-kk*40;
+    g.globalAlpha=Math.max(0,1-kk*kk);
+    g.font='700 '+Math.round(f.big?26:20)+'px Inter, system-ui, sans-serif';
+    g.textAlign='center';g.textBaseline='middle';
+    g.fillStyle=f.c||'#eef8ff';
+    g.shadowColor='rgba(0,8,24,.85)';g.shadowBlur=10;
+    g.fillText(f.txt,f.x,y);g.shadowBlur=0;
+  });
+  g.globalAlpha=1;
+  if(state==='pause'){g.fillStyle='rgba(3,10,24,.55)';g.fillRect(0,0,W,H)}
+  g.restore();
+}
+
+function burst(x,y,color,n,power){
+  if(RM||particles.length>(COARSE?120:200))return;
+  for(var i=0;i<n;i++){
+    var a=Math.random()*Math.PI*2,s2=(50+Math.random()*140)*power;
+    particles.push({x:x,y:y,vx:Math.cos(a)*s2,vy:Math.sin(a)*s2-50*power,
+      life:0,max:.4+Math.random()*.5,r:1.4+Math.random()*2.6,c:color});
+  }
+}
+function confetti(){
+  if(RM)return;
+  var cols=['#ffd24a','#ff7a59','#5ad2f4','#7be08a','#ffffff','#e98cff'];
+  for(var i=0;i<(COARSE?60:120);i++){
+    particles.push({x:Math.random()*W,y:-Math.random()*H*.3,vx:(Math.random()-.5)*140,
+      vy:60+Math.random()*170,life:0,max:1.5+Math.random()*1.5,
+      r:2+Math.random()*3,c:cols[i%cols.length]});
+  }
+}
+
+$('goPlay').addEventListener('click',function(){startGame('play')});
+$('again').addEventListener('click',function(){startGame(mode==='gift'&&giftState==='ready'&&giftNeed?'gift':'play')});
+$('menu').addEventListener('click',toMenu);
+$('menu2').addEventListener('click',toMenu);
+$('resume').addEventListener('click',togglePause);
+$('pauseBtn').addEventListener('click',togglePause);
+$('rotateBtn').addEventListener('click',function(){
+  if(state!=='play'||anim)return;
+  shuffle();kick();
+});
+
+function refreshGift(force){
+  var fg=window.fxGift,sub=$('giftSub'),note=$('giftNote'),btn=$('goGift');
+  if(!fg){giftState='wait';sub.textContent='Checking the gift desk…';return}
+  if(force&&fg.forget)fg.forget();
+  var seq=++giftSeq;
+  giftState='wait';sub.textContent='Checking the gift desk…';note.textContent='';
+  fg.settings().then(function(cfg){
+    if(seq!==giftSeq)return;
+    if(!cfg){giftState='offline';giftNeed=null;sub.textContent='Gift desk not reachable';
+      note.textContent='Tap Redeem gift to try again, or play normally.';btn.disabled=false;return}
+    var on=/^(yes|y|true|1|on)$/i.test(String(cfg.gift_active||'no'));
+    giftNeed=fg.needFor(cfg,'match-factory');
+    if(!on){giftState='off';sub.textContent='Gifts are not on right now';btn.disabled=true;
+      note.textContent='You can still play normally and join the ranking.'}
+    else if(!giftNeed){giftState='unset';sub.textContent='No gift target set for this game';btn.disabled=true;
+      note.textContent='Ask the FACERINNA team. Normal play is open.'}
+    else{giftState='ready';sub.textContent='Reach '+fmt(giftNeed)+' points to win';btn.disabled=false;
+      note.textContent='The game stops the moment you reach it.'}
+  }).catch(function(){
+    if(seq!==giftSeq)return;
+    giftState='offline';giftNeed=null;sub.textContent='Gift desk not reachable';btn.disabled=false;
+    note.textContent='Tap Redeem gift to try again, or play normally.';
+  });
+}
+$('goGift').addEventListener('click',function(){
+  if(giftState==='ready'&&giftNeed)startGame('gift');
+  else if(giftState!=='off'&&giftState!=='unset')refreshGift(true);
+});
+
+state='idle';goal=targetFor(1);
+hud();fit();refreshGift(false);render();kick();
+
+/* would this swap produce a line? The test needs to pick an ILLEGAL pair on
+   purpose; calling attemptSwap on random neighbours proves nothing because most
+   neighbours are legal. */
+function isLegal(c1,r1,c2,r2){
+  var a=get(c1,r1),b=get(c2,r2);
+  if(a===null||b===null||a===b)return false;
+  if(Math.abs(c1-c2)+Math.abs(r1-r2)!==1)return false;
+  set(c1,r1,b);set(c2,r2,a);
+  var yes=findLine().length>0;
+  set(c1,r1,a);set(c2,r2,b);
+  return yes;
+}
+
+window.__matchfactory={
+  start:startGame,refreshGift:refreshGift,attemptSwap:attemptSwap,isLegal:isLegal,
+  state:function(){return state},
+  board:function(){return board.slice()},
+  findMoves:function(){return findMoves().length},
+  hint:function(){var m=findMoves();return m[0]||null},
+  snapshot:function(){return{state:state,mode:mode,level:level,score:score,moves:moves,goal:goal,need:need,
+    giftNeed:giftNeed,giftState:giftState,combo:combo,cell:cell,dpr:dpr,cw:cv.width,ch:cv.height,
+    tiles:board.filter(function(v){return v!==null}).length}}
+};
+})();
+</script>
+<script>window.FX_RANK={id:'match-factory',name:'Match Factory',result:'#result',score:'#rScore',manual:true,giftGate:function(){ return !!(window.__matchfactory && window.__matchfactory.snapshot().mode === 'gift'); }};</script>
+<script src="fx-rank.js"></script>
+<script src="fx-gift.js"></script>
+<script>
+if ('serviceWorker' in navigator)
+  addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
+</script>
+<script src="fx-games.js" data-game="match-factory"></script>
+</body>
+</html>
