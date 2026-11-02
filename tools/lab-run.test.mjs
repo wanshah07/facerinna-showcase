@@ -61,7 +61,7 @@ chk('the game built itself', await p.evaluate(()=>typeof window.__peek==='functi
 await p.fill('#fxrName','Tester');
 await p.click('#fxrGo');
 await p.waitForTimeout(250);
-await p.click('#playBtn');
+await p.click('#goPlay');
 await p.waitForTimeout(400);
 chk('it is running', (await p.evaluate(()=>__peek().running))===true);
 await p.evaluate(()=>__quiet());

@@ -336,6 +336,7 @@ body:has(.screen:not(.hidden)) .hud{opacity:0;visibility:hidden}
   #start,#startBtn,#playBtn{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:2}
 }
 </style>
+<script src="fx-modes.js"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -2361,6 +2362,7 @@ function everythingResting(){
 }
 
 function endRound(){
+  if (G.phase === 'result') return;          /* the run was stopped on a gift target */
   removeActive();
   for (var i=shards.length-1;i>=0;i--){
     scene.remove(shards[i].mesh);
@@ -2374,14 +2376,15 @@ function endRound(){
   loadNext();
 }
 
-function finish(won){
+function finish(won, stopped){
+  if (G.phase === 'result') return;
   G.phase = 'result';
   FXUI.setPlaying(false);
   hideLoaded(); el.abilityBtn.classList.remove('on');
   var L = LEVELS[G.level];
   var stars = 0;
   if (won){
-    G.score += (G.queue.length - G.idx) * 1000;
+    if (!stopped) G.score += (G.queue.length - G.idx) * 1000;   /* a gift stop adds nothing to the score that reached the target */
     el.hScore.textContent = G.score;
     stars = G.score >= L.par ? 3 : G.score >= L.par*0.72 ? 2 : 1;
     if (stars > G.stars[G.level]) G.stars[G.level] = stars;
@@ -2434,6 +2437,18 @@ function showSelect(){
   el.select.classList.remove('hidden');
 }
 
+/* a gift run ends the instant the score reaches the target, wherever the shot is */
+function giftStop(){
+  if (G.phase !== 'aim' && G.phase !== 'fly') return;
+  removeActive();
+  for (var i=shards.length-1;i>=0;i--){ scene.remove(shards[i].mesh); pw.removeBody(shards[i].body); }
+  shards = [];
+  el.abilityBtn.classList.remove('on');
+  finish(true, true);
+}
+fxModes.mount({id:'shelf-shot',start:'#title',startBtn:'#startBtn',result:'#result',normalSub:'Pick a concern and play',
+  getScore:function(){ return G.score; }, isPlaying:function(){ return G.phase === 'aim' || G.phase === 'fly'; }, stop:giftStop,
+  addScore:function(n){ G.score += n; el.hScore.textContent = G.score; }});
 document.getElementById('startBtn').addEventListener('click', function(){
   SFX.init(); SFX.ui(); showSelect();
 });
@@ -2813,7 +2828,7 @@ window.addEventListener('orientationchange', function(){
 </script>
 <!-- booth ranking: name before the run, board after it. Declares only
      where this game keeps its result screen and its score. -->
-<script>window.FX_RANK={id:'shelf-shot',name:'Shelf Shot',result:'#result',score:'#rScore'};</script>
+<script>window.FX_RANK={id:'shelf-shot',name:'Shelf Shot',result:'#result',score:'#rScore',giftGate:function(){return !!(window.fxModes&&fxModes.gate())}};</script>
 <script src="fx-tour.js"></script>
 <script src="fx-rank.js"></script>
 <script src="fx-gift.js"></script>

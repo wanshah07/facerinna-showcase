@@ -232,7 +232,27 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
 }
 
 
+
+/* ── the product that fills as you score ─────────────────────────────── */
+.card.prod{padding:clamp(10px,1.6vmin,40px)}
+.prodstage{height:clamp(150px,30vmin,720px);margin:.2em 0 .5em}
+.prodcap{margin:0;display:flex;flex-direction:column;gap:.35em;text-align:center}
+.prodcap b{font-size:clamp(10px,1.35vmin,30px);line-height:1.3;color:var(--ink);font-weight:600;letter-spacing:.02em}
+.prodnum{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:clamp(11px,1.5vmin,32px);color:var(--mut)}
+.prodnum i{font-style:normal;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums;font-size:1.25em}
+.prodnum em{font-style:normal;font-variant-numeric:tabular-nums}
+@media (orientation:landscape) and (max-height:560px){ .prodstage{height:clamp(70px,22vh,200px);margin:0 0 .3em}.prodcap b{display:none}.card.prod h3{display:none} }
+@media (orientation:portrait){
+  .right .card.prod{width:auto;padding:6px 10px;display:grid;grid-template-columns:auto;gap:0;align-content:center}
+  .right .card.prod h3{display:none}
+  .prodstage{height:76px;width:64px;margin:0 auto 2px}
+  .prodcap b{display:none}
+  .prodnum{flex-direction:column;align-items:center;gap:0;font-size:11px}
+}
+@media (orientation:portrait) and (max-width:700px){ .right .card.goalcard{display:none} }
+@media (orientation:portrait) and (min-height:1500px){ .prodstage{height:220px;width:120px} .right .card.prod{grid-area:right;justify-self:end} }
 </style>
+<script src="fx-product.js"></script>
 </head>
 <body>
 <div class="sky" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -298,6 +318,11 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
       <div class="stat"><span>Goal</span><b id="goal">0</b></div>
       <div class="stat"><span>To go</span><b id="toGo">0</b></div>
       <div class="stat"><span>Combo</span><b id="streak">×1</b></div>
+    </div>
+    <div class="card prod" id="prodCard">
+      <h3>Next product</h3>
+      <div class="prodstage" id="prodStage" aria-hidden="true"></div>
+      <p class="prodcap"><b id="prodName">&nbsp;</b><span class="prodnum"><i id="prodPct">0%</i><em id="prodGo"></em></span></p>
     </div>
   </aside>
 </div>
@@ -376,6 +401,7 @@ function startGame(m){
   goal=mode==='play'?targetFor(1):need;
   tiles=[];particles=[];floats=[];laneFlash=[0,0,0,0];shake=0;
   speedPx=150;spawnLeft=0;
+  if(prod)prod.reset(mode==='gift'?Math.floor(Math.random()*6):0);
   $('start').classList.add('hidden');$('paused').classList.add('hidden');$('result').className='screen hidden';
   modeTag.hidden=false;
   modeTag.textContent=mode==='gift'?'🎁 Redeem gift':'Normal play';
@@ -389,6 +415,7 @@ function startGame(m){
 function targetFor(lv){return 900+(lv-1)*700}
 
 function toMenu(){
+  if(prod)prod.reset(0);
   state='idle';tiles=[];
   $('result').className='screen hidden';$('paused').classList.add('hidden');$('start').classList.remove('hidden');
   modeTag.hidden=true;giftBox.hidden=true;refreshGift(false);
@@ -400,7 +427,7 @@ function addScore(n){
   if(mode==='gift'&&need>0&&score>=need)win();
 }
 function win(){
-  state='won';confetti();shake=Math.max(shake,.9);buzz([60,40,60,60,140]);
+  state='won';if(prod)prod.complete(false);confetti();shake=Math.max(shake,.9);buzz([60,40,60,60,140]);
   floats.push({t:0,x:W/2,y:H*0.34,txt:'🎁 WINNER!',big:true,c:'#ffe08a'});
   finish('win');
 }
@@ -425,7 +452,21 @@ function finish(kindOfEnd){
   if(kindOfEnd!=='win')buzz([30,40,30]);
   kick();
 }
+/* The product beside the board: blank at the start of a level, filling as the score climbs
+   towards the goal (or the gift target), complete and replaced by the next one at the level up. */
+var elProdName=$('prodName'), elProdPct=$('prodPct'), elProdGo=$('prodGo');
+var prod=window.fxProduct?fxProduct.mount($('prodStage'),{
+  onPaint:function(sh){var t=Math.round(sh*100)+'%';if(t!==elProdPct.textContent)elProdPct.textContent=t},
+  onReplace:function(){elProdName.textContent=prod.name();prodSync()}}):null;
+function prodSync(){
+  if(!prod)return;
+  var lo=(mode==='gift')?0:(level>1?targetFor(level-1):0);
+  prod.set((score-lo)/Math.max(1,goal-lo));
+  var g=fmt(Math.max(0,goal-score))+' to go';
+  if(g!==elProdGo.textContent)elProdGo.textContent=g;
+}
 function hud(){
+  prodSync();
   var s=level+'|'+lives+'|'+Math.max(best,score)+'|'+goal;
   elToGo.textContent=fmt(Math.max(0,goal-score));
   elStreak.textContent='×'+Math.max(1,Math.min(9,combo||1));
@@ -524,6 +565,7 @@ function update(dt){
       if(t.y>H+th){tiles.splice(i,1)}
     }
     if(state==='play'&&score>=goal&&mode==='play'){
+      if(prod)prod.complete(level);
       level++;goal=targetFor(level);
       floats.push({t:0,x:W/2,y:H*0.3,txt:'Level '+level,big:true});
       buzz([20,20,20]);hud();
@@ -719,7 +761,9 @@ window.__magictiles={
   lanes:function(){return tiles.map(function(t){return{lane:t.lane,y:Math.round(t.y),dead:t.dead}})},
   snapshot:function(){return{state:state,mode:mode,level:level,score:score,lives:lives,goal:goal,need:need,
     giftNeed:giftNeed,giftState:giftState,speed:Math.round(speedPx),combo:combo,cell:cell,dpr:dpr,cw:cv.width,ch:cv.height,
-    hitY:Math.round(hitY()),tiles:tiles.length}}
+    hitY:Math.round(hitY()),tiles:tiles.length,product:prod?prod.state():null,productName:prod?prod.name():''}},
+  addScore:function(n){addScore(n);hud()},     /* the tests: points on the board the way a catch puts them */
+  refill:function(){lives=3;hud()}             /* ...and a run that cannot be lost while a test looks */
 };
 })();
 </script>

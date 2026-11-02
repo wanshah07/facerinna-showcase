@@ -80,21 +80,23 @@ for(const [tag,vp,mob] of [['phone',{width:390,height:844},true],['phone landsca
   const {c,p,errs}=await open_(vp,mob,'');
   const r=await p.evaluate(()=>{
     const F=window.__facy, cv=document.getElementById('stage');
-    const pad=getComputedStyle(document.getElementById('ctl')).display!=='none';
+    /* a finger drives the screen itself now: touch mode is on, and there is no button on top of the world */
+    const pad=document.documentElement.classList.contains('touch'), btns=getComputedStyle(document.getElementById('ctl')).display!=='none';
     const hint=document.getElementById('touchHint'), keys=document.getElementById('keys');
     const padTop=Math.min(...[...document.querySelectorAll('#ctl button')].map(b=>b.getBoundingClientRect().top));
-    return {pad, hint:getComputedStyle(hint).display!=='none', keysShown:getComputedStyle(keys).display!=='none',
+    return {pad, btns, hint:getComputedStyle(hint).display!=='none', keysShown:getComputedStyle(keys).display!=='none',
       gameBottom:F.view.oy+F.view.h*F.view.scale, padTop, intro:!document.getElementById('intro').classList.contains('hidden'),
       cvw:cv.width, cvh:cv.height, view:{w:F.view.w,h:F.view.h,scale:F.view.scale},
       sw:document.documentElement.scrollWidth, W:innerWidth};
   });
   chk(`${tag}: the intro is up and the canvas is the screen`, r.intro && r.cvw>0 && r.cvh>0, r);
-  chk(`${tag}: ${mob?'the touch pad is there':'no touch pad on a pointer device'}`, r.pad===mob, r.pad);
+  chk(`${tag}: ${mob?'touch mode is on':'no touch mode on a pointer device'}`, r.pad===mob, r.pad);
+  chk(`${tag}: no left, right or jump buttons on screen (the screen itself steers)`, r.btns===false, r.btns);
   chk(`${tag}: the world is scaled to fit, never stretched`, r.view.scale>0 && r.view.w>=360 && r.view.w<=1000, r.view);
-  chk(`${tag}: ${mob?'the intro says how to use the pad, not the keyboard':'the intro shows the keys'}`, mob ? (r.hint && !r.keysShown) : (!r.hint && r.keysShown), r);
+  chk(`${tag}: ${mob?'the intro says to slide and tap, not the keyboard':'the intro shows the keys'}`, mob ? (r.hint && !r.keysShown) : (!r.hint && r.keysShown), r);
   if(mob && r.W<r.H){
     chk(`${tag}: held upright the world is not shrunk below life size`, r.view.scale>=(r.W<500?1.0:1.0), r.view);
-    chk(`${tag}: ...and not blown up so far that the pad lands on the ground`, r.view.scale<=1.55 && r.padTop>=r.gameBottom-2, {scale:r.view.scale,padTop:r.padTop,gameBottom:r.gameBottom});
+    chk(`${tag}: ...and not blown up so far that it is hard to see ahead`, r.view.scale<=1.55, r.view);
   }
   chk(`${tag}: no sideways scroll`, r.sw<=r.W+1, {sw:r.sw,W:r.W});
   if(mob){
@@ -107,7 +109,7 @@ for(const [tag,vp,mob] of [['phone',{width:390,height:844},true],['phone landsca
       pads.forEach(a=>corners.forEach(b=>{ const A=R(a),B=R(b); if(A.left<B.right&&B.left<A.right&&A.top<B.bottom&&B.top<A.bottom) hits.push(a.id+' under '+b.className); }));
       return {hits, corners:corners.length};
     });
-    chk(`${tag}: the pad sits clear of the ranking's corner buttons`, ov.corners===2 && ov.hits.length===0, ov);
+    chk(`${tag}: nothing sits under the ranking's corner buttons`, ov.corners===2 && ov.hits.length===0, ov);
   }
   chk(`${tag}: no page errors`, errs.length===0, errs[0]);
   await c.close();
@@ -131,15 +133,16 @@ async function openAs(opt){
   if(await p.isVisible('#fxrGo')){ await p.click('#fxrGo'); await p.waitForTimeout(150); }
   return {c,p,errs};
 }
-const padState=p=>p.evaluate(()=>({ pad:getComputedStyle(document.getElementById('ctl')).display!=='none',
+const padState=p=>p.evaluate(()=>({ pad:document.documentElement.classList.contains('touch'),
   hint:getComputedStyle(document.getElementById('touchHint')).display!=='none',
   hover:matchMedia('(hover: none) and (pointer: coarse)').matches }));
-/* press ▶ the way a thumb does, then let the world run: does Facy move? */
+/* slide a finger right the way a thumb does, then let the world run: does Facy move? */
 const runs=p=>p.evaluate(()=>{ const F=window.__facy; F.start(); F.keys.left=F.keys.right=F.keys.jump=false; F.step(20);
-  const S=F.S(), x0=S.px, b=document.getElementById('right');
-  b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:7,pointerType:'touch'}));
+  const S=F.S(), x0=S.px, cv=document.getElementById('stage');
+  const ev=(t,x)=>cv.dispatchEvent(new PointerEvent(t,{bubbles:true,cancelable:true,pointerId:7,pointerType:'touch',isPrimary:true,clientX:x,clientY:200}));
+  ev('pointerdown',200); ev('pointermove',290);
   F.step(45); const moved=S.px-x0;
-  b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:7,pointerType:'touch'}));
+  ev('pointerup',290);
   return Math.round(moved); });
 for(const [tag,opt,want] of [
   ['a Samsung that reports a mouse-like pointer', {ua:SAMSUNG, vp:{width:412,height:915}, touch:false}, true],
@@ -147,8 +150,8 @@ for(const [tag,opt,want] of [
   ['an iPad that calls itself a Mac', {ua:IPADOS, vp:{width:820,height:1180}, touch:true}, true],
   ['a desk with a mouse', {ua:DESKTOP, vp:{width:1440,height:900}, touch:false}, false]]){
   const {c,p,errs}=await openAs(opt); const st=await padState(p);
-  chk(`${tag}: ${want?'the ◀ ▶ pad is there':'no pad, the keys are explained instead'}`, st.pad===want && st.hint===want, st);
-  if(want){ const m=await runs(p); chk(`${tag}: pressing ▶ runs Facy forward`, m>40, m); }
+  chk(`${tag}: ${want?'touch mode is on, with the slide-and-tap hint':'no touch mode, the keys are explained instead'}`, st.pad===want && st.hint===want, st);
+  if(want){ const m=await runs(p); chk(`${tag}: sliding a finger right runs Facy forward`, m>40, m); }
   chk(`${tag}: no page errors`, errs.length===0, errs[0]);
   await c.close();
 }
@@ -164,8 +167,8 @@ for(const [tag,opt,want] of [
   await p.waitForTimeout(100);
   const after=await padState(p);
   chk('a big screen with a desktop name: no pad, and a mouse click does not bring one', !before.pad && !mouse.pad, {before,mouse});
-  chk('...the first touch brings the pad and the touch hint', after.pad && after.hint, after);
-  chk('...and ▶ works', (await runs(p))>40);
+  chk('...the first touch turns touch mode and the touch hint on', after.pad && after.hint, after);
+  chk('...and sliding right works', (await runs(p))>40);
   chk('no page errors', errs.length===0, errs[0]);
   await c.close();
 }
@@ -320,6 +323,17 @@ for(const [tag,vp,mob] of [['phone',{width:390,height:844},true],['TV',{width:19
 }
 
 /* -------------------------------------------------------- 5. the gift */
+console.log('\nNormal play offers no gift');
+{
+  G.active='yes'; G.points='6000'; G.seen=[];
+  const {c,p}=await open_({width:390,height:844},true);
+  await p.waitForFunction(()=>window.__fxModes && __fxModes.snapshot().giftState!=='wait',null,{timeout:6000}).catch(()=>{});
+  await p.evaluate(()=>{ const F=window.__facy; window.__fxModes.start('play'); F.setScore(9000); F.end('time'); });
+  await sleep(700);
+  chk('a Normal play run well past the target ends with no gift panel and no claim', await p.evaluate(()=>!document.getElementById('gift').classList.contains('on')) && !G.seen.includes('gift.claim'));
+  await c.close();
+}
+
 console.log('\nthe gift at the end');
 const devId = 'devtest0001';
 for(const [tag, active, points, score, expect] of [
@@ -327,10 +341,12 @@ for(const [tag, active, points, score, expect] of [
   ['on, run too short', 'yes', '6000', 4200, /1800 more points/],
   ['on, enough', 'yes', '6000', 6000, /earned the gift/],
 ]){
+  G.active=active; G.points=points; G.seen=[];        /* before the page opens: it asks the gift desk as it loads */
   const {c,p,errs}=await open_({width:390,height:844},true);
-  G.active=active; G.points=points; G.seen=[];
   await p.evaluate(id=>{ try{ localStorage.setItem('fx.device', id); }catch(e){} }, devId);
-  await p.evaluate(s=>{ const F=window.__facy; F.start(); F.setScore(s); F.end('time'); }, score);
+  /* the gift belongs to a Redeem gift run: Normal play offers none (checked below) */
+  await p.waitForFunction(()=>window.__fxModes && __fxModes.snapshot().giftState!=='wait',null,{timeout:6000}).catch(()=>{});
+  await p.evaluate(s=>{ const F=window.__facy; window.__fxModes.start('gift'); F.setScore(s); F.end('time'); }, score);
   await sleep(700);
   const r=await p.evaluate(()=>({ on:document.getElementById('gift').classList.contains('on'),
     title:document.getElementById('giftTitle').textContent, text:document.getElementById('giftText').textContent,
@@ -347,13 +363,13 @@ for(const [tag, active, points, score, expect] of [
     chk('pressing it mints one claim for this device and draws its QR code', G.seen.filter(a=>a==='gift.claim').length===1 && q.claim && q.code===q.claim && q.w>100 && q.dark>500 && q.shown, q);
     chk('...under a title that says so', /waiting/i.test(q.title), q.title);
     /* the same device, a second run: same claim, no second row */
-    await p.evaluate(()=>{ const F=window.__facy; F.start(); F.setScore(7777); F.end('time'); }); await sleep(600);
+    await p.evaluate(()=>{ const F=window.__facy; window.__fxModes.start('gift'); F.setScore(7777); F.end('time'); }); await sleep(600);
     await p.click('#claimBtn'); await sleep(600);
     const again=await p.evaluate(()=>window.__facy.lastClaim());
     chk('a second run on the same device gets the same claim back', again===q.claim && Object.keys(G.claims).length===1, {again, claims:Object.keys(G.claims).length});
     /* and once the counter has spent it */
     G.claims[devId].redeemed=true; G.claims[devId].product='Ceramide B5 Balancing Moisturizer';
-    await p.evaluate(()=>{ const F=window.__facy; F.start(); F.setScore(8000); F.end('time'); }); await sleep(600);
+    await p.evaluate(()=>{ const F=window.__facy; window.__fxModes.start('gift'); F.setScore(8000); F.end('time'); }); await sleep(600);
     await p.click('#claimBtn'); await sleep(600);
     const spent=await p.evaluate(()=>({title:document.getElementById('giftTitle').textContent, text:document.getElementById('giftText').textContent,
       qr:getComputedStyle(document.getElementById('qr')).display}));
