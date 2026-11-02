@@ -271,6 +271,7 @@ body:has(.screen:not(.hidden)) .hud{opacity:0;visibility:hidden}
   #start,#startBtn,#playBtn{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:2}
 }
 </style>
+<script src="fx-modes.js"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -1610,6 +1611,9 @@ FXUI.init({
 
 document.getElementById('playBtn').addEventListener('click', startGame);
 document.getElementById('againBtn').addEventListener('click', startGame);
+fxModes.mount({id:'match-lab',start:'#start',startBtn:'#playBtn',result:'#over',normalSub:'Three hearts, as usual',
+  getScore:function(){ return S.score; }, isPlaying:function(){ return S.playing; }, stop:function(){ endGame(); },
+  addScore:function(n){ S.score += n; el.score.textContent = S.score; }});
 
 /* ============================================================
    INPUT
@@ -1840,7 +1844,7 @@ setConcern(0);
 </script>
 <!-- booth ranking: name before the run, board after it. Declares only
      where this game keeps its result screen and its score. -->
-<script>window.FX_RANK={id:'match-lab',name:'Match Lab',result:'#over',score:'#fScore'};</script>
+<script>window.FX_RANK={id:'match-lab',name:'Match Lab',result:'#over',score:'#fScore',giftGate:function(){return !!(window.fxModes&&fxModes.gate())}};</script>
 <script src="fx-tour.js"></script>
 <script src="fx-rank.js"></script>
 <script src="fx-gift.js"></script>

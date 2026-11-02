@@ -52,6 +52,8 @@
      by the script in the head from the device and the first real touch. */
   @media(hover:none) and (pointer:coarse){ #ctl{display:flex} }
   html.touch #ctl{display:flex}
+  /* a finger drives the screen itself (slide to run, tap to jump): no pad on top of the world */
+  html.touch #ctl,#ctl{display:none!important}
   /* a bigger target than the drawn circle, so a thumb that lands near still counts */
   #ctl button{position:relative}
   #ctl button::after{content:"";position:absolute;inset:-8px;border-radius:50%}
@@ -185,6 +187,7 @@
   addEventListener('pointerdown', on, true); addEventListener('touchstart', on, {capture:true, passive:true});
 })();
 </script>
+<script src="fx-modes.js"></script>
 </head>
 <body>
 <canvas id="stage" aria-label="Facy Run"></canvas>
@@ -203,7 +206,7 @@
   <h1>Facy Run</h1>
   <p class="sub">Run Prof Facy through three zones — <b>Skin Types</b>, <b>Skin Concerns</b> and <b>Ingredients</b>. Bump the <b>?</b> blocks, grab the capsules, pick the right product at each signpost and stomp the breakouts. Reach the flag before the clock does.</p>
   <div class="keys" id="keys"><span class="key">← → move</span><span class="key">↑ / Space / W jump</span><span class="key">hold for a higher jump</span></div>
-  <p class="touchhint" id="touchHint">Hold <b>◀ ▶</b> to run &middot; tap <b>▲</b> or the screen to jump &middot; hold it for a higher jump</p>
+  <p class="touchhint" id="touchHint"><b>Slide</b> a finger to run &middot; <b>tap</b> or flick up to jump</p>
   <button class="btn" id="start" type="button">Start</button>
   <a class="btn ghost" href="index.html#game">Booth</a>
 </div>
@@ -2751,9 +2754,43 @@ function pad(id, name){
   b.addEventListener('lostpointercapture', function(){ set(false); });
 }
 pad('left','left'); pad('right','right'); pad('jump','jump');
-/* a tap on the canvas jumps too -- a phone held sideways rarely finds the
-   pad on the first try, and Facy jumping is the thing everybody tries first */
-cv.addEventListener('pointerdown', function(e){ if(S.phase==='play'){ touchJump=true; jumpQueued=true; keys.jump=true; setTimeout(function(){ keys.jump=false; }, 120); } });
+/* The screen is the controller. A mouse click jumps, as it always did. On glass:
+   put a finger down and slide it -- right of where it landed runs right, left runs
+   left, and the spot it landed on follows the finger so turning round is one short
+   slide, not a trip back across the screen. A quick tap, a flick up, or a second
+   finger anywhere jumps (a full jump: a thumb cannot hold it).
+   There is no button to find. */
+var STEER_DEAD = 12, STEER_FOLLOW = 64, TAP_MS = 260, FLICK = 46;
+var steer = { id:null, ox:0, x0:0, y0:0, t0:0, moved:false, flicked:false };
+function tapJump(){ if(S.phase==='play'){ touchJump=true; jumpQueued=true; keys.jump=true; setTimeout(function(){ keys.jump=false; }, 120); } }
+function steerSet(x){ var dx = x - steer.ox; keys.left = dx < -STEER_DEAD; keys.right = dx > STEER_DEAD; }
+function steerEnd(){ steer.id = null; keys.left = keys.right = false; }
+cv.addEventListener('pointerdown', function(e){
+  if(e.pointerType === 'mouse'){ tapJump(); return; }
+  if(S.phase !== 'play') return;
+  e.preventDefault();
+  if(steer.id !== null){ tapJump(); return; }               /* a second finger */
+  try{ cv.setPointerCapture(e.pointerId); }catch(x){}
+  steer.id = e.pointerId; steer.ox = steer.x0 = e.clientX; steer.y0 = e.clientY; steer.t0 = performance.now();
+  steer.moved = false; steer.flicked = false;
+});
+cv.addEventListener('pointermove', function(e){
+  if(e.pointerId !== steer.id) return;
+  if(e.clientX - steer.ox > STEER_FOLLOW) steer.ox = e.clientX - STEER_FOLLOW;
+  else if(steer.ox - e.clientX > STEER_FOLLOW) steer.ox = e.clientX + STEER_FOLLOW;
+  steerSet(e.clientX);
+  if(Math.abs(e.clientX - steer.x0) > STEER_DEAD || Math.abs(e.clientY - steer.y0) > STEER_DEAD) steer.moved = true;
+  if(!steer.flicked && steer.y0 - e.clientY > FLICK){ steer.flicked = true; tapJump(); }
+});
+function steerUp(e){
+  if(e.pointerId !== steer.id) return;
+  var quick = performance.now() - steer.t0 < TAP_MS && !steer.moved;
+  steerEnd();
+  if(quick) tapJump();
+}
+cv.addEventListener('pointerup', steerUp);
+cv.addEventListener('pointercancel', function(e){ if(e.pointerId === steer.id) steerEnd(); });
+cv.addEventListener('lostpointercapture', function(e){ if(e.pointerId === steer.id) steerEnd(); });
 
 /* ------------------------------------------------------------- physics
    Units are pixels per second; the step is a fixed 1/60 so a phone that
@@ -3107,7 +3144,7 @@ function start(){
 }
 function end(reason){
   S.phase = 'over'; S.endReason = reason; hud();
-  el.overEyebrow.textContent = reason==='flag' ? 'You reached the flag' : reason==='time' ? 'Time is up' : 'No lives left';
+  el.overEyebrow.textContent = reason==='flag' ? 'You reached the flag' : reason==='time' ? 'Time is up' : reason==='gift' ? 'Gift target reached' : 'No lives left';
   el.finalScore.textContent = S.score;
   el.finalLine.textContent = S.caps+' capsules · '+S.blocks+' skin types · '+S.gates+' right picks · '+S.stomps+' stomps';
   el.brk.innerHTML =
@@ -3120,6 +3157,12 @@ function end(reason){
 }
 $('start').addEventListener('click', start);
 $('again').addEventListener('click', start);
+/* Redeem gift or Normal play. Facy keeps its own gift desk calls (below), so the shared
+   start screen is handed them rather than loading a second copy. */
+fxModes.mount({id:'facy-run',start:'#intro',startBtn:'#start',result:'#over',normalSub:'Three zones, three lives',
+  settings:function(){ return giftConfig().then(function(c){ return c || giftRemembered(); }); },
+  getScore:function(){ return S.score; }, isPlaying:function(){ return S.phase === 'play'; }, stop:function(){ end('gift'); },
+  addScore:function(n){ S.score += n; hud(); }});
 
 /* ------------------------------------------------------------- the gift
    Two calls to the admin script: `config` says whether the gift is on and
@@ -3179,6 +3222,8 @@ var lastClaim = null;
 function giftCheck(){
   giftHide(); lastClaim = null;
   if(!API) return;
+  /* Normal play offers no gift; only a Redeem gift run does */
+  if(!(window.fxModes && fxModes.gate())) return;
   giftConfig().then(function(cfg){
     if(!cfg) cfg = giftRemembered();
     if(!cfg){
@@ -3256,7 +3301,7 @@ window.__facy = {
 };
 })();
 </script>
-<script>window.FX_RANK={id:'facy-run',name:'Facy Run',result:'#over',score:'#finalScore'};</script>
+<script>window.FX_RANK={id:'facy-run',name:'Facy Run',result:'#over',score:'#finalScore',giftGate:function(){return !!(window.fxModes&&fxModes.gate())}};</script>
 <script src="fx-tour.js"></script>
 <script src="fx-rank.js"></script>
 <script src="fx-games.js" data-game="facy-run"></script>

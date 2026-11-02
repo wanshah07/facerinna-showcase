@@ -213,7 +213,7 @@ async function game(view,g){
     await p.fill('#fxrName','Aina').catch(()=>{}); await p.click('#fxrGo').catch(()=>{}); await sleep(700);
     await run(p,view,g,'start screen',cover);
     if(g==='facy-run') await p.evaluate(()=>window.__facy.start()).catch(()=>{});
-    else for(const sel of ['#playBtn','#startBtn']){ const el=await p.$(sel); if(el){ await el.click().catch(()=>{}); break; } }
+    else for(const sel of ['#goPlay','#playBtn','#startBtn']){ const el=await p.$(sel); if(el){ await el.click().catch(()=>{}); break; } }
     await sleep(1800);
     await run(p,view,g,'playing',cover);
     if(g==='facy-run') await p.evaluate(()=>{ window.__facy.setScore(6200); window.__facy.end(); }).catch(()=>{});

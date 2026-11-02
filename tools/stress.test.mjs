@@ -126,7 +126,7 @@ if(ONLY==='all'||ONLY==='games'){
 
   const GAMES=[
     ['magic-tiles-4k','#goPlay'],['pack-slicer-4k','#goPlay'],['match-factory-4k','#goPlay'],['pack-drop-4k','#goPlay'],['pack-crush-4k','#goPlay'],['pack-recall-4k','#goPlay'],
-    ['match-lab','#playBtn'],['pack-match','#startBtn'],['shelf-shot','#startBtn'],['deep-lab','#startBtn'],['lab-run','#playBtn'],['facy-run','#start'],
+    ['match-lab','#goPlay'],['pack-match','#goPlay'],['shelf-shot','#goPlay'],['deep-lab','#goPlay'],['lab-run','#goPlay'],['facy-run','#goPlay'],
   ];
   const SIZES=[[1920,1080],[390,844],[1366,768],[844,390],[1080,1920],[820,1180],[1280,1024],[360,640],[2560,1440],[1180,820]];
 

@@ -7,7 +7,7 @@ import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
 const DIR=PAGE('');
 const GAMES=[
-  {f:'lab-run.html',    score:'#score',  start:'#playBtn'},
+  {f:'lab-run.html',    score:'#score',  start:'#goPlay'},
   {f:'deep-lab.html',   score:null,      start:null},
   {f:'match-lab.html',  score:null,      start:null},
   {f:'pack-match.html', score:null,      start:null},
@@ -36,7 +36,7 @@ for(const g of GAMES){
   if(gate){ await p.fill('#fxrName','Tester'); await p.click('#fxrGo'); await p.waitForTimeout(300); }
   chk(`${g.f}: the gate closes`, !(await p.evaluate(()=>!!document.querySelector('.fxr-gate:not(.hidden)'))));
   /* whatever its start button is called */
-  for(const sel of ['#playBtn','#startBtn','#begin','#start button','button.btn']){
+  for(const sel of ['#goPlay','#playBtn','#startBtn','#begin','#start button','button.btn']){
     const el=await p.$(sel); if(el){ await el.click().catch(()=>{}); break; }
   }
   await p.waitForTimeout(600);

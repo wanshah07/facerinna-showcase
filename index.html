@@ -3184,7 +3184,7 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
               <div class="cg-cap">
                 <h4>Facy Run</h4>
                 <em>Run · Jump · Learn</em>
-                <p>Prof Facy runs three zones — Skin Types, Skin Concerns, Ingredients. Bump the ? blocks, pick the right product at each signpost, stomp the breakouts. Score 6,000 for a gift.</p>
+                <p>Prof Facy runs three zones — Skin Types, Skin Concerns, Ingredients. Bump the ? blocks, pick the right product at each signpost, stomp the breakouts. Reach the gift target to earn a gift.</p>
                 <span class="cc-play">▶ Play Facy Run</span>
               </div>
             </a>
@@ -7554,7 +7554,7 @@ function launchConfetti(){
         const off=window.__fxGamesOff||[], on=id=>off.indexOf(id)<0;
         const arcade=[['match-lab','🎯 Match Lab'],['pack-match','📦 Pack Match'],['shelf-shot','🛒 Shelf Shot'],['deep-lab','🌊 Deep Lab'],['lab-run','🏃 Lab Run']].filter(g=>on(g[0])).map(g=>g[1]);
         const lines=[];
-        if(on('facy-run')) lines.push('🏃 <b>Facy Run</b> — run Prof Facy through skin types, concerns and ingredients; 6,000 points earns a gift → <a href="facy-run.html">play here</a>');
+        if(on('facy-run')) lines.push('🏃 <b>Facy Run</b> — run Prof Facy through skin types, concerns and ingredients; reach the gift target to earn a gift → <a href="facy-run.html">play here</a>');
         if(on('skin-iq')) lines.push('🧠 <b>Skin IQ Challenge</b> — 5 questions, score 4+ for a reward → <a href="#game">play here</a>');
         if(arcade.length) lines.push((arcade.length===1?arcade[0]:arcade.slice(0,-1).join(', ')+' &amp; '+arcade[arcade.length-1])+' — '+(arcade.length===1?'a 3D arcade challenge':['','','two','three','four','five'][arcade.length]+' 3D arcade challenges')+' on our spinning game wheel → <a href="#game">see '+(arcade.length===1?'it':'them all')+'</a>');
         if(on('pack-drop')) lines.push('🧩 <b>Pack Drop</b> — stack the FACERINNA packs and clear whole rows, smooth and in full HD → <a href="pack-drop-4k.html">play here</a>');

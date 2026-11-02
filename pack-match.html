@@ -292,6 +292,7 @@ body:has(.screen:not(.hidden)) .hud{opacity:0;visibility:hidden}
   #start,#startBtn,#playBtn{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:2}
 }
 </style>
+<script src="fx-modes.js"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -1274,12 +1275,13 @@ renderer.domElement.addEventListener('pointerdown', function(e){
 /* ============================================================
    FLOW
    ============================================================ */
-function finish(won){
+function finish(won, stopped){
+  if (G.phase === 'result') return;          /* a late timer after a gift stop */
   G.phase = 'result';
   FXUI.setPlaying(false);
   var R = ROUNDS[G.round], stars = 0;
   if (won){
-    G.score += G.hearts * 500;
+    if (!stopped) G.score += G.hearts * 500;   /* a gift stop is the score that reached the target, nothing added */
     stars = G.wrong === 0 ? 3 : G.wrong === 1 ? 2 : 1;
     if (stars > G.stars[G.round]) G.stars[G.round] = stars;
     if (G.round + 1 > G.unlocked) G.unlocked = Math.min(ROUNDS.length, G.round + 2);
@@ -1325,6 +1327,10 @@ function showSelect(){
 }
 
 document.getElementById('startBtn').addEventListener('click', function(){ SFX.init(); SFX.ui(); showSelect(); });
+fxModes.mount({id:'pack-match',start:'#title',startBtn:'#startBtn',result:'#result',normalSub:'Pick a concern and play',
+  getScore:function(){ return G.score; }, isPlaying:function(){ return G.phase === 'play' && !G.busy; },
+  stop:function(){ G.busy = true; finish(true, true); },
+  addScore:function(n){ G.score += n; el.score.textContent = G.score; }});
 document.getElementById('backTitle').addEventListener('click', function(){
   SFX.ui(); hideScreens(); el.title.classList.remove('hidden'); G.phase='title'; FXUI.setPlaying(false);
 });
@@ -1465,7 +1471,7 @@ window.addEventListener('orientationchange', function(){
 </script>
 <!-- booth ranking: name before the run, board after it. Declares only
      where this game keeps its result screen and its score. -->
-<script>window.FX_RANK={id:'pack-match',name:'Pack Match',result:'#result',score:'#rScore'};</script>
+<script>window.FX_RANK={id:'pack-match',name:'Pack Match',result:'#result',score:'#rScore',giftGate:function(){return !!(window.fxModes&&fxModes.gate())}};</script>
 <script src="fx-tour.js"></script>
 <script src="fx-rank.js"></script>
 <script src="fx-gift.js"></script>
