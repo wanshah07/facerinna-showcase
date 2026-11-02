@@ -8,11 +8,26 @@
  *   PLAYWRIGHT_BROWSERS_PATH=/opt/data/lib/playwright-lemo node test-game-perf.mjs
  */
 import { chromium } from 'playwright-core';
+import fs from 'node:fs';
 import { serve } from './tools-mini-serve.mjs';
 
 const ROOT = process.cwd();
 const { server, port } = await serve(ROOT);
-const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+
+/* This box has several Chromium builds and the default browsers path may hold a
+   different revision from the one this Playwright package wants. Use the copy
+   that is actually on disk rather than failing with "Executable doesn't exist",
+   which reads as a broken test instead of a missing download. */
+const CANDIDATES = [
+  '/opt/data/lib/playwright/chromium-1248/chrome-linux64/chrome',
+  '/opt/data/lib/playwright/chromium-1248/chrome-linux/chrome',
+  process.env.CHROME_BIN,
+].filter(Boolean);
+const exe = CANDIDATES.find(p => { try { return fs.existsSync(p); } catch { return false; } });
+const browser = await chromium.launch({
+  headless: true, args: ['--no-sandbox'],
+  ...(exe ? { executablePath: exe } : {}),
+});
 
 const fails = [];
 const ok = (name, cond, detail = '') => {
