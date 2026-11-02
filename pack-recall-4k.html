@@ -392,10 +392,14 @@ try { best = parseInt(localStorage.getItem('fx.packrecall.best') || '0', 10) || 
 function saveBest(){ try { localStorage.setItem('fx.packrecall.best', String(best)); } catch (e) {} }
 
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ sprites = {}; kick(); });   /* the lettering is baked into the faces, so bake it once the fonts are in */
+/* A product photo is used only once it is decoded. Chrome decodes a WebP the
+   first time it is drawn, on the main thread, and a handful at once was the
+   one long frame left at the start of a run; decode() does it off the thread. */
+function ready(im, go){ if (im.decode) im.decode().then(go, go); else go(); }
 RANGE.forEach(function(p){
   var im = new Image(); im.decoding = 'async'; im.src = 'products/' + p.s + '.webp';
   p.img = im; p.ok = false;
-  im.onload = function(){ p.ok = true; sprites = {}; warmSoon(); kick(); };
+  im.onload = function(){ ready(im, function(){ p.ok = true; sprites = {}; warmSoon(); kick(); }); };
 });
 
 /* ── level rules ─────────────────────────────────────────────────────── */

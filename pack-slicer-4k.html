@@ -332,9 +332,13 @@ var RANGE=[
   {s:'low-ph-b5-gel-cleanser',                       c:'#7C9CC2'},
   {s:'ceramide-b5-balancing-toner',                  c:'#5AB0C8'}
 ];
+/* A product photo is used only once it is decoded. Chrome decodes a WebP the
+   first time it is drawn, on the main thread, and a handful at once was the
+   one long frame left at the start of a run; decode() does it off the thread. */
+function ready(im, go){ if (im.decode) im.decode().then(go, go); else go(); }
 RANGE.forEach(function(p){
   var im=new Image();im.decoding='async';im.src='products/'+p.s+'.webp';
-  p.img=im;p.ok=false;im.onload=function(){p.ok=true;packSprites={};render()};
+  p.img=im;p.ok=false;im.onload=function(){ready(im,function(){p.ok=true;packSprites={};render()})};
 });
 
 var cell=90,dpr=1,W=360,H=640,sized=false;

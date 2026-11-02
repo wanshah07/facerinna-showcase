@@ -332,9 +332,13 @@ var RANGE=[
   {s:'5-b5-intensive-barrier-cream',                 c:'#F0C25A'},
   {s:'physical-defense-barrier-serum-sunscreen-spf50', c:'#E8A13B'}
 ];
+/* A product photo is used only once it is decoded. Chrome decodes a WebP the
+   first time it is drawn, on the main thread, and a handful at once was the
+   one long frame left at the start of a run; decode() does it off the thread. */
+function ready(im, go){ if (im.decode) im.decode().then(go, go); else go(); }
 RANGE.forEach(function(p){
   var im=new Image();im.decoding='async';im.src='products/'+p.s+'.webp';
-  p.img=im;p.ok=false;im.onload=function(){p.ok=true;sprites={};render()};
+  p.img=im;p.ok=false;im.onload=function(){ready(im,function(){p.ok=true;sprites={};render();warmPacks()})};
 });
 
 /* The bench: every pack stands on a slot. A slot is `cell` wide; the rows are
@@ -366,7 +370,7 @@ function fit(){
   W=Math.round(bw);H=bh;
   cv.style.width=W+'px';cv.style.height=H+'px';
   cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
-  sprites={};benchCv=null;render();if(owed)kick();
+  sprites={};benchCv=null;render();if(owed)kick();warmPacks();
 }
 var fitQ=0;
 function fitSoon(){if(!fitQ)fitQ=requestAnimationFrame(function(){fitQ=0;fit()})}
@@ -774,6 +778,19 @@ function bench(c){
     rrect(c,x,y,cell*.86,PITCH*cell*.9,cell*.14);
     c.fillStyle=((q+r)&1)?'rgba(130,200,255,.07)':'rgba(130,200,255,.12)';c.fill();
   }
+}
+/* bake the packs ahead, one every few frames, while the start screen is up,
+   so the first frame of a run is not the frame that bakes them all */
+var warmT=0;
+function warmPacks(){
+  clearTimeout(warmT);
+  var v=0;
+  (function next(){
+    while(v<RANGE.length&&(!RANGE[v].ok||sprites[v+'|'+cell+'|'+dpr+'|1']))v++;
+    if(v>=RANGE.length)return;
+    bakes=0;sprite(v);v++;
+    warmT=setTimeout(next,40);
+  })();
 }
 function drawPack(v,c,r,ox,oy,sc,alpha){
   var sp=sprite(v),x=(c+ox)*cell,y=(TOPM+(r+oy)*PITCH)*cell,sh=cell*(PITCH+LIP+.12);

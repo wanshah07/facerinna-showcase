@@ -230,8 +230,10 @@ console.log('\nredeem gift');
   await until(p,()=>window.__packrecall.state()==='won',3000);
   s=await snap(p);
   chk('the very pair that reaches it stops the game', s.state==='won' && s.score>=400, s);
-  const t1=await p.evaluate(()=>JSON.stringify(window.__packrecall.cards())); const [x,y]=[0,1]; await tap(p,x); await sleep(500);
-  chk('and nothing else can be turned over afterwards', await p.evaluate(j=>JSON.stringify(window.__packrecall.cards())===j,t1));
+  /* face up and matched only: the cards still settle a pixel or two after the win, which is not a turn */
+  const faces=()=>p.evaluate(()=>JSON.stringify(window.__packrecall.cards().map(c=>[c.up,c.matched])));
+  const t1=await faces(); const [x,y]=[0,1]; await tap(p,x); await sleep(500);
+  chk('and nothing else can be turned over afterwards', (await faces())===t1);
   await sleep(900);
   const r=await p.evaluate(()=>({shown:!document.getElementById('result').classList.contains('hidden'), win:document.getElementById('result').classList.contains('win'),
     h:getComputedStyle(document.getElementById('rWin')).display, gift:(document.querySelector('.fxg')||{}).innerText||'', btn:!!document.querySelector('.fxg button')&&getComputedStyle(document.querySelector('.fxg button')).display}));
