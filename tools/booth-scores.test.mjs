@@ -26,6 +26,7 @@ const api = {
      setUp's `getLastRow() === 0` check never fire and left the two stubs in
      this repo modelling the same API two different ways. */
   getLastRow: () => sheet.rows.length,
+  getLastColumn: () => sheet.rows.reduce((m,r)=>Math.max(m,r.length),0),
   appendRow: r => sheet.rows.push(r),
   getRange: (r,c,nr,nc) => ({
     /* r is a 1-based SHEET row against a 0-based array: getRange(2,...) starts
@@ -184,6 +185,50 @@ check('...and so is the device it came from', fRow && String(fRow[5]).charAt(0) 
 /* the sheet is replaced part-way through this file, so the ordinary name to
    compare against is the one still in it, not one from the top of the run */
 check('an ordinary name is untouched', sheet.rows.some(r => String(r[3]) === 'Early'), sheet.rows.slice(1).map(r=>r[3]));
+
+console.log('\nthe tournament: most points, then the fastest, then the highest level');
+/* a fresh sheet and a fresh cache, so nothing from above is in the way */
+sheet.rows.length = 0; mod.setUp(); cacheStore.clear();
+const tp = o => post(Object.assign({game:'tournament'}, o));
+check('a tournament run keeps its time and level', tp({name:'Aina', score:5000, secs:600, level:20, device:'d1'}).ok===true
+      && sheet.rows[sheet.rows.length-1][8]===600 && sheet.rows[sheet.rows.length-1][9]===20);
+tp({name:'Budi', score:5000, secs:480, level:15, device:'d2'});
+tp({name:'Citra', score:5000, secs:480, level:19, device:'d3'});
+tp({name:'Dewi', score:5200, secs:900, level:10, device:'d4'});
+tp({name:'Eka', score:5000, secs:480, level:19, device:'d5'});          // same points, time and level as Citra, later
+cacheStore.clear();
+let tb = get({game:'tournament', top:10}).rows;
+console.log('   board:', tb.map(r=>r.n+':'+r.s+':'+r.m+'s:L'+r.l).join('  '));
+check('the most points wins, whatever the time', tb[0].n==='Dewi');
+check('on equal points the FASTER run is ahead (Citra and Budi at 480 s, before Aina at 600 s)', tb.map(r=>r.n).indexOf('Budi') < tb.map(r=>r.n).indexOf('Aina'));
+check('...and on equal points and time the HIGHER level (Citra L19 before Budi L15)', tb.map(r=>r.n).indexOf('Citra') < tb.map(r=>r.n).indexOf('Budi'));
+check('...and on all three equal the earlier run (Citra before Eka)', tb.map(r=>r.n).indexOf('Citra') < tb.map(r=>r.n).indexOf('Eka'));
+check('the rows say how long and what level', tb.every(r=>r.m>0 && r.l>0));
+/* the cached board takes a new run in place and keeps the same order */
+tp({name:'Fadzil', score:5000, secs:300, level:5, device:'d6'});
+let after = get({game:'tournament', top:10}).rows.map(r=>r.n);
+check('a run posted after the board is cached lands in the right place (Fadzil at 300 s leads the 5000s)', after[1]==='Fadzil', after);
+/* a person's best is their best by the same rule */
+tp({name:'Aina', score:5000, secs:200, level:20, device:'d1'});
+cacheStore.clear();
+tb = get({game:'tournament', top:10}).rows;
+check('a faster run of the same points replaces the slower one (Aina 200 s)', tb.find(r=>r.n==='Aina').m===200);
+check('one row per person', new Set(tb.map(r=>r.n.toLowerCase())).size===tb.length);
+/* a row from before the two columns existed still ranks, as the slowest */
+sheet.rows.push([new Date(), 1, 'tournament', 'Old', 5000, 'd9', false, 'text/plain x']);
+cacheStore.clear();
+tb = get({game:'tournament', top:20}).rows.map(r=>r.n);
+check('an old row with no time or level is still on the board, behind the same points that have one', tb.includes('Old') && tb.indexOf('Old') > tb.indexOf('Aina'), tb);
+/* nonsense is held to a sane range */
+tp({name:'Gila', score:100, secs:-5, level:99999, device:'d7'});
+tp({name:'Hari', score:100, secs:'x', level:'y', device:'d8'});
+const g1 = sheet.rows.find(r=>r[3]==='Gila'), h1 = sheet.rows.find(r=>r[3]==='Hari');
+check('a negative time is 0, a huge level is held at 999, a word is 0', (g1[8]===''||g1[8]===0) && g1[9]===999 && (h1[8]===''||h1[8]===0) && (h1[9]===''||h1[9]===0), [g1.slice(8), h1.slice(8)]);
+/* other games ignore both */
+post({game:'match-lab', name:'Zed', score:77, secs:5, level:9, device:'dz'});
+const z1 = sheet.rows.find(r=>r[3]==='Zed');
+check('another game keeps no time or level, and ranks as it always has', (z1[8]===''||z1[8]===0) && (z1[9]===''||z1[9]===0));
+check('the ceiling for a tournament total is 60,000', post({game:'tournament', name:'Big', score:60001, device:'db'}).ok===false && tp({name:'Big', score:60000, secs:1, level:1, device:'db'}).ok===true);
 
 console.log(ok ? '\nall good' : '\nSOMETHING IS WRONG');
 process.exit(ok ? 0 : 1);

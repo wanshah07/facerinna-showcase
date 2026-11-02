@@ -2278,7 +2278,7 @@ function giftStop(){
   finish(true, true);
 }
 fxModes.mount({id:'deep-lab',start:'#title',startBtn:'#startBtn',result:'#result',normalSub:'Pick a bay and play',
-  getScore:function(){ return G.score; }, isPlaying:function(){ return G.phase === 'aim' || G.phase === 'fly'; }, stop:giftStop,
+  getScore:function(){ return G.score; }, isPlaying:function(){ return G.phase === 'aim' || G.phase === 'fly'; }, stop:giftStop, getLevel:function(){ return G.level + 1; },
   addScore:function(n){ G.score += n; el.hScore.textContent = G.score; }});
 document.getElementById('startBtn').addEventListener('click', function(){
   SFX.init(); SFX.ui(); showSelect();

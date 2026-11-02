@@ -36,7 +36,7 @@ async function ctx(settings, opts={}){
   await c.route(BASE+'/api',async r=>{
     let q={}; try{ q=JSON.parse(r.request().postData()||'{}'); }catch(e){}
     cfgCalls.push(q);
-    const out=q.action==='config'?{ok:true,settings:Object.assign({gift_active:'no',games_off:''},settings),gift_needs:opts.needs||{}}:{ok:true};
+    const out=q.action==='config'?{ok:true,settings:Object.assign({gift_active:'no',games_off:''},settings),gift_needs:opts.needs||{},tour_max:opts.max||{},tour_default:1500}:{ok:true};
     await r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(out)});
   });
   await c.addInitScript(([api,admin])=>{ window.__BOOTH_API=api; try{ localStorage.setItem('fx.player','Tester'); if(admin) localStorage.setItem('fx.admin.token','tok'); }catch(e){} },[BASE+'/api',!!opts.admin]);
@@ -148,6 +148,40 @@ console.log('\na whole run: Magic Tiles, Match Factory, Pack Recall');
   await p.reload(); await until(p,()=>!document.getElementById('tLast').hidden,null,6000); await sleep(1200);
   chk('opening the result again shows it, without booking it again', posts.filter(q=>q.game==='tournament').length===before+1 && (await p.textContent('#tLastTotal'))===sum.toLocaleString('en-US'));
   chk('no page errors through the whole run', errs.length===0, errs);
+  await c.close();
+}
+
+console.log('\npoints set per game, time and level kept, and the winner rule');
+{
+  const {c,p,errs,posts}=await ctx({tour_active:'yes',tour_games:'magic-tiles'},{needs:{'magic-tiles':300},max:{'magic-tiles':2500}});
+  await p.goto(BASE+'/tournament.html'); await until(p,()=>!document.getElementById('tLobby').hidden);
+  const L=await p.evaluate(()=>({st:document.querySelector('#tStages .stage .st').textContent, rule:document.querySelector('.rule').textContent}));
+  chk('the lobby shows what this game can give: up to 2,500 pts', /up to 2,500 pts/.test(L.st), L.st);
+  chk('...and says who wins: the most points, then the fastest, then the highest level', /most points/.test(L.rule) && /fastest/.test(L.rule) && /highest level/.test(L.rule), L.rule);
+  await Promise.all([p.waitForURL(/magic-tiles-4k\.html\?tour=/), p.click('#tGo')]);
+  await until(p,()=>!!window.__magictiles && !!document.getElementById('fxTourBar'));
+  await p.click('#goPlay'); await sleep(1500);
+  await p.evaluate(()=>window.__magictiles.addScore(500));              // past one and a half times the 300 target
+  await until(p,()=>window.__magictiles.snapshot().state==='over',null,40000);
+  await until(p,()=>!!document.getElementById('fxTour'),null,6000);
+  const d=await p.evaluate(()=>({text:document.getElementById('fxTour').innerText, done:window.__fxTourDone, run:JSON.parse(localStorage.getItem('fx.tour'))}));
+  chk('one and a half times the target earns ALL of the game\'s own points: +2,500 of 2,500', /2,500 of 2,500/.test(d.text) && d.done.pts===2500, d.text);
+  chk('the card shows the time and the level', /Time/.test(d.text) && /\d+:\d\d \u00B7 L\d+/.test(d.text), d.text);
+  chk('the round keeps its time (at least a second) and level (at least 1)', d.run.secs[0]>=1 && d.run.lvl[0]>=1, d.run);
+  await Promise.all([p.waitForURL(/tournament\.html\?tour=/), p.click('#fxTour .ft-go')]);
+  await until(p,()=>!!window.__tourFinished,null,8000); await sleep(1500);
+  const sent=posts.filter(q=>q.game==='tournament');
+  chk('the total is sent with the time and the level, so a tie can be settled', sent.length===1 && sent[0].score===2500 && sent[0].secs>=1 && sent[0].level>=1, sent);
+  chk('the result says the time and levels', /Time \d+:\d\d . Levels \d+/.test(await p.textContent('#tSum')));
+  chk('no page errors', errs.length===0, errs);
+  await c.close();
+}
+{
+  /* the default is 1,500 where the admin has set nothing, and the target earns two thirds of it */
+  const {c,p}=await ctx({tour_active:'yes',tour_games:'magic-tiles'},{needs:{'magic-tiles':300}});
+  await p.goto(BASE+'/tournament.html'); await until(p,()=>!document.getElementById('tLobby').hidden);
+  chk('with nothing set, a game is worth up to 1,500', /up to 1,500 pts/.test(await p.textContent('#tStages .stage .st')));
+  chk('the points rule: the target earns two thirds, one and a half times earns all', await p.evaluate(()=>fxTour.points(300,300,1500)===1000 && fxTour.points(450,300,1500)===1500 && fxTour.points(9000,300,1500)===1500 && fxTour.points(300,300,2400)===1600 && fxTour.points(0,300,1500)===0));
   await c.close();
 }
 

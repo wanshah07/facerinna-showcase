@@ -142,8 +142,24 @@
       .catch(function () {});
   }
 
+  /* A game can attach more to a run (the tournament sends the time it took and the level it reached, which
+     settle a tie): FX_RANK.extra() returns {secs, level}, kept on this device's own board as well. */
+  function extra() {
+    try { var x = CFG.extra && CFG.extra(); return x && typeof x === 'object' ? x : null; } catch (e) { return null; }
+  }
+  /* The order of a board: the higher score; on a tie the faster run, then the higher level, then the earlier.
+     A run with no time or level kept (every other game) falls straight through to the earlier run, as ever. */
+  function cmp(a, b) {
+    if (b.s !== a.s) return b.s - a.s;
+    var am = a.m > 0 ? a.m : 1e9, bm = b.m > 0 ? b.m : 1e9;
+    if (am !== bm) return am - bm;
+    if ((b.l || 0) !== (a.l || 0)) return (b.l || 0) - (a.l || 0);
+    return a.t - b.t;
+  }
+  function mmss(sec) { sec = Math.max(0, Math.round(sec || 0)); var m = Math.floor(sec / 60), r = sec % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
   function send(score) {
     var payload = { game: CFG.id, name: player || 'Player', score: score, device: deviceId() };
+    var x = extra(); if (x) { payload.secs = x.secs; payload.level = x.level; }
     return post(payload).then(function (res) {
       if (res && res.ok === true) {
         if (res.rows) { shared = res.rows; sharedAt = Date.now(); fill(); }
@@ -171,6 +187,7 @@
     /* Spacers either side centre it when it fits and give way when it does not, so a short
        screen (a phone on its side, a keyboard up) scrolls from the top instead of losing it; the
        padding keeps it off a notch. */
+    '.fxr-mt{display:block;font-size:10px;font-weight:700;letter-spacing:.04em;opacity:.7;margin-top:1px}' +
     '.fxr-gate{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;overflow-y:auto;' +
       'justify-content:flex-start;align-items:center;text-align:center;' +
       'padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));' +
@@ -374,8 +391,9 @@
 
     var rows = board();
     var prevBest = bestOf(rows, player);
-    rows.push({ n: player || 'Player', s: score, t: Date.now() });
-    rows.sort(function (a, b) { return b.s - a.s || a.t - b.t; });
+    var x = extra();
+    rows.push({ n: player || 'Player', s: score, t: Date.now(), m: x ? x.secs | 0 : 0, l: x ? x.level | 0 : 0 });
+    rows.sort(cmp);
     write(BOARD_KEY, JSON.stringify(rows.slice(0, 200)));
     /* Drawn before anything is sent. The popup is up the instant the game
        ends, on the local board, and widens to the shared one if and when the
@@ -478,6 +496,12 @@
     });
   });
 
+  /* under a name on the tournament board: how long it took, and the level */
+  function meta(r) {
+    if (!(r.m > 0) && !(r.l > 0)) return '';
+    return '<small class="fxr-mt">' + (r.m > 0 ? mmss(r.m) : '') + (r.m > 0 && r.l > 0 ? ' \u00B7 ' : '') + (r.l > 0 ? 'L' + (r.l | 0) : '') + '</small>';
+  }
+
   function fill() {
     /* The shared board when there is one, this device's when there is not.
        Which of the two is on screen is always said out loud at the bottom: a
@@ -500,7 +524,7 @@
     rows.slice(0, TOP).forEach(function (r, i) {
       html += '<div class="fxr-row' + (i + 1 === myPos ? ' me' : '') + '">' +
         '<span class="fxr-pos">' + (i + 1) + '</span>' +
-        '<span class="fxr-nm">' + esc(r.n) + '</span>' +
+        '<span class="fxr-nm">' + esc(r.n) + meta(r) + '</span>' +
         '<span class="fxr-sc">' + r.s + '</span></div>';
     });
     if (myPos && myPos > TOP) {

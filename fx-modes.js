@@ -22,6 +22,7 @@
  *     isPlaying:function(){ return S.playing; },
  *     stop:     function(){ endGame(); },     end the run NOW, as a win
  *     addScore: function(n){ S.score += n; }, optional: lets a test put points on the board
+ *     getLevel: function(){ return G.round + 1; }, optional: the level this run is on (the tournament adds them up)
  *     settings: function(){ return Promise<{gift_active, gift_needs}> }, optional: a game that
  *               keeps its own gift desk calls (Facy Run) hands them in
  *     normalSub:'Play as usual'
@@ -159,7 +160,8 @@
     /* the games restart themselves from Again, Retry and the pause menu: the mode carries over */
     window.addEventListener('load', function () { refresh(false); });
     refresh(false);
-    window.__fxModes = { snapshot: function () { return { mode: mode, need: need, giftNeed: giftNeed, giftState: giftState, won: won }; },
+    window.__fxModes = { snapshot: function () { return { mode: mode, need: need, giftNeed: giftNeed, giftState: giftState, won: won,
+        level: o.getLevel ? o.getLevel() : 0 }; },
       start: function (m) { begin(o, m === 'gift' ? 'gift' : 'play'); }, refresh: refresh,
       /* for the tests: put points on the score the way a catch would */
       addScore: function (n) { if (o.addScore) o.addScore(n); } };

@@ -74,7 +74,7 @@ if(ONLY==='all'||ONLY==='scripts'){
   /* the scoreboard: 5,000 runs across every game */
   const src=fs.readFileSync(ROOT+'tools/booth-scores.gs','utf8');
   const sheet={rows:[]};
-  const api={ getLastRow:()=>sheet.rows.length, appendRow:r=>sheet.rows.push(r),
+  const api={ getLastRow:()=>sheet.rows.length, getLastColumn:()=>sheet.rows.reduce((m,r)=>Math.max(m,r.length),0), appendRow:r=>sheet.rows.push(r),
     getRange:(r,c,nr,nc)=>({ getValues:()=>sheet.rows.slice(r-1,r-1+nr).map(x=>x.slice(c-1,c-1+nc)), setValue:v=>{ for(let i=r-1;i<r-1+nr;i++) sheet.rows[i][c-1]=v; }, setFontWeight(){ return this; } }),
     setFrozenRows(){}, setColumnWidth(){}, hideColumns(){} };
   const book={getSheetByName:()=>api,insertSheet:()=>api};

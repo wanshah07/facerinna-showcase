@@ -178,6 +178,10 @@ var SETTING_KEYS = {
      typed here does not matter. Empty means none are picked yet. */
   tour_active:   'no',
   tour_games:    '',
+  /* The most each tournament game can give, one line per game: "magic-tiles = 1500".
+     A game with no line gives TOUR_DEFAULT. Reaching two thirds of it takes the game's
+     gift target, and one and a half times the target earns all of it. */
+  tour_points:   '',
   /* The event the booth is running now. A QR code or poster tagged with another
      event is locked: private in Drive and left out of the page's config, so it is
      not merely hidden. Empty means no event is chosen and nothing is locked for
@@ -237,7 +241,7 @@ function permLabel_(k) { for (var i = 0; i < PERMS.length; i++) if (PERMS[i][0] 
 /* Which area each setting belongs to. A key missing here cannot be saved. */
 var SETTING_AREA = {
   page_mode: 'page', passcode: 'page', lock_message: 'page', hidden_message: 'page', welcome: 'page',
-  games_off: 'games', tour_active: 'games', tour_games: 'games', active_event: 'media', qr_builtin: 'media',
+  games_off: 'games', tour_active: 'games', tour_games: 'games', tour_points: 'games', active_event: 'media', qr_builtin: 'media',
   gift_active: 'gift', gift_points: 'gift', gift_products: 'stock',
   privacy_entity: 'privacy', privacy_email: 'privacy', privacy_address: 'privacy', privacy_retention: 'privacy'
 };
@@ -312,6 +316,27 @@ function gamesOff_(raw) {
     if (known[id] && !seen[id]) { seen[id] = true; out.push(id); }
   });
   return out;
+}
+/* What each tournament game is worth at most. One line per game, "id = points";
+   anything else is dropped, a figure is held between TOUR_MIN and TOUR_MAX, and
+   a game with no line is worth TOUR_DEFAULT (the page reads the numbers back
+   from tourPoints_, never from this text). */
+var TOUR_DEFAULT = 1500, TOUR_MIN = 100, TOUR_MAX = 5000;
+function tourPoints_(raw) {
+  var ok = {}, out = {};
+  GIFT_GAMES.forEach(function (g) { if (g !== 'skin-iq') ok[g] = true; });
+  String(raw == null ? '' : raw).split(/[\r\n,;]+/).forEach(function (line) {
+    var bits = String(line).split(/[=:]/);
+    if (bits.length < 2) return;
+    var id = bits[0].trim().toLowerCase();
+    var n = parseInt(String(bits[1]).replace(/[^0-9]/g, ''), 10);
+    if (ok[id] && !isNaN(n)) out[id] = Math.max(TOUR_MIN, Math.min(TOUR_MAX, n));
+  });
+  return out;
+}
+function tourPointsText_(raw) {
+  var m = tourPoints_(raw);
+  return Object.keys(m).map(function (id) { return id + ' = ' + m[id]; }).join('\n');
 }
 /* The games a tournament may hold: the scored ones with a page of their own.
    Skin IQ lives inside the booth page and the UV Card and the wheel keep no
@@ -743,6 +768,7 @@ function publicSettings_() {
   out.games_off = gamesOff_(out.games_off).join(',');
   out.tour_active = yes_(out.tour_active) ? 'yes' : 'no';
   out.tour_games = tourGames_(out.tour_games).join(',');
+  out.tour_points = tourPointsText_(out.tour_points);
   return out;
 }
 
@@ -1539,6 +1565,7 @@ function config_() {
   var text = JSON.stringify({ ok: true, settings: set, segments: publicSegments_(),
                  sections: SECTIONS, section_states: publicSections_(),
                  games: GAMES, gift_games: GIFT_GAMES, gift_needs: giftNeeds_(set.gift_points),
+                 tour_max: tourPoints_(set.tour_points), tour_default: TOUR_DEFAULT,
                  media: publicMedia_(set.active_event), builtin_off: builtinOff_(set.active_event),
                  documents: publicDocs_(),
                  at: Date.now() });
@@ -1671,6 +1698,7 @@ function adminSettings_(b, me) {
     if (k === 'games_off') v = gamesOff_(v).join(',');
     if (k === 'tour_active') v = yes_(v) ? 'yes' : 'no';
     if (k === 'tour_games') v = tourGames_(v).join(',');
+    if (k === 'tour_points') v = tourPointsText_(v);
     if (k === 'qr_builtin') v = yes_(v) ? 'show' : 'hide';
     if (k === 'active_event') v = eventName_(v);
     if (k === 'passcode') v = v.slice(0, 64);

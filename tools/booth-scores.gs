@@ -104,8 +104,10 @@ var GAMES = {
   'magic-tiles': { name: 'Magic Tiles', max: 200000 },
   'pack-slicer': { name: 'Pack Slicer', max: 200000 },
   'match-factory': { name: 'Match Factory', max: 200000 },
-  /* the tournament books its total here: up to 1,500 points a round, twelve rounds */
-  'tournament': { name: 'Tournament', max: 18000 },
+  /* the tournament books its total here: up to 5,000 points a round (the admin sets each),
+     twelve rounds. It is ranked on its own rule, see better_: most points, then the
+     fastest, then the highest level. */
+  'tournament': { name: 'Tournament', max: 60000 },
   'skin-iq':    { name: 'Skin IQ',    max: 5 }
 };
 
@@ -118,7 +120,7 @@ var KEEP       = 500;  /* rows read back per game; the sheet keeps everything  *
 var RATE_N     = 12;   /* posts allowed per name+game ...                      */
 var RATE_SECS  = 60;   /* ... per this many seconds                            */
 
-var HEADERS = ['when', 'ts', 'game', 'name', 'score', 'device', 'hidden', 'agent'];
+var HEADERS = ['when', 'ts', 'game', 'name', 'score', 'device', 'hidden', 'agent', 'seconds', 'level'];
 
 /* ------------------------------------------------------------------- setup */
 
@@ -187,7 +189,9 @@ function readAll_() {
   var out = {};
   if (last < 2) return out;
 
-  var vals = sh.getRange(2, 2, last - 1, 6).getValues();   /* ts .. hidden */
+  var lc = sh.getLastColumn ? sh.getLastColumn() : 8;
+  var wide = Math.max(6, Math.min(lc - 1, 9));   /* ts .. level; older sheets stop at hidden or agent */
+  var vals = sh.getRange(2, 2, last - 1, wide).getValues();   /* ts, game, name, score, device, hidden, [agent, seconds, level] */
   for (var i = 0; i < vals.length; i++) {
     var r = vals[i];
     if (r[5] === true || String(r[5]).toUpperCase() === 'TRUE') continue;  /* hidden */
@@ -196,7 +200,9 @@ function readAll_() {
     (out[id] = out[id] || []).push({
       n: String(r[2]),
       s: Number(r[3]),
-      t: Number(r[0]) || 0
+      t: Number(r[0]) || 0,
+      m: Math.max(0, Math.floor(Number(r[7]) || 0)),   /* seconds the run took; 0 when not kept */
+      l: Math.max(0, Math.floor(Number(r[8]) || 0))    /* level; 0 when not kept */
     });
   }
   return out;
@@ -246,28 +252,42 @@ function dropBoards_() {
 /* Fold one finished run into an already-computed board, the same way bests_
    would have: one row per person, their best, ties to the earlier run. Saves
    the whole-sheet read on the path that people are actually waiting on. */
-function merge_(board, name, score, ts) {
+function merge_(board, name, score, ts, secs, level) {
   var rows = (board.rows || []).slice();
   var key = name.toLowerCase(), found = false;
   for (var i = 0; i < rows.length; i++) {
     if (String(rows[i].n).toLowerCase() === key) {
       found = true;
-      if (score > rows[i].s) rows[i] = { n: name, s: score, t: ts };
+      var mine = { n: name, s: score, t: ts, m: secs || 0, l: level || 0 };
+      if (better_(mine, rows[i])) rows[i] = mine;
       break;
     }
   }
-  if (!found) rows.push({ n: name, s: score, t: ts });
-  rows.sort(function (a, b) { return b.s - a.s || a.t - b.t; });
+  if (!found) rows.push({ n: name, s: score, t: ts, m: secs || 0, l: level || 0 });
+  rows.sort(order_);
   return { rows: rows.slice(0, 50), n: found ? board.n : (board.n || 0) + 1 };
 }
 
 /* One row per person, their best run — the same rule the page already applies,
    so the popup and the sheet can never tell different stories. Ties go to the
    earlier run, which is how the page has always broken them. */
+/* The order of a board. Every game: the higher score, and on a tie the earlier run.
+   The tournament has two more rules between those, so a tie is never a coin toss:
+   the FASTER run (less total time), then the HIGHER level. A run with no time kept
+   (an old row) counts as the slowest, and no level as the lowest. */
+function order_(a, b) {
+  if (b.s !== a.s) return b.s - a.s;
+  var am = a.m > 0 ? a.m : 1e9, bm = b.m > 0 ? b.m : 1e9;
+  if (am !== bm) return am - bm;
+  if ((b.l || 0) !== (a.l || 0)) return (b.l || 0) - (a.l || 0);
+  return a.t - b.t;
+}
+function better_(a, b) { return order_(a, b) < 0; }
+
 function bests_(rows) {
   var seen = {}, out = [];
   rows.filter(function (r) { return r && isFinite(r.s) && r.n; })
-      .sort(function (a, b) { return b.s - a.s || a.t - b.t; })
+      .sort(order_)
       .forEach(function (r) {
         var k = r.n.toLowerCase();
         if (seen[k]) return;
@@ -315,6 +335,14 @@ function doPost(e) {
     if (score < 0 || score > GAMES[id].max)
       return json_({ ok: false, error: 'score out of range' });
 
+    /* Only the tournament keeps how long the run took and how far it got: they decide a tie. */
+    var secs = 0, level = 0;
+    if (id === 'tournament') {
+      secs = Math.floor(Number(body.secs)); level = Math.floor(Number(body.level));
+      secs = isFinite(secs) ? Math.max(0, Math.min(secs, 86400)) : 0;
+      level = isFinite(level) ? Math.max(0, Math.min(level, 999)) : 0;
+    }
+
     if (!underRate_(id, name))
       return json_({ ok: false, error: 'too many runs too quickly — wait a moment' });
 
@@ -339,8 +367,12 @@ function doPost(e) {
         cell_(String(body.device || '').slice(0, 40)),
         false,
         String((e && e.postData && e.postData.type) || '') +
-          ' ' + String(body.ua || '').slice(0, 120)
+          ' ' + String(body.ua || '').slice(0, 120),
+        secs || '',
+        level || ''
       ]);
+      /* a sheet made before these two columns has no titles over them: put them there once */
+      try { var hh = tab_(); if (hh.getRange(1, 9).getValue() === '') hh.getRange(1, 9, 1, 2).setValues([['seconds', 'level']]); } catch (e2) {}
       /* written before the lock is let go, so the next run reads it */
       try { SpreadsheetApp.flush(); } catch (e) {}
 
@@ -349,7 +381,7 @@ function doPost(e) {
          walking every row written today to tell them they came third is the one
          piece of work here that gets slower the better the day goes. */
       var all = boards_();
-      all[id] = merge_(all[id] || { rows: [], n: 0 }, name, score, now.getTime());
+      all[id] = merge_(all[id] || { rows: [], n: 0 }, name, score, now.getTime(), secs, level);
       putBoards_(all);
     } finally {
       lock.releaseLock();
