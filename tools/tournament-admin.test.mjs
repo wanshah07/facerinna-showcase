@@ -52,6 +52,18 @@ const own=H.signIn(OWNER);
   r=H.call({action:'admin.settings',token:cs.token,settings:{tour_active:'no'}});
   chk('staff without the Games area cannot touch it', r.ok===false && r.area==='games' && setting('tour_active')==='yes', r);
   H.call({action:'admin.settings',token:own.token,settings:{tour_active:'no',tour_games:''}});
+
+  /* what each game is worth */
+  cfg=H.call({action:'config'});
+  chk('nothing set: no figures, and the default is 1,500', cfg.settings.tour_points==='' && JSON.stringify(cfg.tour_max)==='{}' && cfg.tour_default===1500, [cfg.settings.tour_points,cfg.tour_max,cfg.tour_default]);
+  r=H.call({action:'admin.settings',token:own.token,settings:{tour_points:'magic-tiles = 2000\nFacy-Run: 900, pack-drop = 99999; skin-iq = 500; lucky-wheel = 700; nope = 5\nlab-run = 10'}});
+  H.CACHE.clear(); cfg=H.call({action:'config'});
+  chk('per-game points are read the way a person types them: case, separators, a figure held between 100 and 5,000, and games that cannot be rounds dropped',
+      r.ok && JSON.stringify(cfg.tour_max)===JSON.stringify({'magic-tiles':2000,'facy-run':900,'pack-drop':5000,'lab-run':100}), cfg.tour_max);
+  chk('the public setting is the tidy version of it', cfg.settings.tour_points==='magic-tiles = 2000\nfacy-run = 900\npack-drop = 5000\nlab-run = 100', cfg.settings.tour_points);
+  r=H.call({action:'admin.settings',token:cs.token,settings:{tour_points:'magic-tiles = 1'}});
+  chk('staff without the Games area cannot change them', r.ok===false && r.area==='games' && setting('tour_points').indexOf('2000')>=0, r);
+  H.call({action:'admin.settings',token:own.token,settings:{tour_points:''}});
 }
 
 const b=await chromium.launch();
@@ -80,12 +92,16 @@ console.log('\nthe admin page');
   await p.click('#gameToggles input[data-game="pack-crush"]');
   chk('a game switched off above is marked as skipped', /skipped/.test(await p.textContent('#tourList li:nth-child(6)')) && /3 games/.test(await p.textContent('#tourCount')));
   await p.click('#gameToggles input[data-game="pack-crush"]');
+  chk('each game has a box for the most points it can give, blank meaning 1,500', await p.evaluate(()=>[...document.querySelectorAll('#tourList input[data-tourpts]')].length===12 && [...document.querySelectorAll('#tourList input[data-tourpts]')].every(i=>i.placeholder==='1500' && i.value==='')));
+  await p.fill('#tourList input[data-tourpts="pack-crush"]','2400');
+  await p.fill('#tourList input[data-tourpts="facy-run"]','1000');
   await p.check('#tourActive');
   await p.click('#saveSettings');
   await until(()=>setting('tour_active')==='yes');
   chk('Save settings stores it, in the easy-to-hard order', setting('tour_active')==='yes' && setting('tour_games')==='magic-tiles,pack-crush,pack-recall,facy-run', [setting('tour_active'),setting('tour_games')]);
   await p.reload({waitUntil:'load'}); await until(()=>p.evaluate(()=>document.querySelectorAll('#tourList input').length===12)); await sleep(300);
-  chk('...and it comes back after a reload', await p.evaluate(()=>document.getElementById('tourActive').checked && [...document.querySelectorAll('#tourList input')].filter(i=>i.checked).map(i=>i.dataset.tour).join()==='magic-tiles,pack-crush,pack-recall,facy-run'));
+  chk('the points are stored for the games that have a figure', /pack-crush = 2400/.test(setting('tour_points')) && /facy-run = 1000/.test(setting('tour_points')) && !/magic-tiles/.test(setting('tour_points')), setting('tour_points'));
+  chk('...and it comes back after a reload', await p.evaluate(()=>document.querySelector('#tourList input[data-tourpts="pack-crush"]').value==='2400' && document.querySelector('#tourList input[data-tourpts="facy-run"]').value==='1000') && await p.evaluate(()=>document.getElementById('tourActive').checked && [...document.querySelectorAll('#tourList input')].filter(i=>i.checked).map(i=>i.dataset.tour).join()==='magic-tiles,pack-crush,pack-recall,facy-run'));
   chk('no page errors', errs.length===0, errs);
   await c.close();
 }

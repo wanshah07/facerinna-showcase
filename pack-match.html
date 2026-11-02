@@ -1329,6 +1329,7 @@ function showSelect(){
 document.getElementById('startBtn').addEventListener('click', function(){ SFX.init(); SFX.ui(); showSelect(); });
 fxModes.mount({id:'pack-match',start:'#title',startBtn:'#startBtn',result:'#result',normalSub:'Pick a concern and play',
   getScore:function(){ return G.score; }, isPlaying:function(){ return G.phase === 'play' && !G.busy; },
+  getLevel:function(){ return G.round + 1; },
   stop:function(){ G.busy = true; finish(true, true); },
   addScore:function(n){ G.score += n; el.score.textContent = G.score; }});
 document.getElementById('backTitle').addEventListener('click', function(){

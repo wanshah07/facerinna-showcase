@@ -94,6 +94,7 @@ for(const G of GAMES){
     const s0=await snap(p);
     chk('it is a gift run aimed at 300', s0.mode==='gift' && s0.need===300, s0);
     chk('the gift panel may speak on this run', await p.evaluate(()=>window.FX_RANK.giftGate()===true));
+    if(G.level||G.id==='facy-run') chk('it reports the level the run is on (the tournament adds levels up)', (await snap(p)).level>=1, await snap(p));
     await p.evaluate(()=>__fxModes.addScore(120)); await sleep(500);
     chk('short of the target it keeps going: the result screen is not up', await p.evaluate(()=>document.querySelector(window.FX_RANK.result).classList.contains('hidden')));
     const before=await p.evaluate(()=>__fxModes.snapshot().won);

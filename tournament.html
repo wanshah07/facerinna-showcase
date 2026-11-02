@@ -43,6 +43,8 @@ html,body{margin:0;min-height:100%;background:#04101f;color:var(--ink);font-fami
 .cap{margin:0;letter-spacing:.3em;text-transform:uppercase;font-size:clamp(10px,1.4vmin,30px);color:var(--gold);font-weight:700}
 h1{margin:.25em 0 .35em;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(26px,5vmin,120px);line-height:1.08}
 .lede{margin:0 auto 1.2em;max-width:34em;color:var(--mut);font-size:clamp(14px,1.9vmin,40px);line-height:1.55}
+.rule{margin:-.4em auto 1.2em;max-width:34em;padding:.55em 1em;border-radius:12px;background:rgba(255,201,74,.12);border:1px solid rgba(255,201,74,.35);color:#ffe8b0;font-size:clamp(12px,1.6vmin,34px);line-height:1.5}
+.stage .st small{display:block;font-size:.72em;font-weight:600;color:var(--mut)}
 .note{margin:1em 0 0;color:var(--mut);font-size:clamp(12px,1.5vmin,32px);min-height:1.4em}
 .admin{margin:0 0 1em;padding:.6em 1em;border-radius:12px;background:rgba(255,201,74,.14);border:1px solid rgba(255,201,74,.4);color:#ffe8b0;font-size:clamp(12px,1.5vmin,32px)}
 .admin[hidden]{display:none}
@@ -109,7 +111,8 @@ h1{margin:.25em 0 .35em;font-family:Fraunces,Georgia,serif;font-weight:600;font-
     <p class="admin" id="tAdmin" hidden>Admin preview: the tournament is off for visitors.</p>
     <p class="cap">Tournament</p>
     <h1 id="tTitle">Games in a row</h1>
-    <p class="lede">One try at each game, easiest first. Each game gives up to 1,500 points, and reaching its target earns 1,000. Your total goes on the tournament board.</p>
+    <p class="lede">One try at each game, easiest first. Each game has its own points to win: reach its target for two thirds, and one and a half times the target for all of it.</p>
+    <p class="rule"><b>Who wins:</b> the most points. A tie goes to the fastest, then to the highest level.</p>
     <ol class="stages" id="tStages"></ol>
     <div class="btns">
       <button class="btn gold" id="tGo" type="button">Start the tournament</button>
@@ -123,18 +126,20 @@ h1{margin:.25em 0 .35em;font-family:Fraunces,Georgia,serif;font-weight:600;font-
     <p class="cap">Tournament complete</p>
     <h1>Your total</h1>
     <div class="big" id="tTotal">0</div>
+    <p class="lede" id="tSum" style="margin-bottom:.8em"></p>
     <ol class="stages" id="tBreak"></ol>
     <div class="btns">
       <button class="btn gold" id="tAgain" type="button">Play again</button>
       <a class="btn ghost" href="index.html#game">Back to the booth</a>
     </div>
-    <p class="note">Tap Ranking to see the tournament board.</p>
+    <p class="note">Tap Ranking to see the board: most points wins, then the fastest, then the highest level.</p>
   </section>
 
   <section class="panel" id="tLast" hidden>
     <p class="cap">Tournament complete</p>
     <h1>Your total</h1>
     <div class="big" id="tLastTotal">0</div>
+    <p class="lede" id="tLastSum" style="margin-bottom:.8em"></p>
     <ol class="stages" id="tLastBreak"></ol>
     <div class="btns">
       <button class="btn gold" id="tAgain2" type="button">Play again</button>
@@ -162,14 +167,22 @@ function only(id){['tLoading','tClosed','tLobby','tLast'].forEach(function(x){$(
 
 function closed(h,p){$('tClosedH').textContent=h;$('tClosedP').textContent=p;only('tClosed');}
 
-function stageRow(id,i,status,cls){
+function stageRow(id,i,status,cls,sub){
   var li=document.createElement('li');li.className='stage'+(cls?' '+cls:'');
   var n=document.createElement('span');n.className='n';n.textContent=String(i+1);
   var nm=document.createElement('span');nm.className='nm';nm.textContent=T.nameOf(id);
   var lv=document.createElement('em');lv.className='lv-'+T.levelOf(id);lv.textContent=T.levelOf(id);nm.appendChild(lv);
   var st=document.createElement('span');st.className='st';st.textContent=status||'';
+  if(sub){var sm=document.createElement('small');sm.textContent=sub;st.appendChild(sm);}
   li.appendChild(n);li.appendChild(nm);li.appendChild(st);
   return li;
+}
+
+/* what a game can give: this run's own figure once it has started, else the admin's, else the default */
+function maxOf(s,id){
+  var m=s&&s.maxes&&+s.maxes[id]; if(m>0)return m;
+  m=cfg&&cfg.tour_max&&+cfg.tour_max[id]; if(m>0)return m;
+  m=cfg&&+cfg.tour_default; return m>0?m:T.MAX;
 }
 
 /* the lobby: the rounds, and where this device is in them */
@@ -180,7 +193,8 @@ function lobby(){
   var shown=running?s.games:games;
   shown.forEach(function(id,i){
     var done=running&&i<s.i, now=running?i===s.i:false;
-    list.appendChild(stageRow(id,i,done?'✓ '+fmt(s.pts[i]||0)+' pts':now?'Next':'',done?'done':now?'now':''));
+    var mx=maxOf(running?s:null,id);
+    list.appendChild(stageRow(id,i,done?'✓ '+fmt(s.pts[i]||0)+' pts':now?'Next':'',done?'done':now?'now':'',done?T.mmss((s.secs||[])[i])+' · L'+((s.lvl||[])[i]||1):'up to '+fmt(mx)+' pts'));
   });
   $('tTitle').textContent=(NUM[shown.length]||String(shown.length))+(shown.length===1?' game':' games')+', easy to hard';
   $('tAdmin').hidden=!(isAdmin&&!/^yes$/i.test(String(cfg.settings.tour_active||'')));
@@ -200,9 +214,13 @@ function lobby(){
 function finish(s){
   var tot=T.total(s), br=$('tBreak');
   br.textContent='';
-  s.games.forEach(function(id,i){br.appendChild(stageRow(id,i,fmt(s.pts[i]||0)+' pts','done'))});
+  s.games.forEach(function(id,i){br.appendChild(stageRow(id,i,fmt(s.pts[i]||0)+' pts','done',T.mmss((s.secs||[])[i])+' · L'+((s.lvl||[])[i]||1)))});
   $('tTotal').textContent=String(tot);
-  write(LAST,JSON.stringify({run:s.run,games:s.games,pts:s.pts,total:tot,at:Date.now()}));
+  var secs=T.totalSecs(s), lv=T.totalLevel(s);
+  $('tSum').textContent='Time '+T.mmss(secs)+' · Levels '+lv;
+  /* read by fx-rank.js when it books the total: a tie is settled by the time, then the level */
+  window.__tourExtra={secs:secs,level:lv};
+  write(LAST,JSON.stringify({run:s.run,games:s.games,pts:s.pts,secs:s.secs,lvl:s.lvl,total:tot,tsecs:secs,tlvl:lv,at:Date.now()}));
   T.clear();
   only('');
   $('tResult').classList.remove('hidden');
@@ -215,7 +233,8 @@ function last(){
   if(!q||q!==l.run)return false;
   $('tLastTotal').textContent=fmt(l.total);
   var br=$('tLastBreak');br.textContent='';
-  l.games.forEach(function(id,i){br.appendChild(stageRow(id,i,fmt(l.pts[i]||0)+' pts','done'))});
+  l.games.forEach(function(id,i){br.appendChild(stageRow(id,i,fmt(l.pts[i]||0)+' pts','done',T.mmss((l.secs||[])[i])+' · L'+((l.lvl||[])[i]||1)))});
+  $('tLastSum').textContent='Time '+T.mmss(l.tsecs)+' · Levels '+(l.tlvl||0);
   only('tLast');
   return true;
 }
@@ -224,7 +243,8 @@ function go(){
   var s=T.load();
   if(!s||s.i>=s.games.length){
     if(!games.length)return;
-    s=T.start(games,cfg.gift_needs||{});
+    var mx={};games.forEach(function(id){mx[id]=maxOf(null,id)});
+    s=T.start(games,cfg.gift_needs||{},mx,cfg.tour_default);
   }
   location.href=T.urlFor(s);
 }
@@ -276,7 +296,7 @@ else{
 window.__tour={apply:apply,state:function(){return T.load()}};
 })();
 </script>
-<script>window.FX_RANK={id:'tournament',name:'Tournament',result:'#tResult',score:'#tTotal',manual:true};</script>
+<script>window.FX_RANK={id:'tournament',name:'Tournament',result:'#tResult',score:'#tTotal',manual:true,extra:function(){return window.__tourExtra||null}};</script>
 <script src="fx-rank.js"></script>
 <script>
 if ('serviceWorker' in navigator)

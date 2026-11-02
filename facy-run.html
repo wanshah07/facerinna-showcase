@@ -3162,6 +3162,7 @@ $('again').addEventListener('click', start);
 fxModes.mount({id:'facy-run',start:'#intro',startBtn:'#start',result:'#over',normalSub:'Three zones, three lives',
   settings:function(){ return giftConfig().then(function(c){ return c || giftRemembered(); }); },
   getScore:function(){ return S.score; }, isPlaying:function(){ return S.phase === 'play'; }, stop:function(){ end('gift'); },
+  getLevel:function(){ return (S.zone | 0) + 1; },
   addScore:function(n){ S.score += n; hud(); }});
 
 /* ------------------------------------------------------------- the gift

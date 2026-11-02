@@ -117,6 +117,9 @@
 .tourlist em{font-style:normal;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px}
 .tourlist .lv-Easy{background:#d8f6ea;color:#0e6b48}.tourlist .lv-Medium{background:#fff1cc;color:#7a5200}.tourlist .lv-Hard{background:#ffe0e0;color:#8f1d1d}
 .tourlist .gone{font-size:12px;color:#a33;font-weight:600}
+.tourlist .pts{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#5b6b80}
+.tourlist .pts input{width:84px;height:34px;padding:2px 8px;border-radius:8px;border:1px solid #c5d3e3;font:inherit;font-weight:700}
+.tourlist .pts input:disabled{opacity:.5}
 .gamerows .off span{color:#8095ab;text-decoration:line-through}
 .gamerows .check b{margin-left:auto;font-size:11px;letter-spacing:.06em;padding:3px 8px;border-radius:999px;
   background:#e3f6ee;color:#11734d;text-decoration:none}
@@ -295,7 +298,7 @@ table.vt .bar{display:block;height:4px;border-radius:2px;background:var(--brand2
           <p class="note" id="gamesCount"></p>
           <p class="note">Signed in on this device, you still see every game on the booth page, the off ones greyed with an “OFF” label. To see it as a visitor does, open it in a private window.</p>
           <h2 style="margin-top:22px">Tournament</h2>
-          <p class="note">One run through several games, one try at each, <b>easiest first</b>. Tick the games it holds: they are always played in the order below, from easy to hard, and a game switched off above is skipped. Each game gives up to 1,500 tournament points; reaching that game's gift points (or 1,000 where it has none) earns 1,000. Totals go on their own Tournament board. Then press <b>Save settings</b>.</p>
+          <p class="note">One run through several games, one try at each, <b>easiest first</b>. Tick the games it holds: they are always played in the order below, from easy to hard, and a game switched off above is skipped. Beside each game, set <b>the most points it can give</b> (blank means 1,500). Reaching that game's gift points (or 1,000 where it has none) earns two thirds of it, and one and a half times the target earns all of it. <b>The winner</b> is the player with the most points; a tie goes to the fastest (least total time playing), then to the highest level (the levels reached in each game, added up). Totals go on their own Tournament board. Then press <b>Save settings</b>.</p>
           <p class="note warn" id="tourOld" hidden>The booth script running now is from before the tournament, so it would not keep this. Paste the new <b>booth-admin.gs</b> into the script and deploy, then reload this page.</p>
           <label class="check"><input type="checkbox" id="tourActive"> Tournament is on (a Tournament button shows on the booth page)</label>
           <ol id="tourList" class="tourlist"></ol>
@@ -663,7 +666,7 @@ var PERMS = [
 ];
 var AREA_KEYS = {
   page: ['page_mode','passcode','lock_message','hidden_message','welcome'],
-  games: ['games_off','tour_active','tour_games'],
+  games: ['games_off','tour_active','tour_games','tour_points'],
   gift: ['gift_active','gift_points'],
   privacy: ['privacy_entity','privacy_email','privacy_address','privacy_retention']
 };
@@ -952,6 +955,8 @@ function tourRows(s){
   $('tourActive').checked = /^(yes|y|true|1|on)$/i.test(String(s.tour_active||'no'));
   $('tourActive').disabled = !tourKnown;
   var picked = String(s.tour_games||'').toLowerCase().split(/[^a-z0-9-]+/);
+  var ptsHave = {};
+  String(s.tour_points||'').split(/[\r\n,;]+/).forEach(function(line){ var b = line.split(/[=:]/); if(b.length < 2) return; var n = parseInt(String(b[1]).replace(/[^0-9]/g,''),10); if(n > 0) ptsHave[b[0].trim().toLowerCase()] = n; });
   var box = $('tourList'); box.textContent = '';
   var order = (window.fxTour && fxTour.ORDER) || [];
   order.forEach(function(g, i){
@@ -964,10 +969,22 @@ function tourRows(s){
     var lv = document.createElement('em'); lv.className = 'lv-'+g[3]; lv.textContent = g[3];
     var gone = document.createElement('span'); gone.className = 'gone';
     lab.appendChild(inp); lab.appendChild(nm); lab.appendChild(lv); lab.appendChild(gone);
-    li.appendChild(num); li.appendChild(lab); box.appendChild(li);
+    var pw = document.createElement('label'); pw.className = 'pts';
+    pw.appendChild(document.createTextNode('most points'));
+    var pi = document.createElement('input'); pi.type = 'number'; pi.min = '100'; pi.max = '5000'; pi.step = '50';
+    pi.placeholder = '1500'; pi.value = ptsHave[g[0]] || ''; pi.disabled = !tourKnown;
+    pi.setAttribute('data-tourpts', g[0]); pi.setAttribute('aria-label', 'Most tournament points for ' + g[1]);
+    pw.appendChild(pi);
+    li.appendChild(num); li.appendChild(lab); li.appendChild(pw); box.appendChild(li);
     inp.addEventListener('change', tourCount);
   });
   tourCount();
+}
+/* one line per game that has its own figure: "magic-tiles = 1800"; a blank box means the default */
+function tourPointsValue(){
+  var out = [];
+  [].forEach.call($('tourList').querySelectorAll('input[data-tourpts]'), function(i){ var n = parseInt(i.value, 10); if(n > 0) out.push(i.getAttribute('data-tourpts') + ' = ' + n); });
+  return out.join('\n');
 }
 function tourValue(){
   return [].filter.call($('tourList').querySelectorAll('input[data-tour]'), function(i){ return i.checked; })
@@ -1010,7 +1027,7 @@ $('saveSettings').addEventListener('click', function(){
               hidden_message:$('hiddenMessage').value, welcome: $('welcome').checked ? 'show' : 'hide',
               privacy_entity:$('privEntity').value, privacy_email:$('privEmail').value,
               privacy_address:$('privAddress').value, privacy_retention:$('privRetention').value,
-              games_off: gamesOffValue(), tour_active: $('tourActive').checked ? 'yes' : 'no', tour_games: tourValue(),
+              games_off: gamesOffValue(), tour_active: $('tourActive').checked ? 'yes' : 'no', tour_games: tourValue(), tour_points: tourPointsValue(),
               gift_active: $('giftActive').checked ? 'yes' : 'no', gift_points: giftLines(),
               gift_products:$('giftProducts').value };
   /* only the areas this person holds: the script refuses the whole save if
@@ -1018,7 +1035,7 @@ $('saveSettings').addEventListener('click', function(){
   var settings = {};
   Object.keys(AREA_KEYS).forEach(function(a){ if(can(a)) AREA_KEYS[a].forEach(function(k){ settings[k] = all[k]; }); });
   if(state.legacy || !(state.data && state.data.games)) delete settings.games_off;
-  if(!tourKnown) { delete settings.tour_active; delete settings.tour_games; }
+  if(!tourKnown) { delete settings.tour_active; delete settings.tour_games; delete settings.tour_points; }
   if(settings.tour_active === 'yes' && !settings.tour_games){ toast('Tick at least one game for the tournament before switching it on', true); return; }
   /* a script from before stock still reads the wheel from this setting */
   if(state.legacy) settings.gift_products = all.gift_products;

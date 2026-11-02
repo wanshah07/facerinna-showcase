@@ -21,9 +21,16 @@
  *   - and puts a card over the result with the points and the way on.
  *
  * Points: every game scores on its own scale (six thousand is a good run of
- * Facy Run, a few hundred of Pack Match), so a round is worth up to 1,500
- * tournament points, and the game's target -- its gift points in Admin, or
- * 1,000 where it has none -- is worth 1,000.
+ * Facy Run, a few hundred of Pack Match), so a round is turned into tournament
+ * points. The admin sets the most a game can give (tour_points, 1,500 where
+ * none is set). Reaching the game's target -- its gift points in Admin, or
+ * 1,000 where it has none -- earns two thirds of that, and one and a half times
+ * the target earns all of it.
+ *
+ * The winner: the most points. On a tie, the fastest (the least total time
+ * spent playing the rounds). Then the highest level (the levels reached in each
+ * round, added up). The time and the levels are kept with every round and sent
+ * with the total.
  *
  * The run lives in localStorage on this device for an hour from its last
  * round, so a kiosk left mid-run does not hand a stranger somebody's score.
@@ -46,7 +53,7 @@
     ['lab-run',       'Lab Run',       'lab-run.html',          'Hard'],
     ['facy-run',      'Facy Run',      'facy-run.html',         'Hard']
   ];
-  var KEY = 'fx.tour', LIFE = 60 * 60 * 1000, FULL = 1000, CAP = 1.5, PAR = 1000;
+  var KEY = 'fx.tour', LIFE = 60 * 60 * 1000, MAX = 1500, CAP = 1.5, PAR = 1000;
 
   function row(id) { for (var i = 0; i < ORDER.length; i++) if (ORDER[i][0] === id) return ORDER[i]; return null; }
   function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -70,24 +77,47 @@
     return ORDER.filter(function (g) { return want.indexOf(g[0]) >= 0 && gone.indexOf(g[0]) < 0; })
                 .map(function (g) { return g[0]; });
   }
-  function points(raw, par) {
-    par = par > 0 ? par : PAR;
-    return Math.max(0, Math.round(FULL * Math.min(CAP, (raw || 0) / par)));
+  /* max: the most this game can give; its target (par) earns two thirds of it, and CAP times the target all of it */
+  function points(raw, par, max) {
+    par = par > 0 ? par : PAR; max = max > 0 ? max : MAX;
+    return Math.max(0, Math.round(max * Math.min(1, (raw || 0) / (par * CAP))));
   }
-  function start(games, needs) {
-    var pars = {};
-    games.forEach(function (id) { var n = needs && +needs[id]; pars[id] = n > 0 ? n : PAR; });
+  function start(games, needs, maxes, dflt) {
+    var pars = {}, mx = {};
+    games.forEach(function (id) {
+      var n = needs && +needs[id]; pars[id] = n > 0 ? n : PAR;
+      var m = maxes && +maxes[id]; mx[id] = m > 0 ? m : (dflt > 0 ? dflt : MAX);
+    });
     var run = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    return save({ run: run, games: games.slice(), pars: pars, i: 0, raw: [], pts: [] });
+    return save({ run: run, games: games.slice(), pars: pars, maxes: mx, i: 0, raw: [], pts: [], secs: [], lvl: [] });
   }
-  function total(s) { return (s.pts || []).reduce(function (a, b) { return a + (b || 0); }, 0); }
+  function sum(a) { return (a || []).reduce(function (x, y) { return x + (y || 0); }, 0); }
+  function total(s) { return sum(s.pts); }
+  function totalSecs(s) { return sum(s.secs); }
+  function totalLevel(s) { return sum(s.lvl); }
+  function mmss(sec) { sec = Math.max(0, Math.round(sec || 0)); var m = Math.floor(sec / 60), r = sec % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+  /* the level the run reached, read from the game when its result comes up: the newer games say
+     it in their snapshot, the older ones through fx-modes; a game with no levels counts as 1 */
+  function levelNow() {
+    try {
+      var m = window.__fxModes && __fxModes.snapshot && __fxModes.snapshot();
+      if (m && m.level > 0) return Math.floor(m.level);
+    } catch (e) {}
+    var hooks = ['__magictiles', '__packslicer', '__matchfactory', '__packcrush', '__packdrop', '__packrecall'];
+    for (var i = 0; i < hooks.length; i++) {
+      try { var s = window[hooks[i]] && window[hooks[i]].snapshot && window[hooks[i]].snapshot(); if (s && s.level > 0) return Math.floor(s.level); } catch (e) {}
+    }
+    return 1;
+  }
   function urlFor(s) {
     return s.i < s.games.length ? row(s.games[s.i])[2] + '?tour=' + s.run : 'tournament.html?tour=' + s.run;
   }
 
   window.fxTour = {
-    ORDER: ORDER, FULL: FULL, CAP: CAP, PAR: PAR,
+    ORDER: ORDER, MAX: MAX, CAP: CAP, PAR: PAR,
     load: load, save: save, clear: clear, pick: pick, points: points, start: start, total: total, urlFor: urlFor,
+    totalSecs: totalSecs, totalLevel: totalLevel, mmss: mmss, levelNow: levelNow,
+    maxOf: function (s, id) { var m = s && s.maxes && +s.maxes[id]; return m > 0 ? m : MAX; },
     nameOf: function (id) { var r = row(id); return r ? r[1] : id; },
     pageOf: function (id) { var r = row(id); return r ? r[2] : null; },
     levelOf: function (id) { var r = row(id); return r ? r[3] : ''; }
@@ -149,6 +179,10 @@
   var resultEl = document.querySelector(R.result);
   if (!resultEl) return;
   var booked = false;
+  /* the clock for this round: from the page opening, and restarted when Normal play is pressed, so the time
+     spent reading the start screen is not held against anybody */
+  var t0 = Date.now();
+  document.addEventListener('click', function (e) { var b = e.target && e.target.closest && e.target.closest('#goPlay'); if (b) t0 = Date.now(); }, true);
 
   function scoreNow() {
     var el = R.score && document.querySelector(R.score);
@@ -165,14 +199,16 @@
     /* the run moved on in another tab, or ran out: this page is no longer a round */
     if (!now || now.run !== s.run || now.i !== idx) return;
     booked = true;
-    var pts = points(raw, now.pars && now.pars[R.id]);
-    now.raw[idx] = raw; now.pts[idx] = pts; now.i = idx + 1;
+    var pts = points(raw, now.pars && now.pars[R.id], now.maxes && now.maxes[R.id]);
+    var secs = Math.max(1, Math.round((Date.now() - t0) / 1000)), lvl = levelNow();
+    now.raw[idx] = raw; now.pts[idx] = pts; now.secs = now.secs || []; now.lvl = now.lvl || [];
+    now.secs[idx] = secs; now.lvl[idx] = lvl; now.i = idx + 1;
     save(now);
     bar.textContent = '\u{1F3C6} Tournament · Game ' + (idx + 1) + ' of ' + n + ' · ' + fmt(total(now)) + ' pts';
-    setTimeout(function () { card(now, raw, pts); }, 1300);
+    setTimeout(function () { card(now, raw, pts, secs, lvl); }, 1300);
   }
 
-  function card(now, raw, pts) {
+  function card(now, raw, pts, secs, lvl) {
     var last = now.i >= now.games.length;
     var box = document.createElement('div');
     box.id = 'fxTour';
@@ -185,7 +221,7 @@
     var h = document.createElement('h2'); h.id = 'fxTourT';
     h.textContent = fxTour.nameOf(R.id) + ' done';
     ft.appendChild(cap); ft.appendChild(h);
-    [['Score', fmt(raw), ''], ['Tournament points', '+' + fmt(pts), ''], ['Total so far', fmt(total(now)), 'tot']]
+    [['Score', fmt(raw), ''], ['Tournament points', '+' + fmt(pts) + ' of ' + fmt(fxTour.maxOf(now, R.id)), ''], ['Time \u00B7 level', mmss(secs) + ' \u00B7 L' + lvl, ''], ['Total so far', fmt(total(now)), 'tot']]
       .forEach(function (r) {
         var d = document.createElement('div'); d.className = 'ft-row' + (r[2] ? ' ' + r[2] : '');
         var a = document.createElement('span'); a.textContent = r[0];
