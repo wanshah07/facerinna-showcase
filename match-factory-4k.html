@@ -192,6 +192,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
   .screen{padding:8px}.screen .mini,.screen p.rk,.screen .cap + .cap{display:none}
   .screen h2.winner{font-size:clamp(16px,6.4vh,57.2px)}.screen .big{font-size:clamp(30px,11vh,132px)}.screen p.sub{font-size:11px;margin:.2em 0 .5em}
   .screen .btns .btn{padding:.55em 1.1em;min-height:38px;font-size:13px}.btns{gap:8px}
+  .screen .lede{display:none}
 }
 @media (orientation:portrait) and (min-height:1500px){
   .app{grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-areas:"hd hd" "left right" "board board" "how how" "padL padR"}
@@ -202,6 +203,8 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
   .leg{font-size:2.3vmin}.help{font-size:2.1vmin}
   .padL,.padR{padding-bottom:70px}
 }
+/* upright: leave the bottom corners to the Booth and Ranking buttons */
+@media (orientation:portrait){.app{padding-bottom:calc(var(--safe-b) + 64px)}}
 @media (prefers-reduced-motion:reduce){.sky i{animation:none}.screen,.screen .in,.lvl i{transition-duration:.01ms!important}}
 @media (hover:none){.btn.pri:hover,.btn.gold:hover{transform:none}}
 
@@ -263,7 +266,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
         <div class="in">
           <p class="cap">Factory Floor 3D</p>
           <h2>Three of a kind, off the line.</h2>
-          <p>A bench of FACERINNA packs seen at an angle. Drag a pack onto a neighbour to move it. Three the same side by side leave the bench and new ones drop in. Clear the target before your moves run out.</p>
+          <p class="lede">A bench of FACERINNA packs seen from the front. Drag a pack onto a neighbour to move it. Three the same side by side leave the bench and new ones drop in. Clear the target before your moves run out.</p>
           <div class="btns col">
             <button class="btn gold" id="goGift" type="button">🎁 Redeem gift<small id="giftSub">Checking the gift desk…</small></button>
             <button class="btn pri" id="goPlay" type="button">Normal play<small>Level by level · limited moves</small></button>
@@ -303,7 +306,7 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
 <script>
 (function(){
 'use strict';
-/* Match Factory — match-3 on an isometric bench, using the real product art
+/* Match Factory — match-3 on a bench seen from the front, using the real product art
    drawn as a standing carton so it reads as a 3D package rather than a flat
    tile. Drag a pack onto a neighbour to swap; three in a line leave. Same
    cabinet, gift desk and ranking as the rest of the stand.
@@ -331,19 +334,18 @@ var RANGE=[
 ];
 RANGE.forEach(function(p){
   var im=new Image();im.decoding='async';im.src='products/'+p.s+'.webp';
-  p.img=im;p.ok=false;im.onload=function(){p.ok=true;faceCache={};render()};
+  p.img=im;p.ok=false;im.onload=function(){p.ok=true;sprites={};render()};
 });
 
-/* height of the bench in cells: one row costs 0.31 (the isometric squeeze)
-   plus a skew tail. fit() and the canvas size MUST use the same number. */
-/* vertical span: the far row sits (COLS+ROWS-2)*0.31 cells down from the
-   near row, plus the carton's own height. Using ROWS*0.31 clipped the
-   bottom rows off the canvas. */
-var HG=(COLS+ROWS-2)*0.31+1.30;
-var cell=52,dpr=1,W=COLS*52,H=Math.round(52*HG);
+/* The bench: every pack stands on a slot. A slot is `cell` wide; the rows are
+   squeezed to PITCH of that so the bench reads as seen from the front and a
+   little above, and each pack carries a LIP (its thickness) under its face. */
+var PITCH=0.84, LIP=0.13, TOPM=0.10;
+var cell=52,dpr=1,W=COLS*52,H=Math.round(52*(ROWS*PITCH+LIP+TOPM)),sized=false;
+var offX=new Float32Array(COLS*ROWS), offY=new Float32Array(COLS*ROWS), ghosts=[], sprites={}, benchCv=null;
 var state='idle',level=1,score=0,shown=0,moves=0,best=0,mode='play',need=0,giftNeed=null,giftState='wait',giftSeq=0;
 var goal=0,board=[],sel=null,drag=null,anim=null,particles=[],floats=[],rings=[],shake=0,combo=0,bestCombo=0;
-var lastFrame=0,raf=0,lastScoreText='',faceCache={};
+var lastFrame=0,raf=0,lastScoreText='';
 
 try{best=parseInt(localStorage.getItem('fx.matchfactory.best')||'0',10)||0}catch(e){}
 function saveBest(){try{localStorage.setItem('fx.matchfactory.best',String(best))}catch(e){}}
@@ -351,37 +353,28 @@ function saveBest(){try{localStorage.setItem('fx.matchfactory.best',String(best)
 function fit(){
   var r=wrapEl.getBoundingClientRect();
   var pad=COARSE?10:40;
-  /* the bench is drawn at a 2:1 isometric skew, so it is wider than it is tall:
-     reserve room for the skew when picking the cell */
-  /* the bench is skewed, so a cell costs ~1.02 of width but only ~0.31 of height
-     per row plus the skew tail. Solve for width, then for height, and take the
-     smaller of the two so the bench fills the cabinet instead of floating in it. */
-  var byW=(r.width-pad)/(COLS*1.02);
-  var byH=(r.height-pad)/HG;
+  var byW=(r.width-pad)/COLS;
+  var byH=(r.height-pad)/(ROWS*PITCH+LIP+TOPM);
   var c=Math.max(22,Math.floor(Math.min(byW,byH)));
   var native=window.devicePixelRatio||1;
-  var d=Math.min(COARSE?2:3,Math.max(1,native));
-  if(native>=2)d=Math.min(d,2);
-  var bw=c*COLS, bh=c*HG;
-  var budget=COARSE?4e6:6e6;
+  var d=Math.min(COARSE?2:3,Math.max(2,native));
+  var bw=c*COLS, bh=Math.round(c*(ROWS*PITCH+LIP+TOPM));
+  var budget=COARSE?5e6:18e6;
   while(d>1&&(bw*d)*(bh*d)>budget)d-=.5;
-  if(c===cell&&d===dpr&&cv.width)return;
-  cell=c;dpr=d;
-  W=Math.round(bw);H=Math.round(bh);
+  if(sized&&c===cell&&d===dpr)return;
+  sized=true;cell=c;dpr=d;
+  W=Math.round(bw);H=bh;
   cv.style.width=W+'px';cv.style.height=H+'px';
   cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
-  faceCache={};render();
+  sprites={};benchCv=null;render();
 }
 var fitQ=0;
 function fitSoon(){if(!fitQ)fitQ=requestAnimationFrame(function(){fitQ=0;fit()})}
 addEventListener('resize',fitSoon,{passive:true});
 
-/* isometric placement: x grows right, y grows down, the board is squeezed
-   vertically so it reads as a bench seen from above and in front */
-function isoX(c,r){return (c-r)*cell*0.5 + W/2}
-function isoY(c,r){return (c+r)*cell*0.31}
-function packW(){return cell*1.02}
-function packH(){return cell*1.30}
+/* placement: the centre of the slot at column c, row r, in canvas pixels */
+function isoX(c,r){return (c+.5)*cell}
+function isoY(c,r){return (TOPM+(r+.5)*PITCH)*cell}
 
 function idx(c,r){return r*COLS+c}
 function get(c,r){
@@ -404,7 +397,8 @@ function newBoard(){
       (r>=2&&get(c,r-1)===v&&get(c,r-2)===v)));
     set(c,r,v);
   }
-  if(!findMoves().length)newBoard();
+  if(!findMoves().length){newBoard();return}
+  for(var i=0;i<board.length;i++){offX[i]=0;offY[i]=-(ROWS+1+(i%COLS)*.35)}
 }
 
 function findLine(){
@@ -512,18 +506,17 @@ function hud(){
 }
 
 function hitTest(px,py){
-  /* pick the pack whose drawn carton contains the point: the bench is skewed, so
-     a rectangular grid test would be off by half a cell on the far side */
-  var bw=packW(),bh=packH();
-  for(var r=ROWS-1;r>=0;r--)for(var c=COLS-1;c>=0;c--){
-    var x=isoX(c,r)-bw/2, y=isoY(c,r)-bh*0.72;
-    if(px>=x&&px<=x+bw&&py>=y&&py<=y+bh)return{c:c,r:r};
-  }
-  return null;
+  var c=Math.floor(px/cell), r=Math.floor((py/cell-TOPM)/PITCH);
+  if(c<0||c>=COLS||r<0||r>=ROWS)return null;
+  return {c:c,r:r};
+}
+function settling(){
+  for(var i=0;i<offX.length;i++)if(offX[i]||offY[i])return true;
+  return false;
 }
 
 function tap(c,r){
-  if(state!=='play'||anim)return;
+  if(state!=='play'||anim||settling())return;
   if(sel===null){sel={c:c,r:r};buzz(6);kick();return}
   var dc=Math.abs(sel.c-c),dr=Math.abs(sel.r-r);
   var first=sel;sel=null;
@@ -533,14 +526,21 @@ function tap(c,r){
 
 function attemptSwap(c1,r1,c2,r2){
   var a=get(c1,r1),b=get(c2,r2);
-  if(a===null||b===null)return;
+  if(a===null||b===null||state!=='play'||moves<=0)return;
   set(c1,r1,b);set(c2,r2,a);
   if(!findLine().length){
+    /* an illegal swap costs nothing: the two packs slide across and slide back */
     set(c1,r1,a);set(c2,r2,b);
     floats.push({t:0,x:isoX(c1,r1),y:isoY(c1,r1),txt:'no line',c:'#ffb0b0'});
-    shake=Math.max(shake,.35);kick();
+    shake=Math.max(shake,.35);
+    anim={kind:'bounce',t:0,max:RM?0.02:0.30,c1:c1,r1:r1,c2:c2,r2:r2};
+    kick();
     return;
   }
+  /* the swap itself: each pack starts where the other one stood and settles */
+  offX[idx(c1,r1)]=c2-c1;offY[idx(c1,r1)]=r2-r1;
+  offX[idx(c2,r2)]=c1-c2;offY[idx(c2,r2)]=r1-r2;
+  sel=null;
   moves--;hud();
   resolveBoard();
 }
@@ -570,13 +570,13 @@ function resolveBoard(){
   Object.keys(cleared).forEach(function(k){
     var i=+k, c=i%COLS, r=(i/COLS)|0;
     var v=board[i];
-    if(v!==null)burst(isoX(c,r),isoY(c,r),RANGE[v].c,7,1);
+    if(v!==null){burst(isoX(c,r),isoY(c,r),RANGE[v].c,7,1);ghosts.push({c:c,r:r,v:v,t:0})}
     rings.push({x:isoX(c,r),y:isoY(c,r),t:0,v:v});
     board[i]=null;
   });
   floats.push({t:0,x:W/2,y:H*0.16,txt:'+'+fmt(pts)+(n>3?' ×'+n:''),big:combo>=3,c:combo>=3?'#ffe08a':'#eef8ff'});
   shake=Math.max(shake,.25);hud();
-  anim={kind:'clear',t:0,max:RM?0.02:0.22};
+  anim={kind:'clear',t:0,max:RM?0.02:0.24};
   kick();
 }
 
@@ -585,8 +585,13 @@ function refill(){
     var write=ROWS-1;
     for(var r=ROWS-1;r>=0;r--){
       var v=get(c,r);
-      if(v!==null){set(c,write,v);if(write!==r)set(c,r,null);write--}
+      if(v!==null){
+        set(c,write,v);
+        if(write!==r){set(c,r,null);offY[idx(c,write)]=r-write}
+        write--;
+      }
     }
+    var fresh=write+1;
     for(var r2=write;r2>=0;r2--){
       var nv;
       var guard=0;
@@ -596,6 +601,7 @@ function refill(){
         (c>=2&&get(c-1,r2)===nv&&get(c-2,r2)===nv)||
         (r2<ROWS-1&&get(c,r2+1)===nv&&r2<ROWS-2&&get(c,r2+2)===nv)));
       set(c,r2,nv);
+      offY[idx(c,r2)]=-fresh;
     }
   }
   if(!findMoves().length){shuffle();}
@@ -604,10 +610,17 @@ function refill(){
 function shuffle(){
   var all=[];
   for(var i=0;i<board.length;i++)if(board[i]!==null)all.push(board[i]);
-  for(var k=all.length-1;k>0;k--){var j=(Math.random()*(k+1))|0;var t=all[k];all[k]=all[j];all[j]=t}
-  for(var i2=0;i2<board.length;i2++)if(board[i2]!==null)board[i2]=all.pop();
-  if(!findMoves().length)newBoard();
-  floats.push({t:0,x:W/2,y:H*0.2,txt:'bench shuffled',c:'#ffd98a'});
+  /* a shuffle must leave a bench with no ready line and at least one move */
+  var ok=false;
+  for(var t=0;t<40&&!ok;t++){
+    var bag=all.slice();
+    for(var k=bag.length-1;k>0;k--){var j=(Math.random()*(k+1))|0;var x=bag[k];bag[k]=bag[j];bag[j]=x}
+    for(var i2=0;i2<board.length;i2++)if(board[i2]!==null)board[i2]=bag.pop();
+    ok=!findLine().length&&findMoves().length>0;
+  }
+  if(!ok)newBoard();
+  else for(var q=0;q<board.length;q++){offX[q]=0;offY[q]=-.7-(q%COLS)*.05}
+  floats.push({t:0,x:W/2,y:H*0.5,txt:'bench shuffled',c:'#ffd98a'});
 }
 
 function endRun(){
@@ -620,7 +633,7 @@ function endRun(){
 /* input: drag a pack onto a neighbour, or tap two */
 cv.addEventListener('pointerdown',function(e){
   if(e.button!=null&&e.button>0)return;
-  if(state!=='play'||anim)return;
+  if(state!=='play'||anim||settling())return;
   e.preventDefault();
   var r=cv.getBoundingClientRect();
   var h2=hitTest(e.clientX-r.left,e.clientY-r.top);
@@ -660,10 +673,9 @@ function frame(t){
   if(moving())raf=requestAnimationFrame(frame);
 }
 function moving(){
-  if(state==='play')return true;
-  if(anim||particles.length||floats.length||rings.length||shake>.01)return true;
+  if(anim||particles.length||floats.length||rings.length||ghosts.length||shake>.01)return true;
   if(Math.abs(shown-score)>.5)return true;
-  return false;
+  return settling();
 }
 function ease(r,dt){return 1-Math.exp(-r*dt)}
 
@@ -671,14 +683,21 @@ function update(dt){
   if(anim){
     anim.t+=dt;
     if(anim.t>=anim.max){
-      if(anim.kind==='clear'){anim=null;refill();combo=0;hud()}
+      if(anim.kind==='clear'){anim=null;refill();combo=0;hud();if(state==='play'&&moves<=0)endRun()}
       else anim=null;
       kick();
     }
   }
+  var k=Math.exp(-13*dt);
+  for(var q=0;q<offX.length;q++){
+    if(offX[q]){offX[q]*=k;if(Math.abs(offX[q])<.012)offX[q]=0}
+    if(offY[q]){offY[q]*=k;if(Math.abs(offY[q])<.012)offY[q]=0}
+  }
+  ghosts.forEach(function(gh){gh.t+=dt});
+  ghosts=ghosts.filter(function(gh){return gh.t<.26});
   rings.forEach(function(r){r.t+=dt});
   rings=rings.filter(function(r){return r.t<0.5});
-  particles.forEach(function(p){p.life+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=900*dt});
+  particles.forEach(function(p){p.life+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=900*dt*cell/52});
   particles=particles.filter(function(p){return p.life<p.max});
   floats.forEach(function(f){f.t+=dt});
   floats=floats.filter(function(f){return f.t<1.15});
@@ -691,78 +710,113 @@ function update(dt){
   }
 }
 
-/* a carton drawn in perspective: front face, a light top face and a shadow, so a
-   flat product photo reads as a standing pack on a bench */
-function carton(x,y,w,h,color,img){
-  var d=w*0.16, dy=-h*0.10;
-  g.save();
-  g.shadowColor='rgba(0,8,24,.45)';g.shadowBlur=w*0.18;g.shadowOffsetY=h*0.10;
-  g.beginPath();
-  g.moveTo(x,y);
-  g.lineTo(x+w,y);
-  g.lineTo(x+w,y+h);
-  g.lineTo(x,y+h);
-  g.closePath();
-  var grd=g.createLinearGradient(x,y,x,y+h);
-  grd.addColorStop(0,'rgba(255,255,255,.96)');
-  grd.addColorStop(1,'rgba(232,242,250,.92)');
-  g.fillStyle=grd;g.fill();
-  g.restore();
-  g.beginPath();
-  g.moveTo(x,y);g.lineTo(x+d,y+dy);g.lineTo(x+w+d,y+dy);g.lineTo(x+w,y);
-  g.closePath();
-  g.fillStyle='rgba(255,255,255,.55)';g.fill();
-  if(img&&img.ok&&img.img.naturalWidth){
-    var iw=img.img.naturalWidth,ih=img.img.naturalHeight;
-    var k=Math.min((w*0.82)/iw,(h*0.82)/ih);
-    var dw=iw*k,dh=ih*k;
-    g.drawImage(img.img,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
+/* ── a pack on the bench ────────────────────────────────────────────────
+   Baked once per product at the screen's real resolution: a frosted glass
+   plinth tinted with the product's colour, a darker lip under it for
+   thickness, the product standing on it with its shadow, and a gloss. Every
+   frame is then a drawImage per pack. */
+function hexa(c,a){var n=parseInt(c.slice(1),16);return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')'}
+function rrect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function sprite(v,lift){
+  var key=v+'|'+cell+'|'+dpr+'|'+(RANGE[v].ok?1:0),sp=sprites[key];
+  if(sp)return sp;
+  var p=RANGE[v],cw=Math.ceil(cell*dpr),ch=Math.ceil(cell*(PITCH+LIP+.12)*dpr);
+  sp=document.createElement('canvas');sp.width=cw;sp.height=ch;
+  var c=sp.getContext('2d');c.scale(dpr,dpr);
+  var m=cell*.045,w=cell-2*m,h=cell*PITCH-m,x=m,y=cell*.04,r=cell*.15,lip=cell*LIP;
+  /* contact shadow */
+  c.save();c.shadowColor='rgba(0,8,24,.55)';c.shadowBlur=cell*.14;c.shadowOffsetY=cell*.07;
+  rrect(c,x,y+lip,w,h,r);c.fillStyle='rgba(2,12,30,.9)';c.fill();c.restore();
+  /* the lip: the pack's thickness */
+  rrect(c,x,y+lip,w,h,r);
+  var lg=c.createLinearGradient(0,y+lip,0,y+lip+h);lg.addColorStop(0,hexa(p.c,.55));lg.addColorStop(1,'rgba(4,22,48,.95)');
+  c.fillStyle=lg;c.fill();
+  /* the face */
+  rrect(c,x,y,w,h,r);
+  var fg=c.createLinearGradient(x,y,x+w,y+h);
+  fg.addColorStop(0,'rgba(246,252,255,.97)');fg.addColorStop(.55,'rgba(222,238,250,.94)');fg.addColorStop(1,hexa(p.c,.55));
+  c.fillStyle=fg;c.fill();
+  c.save();rrect(c,x,y,w,h,r);c.clip();
+  var tg=c.createRadialGradient(x+w*.5,y+h*.62,w*.05,x+w*.5,y+h*.62,w*.7);
+  tg.addColorStop(0,hexa(p.c,.30));tg.addColorStop(1,hexa(p.c,0));
+  c.fillStyle=tg;c.fillRect(x,y,w,h);
+  c.restore();
+  /* the product, scaled once with a soft shadow of its own */
+  if(p.ok&&p.img.naturalWidth){
+    var iw=p.img.naturalWidth,ih=p.img.naturalHeight,k=Math.min(w*.74/iw,h*.82/ih),dw=iw*k,dh=ih*k;
+    c.save();c.shadowColor='rgba(0,20,50,.4)';c.shadowBlur=cell*.05;c.shadowOffsetY=cell*.025;
+    c.drawImage(p.img,x+(w-dw)/2,y+(h-dh)/2,dw,dh);c.restore();
   }else{
-    g.beginPath();g.arc(x+w/2,y+h/2,w*0.30,0,7);
-    g.fillStyle=color||'#4898D8';g.fill();
+    c.beginPath();c.arc(x+w/2,y+h/2,w*.28,0,7);c.fillStyle=p.c;c.fill();
   }
-  g.strokeStyle='rgba(63,180,238,.35)';g.lineWidth=1.2;
-  g.strokeRect(x,y,w,h);
-  g.beginPath();
-  g.moveTo(x,y);g.lineTo(x+d,y+dy);g.lineTo(x+w+d,y+dy);g.lineTo(x+w,y);
-  g.strokeStyle='rgba(255,255,255,.5)';g.stroke();
+  /* gloss, rim and the lit top edge */
+  c.save();rrect(c,x,y,w,h,r);c.clip();
+  var gl=c.createLinearGradient(0,y,0,y+h*.45);gl.addColorStop(0,'rgba(255,255,255,.55)');gl.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=gl;c.fillRect(x,y,w,h*.45);c.restore();
+  rrect(c,x,y,w,h,r);c.lineWidth=Math.max(1,cell*.026);c.strokeStyle='rgba(255,255,255,.75)';c.stroke();
+  sprites[key]=sp;return sp;
+}
+/* the bench itself: a slab with a recessed slot under every pack, baked once */
+function bench(){
+  if(benchCv)return benchCv;
+  var b=document.createElement('canvas');b.width=Math.ceil(W*dpr);b.height=Math.ceil(H*dpr);
+  var c=b.getContext('2d');c.scale(dpr,dpr);
+  var sl=c.createLinearGradient(0,0,0,H);sl.addColorStop(0,'rgba(18,56,104,.55)');sl.addColorStop(1,'rgba(6,24,52,.75)');
+  rrect(c,cell*.02,cell*.02,W-cell*.04,H-cell*.04,cell*.2);c.fillStyle=sl;c.fill();
+  c.lineWidth=Math.max(1,cell*.03);c.strokeStyle='rgba(127,213,255,.28)';c.stroke();
+  for(var r=0;r<ROWS;r++)for(var q=0;q<COLS;q++){
+    var x=q*cell+cell*.07,y=(TOPM+r*PITCH)*cell+cell*.07+cell*LIP*.4;
+    rrect(c,x,y,cell*.86,PITCH*cell*.9,cell*.14);
+    c.fillStyle=((q+r)&1)?'rgba(130,200,255,.07)':'rgba(130,200,255,.12)';c.fill();
+  }
+  benchCv=b;return b;
+}
+function drawPack(v,c,r,ox,oy,sc,alpha){
+  var sp=sprite(v),x=(c+ox)*cell,y=(TOPM+(r+oy)*PITCH)*cell;
+  g.globalAlpha=alpha;
+  if(sc===1)g.drawImage(sp,x,y,cell,sp.height/dpr);
+  else{var w=cell*sc,h=sp.height/dpr*sc;g.drawImage(sp,x+(cell-w)/2,y+(cell*PITCH-h)/2,w,h)}
+  g.globalAlpha=1;
 }
 
 function render(){
   var sx=0,sy=0;
-  if(shake>.01){sx=(Math.random()-.5)*shake*12;sy=(Math.random()-.5)*shake*12}
+  if(shake>.01){sx=(Math.random()-.5)*shake*cell*.22;sy=(Math.random()-.5)*shake*cell*.22}
   g.setTransform(dpr,0,0,dpr,0,0);
   g.clearRect(0,0,W,H);
   g.save();g.translate(sx,sy);
+  g.drawImage(bench(),0,0,W,H);
 
-  /* the bench: a faint skewed slab under the packs */
-  g.beginPath();
-  g.moveTo(isoX(0,0)-cell*0.55, isoY(0,0)-cell*0.20);
-  g.lineTo(isoX(COLS-1,0)+cell*0.55, isoY(COLS-1,0)-cell*0.20);
-  g.lineTo(isoX(COLS-1,ROWS-1)+cell*0.55, isoY(COLS-1,ROWS-1)+cell*0.42);
-  g.lineTo(isoX(0,ROWS-1)-cell*0.55, isoY(0,ROWS-1)+cell*0.42);
-  g.closePath();
-  g.fillStyle='rgba(20,60,110,.30)';g.fill();
-  g.strokeStyle='rgba(127,213,255,.22)';g.lineWidth=1.5;g.stroke();
-
+  var bo=null,bp=0;
+  if(anim&&anim.kind==='bounce'){bp=Math.sin(Math.min(1,anim.t/anim.max)*Math.PI);bo=anim}
   for(var r=0;r<ROWS;r++){
     for(var c=0;c<COLS;c++){
       var v=get(c,r);
       if(v===null||v===undefined)continue;
-      var x=isoX(c,r)-packW()/2, y=isoY(c,r)-packH()*0.72;
-      carton(x,y,packW(),packH(),RANGE[v].c,RANGE[v]);
+      var i=idx(c,r),ox=offX[i],oy=offY[i];
+      if(bo){
+        if(c===bo.c1&&r===bo.r1){ox+=(bo.c2-bo.c1)*bp;oy+=(bo.r2-bo.r1)*bp}
+        else if(c===bo.c2&&r===bo.r2){ox+=(bo.c1-bo.c2)*bp;oy+=(bo.r1-bo.r2)*bp}
+      }
+      var picked=sel&&sel.c===c&&sel.r===r;
+      if(picked)oy-=.07;
+      drawPack(v,c,r,ox,oy,1,1);
+      if(picked){
+        var px=(c+ox)*cell,py=(TOPM+(r+oy)*PITCH)*cell;
+        g.strokeStyle='rgba(255,217,138,.98)';g.lineWidth=Math.max(2,cell*.05);
+        rrect(g,px+cell*.03,py+cell*.02,cell*.94,cell*PITCH*1.0,cell*.17);g.stroke();
+      }
     }
   }
-  if(sel){
-    var xx=isoX(sel.c,sel.r)-packW()/2, yy=isoY(sel.c,sel.r)-packH()*0.72;
-    g.strokeStyle='rgba(255,217,138,.95)';g.lineWidth=2.5;
-    g.strokeRect(xx-2,yy-2,packW()+4,packH()+4);
-  }
+  ghosts.forEach(function(gh){
+    var k=Math.min(1,gh.t/.24);
+    drawPack(gh.v,gh.c,gh.r,0,0,1+.28*k,Math.max(0,1-k*k));
+  });
   rings.forEach(function(rg){
     var k=rg.t/0.5;
     g.globalAlpha=Math.max(0,1-k);
-    g.strokeStyle=rg.v!=null?RANGE[rg.v].c:'#fff';g.lineWidth=2;
-    g.beginPath();g.arc(rg.x,rg.y,cell*(0.3+k*0.6),0,7);g.stroke();
+    g.strokeStyle=rg.v!=null?RANGE[rg.v].c:'#fff';g.lineWidth=Math.max(2,cell*.05);
+    g.beginPath();g.arc(rg.x,rg.y,cell*(0.3+k*0.7),0,7);g.stroke();
   });
   g.globalAlpha=1;
   particles.forEach(function(p){
@@ -772,12 +826,12 @@ function render(){
   });
   g.globalAlpha=1;
   floats.forEach(function(f){
-    var kk=f.t/1.15,y=f.y-kk*40;
+    var kk=f.t/1.15,y=f.y-kk*cell*.9;
     g.globalAlpha=Math.max(0,1-kk*kk);
-    g.font='700 '+Math.round(f.big?26:20)+'px Inter, system-ui, sans-serif';
+    g.font='700 '+Math.round(f.big?cell*.52:cell*.38)+'px Inter, system-ui, sans-serif';
     g.textAlign='center';g.textBaseline='middle';
     g.fillStyle=f.c||'#eef8ff';
-    g.shadowColor='rgba(0,8,24,.85)';g.shadowBlur=10;
+    g.shadowColor='rgba(0,8,24,.85)';g.shadowBlur=cell*.2;
     g.fillText(f.txt,f.x,y);g.shadowBlur=0;
   });
   g.globalAlpha=1;
@@ -788,18 +842,18 @@ function render(){
 function burst(x,y,color,n,power){
   if(RM||particles.length>(COARSE?120:200))return;
   for(var i=0;i<n;i++){
-    var a=Math.random()*Math.PI*2,s2=(50+Math.random()*140)*power;
-    particles.push({x:x,y:y,vx:Math.cos(a)*s2,vy:Math.sin(a)*s2-50*power,
-      life:0,max:.4+Math.random()*.5,r:1.4+Math.random()*2.6,c:color});
+    var a=Math.random()*Math.PI*2,s2=(50+Math.random()*140)*power*cell/52;
+    particles.push({x:x,y:y,vx:Math.cos(a)*s2,vy:Math.sin(a)*s2-50*power*cell/52,
+      life:0,max:.4+Math.random()*.5,r:(1.4+Math.random()*2.6)*cell/52,c:color});
   }
 }
 function confetti(){
   if(RM)return;
   var cols=['#ffd24a','#ff7a59','#5ad2f4','#7be08a','#ffffff','#e98cff'];
   for(var i=0;i<(COARSE?60:120);i++){
-    particles.push({x:Math.random()*W,y:-Math.random()*H*.3,vx:(Math.random()-.5)*140,
-      vy:60+Math.random()*170,life:0,max:1.5+Math.random()*1.5,
-      r:2+Math.random()*3,c:cols[i%cols.length]});
+    particles.push({x:Math.random()*W,y:-Math.random()*H*.3,vx:(Math.random()-.5)*140*cell/52,
+      vy:(60+Math.random()*170)*cell/52,life:0,max:1.5+Math.random()*1.5,
+      r:(2+Math.random()*3)*cell/52,c:cols[i%cols.length]});
   }
 }
 
@@ -845,6 +899,8 @@ $('goGift').addEventListener('click',function(){
 
 state='idle';goal=targetFor(1);
 hud();fit();refreshGift(false);render();kick();
+/* fx-gift.js loads after this script: ask the gift desk again once the page is whole */
+addEventListener('load',function(){refreshGift(false)});
 
 /* would this swap produce a line? The test needs to pick an ILLEGAL pair on
    purpose; calling attemptSwap on random neighbours proves nothing because most
@@ -867,7 +923,7 @@ window.__matchfactory={
   hint:function(){var m=findMoves();return m[0]||null},
   snapshot:function(){return{state:state,mode:mode,level:level,score:score,moves:moves,goal:goal,need:need,
     giftNeed:giftNeed,giftState:giftState,combo:combo,cell:cell,dpr:dpr,cw:cv.width,ch:cv.height,
-    tiles:board.filter(function(v){return v!==null}).length}}
+    tiles:board.filter(function(v){return v!==null}).length,busy:!!anim||settling()}}
 };
 })();
 </script>

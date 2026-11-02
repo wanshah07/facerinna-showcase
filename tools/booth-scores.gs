@@ -101,6 +101,9 @@ var GAMES = {
   'pack-drop':  { name: 'Pack Drop',  max: 100000 },
   'pack-crush': { name: 'Pack Crush', max: 200000 },
   'pack-recall': { name: 'Pack Recall', max: 200000 },
+  'magic-tiles': { name: 'Magic Tiles', max: 200000 },
+  'pack-slicer': { name: 'Pack Slicer', max: 200000 },
+  'match-factory': { name: 'Match Factory', max: 200000 },
   'skin-iq':    { name: 'Skin IQ',    max: 5 }
 };
 
