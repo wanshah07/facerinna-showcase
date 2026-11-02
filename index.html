@@ -3224,10 +3224,49 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
               </div>
             </a>
           </div>
+          <div class="cg-item" role="group" aria-label="Magic Tiles" data-game="magic-tiles">
+            <a class="cg-card" href="magic-tiles-4k.html" data-art="12">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">12</span>
+              <div class="cg-cap">
+                <h4>Magic Tiles</h4>
+                <em>Colour · Rhythm · Tap</em>
+                <p>Coloured tiles fall down four lanes. Tap the lane as the tile crosses the bright line. Three lives, and every level they fall faster.</p>
+                <span class="cc-play">▶ Play Magic Tiles</span>
+              </div>
+            </a>
+          </div>
+
+          <div class="cg-item" role="group" aria-label="Pack Slicer" data-game="pack-slicer">
+            <a class="cg-card" href="pack-slicer-4k.html" data-art="13">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">13</span>
+              <div class="cg-cap">
+                <h4>Pack Slicer</h4>
+                <em>Swipe · Slice · Dodge</em>
+                <p>FACERINNA packs are tossed up and fall back down. Drag across one to slice it. Slice the black bomb pack and it costs a life.</p>
+                <span class="cc-play">▶ Play Pack Slicer</span>
+              </div>
+            </a>
+          </div>
+
+          <div class="cg-item" role="group" aria-label="Match Factory" data-game="match-factory">
+            <a class="cg-card" href="match-factory-4k.html" data-art="14">
+              <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
+              <span class="cg-num">14</span>
+              <div class="cg-cap">
+                <h4>Match Factory</h4>
+                <em>Match · Three · Clear</em>
+                <p>A bench of packs seen at an angle. Drag a pack onto a neighbour; three the same in a line leave the bench and new ones drop in.</p>
+                <span class="cc-play">▶ Play Match Factory</span>
+              </div>
+            </a>
+          </div>
+
           <div class="cg-item" role="group" aria-label="Lucky Wheel" data-game="lucky-wheel">
             <a class="cg-card" href="lucky-wheel.html" data-art="8">
               <canvas class="cg-art" width="600" height="800" aria-hidden="true"></canvas>
-              <span class="cg-num">12</span>
+              <span class="cg-num">15</span>
               <div class="cg-cap">
                 <h4>Lucky Wheel</h4>
                 <em>One spin per phone</em>
@@ -5661,7 +5700,10 @@ const GALLERY_DOCS = [
     {a:'#5A2A0E', b:'#FFB15C', ic:'🎡'},
     {a:'#10305A', b:'#66D0FF', ic:'🧩'},
     {a:'#3A1230', b:'#FF8AD0', ic:'💥'},
-    {a:'#0E3A46', b:'#8AE8D0', ic:'🃏'}
+    {a:'#0E3A46', b:'#8AE8D0', ic:'🃏'},
+    {a:'#2A1046', b:'#B47CFF', ic:'🎼'},
+    {a:'#40151A', b:'#FF7A3D', ic:'🔪'},
+    {a:'#103050', b:'#5AB0C8', ic:'🏭'}
   ];
   /* Eight 600x800 canvases with a 230px emoji each cost a long job if drawn together at
      load, and the gallery is well below the fold. Paint them one per turn once the page
@@ -7511,6 +7553,9 @@ function launchConfetti(){
         if(on('skin-iq')) lines.push('🧠 <b>Skin IQ Challenge</b> — 5 questions, score 4+ for a reward → <a href="#game">play here</a>');
         if(arcade.length) lines.push((arcade.length===1?arcade[0]:arcade.slice(0,-1).join(', ')+' &amp; '+arcade[arcade.length-1])+' — '+(arcade.length===1?'a 3D arcade challenge':['','','two','three','four','five'][arcade.length]+' 3D arcade challenges')+' on our spinning game wheel → <a href="#game">see '+(arcade.length===1?'it':'them all')+'</a>');
         if(on('pack-drop')) lines.push('🧩 <b>Pack Drop</b> — stack the FACERINNA packs and clear whole rows, smooth and in full HD → <a href="pack-drop-4k.html">play here</a>');
+        if(on('magic-tiles')) lines.push('🎼 <b>Magic Tiles</b> — tap the lane as the colour crosses the line → <a href="magic-tiles-4k.html">play here</a>');
+        if(on('pack-slicer')) lines.push('🔪 <b>Pack Slicer</b> — swipe the FACERINNA packs, dodge the bomb → <a href="pack-slicer-4k.html">play here</a>');
+        if(on('match-factory')) lines.push('🏭 <b>Match Factory</b> — match three on the factory bench → <a href="match-factory-4k.html">play here</a>');
         if(on('pack-recall')) lines.push('🃏 <b>Pack Recall</b> — flip the packs, remember where they were, then match product to ingredient → <a href="pack-recall-4k.html">play here</a>');
         if(on('pack-crush')) lines.push('💥 <b>Pack Crush</b> — match three FACERINNA packs, with striped, flare and rainbow specials → <a href="pack-crush-4k.html">play here</a>');
         if(on('uv-card')) lines.push('🔦 <b>UV Card</b> — pick a brochure, slide the UV light, reveal your number → <a href="uv-card.html">play here</a>');
