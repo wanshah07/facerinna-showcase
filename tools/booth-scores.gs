@@ -104,6 +104,8 @@ var GAMES = {
   'magic-tiles': { name: 'Magic Tiles', max: 200000 },
   'pack-slicer': { name: 'Pack Slicer', max: 200000 },
   'match-factory': { name: 'Match Factory', max: 200000 },
+  /* the tournament books its total here: up to 1,500 points a round, twelve rounds */
+  'tournament': { name: 'Tournament', max: 18000 },
   'skin-iq':    { name: 'Skin IQ',    max: 5 }
 };
 

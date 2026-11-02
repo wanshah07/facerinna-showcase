@@ -1725,7 +1725,8 @@ body.space-theme .fan-card{border-color:rgba(255,255,255,.18);
 /* The scored games each keep their own board on the device they are
    played on. Same origin, same localStorage — so the booth screen can read
    them all and put them together without a server. */
-.rank-cta{margin-top:18px;text-align:center}
+.rank-cta{margin-top:18px;text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.rank-cta [hidden]{display:none!important}
 /* It shows itself now, so it stops short of blacking the booth screen out:
    the wheel and the cards stay readable behind a light wash, and the card
    itself is glass rather than paper. */
@@ -3280,6 +3281,7 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
       <p class="cg-hint">🖱️ Scroll to rotate the gallery · drag to spin · tap a card to play</p>
     </div>
     <div class="rank-cta reveal">
+      <a class="btn btn-ghost" id="tourBtn" href="tournament.html" hidden>🏁 Tournament</a>
       <button class="btn btn-ghost" type="button" id="rankBtn">🏆 Booth ranking — all seven games</button>
     </div>
     <div class="game-shell reveal" id="skinIQ" hidden>
@@ -8162,6 +8164,18 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   function gamesOff(st){
     return String(st && st.games_off || '').toLowerCase().split(/[\s,;]+/).filter(function(id){ return GAME_NAMES[id]; });
   }
+  /* The tournament button: only while the admin has it on and it holds a game
+     that is on. Its order lives in fx-tour.js; here it is only counted. */
+  var TOUR_IDS=['magic-tiles','pack-match','match-factory','pack-slicer','match-lab','pack-crush',
+    'shelf-shot','pack-recall','pack-drop','deep-lab','lab-run','facy-run'];
+  function applyTour(st, off, isAdmin){
+    var b=document.getElementById('tourBtn'); if(!b) return;
+    var want=String(st.tour_games||'').toLowerCase().split(/[^a-z0-9-]+/);
+    var n=TOUR_IDS.filter(function(id){ return want.indexOf(id)>=0 && off.indexOf(id)<0; }).length;
+    var on=/^yes$/i.test(String(st.tour_active||''));
+    b.hidden=!(n && (on || isAdmin));
+    b.textContent='\u{1F3C1} Tournament \u2014 '+(NUM[n]||n).toLowerCase()+(n===1?' game':' games')+', easy to hard'+(on?'':' (off for visitors)');
+  }
   function applyGames(off, isAdmin){
     var items=[].slice.call(document.querySelectorAll('#gameRing .cg-item[data-game]'));
     /* an admin sees every game, the off ones greyed with a label; the ribbon says the same */
@@ -8384,6 +8398,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     } else { unveil(); ribbon(''); }
     applySections(states, preview);
     applyGames(off, preview);
+    applyTour(st, off, preview);
     drawSegments(cfg.segments);
     drawDocs(cfg.documents);
     drawMedia(cfg, preview);

@@ -792,6 +792,7 @@ window.__packslicer={
 })();
 </script>
 <script>window.FX_RANK={id:'pack-slicer',name:'Pack Slicer',result:'#result',score:'#rScore',manual:true,giftGate:function(){ return !!(window.__packslicer && window.__packslicer.snapshot().mode === 'gift'); }};</script>
+<script src="fx-tour.js"></script>
 <script src="fx-rank.js"></script>
 <script src="fx-gift.js"></script>
 <script>
@@ -799,5 +800,7 @@ if ('serviceWorker' in navigator)
   addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
 </script>
 <script src="fx-games.js" data-game="pack-slicer"></script>
+<script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9218ecd43aea410c856a9270cb580f34"}'></script>
+<script defer src="fx-visit.js"></script>
 </body>
 </html>

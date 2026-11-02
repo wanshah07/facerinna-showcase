@@ -2916,11 +2916,15 @@ function toast(title, sub, kind){
    ratio inside a range: a tall phone sees a little less ahead, a wide TV a
    little more, and neither is stretched. */
 var view = { w:640, h:ROWS*TILE, scale:1, ox:0, oy:0 };
-/* The world is 384px tall and a phone screen is over twice that, so the
-   backing store is already an upscale at 1x. 1x on a touch device, 2x on a
-   desk; and the governor below steps it down further the moment frames run
-   long, the way the 3D games step their render scale. */
-var DPR_CAP = Math.min(window.devicePixelRatio||1, MOBILE ? 1 : 2);
+/* Up to 2x everywhere, so the pixel art stays crisp on a 3x phone and a 4K
+   screen, within a 4K frame's worth of pixels; the governor below steps it
+   down the moment frames run long, the way the 3D games step their render
+   scale, so a slow phone loses sharpness, not smoothness. */
+var DPR_CAP = (function(){
+  var r = Math.min(window.devicePixelRatio||1, 2), px = innerWidth*innerHeight;
+  while (r > 1 && px*r*r > 8.3e6) r -= 0.25;
+  return r;
+})();
 var DPR = DPR_CAP, DPR_MIN = 0.6;
 function fit(){
   var W = innerWidth, H = innerHeight;
@@ -3253,6 +3257,7 @@ window.__facy = {
 })();
 </script>
 <script>window.FX_RANK={id:'facy-run',name:'Facy Run',result:'#over',score:'#finalScore'};</script>
+<script src="fx-tour.js"></script>
 <script src="fx-rank.js"></script>
 <script src="fx-games.js" data-game="facy-run"></script>
 <!-- Cloudflare Web Analytics: page views only, no cookies, no browser storage.
