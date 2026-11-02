@@ -332,9 +332,13 @@ var RANGE=[
   {s:'low-ph-b5-gel-cleanser',                       c:'#7C9CC2'},
   {s:'ceramide-b5-balancing-toner',                  c:'#5AB0C8'}
 ];
+/* A product photo is used only once it is decoded. Chrome decodes a WebP the
+   first time it is drawn, on the main thread, and a handful at once was the
+   one long frame left at the start of a run; decode() does it off the thread. */
+function ready(im, go){ if (im.decode) im.decode().then(go, go); else go(); }
 RANGE.forEach(function(p){
   var im=new Image();im.decoding='async';im.src='products/'+p.s+'.webp';
-  p.img=im;p.ok=false;im.onload=function(){p.ok=true;packSprites={};render()};
+  p.img=im;p.ok=false;im.onload=function(){ready(im,function(){p.ok=true;packSprites={};render()})};
 });
 
 var cell=90,dpr=1,W=360,H=640,sized=false;
@@ -792,6 +796,7 @@ window.__packslicer={
 })();
 </script>
 <script>window.FX_RANK={id:'pack-slicer',name:'Pack Slicer',result:'#result',score:'#rScore',manual:true,giftGate:function(){ return !!(window.__packslicer && window.__packslicer.snapshot().mode === 'gift'); }};</script>
+<script src="fx-tour.js"></script>
 <script src="fx-rank.js"></script>
 <script src="fx-gift.js"></script>
 <script>
@@ -799,5 +804,7 @@ if ('serviceWorker' in navigator)
   addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
 </script>
 <script src="fx-games.js" data-game="pack-slicer"></script>
+<script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9218ecd43aea410c856a9270cb580f34"}'></script>
+<script defer src="fx-visit.js"></script>
 </body>
 </html>

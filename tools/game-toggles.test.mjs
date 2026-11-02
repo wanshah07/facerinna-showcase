@@ -72,7 +72,7 @@ const own = H.signIn(OWNER);
   H.call({action:'admin.team.save', token:own.token, person:{email:'c@clinic.test', name:'Counter', role:'staff', access:['counter']}});
   const gs = H.signIn('g@clinic.test'), cs = H.signIn('c@clinic.test');
   const gget = H.call({action:'admin.get', token:gs.token});
-  chk('staff with Games see that setting and no other', Object.keys(gget.settings).join()==='games_off', gget.settings);
+  chk('staff with Games see that setting and no other', Object.keys(gget.settings).join()==='games_off,tour_active,tour_games', gget.settings);
   chk('...and preview the page whole, as an admin does', H.call({action:'whoami', token:gs.token}).preview===true);
   r = H.call({action:'admin.settings', token:gs.token, settings:{games_off:'uv-card'}});
   chk('...and can change it', r.ok && setting('games_off')==='uv-card', r);

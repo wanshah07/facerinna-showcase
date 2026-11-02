@@ -44,7 +44,7 @@ for(const g of GAMES){
       phone.off===true, {shadowsOff:phone.off});
   /* the picture is not made blurrier: the resolution cap is what it was */
   chk(`${g}: the phone still renders at its full cap`,
-      phone.ratio>1 && phone.ratio<=1.25+1e-6 && Math.abs(phone.ratio-phone.cap)<1e-6,
+      phone.ratio>1 && phone.ratio<=1.5+1e-6 && Math.abs(phone.ratio-phone.cap)<1e-6,   /* 1.5x since the HD pass; the governor still steps it down */
       {ratio:phone.ratio, cap:phone.cap});
 
   chk(`${g}: a desk is not treated as a phone`, desk.mobile===false, {mobile:desk.mobile});

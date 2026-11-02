@@ -407,10 +407,14 @@ var last = 0, raf = 0, nowT = 0, lastDraw = 0, lastHud = '', lastScoreText = '',
 try { best = parseInt(localStorage.getItem('fx.packcrush.best') || '0', 10) || 0; } catch (e) {}
 function saveBest(){ try { localStorage.setItem('fx.packcrush.best', String(best)); } catch (e) {} }
 
+/* A product photo is used only once it is decoded. Chrome decodes a WebP the
+   first time it is drawn, on the main thread, and a handful at once was the
+   one long frame left at the start of a run; decode() does it off the thread. */
+function ready(im, go){ if (im.decode) im.decode().then(go, go); else go(); }
 RANGE.forEach(function(p){
   var im = new Image(); im.decoding = 'async'; im.src = 'products/' + p.s + '.webp';
   p.img = im; p.ok = false;
-  im.onload = function(){ p.ok = true; sprites = {}; warmSoon(); kick(); };
+  im.onload = function(){ ready(im, function(){ p.ok = true; sprites = {}; warmSoon(); kick(); }); };
 });
 
 /* ── level rules ─────────────────────────────────────────────────────── */
@@ -1234,6 +1238,7 @@ window.__packcrush = {
      is offered only in Redeem gift mode (giftGate). It reads #rScore when #result
      loses its `hidden` class. -->
 <script>window.FX_RANK={id:'pack-crush',name:'Pack Crush',result:'#result',score:'#rScore',manual:true,giftGate:function(){ return !!(window.__packcrush && window.__packcrush.snapshot().mode === 'gift'); }};</script>
+<script src="fx-tour.js"></script>
 <script src="fx-rank.js"></script>
 <script src="fx-gift.js"></script>
 <script>

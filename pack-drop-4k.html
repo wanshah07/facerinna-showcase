@@ -388,10 +388,14 @@ var das = {}, touchSoft = 0, last = 0, raf = 0, nowT = 0;
 try { best = parseInt(localStorage.getItem('fx.packdrop.best') || '0', 10) || 0; } catch (e) {}
 function saveBest(){ try { localStorage.setItem('fx.packdrop.best', String(best)); } catch (e) {} }
 
+/* A product photo is used only once it is decoded. Chrome decodes a WebP the
+   first time it is drawn, on the main thread, and a handful at once was the
+   one long frame left at the start of a run; decode() does it off the thread. */
+function ready(im, go){ if (im.decode) im.decode().then(go, go); else go(); }
 RANGE.forEach(function(p){
   var im = new Image(); im.decoding = 'async'; im.src = 'products/' + p.s + '.webp';
   p.img = im; p.ok = false;
-  im.onload = function(){ p.ok = true; sprites = {}; stackDirty = true; drawNexts(); drawHold(); warmSoon(); if (state !== 'play') render(); };
+  im.onload = function(){ ready(im, function(){ p.ok = true; sprites = {}; stackDirty = true; drawNexts(); drawHold(); warmSoon(); if (state !== 'play') render(); }); };
 });
 
 /* ── sizing: CSS size from the room available, backing store from the screen.
@@ -1076,6 +1080,7 @@ window.__packdrop = {start:startGame, press:press, state:function(){ return stat
      is offered only in Redeem gift mode (giftGate). It reads #rScore when #result
      loses its `hidden` class. -->
 <script>window.FX_RANK={id:'pack-drop',name:'Pack Drop',result:'#result',score:'#rScore',manual:true,giftGate:function(){ return !!(window.__packdrop && window.__packdrop.snapshot().mode === 'gift'); }};</script>
+<script src="fx-tour.js"></script>
 <script src="fx-rank.js"></script>
 <script src="fx-gift.js"></script>
 <script>

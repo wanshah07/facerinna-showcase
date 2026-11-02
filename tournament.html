@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04101f">
+<title>Tournament · FACERINNA</title>
+<link rel="preload" as="image" href="docs/facerinna-logo-white.webp">
+<style>
+@font-face{font-family:'Inter';font-weight:400;font-display:swap;src:url(fonts/inter-400.woff2) format('woff2')}
+@font-face{font-family:'Inter';font-weight:600;font-display:swap;src:url(fonts/inter-600.woff2) format('woff2')}
+@font-face{font-family:'Inter';font-weight:700;font-display:swap;src:url(fonts/inter-700.woff2) format('woff2')}
+@font-face{font-family:'Fraunces';font-weight:100 900;font-display:swap;src:url(fonts/fraunces-variable.woff2) format('woff2')}
+:root{
+  --ink:#eef8ff;--mut:#9cc0d8;--line:rgba(160,215,255,.18);--blue:#3fb4ee;--blue2:#7fd5ff;--gold:#ffd98a;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:#04101f;color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+.sky{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:
+  radial-gradient(120% 90% at 78% 8%,#12407a 0%,transparent 55%),
+  radial-gradient(90% 80% at 8% 92%,#2b1d5c 0%,transparent 52%),
+  linear-gradient(160deg,#03112a,#06203f 55%,#030b1a)}
+.sky:after{content:'';position:absolute;inset:0;opacity:.5;background-image:
+  radial-gradient(circle,#fff 0 .9px,transparent 1.3px),radial-gradient(circle,#9fe3ff 0 .8px,transparent 1.2px);
+  background-size:131px 131px,197px 197px;background-position:17px 29px,71px 83px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 0,transparent 82%);mask-image:radial-gradient(ellipse at 50% 40%,#000 0,transparent 82%)}
+
+.wrap{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;
+  padding:calc(var(--safe-t) + clamp(14px,2.4vmin,60px)) clamp(16px,3vmin,80px) calc(var(--safe-b) + 72px)}
+@media (orientation:landscape){.hd{margin-bottom:clamp(8px,1.6vmin,40px)}.panel{padding-top:clamp(16px,2.4vmin,64px);padding-bottom:clamp(16px,2.4vmin,64px)}h1{margin:.15em 0 .25em}.lede{margin-bottom:.9em}.stages{margin-bottom:1em}}
+.hd{width:100%;display:flex;align-items:center;gap:clamp(12px,2vmin,57px);margin-bottom:clamp(14px,3vmin,80px)}
+.hd img{height:clamp(22px,4.2vmin,114px);width:auto;display:block;filter:drop-shadow(0 2px 10px rgba(63,180,238,.35))}
+.hd span{display:block;padding-left:clamp(12px,2vmin,57px);border-left:1px solid var(--line)}
+.hd small{display:block;font-size:clamp(9px,1.25vmin,28px);letter-spacing:.34em;text-transform:uppercase;color:var(--blue2);font-weight:700;margin-bottom:3px}
+.hd b{display:block;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,3.6vmin,96px);line-height:1.05}
+
+.panel{width:min(100%,clamp(340px,68vmin,1500px));text-align:center;
+  background:linear-gradient(165deg,rgba(40,90,150,.45),rgba(12,36,72,.6));border:1px solid var(--line);
+  border-radius:clamp(18px,2.6vmin,66px);padding:clamp(20px,3.4vmin,90px) clamp(16px,3.4vmin,90px);
+  box-shadow:0 30px 90px rgba(0,6,22,.55),inset 0 1px 0 rgba(255,255,255,.12)}
+.panel[hidden],.panel.hidden{display:none}
+.cap{margin:0;letter-spacing:.3em;text-transform:uppercase;font-size:clamp(10px,1.4vmin,30px);color:var(--gold);font-weight:700}
+h1{margin:.25em 0 .35em;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(26px,5vmin,120px);line-height:1.08}
+.lede{margin:0 auto 1.2em;max-width:34em;color:var(--mut);font-size:clamp(14px,1.9vmin,40px);line-height:1.55}
+.note{margin:1em 0 0;color:var(--mut);font-size:clamp(12px,1.5vmin,32px);min-height:1.4em}
+.admin{margin:0 0 1em;padding:.6em 1em;border-radius:12px;background:rgba(255,201,74,.14);border:1px solid rgba(255,201,74,.4);color:#ffe8b0;font-size:clamp(12px,1.5vmin,32px)}
+.admin[hidden]{display:none}
+
+.stages{list-style:none;margin:0 0 1.4em;padding:0;display:grid;gap:clamp(6px,1vmin,24px);text-align:left}
+.stage{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:clamp(10px,1.6vmin,40px);
+  padding:clamp(8px,1.1vmin,28px) clamp(12px,2vmin,48px);border-radius:clamp(12px,1.6vmin,40px);
+  background:rgba(255,255,255,.05);border:1px solid rgba(160,215,255,.12);font-size:clamp(14px,2vmin,44px)}
+.stage .n{width:2em;height:2em;border-radius:50%;display:grid;place-items:center;font-weight:700;font-variant-numeric:tabular-nums;
+  background:rgba(127,213,255,.14);color:var(--blue2);font-size:.85em}
+.stage .nm{font-weight:700;min-width:0}
+.stage .nm em{font-style:normal;display:inline-block;margin-left:.6em;padding:.12em .65em;border-radius:999px;font-size:.62em;font-weight:700;letter-spacing:.06em;vertical-align:middle}
+.lv-Easy{background:rgba(75,224,168,.18);color:#9ff0cf}
+.lv-Medium{background:rgba(255,201,74,.18);color:#ffe08a}
+.lv-Hard{background:rgba(255,107,107,.18);color:#ffb0b0}
+.stage .st{font-variant-numeric:tabular-nums;font-weight:700;color:var(--mut);white-space:nowrap}
+.stage.done{background:rgba(75,224,168,.08);border-color:rgba(75,224,168,.28)}
+.stage.done .n{background:rgba(75,224,168,.25);color:#c9fbe6}
+.stage.done .st{color:#c9fbe6}
+.stage.now{background:rgba(255,201,74,.1);border-color:rgba(255,201,74,.55);box-shadow:0 0 0 3px rgba(255,201,74,.12)}
+.stage.now .n{background:linear-gradient(180deg,#ffe28a,#ffb12e);color:#3a2300}
+.stage.now .st{color:var(--gold)}
+
+.btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn{font:inherit;font-weight:700;letter-spacing:.02em;border:0;border-radius:999px;padding:.95em 2em;min-height:48px;cursor:pointer;
+  color:#05243b;background:#e3f6ff;font-size:clamp(15px,2.1vmin,46px);text-decoration:none;display:inline-flex;align-items:center;justify-content:center;
+  touch-action:manipulation;transition:transform .15s cubic-bezier(.2,.9,.3,1.3),box-shadow .2s}
+.btn[hidden]{display:none}
+.btn.pri{background:linear-gradient(180deg,#6fd2ff,#2fa6e6);color:#031d33;box-shadow:0 8px 0 #1a77ad,0 18px 40px rgba(31,150,225,.4)}
+.btn.gold{background:linear-gradient(180deg,#ffe28a,#ffb12e);color:#3a2300;box-shadow:0 8px 0 #c47a08,0 18px 40px rgba(255,170,40,.4)}
+.btn.pri:active,.btn.gold:active{transform:translateY(5px)}
+.btn.ghost{background:rgba(255,255,255,.08);color:var(--ink);border:1px solid var(--line)}
+.btn:focus-visible{outline:3px solid #ffe183;outline-offset:3px}
+
+.big{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:clamp(56px,13vmin,320px);line-height:1;margin:.05em 0 .25em;
+  font-variant-numeric:tabular-nums;color:#fff;text-shadow:0 0 60px rgba(255,190,60,.6)}
+.spin{display:inline-block;width:1.2em;height:1.2em;border-radius:50%;border:3px solid rgba(127,213,255,.25);border-top-color:var(--blue2);
+  animation:sp 1s linear infinite;vertical-align:middle;margin-right:.5em}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+@media (max-width:520px){.stage{gap:10px}.stage .st{font-size:.85em}.stage .nm em{margin-left:.4em}}
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true"></div>
+<main class="wrap">
+  <header class="hd">
+    <img src="docs/facerinna-logo-white.webp" alt="FACERINNA" width="1200" height="318">
+    <span><small>Dermatologist Care</small><b>Tournament</b></span>
+  </header>
+
+  <section class="panel" id="tLoading" aria-live="polite">
+    <p class="lede" style="margin:0"><span class="spin" aria-hidden="true"></span>Checking the booth…</p>
+  </section>
+
+  <section class="panel" id="tClosed" hidden>
+    <p class="cap">Tournament</p>
+    <h1 id="tClosedH">The tournament is resting</h1>
+    <p class="lede" id="tClosedP">It is not on at the booth right now. The games are waiting for you.</p>
+    <div class="btns"><a class="btn pri" href="index.html#game">Back to the booth games</a></div>
+  </section>
+
+  <section class="panel" id="tLobby" hidden>
+    <p class="admin" id="tAdmin" hidden>Admin preview: the tournament is off for visitors.</p>
+    <p class="cap">Tournament</p>
+    <h1 id="tTitle">Games in a row</h1>
+    <p class="lede">One try at each game, easiest first. Each game gives up to 1,500 points, and reaching its target earns 1,000. Your total goes on the tournament board.</p>
+    <ol class="stages" id="tStages"></ol>
+    <div class="btns">
+      <button class="btn gold" id="tGo" type="button">Start the tournament</button>
+      <button class="btn ghost" id="tRestart" type="button" hidden>Start over</button>
+    </div>
+    <p class="note" id="tNote"></p>
+  </section>
+
+  <!-- fx-rank.js books the total when this comes out of `hidden` -->
+  <section class="panel hidden" id="tResult">
+    <p class="cap">Tournament complete</p>
+    <h1>Your total</h1>
+    <div class="big" id="tTotal">0</div>
+    <ol class="stages" id="tBreak"></ol>
+    <div class="btns">
+      <button class="btn gold" id="tAgain" type="button">Play again</button>
+      <a class="btn ghost" href="index.html#game">Back to the booth</a>
+    </div>
+    <p class="note">Tap Ranking to see the tournament board.</p>
+  </section>
+
+  <section class="panel" id="tLast" hidden>
+    <p class="cap">Tournament complete</p>
+    <h1>Your total</h1>
+    <div class="big" id="tLastTotal">0</div>
+    <ol class="stages" id="tLastBreak"></ol>
+    <div class="btns">
+      <button class="btn gold" id="tAgain2" type="button">Play again</button>
+      <a class="btn ghost" href="index.html#game">Back to the booth</a>
+    </div>
+  </section>
+</main>
+
+<script src="fx-tour.js"></script>
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id)};
+var T=window.fxTour;
+var API=(typeof window.__BOOTH_API==='string')?window.__BOOTH_API
+  :'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
+var CACHE='fx.booth.config', ADMIN='fx.admin.token', LAST='fx.tour.last', FRESH_MS=180000;
+var NUM=['No','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve'];
+var fmt=function(n){return Math.round(n).toLocaleString('en-US')};
+function read(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function write(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+var isAdmin=!!read(ADMIN), cfg=null, games=[];
+
+function only(id){['tLoading','tClosed','tLobby','tLast'].forEach(function(x){$(x).hidden=x!==id});}
+
+function closed(h,p){$('tClosedH').textContent=h;$('tClosedP').textContent=p;only('tClosed');}
+
+function stageRow(id,i,status,cls){
+  var li=document.createElement('li');li.className='stage'+(cls?' '+cls:'');
+  var n=document.createElement('span');n.className='n';n.textContent=String(i+1);
+  var nm=document.createElement('span');nm.className='nm';nm.textContent=T.nameOf(id);
+  var lv=document.createElement('em');lv.className='lv-'+T.levelOf(id);lv.textContent=T.levelOf(id);nm.appendChild(lv);
+  var st=document.createElement('span');st.className='st';st.textContent=status||'';
+  li.appendChild(n);li.appendChild(nm);li.appendChild(st);
+  return li;
+}
+
+/* the lobby: the rounds, and where this device is in them */
+function lobby(){
+  var s=T.load(), list=$('tStages');
+  list.textContent='';
+  var running=s&&s.i<s.games.length;
+  var shown=running?s.games:games;
+  shown.forEach(function(id,i){
+    var done=running&&i<s.i, now=running?i===s.i:false;
+    list.appendChild(stageRow(id,i,done?'✓ '+fmt(s.pts[i]||0)+' pts':now?'Next':'',done?'done':now?'now':''));
+  });
+  $('tTitle').textContent=(NUM[shown.length]||String(shown.length))+(shown.length===1?' game':' games')+', easy to hard';
+  $('tAdmin').hidden=!(isAdmin&&!/^yes$/i.test(String(cfg.settings.tour_active||'')));
+  if(running){
+    $('tGo').textContent='Continue: Game '+(s.i+1)+' · '+T.nameOf(s.games[s.i])+' ▶';
+    $('tRestart').hidden=false;
+    $('tNote').textContent=fmt(T.total(s))+' points so far.';
+  }else{
+    $('tGo').textContent='Start the tournament ▶';
+    $('tRestart').hidden=true;
+    $('tNote').textContent='';
+  }
+  only('tLobby');
+}
+
+/* the end: shown once, which is when the board books it */
+function finish(s){
+  var tot=T.total(s), br=$('tBreak');
+  br.textContent='';
+  s.games.forEach(function(id,i){br.appendChild(stageRow(id,i,fmt(s.pts[i]||0)+' pts','done'))});
+  $('tTotal').textContent=String(tot);
+  write(LAST,JSON.stringify({run:s.run,games:s.games,pts:s.pts,total:tot,at:Date.now()}));
+  T.clear();
+  only('');
+  $('tResult').classList.remove('hidden');
+  window.__tourFinished={total:tot,run:s.run};
+}
+function last(){
+  var l=null;try{l=JSON.parse(read(LAST)||'null')}catch(e){}
+  if(!l)return false;
+  var q=null;try{q=new URLSearchParams(location.search).get('tour')}catch(e){}
+  if(!q||q!==l.run)return false;
+  $('tLastTotal').textContent=fmt(l.total);
+  var br=$('tLastBreak');br.textContent='';
+  l.games.forEach(function(id,i){br.appendChild(stageRow(id,i,fmt(l.pts[i]||0)+' pts','done'))});
+  only('tLast');
+  return true;
+}
+
+function go(){
+  var s=T.load();
+  if(!s||s.i>=s.games.length){
+    if(!games.length)return;
+    s=T.start(games,cfg.gift_needs||{});
+  }
+  location.href=T.urlFor(s);
+}
+function again(){T.clear();location.href='tournament.html';}
+$('tGo').addEventListener('click',go);
+$('tRestart').addEventListener('click',function(){T.clear();lobby();});
+$('tAgain').addEventListener('click',again);
+$('tAgain2').addEventListener('click',again);
+
+function apply(j){
+  cfg=j;
+  var st=j.settings||{};
+  games=T.pick(st.tour_games,st.games_off);
+  var s=T.load();
+  /* a finished run comes back here from its last round */
+  if(s&&s.i>=s.games.length){finish(s);return;}
+  if(last())return;
+  if(!/^yes$/i.test(String(st.tour_active||''))&&!isAdmin&&!(s&&s.i<s.games.length)){
+    closed('The tournament is resting','It is not on at the booth right now. The games are waiting for you.');return;
+  }
+  if(!games.length&&!(s&&s.i<s.games.length)){
+    closed('No games picked yet','The FACERINNA team has not chosen the tournament games yet. The games are waiting for you.');return;
+  }
+  lobby();
+}
+
+/* started once the page is whole: fx-rank.js, below, must be listening before the result can show */
+document.addEventListener('DOMContentLoaded',boot);
+function boot(){
+var seen=null;try{seen=JSON.parse(read(CACHE)||'null')}catch(e){}
+if(seen&&seen.cfg&&seen.cfg.settings&&Date.now()-(seen.at||0)<FRESH_MS){apply(seen.cfg);}
+else{
+  var ctl=('AbortController' in window)?new AbortController():null;
+  var t=ctl&&setTimeout(function(){ctl.abort()},6000);
+  fetch(API,{method:'POST',body:JSON.stringify({action:'config'}),signal:ctl?ctl.signal:undefined})
+    .then(function(r){return r.json()})
+    .then(function(j){
+      if(!j||!j.ok||!j.settings)throw new Error('no config');
+      write(CACHE,JSON.stringify({at:Date.now(),cfg:j}));
+      apply(j);
+    })
+    .catch(function(){
+      if(seen&&seen.cfg&&seen.cfg.settings)apply(seen.cfg);
+      else closed('The booth cannot be reached','Check the connection and try again, or ask the FACERINNA team.');
+    })
+    .finally(function(){if(t)clearTimeout(t)});
+}
+}
+window.__tour={apply:apply,state:function(){return T.load()}};
+})();
+</script>
+<script>window.FX_RANK={id:'tournament',name:'Tournament',result:'#tResult',score:'#tTotal',manual:true};</script>
+<script src="fx-rank.js"></script>
+<script>
+if ('serviceWorker' in navigator)
+  addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
+</script>
+<script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9218ecd43aea410c856a9270cb580f34"}'></script>
+<script defer src="fx-visit.js"></script>
+</body>
+</html>

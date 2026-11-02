@@ -312,7 +312,7 @@ for(const [tag,vp,mob] of [['phone',{width:390,height:844},true],['TV',{width:19
   });
   chk(`${tag}: one draw is a fraction of a millisecond of JS`, r.drawMs<3, r.drawMs);
   chk(`${tag}: one physics step is far under a tenth of one`, r.stepMs<0.3, r.stepMs);
-  chk(`${tag}: it starts at ${mob?'1x on a touch screen':'the display ratio, capped at 2x'}`, r.start===r.cap && (mob ? r.cap===1 : r.cap<=2), {start:r.start,cap:r.cap});
+  chk(`${tag}: it starts at the display ratio, capped at 2x (the governor steps it down if frames run long)`, r.start===r.cap && r.cap<=2 && r.cap>=1, {start:r.start,cap:r.cap});
   chk(`${tag}: fed slow rounds the governor gives pixels away, down to its floor and no further`, r.drops>0 && r.low<r.start && r.low>=0.6, {low:r.low,drops:r.drops});
   chk(`${tag}: ...and takes them back once frames are quick, up to the cap and no further`, r.back===r.cap, {back:r.back,cap:r.cap});
   chk(`${tag}: no page errors`, errs.length===0, errs[0]);

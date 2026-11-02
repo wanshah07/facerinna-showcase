@@ -656,7 +656,18 @@ var MOBILE = (function(){
 
 var renderer = new THREE.WebGLRenderer({antialias:!MOBILE, powerPreference:'high-performance'});
 var SMALL = Math.min(window.innerWidth, window.innerHeight) < 820;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, SMALL ? 1.25 : 1.5));
+/* The render scale: the screen's own density, up to 2x on a TV or a desk (so a
+   4K panel showing a 1080 layout is drawn at its full 3840) and 1.5x on a phone,
+   and never more than a 4K frame's worth of pixels. The governor below starts
+   here and steps down the moment frames run long, so a slow box loses
+   sharpness, not smoothness. */
+function HD_RATIO(){
+  var r = Math.min(window.devicePixelRatio || 1, SMALL ? 1.5 : 2);
+  var px = window.innerWidth * window.innerHeight;
+  while (r > 1 && px * r * r > 8.3e6) r -= 0.25;
+  return r;
+}
+renderer.setPixelRatio(HD_RATIO());
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1639,8 +1650,7 @@ var PERF = (function(){
   // flat 1.5 meant that on a 1x display the governor would raise the scale
   // to 1.5 and render 2.25x the pixels for no visible gain -- a slowdown
   // introduced by the very thing meant to prevent one.
-  var cap = Math.min(window.devicePixelRatio || 1,
-                     (typeof SMALL !== 'undefined' && SMALL) ? 1.25 : 1.5);
+  var cap = HD_RATIO();
   return {cap: cap, scale: cap, min: Math.min(0.75, cap),
           acc: 0, frames: 0, cooldown: 0,
           shadowsOff: (typeof MOBILE !== 'undefined' && MOBILE),
@@ -1831,6 +1841,7 @@ setConcern(0);
 <!-- booth ranking: name before the run, board after it. Declares only
      where this game keeps its result screen and its score. -->
 <script>window.FX_RANK={id:'match-lab',name:'Match Lab',result:'#over',score:'#fScore'};</script>
+<script src="fx-tour.js"></script>
 <script src="fx-rank.js"></script>
 <script src="fx-gift.js"></script>
 <script>

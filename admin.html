@@ -108,6 +108,15 @@
 .gamerows{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:4px 14px;margin:6px 0 4px}
 .gamerows .check{margin-top:6px;min-height:36px}
 .gamerows .check input{width:20px;height:20px;flex:0 0 auto}
+.tourlist{list-style:none;margin:8px 0 4px;padding:0;display:grid;gap:4px}
+.tourlist li{display:flex;align-items:center;gap:10px;min-height:38px;padding:4px 10px;border-radius:10px;background:rgba(127,160,200,.08)}
+.tourlist li.off{opacity:.55}
+.tourlist .num{width:24px;text-align:right;font-variant-numeric:tabular-nums;color:#7a8ba0;font-weight:700}
+.tourlist label{display:flex;align-items:center;gap:10px;flex:1;font-weight:600;cursor:pointer}
+.tourlist input{width:20px;height:20px;flex:0 0 auto}
+.tourlist em{font-style:normal;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px}
+.tourlist .lv-Easy{background:#d8f6ea;color:#0e6b48}.tourlist .lv-Medium{background:#fff1cc;color:#7a5200}.tourlist .lv-Hard{background:#ffe0e0;color:#8f1d1d}
+.tourlist .gone{font-size:12px;color:#a33;font-weight:600}
 .gamerows .off span{color:#8095ab;text-decoration:line-through}
 .gamerows .check b{margin-left:auto;font-size:11px;letter-spacing:.06em;padding:3px 8px;border-radius:999px;
   background:#e3f6ee;color:#11734d;text-decoration:none}
@@ -285,6 +294,13 @@ table.vt .bar{display:block;height:4px;border-radius:2px;background:var(--brand2
           <div id="gameToggles" class="gamerows"></div>
           <p class="note" id="gamesCount"></p>
           <p class="note">Signed in on this device, you still see every game on the booth page, the off ones greyed with an “OFF” label. To see it as a visitor does, open it in a private window.</p>
+          <h2 style="margin-top:22px">Tournament</h2>
+          <p class="note">One run through several games, one try at each, <b>easiest first</b>. Tick the games it holds: they are always played in the order below, from easy to hard, and a game switched off above is skipped. Each game gives up to 1,500 tournament points; reaching that game's gift points (or 1,000 where it has none) earns 1,000. Totals go on their own Tournament board. Then press <b>Save settings</b>.</p>
+          <p class="note warn" id="tourOld" hidden>The booth script running now is from before the tournament, so it would not keep this. Paste the new <b>booth-admin.gs</b> into the script and deploy, then reload this page.</p>
+          <label class="check"><input type="checkbox" id="tourActive"> Tournament is on (a Tournament button shows on the booth page)</label>
+          <ol id="tourList" class="tourlist"></ol>
+          <p class="note" id="tourCount"></p>
+          <p class="note">Signed in on this device you can try it while it is off: <a href="tournament.html" target="_blank" rel="noopener">open the tournament</a>.</p>
         </div>
         <div class="card" id="cardGift" data-area="gift">
           <h2>The gift at the end of a game</h2>
@@ -607,6 +623,7 @@ table.vt .bar{display:block;height:4px;border-radius:2px;background:var(--brand2
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="fx-tour.js"></script>
 <script src="fx-doc.js"></script>
 <script>
 (function(){
@@ -646,7 +663,7 @@ var PERMS = [
 ];
 var AREA_KEYS = {
   page: ['page_mode','passcode','lock_message','hidden_message','welcome'],
-  games: ['games_off'],
+  games: ['games_off','tour_active','tour_games'],
   gift: ['gift_active','gift_points'],
   privacy: ['privacy_entity','privacy_email','privacy_address','privacy_retention']
 };
@@ -907,7 +924,7 @@ function gameToggles(raw){
     var lab = document.createElement('span'); lab.textContent = g[1];
     var st = document.createElement('b');
     row.appendChild(inp); row.appendChild(lab); row.appendChild(st); box.appendChild(row);
-    inp.addEventListener('change', gamesCount);
+    inp.addEventListener('change', function(){ gamesCount(); if($('tourList').children.length) tourCount(); });
   });
   gamesCount();
 }
@@ -925,6 +942,49 @@ function gamesCount(){
     : !on ? 'Every game is off: the booth page says the games are resting.'
     : on + ' of ' + all.length + ' games on.';
 }
+/* The tournament: the games in their easy-to-hard order, from fx-tour.js, the
+   one place that order is written. A script from before the tournament sends
+   no tour_active, and would drop it, so the controls go quiet. */
+var tourKnown = false;
+function tourRows(s){
+  tourKnown = !!s && ('tour_active' in s);
+  show('tourOld', !!state.data && !tourKnown);
+  $('tourActive').checked = /^(yes|y|true|1|on)$/i.test(String(s.tour_active||'no'));
+  $('tourActive').disabled = !tourKnown;
+  var picked = String(s.tour_games||'').toLowerCase().split(/[^a-z0-9-]+/);
+  var box = $('tourList'); box.textContent = '';
+  var order = (window.fxTour && fxTour.ORDER) || [];
+  order.forEach(function(g, i){
+    var li = document.createElement('li');
+    var num = document.createElement('span'); num.className = 'num'; num.textContent = String(i+1);
+    var lab = document.createElement('label');
+    var inp = document.createElement('input'); inp.type = 'checkbox';
+    inp.setAttribute('data-tour', g[0]); inp.checked = picked.indexOf(g[0]) >= 0; inp.disabled = !tourKnown;
+    var nm = document.createElement('span'); nm.textContent = g[1];
+    var lv = document.createElement('em'); lv.className = 'lv-'+g[3]; lv.textContent = g[3];
+    var gone = document.createElement('span'); gone.className = 'gone';
+    lab.appendChild(inp); lab.appendChild(nm); lab.appendChild(lv); lab.appendChild(gone);
+    li.appendChild(num); li.appendChild(lab); box.appendChild(li);
+    inp.addEventListener('change', tourCount);
+  });
+  tourCount();
+}
+function tourValue(){
+  return [].filter.call($('tourList').querySelectorAll('input[data-tour]'), function(i){ return i.checked; })
+    .map(function(i){ return i.getAttribute('data-tour'); }).join(',');
+}
+function tourCount(){
+  var off = gamesOffValue().split(',');
+  var n = 0;
+  [].forEach.call($('tourList').querySelectorAll('input[data-tour]'), function(i){
+    var id = i.getAttribute('data-tour'), isOff = off.indexOf(id) >= 0;
+    i.closest('li').classList.toggle('off', !i.checked || isOff);
+    i.parentNode.querySelector('.gone').textContent = i.checked && isOff ? 'switched off above: skipped' : '';
+    if(i.checked && !isOff) n++;
+  });
+  $('tourCount').textContent = !n ? 'No games ticked: the tournament cannot be switched on.'
+    : n + (n === 1 ? ' game' : ' games') + ' in the tournament, easy to hard.';
+}
 function fillSettings(s){
   var mode = s.page_mode==='locked' ? 'modeLocked' : s.page_mode==='hidden' ? 'modeHidden' : 'modeOpen';
   $(mode).checked = true;
@@ -939,6 +999,7 @@ function fillSettings(s){
   $('giftActive').checked = /^(yes|y|true|1|on)$/i.test(String(s.gift_active||'no'));
   giftRows(s.gift_points || '');
   gameToggles(s.games_off || '');
+  tourRows(s);
   $('giftProducts').value = s.gift_products || '';
   $('settingsState').textContent = '';
 }
@@ -949,7 +1010,7 @@ $('saveSettings').addEventListener('click', function(){
               hidden_message:$('hiddenMessage').value, welcome: $('welcome').checked ? 'show' : 'hide',
               privacy_entity:$('privEntity').value, privacy_email:$('privEmail').value,
               privacy_address:$('privAddress').value, privacy_retention:$('privRetention').value,
-              games_off: gamesOffValue(),
+              games_off: gamesOffValue(), tour_active: $('tourActive').checked ? 'yes' : 'no', tour_games: tourValue(),
               gift_active: $('giftActive').checked ? 'yes' : 'no', gift_points: giftLines(),
               gift_products:$('giftProducts').value };
   /* only the areas this person holds: the script refuses the whole save if
@@ -957,6 +1018,8 @@ $('saveSettings').addEventListener('click', function(){
   var settings = {};
   Object.keys(AREA_KEYS).forEach(function(a){ if(can(a)) AREA_KEYS[a].forEach(function(k){ settings[k] = all[k]; }); });
   if(state.legacy || !(state.data && state.data.games)) delete settings.games_off;
+  if(!tourKnown) { delete settings.tour_active; delete settings.tour_games; }
+  if(settings.tour_active === 'yes' && !settings.tour_games){ toast('Tick at least one game for the tournament before switching it on', true); return; }
   /* a script from before stock still reads the wheel from this setting */
   if(state.legacy) settings.gift_products = all.gift_products;
   if(can('page') && mode==='locked' && !settings.passcode.trim()){ toast('Set a passcode before locking the page', true); $('passcode').focus(); return; }

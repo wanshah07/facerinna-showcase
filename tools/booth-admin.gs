@@ -172,6 +172,12 @@ var SETTING_KEYS = {
      off game leaves the wheel on the booth page, and its own page shows a
      resting card to anybody who opens it from an old link or a QR code. */
   games_off:     '',
+  /* The tournament: one run through several games, easiest first. Off until an
+     admin turns it on. tour_games is the games it holds, comma separated; the
+     page plays them in its own easy-to-hard order (fx-tour.js), so the order
+     typed here does not matter. Empty means none are picked yet. */
+  tour_active:   'no',
+  tour_games:    '',
   /* The event the booth is running now. A QR code or poster tagged with another
      event is locked: private in Drive and left out of the page's config, so it is
      not merely hidden. Empty means no event is chosen and nothing is locked for
@@ -231,7 +237,7 @@ function permLabel_(k) { for (var i = 0; i < PERMS.length; i++) if (PERMS[i][0] 
 /* Which area each setting belongs to. A key missing here cannot be saved. */
 var SETTING_AREA = {
   page_mode: 'page', passcode: 'page', lock_message: 'page', hidden_message: 'page', welcome: 'page',
-  games_off: 'games', active_event: 'media', qr_builtin: 'media',
+  games_off: 'games', tour_active: 'games', tour_games: 'games', active_event: 'media', qr_builtin: 'media',
   gift_active: 'gift', gift_points: 'gift', gift_products: 'stock',
   privacy_entity: 'privacy', privacy_email: 'privacy', privacy_address: 'privacy', privacy_retention: 'privacy'
 };
@@ -304,6 +310,18 @@ function gamesOff_(raw) {
   GAMES.forEach(function (g) { known[g[0]] = true; });
   String(raw == null ? '' : raw).toLowerCase().split(/[\s,;]+/).forEach(function (id) {
     if (known[id] && !seen[id]) { seen[id] = true; out.push(id); }
+  });
+  return out;
+}
+/* The games a tournament may hold: the scored ones with a page of their own.
+   Skin IQ lives inside the booth page and the UV Card and the wheel keep no
+   score, so none of those can be a round. Unknown names are dropped and each
+   game is kept once. */
+function tourGames_(raw) {
+  var ok = {}, seen = {}, out = [];
+  GIFT_GAMES.forEach(function (g) { if (g !== 'skin-iq') ok[g] = true; });
+  String(raw == null ? '' : raw).toLowerCase().split(/[^a-z0-9-]+/).forEach(function (id) {
+    if (ok[id] && !seen[id]) { seen[id] = true; out.push(id); }
   });
   return out;
 }
@@ -723,6 +741,8 @@ function publicSettings_() {
   if (out.page_mode === 'locked' && !String(all.passcode || '').trim()) out.page_mode = 'open';
   out.welcome = yes_(out.welcome) || out.welcome === '' ? 'show' : 'hide';
   out.games_off = gamesOff_(out.games_off).join(',');
+  out.tour_active = yes_(out.tour_active) ? 'yes' : 'no';
+  out.tour_games = tourGames_(out.tour_games).join(',');
   return out;
 }
 
@@ -1649,6 +1669,8 @@ function adminSettings_(b, me) {
     if (k === 'gift_active') v = yes_(v) ? 'yes' : 'no';
     if (k === 'gift_points') v = String(v == null ? '' : v).slice(0, 600);
     if (k === 'games_off') v = gamesOff_(v).join(',');
+    if (k === 'tour_active') v = yes_(v) ? 'yes' : 'no';
+    if (k === 'tour_games') v = tourGames_(v).join(',');
     if (k === 'qr_builtin') v = yes_(v) ? 'show' : 'hide';
     if (k === 'active_event') v = eventName_(v);
     if (k === 'passcode') v = v.slice(0, 64);
@@ -1660,6 +1682,9 @@ function adminSettings_(b, me) {
   var pass = String(next.passcode || '').trim();
   if (next.page_mode === 'locked' && !pass)
     return json_({ ok: false, changed: [], error: 'set a passcode before locking the page' });
+  /* a tournament with no games in it has nothing to play */
+  if (yes_(next.tour_active) && !tourGames_(next.tour_games).length)
+    return json_({ ok: false, changed: [], error: 'tick at least one game for the tournament before switching it on' });
   /* a wheel with nothing on it cannot be spun, so it cannot be switched on */
   if (yes_(next.gift_active) && !yes_(now.gift_active) && !wheel_().length)
     return json_({ ok: false, changed: [], error: 'put at least one product in stock before switching the gift on' });
