@@ -93,9 +93,34 @@ check('malformed body',      JSON.parse(mod.doPost({postData:{contents:'{oops'}}
 
 console.log('\nrate limit');
 let blocked = 0;
-for (let i=0;i<20;i++) if (post({game:'lab-run',name:'Spam',score:10}).ok === false) blocked++;
+for (let i=0;i<20;i++) if (post({game:'lab-run',name:'Spam',score:10+i,rid:'flood-run-'+i}).ok === false) blocked++;
 check('a flood from one name is cut off', blocked > 0);
 check('a different name is unaffected',   post({game:'lab-run',name:'Calm',score:10}).ok === true);
+
+console.log('\nthe same run arriving twice is one run');
+{
+  const n0 = sheet.rows.length;
+  const first = post({game:'pack-drop',name:'Dina',score:777,device:'devdina1',rid:'run-abc12345'});
+  const again = post({game:'pack-drop',name:'Dina',score:777,device:'devdina1',rid:'run-abc12345'});
+  check('the first copy is written',                    first.ok === true && sheet.rows.length === n0 + 1);
+  check('a repeat with the same run id is answered ok',  again.ok === true && again.repeat === true);
+  check('...with the board as it stands, same shape',    again.rank === first.rank && again.best === 777 && Array.isArray(again.rows));
+  check('...and writes nothing',                         sheet.rows.length === n0 + 1);
+  const next = post({game:'pack-drop',name:'Dina',score:777,device:'devdina1',rid:'run-def67890'});
+  check('a new run id with the same score is a real run (two rows)', next.ok === true && !next.repeat && sheet.rows.length === n0 + 2);
+  const m0 = sheet.rows.length;
+  post({game:'pack-drop',name:'Eli',score:500,device:'devEli001'});
+  const old = post({game:'pack-drop',name:'Eli',score:500,device:'devEli001'});
+  check('a page that sends no id: same device, game, name and score at once is the same run', old.ok === true && old.repeat === true && sheet.rows.length === m0 + 1);
+  post({game:'pack-drop',name:'Eli',score:900,device:'devEli001'});
+  check('...but a different score from it is a new run', sheet.rows.length === m0 + 2);
+  let blockedRepeats = 0;
+  for (let i=0;i<30;i++) if (post({game:'pack-drop',name:'Dina',score:777,device:'devdina1',rid:'run-abc12345'}).ok !== true) blockedRepeats++;
+  check('repeats never count toward the rate limit, so a retry storm cannot lock a player out', blockedRepeats === 0
+        && post({game:'pack-drop',name:'Dina',score:800,device:'devdina1',rid:'run-ghi11111'}).ok === true);
+  check('a made-up or hostile run id is only ever a cache key (no sheet effect)',
+        post({game:'pack-drop',name:'Fay',score:5,device:'x',rid:"x'); DROP--"+'a'.repeat(80)}).ok === true);
+}
 
 console.log('\nthe lock is actually taken and released');
 check('no lock left held', locks.held === 0);
