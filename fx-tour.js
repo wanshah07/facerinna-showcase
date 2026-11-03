@@ -166,6 +166,8 @@
     '#fxTour .ft-lv{display:inline-block;margin-left:.5em;padding:.1em .6em;border-radius:999px;font-size:.7em;' +
       'background:rgba(255,255,255,.14);vertical-align:middle}' +
     '#fxTour :focus-visible{outline:3px solid #ffe183;outline-offset:3px}' +
+    '.fxt-s{display:none}' +
+    '@media (orientation:portrait) and (max-width:700px){.fxt-l{display:none}.fxt-s{display:inline}#fxTourBar{font-size:12px;padding:.4em .9em}.fx-tour-on .tag{display:none!important}}' +
     '.fx-tour-on #goGift,.fx-tour-on #giftNote{display:none!important}';
   document.head.appendChild(css);
   document.documentElement.classList.add('fx-tour-on');
@@ -173,7 +175,14 @@
   var bar = document.createElement('div');
   bar.id = 'fxTourBar';
   bar.setAttribute('aria-live', 'polite');
-  bar.textContent = '\u{1F3C6} Tournament · Game ' + (idx + 1) + ' of ' + n + ' · ' + fmt(total(s)) + ' pts';
+  function barText(t) {
+    /* the long wording on a wide screen; on a phone just the round and the points, so it fits the header */
+    bar.textContent = '';
+    var a = document.createElement('span'); a.className = 'fxt-l'; a.textContent = '\u{1F3C6} Tournament · Game ' + (idx + 1) + ' of ' + n + ' · ' + fmt(t) + ' pts';
+    var b = document.createElement('span'); b.className = 'fxt-s'; b.textContent = '\u{1F3C6} ' + (idx + 1) + '/' + n + ' · ' + fmt(t) + ' pts';
+    bar.appendChild(a); bar.appendChild(b);
+  }
+  barText(total(s));
   document.body.appendChild(bar);
 
   var resultEl = document.querySelector(R.result);
@@ -204,7 +213,7 @@
     now.raw[idx] = raw; now.pts[idx] = pts; now.secs = now.secs || []; now.lvl = now.lvl || [];
     now.secs[idx] = secs; now.lvl[idx] = lvl; now.i = idx + 1;
     save(now);
-    bar.textContent = '\u{1F3C6} Tournament · Game ' + (idx + 1) + ' of ' + n + ' · ' + fmt(total(now)) + ' pts';
+    barText(total(now));
     setTimeout(function () { card(now, raw, pts, secs, lvl); }, 1300);
   }
 
