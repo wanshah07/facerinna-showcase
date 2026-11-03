@@ -321,6 +321,9 @@ stockRows().forEach(r=>{ r[1]=0; });
 check('it cannot be switched on with nothing in stock',
   call({action:'admin.settings',token,settings:{gift_active:'yes'}}).ok===false);
 stockRows().forEach(r=>{ r[1]=''; });
+check('nor with every product still not counted (a blank count is off the wheel)',
+  call({action:'admin.settings',token,settings:{gift_active:'yes'}}).ok===false);
+stockRows().forEach(r=>{ r[1]=1000; });
 r=call({action:'admin.settings',token,settings:{gift_active:'yes'}});
 check('an admin switches it on', r.ok===true && call({action:'config'}).settings.gift_active==='yes');
 check('a stranger cannot', call({action:'admin.settings',settings:{gift_active:'no'}}).ok===false

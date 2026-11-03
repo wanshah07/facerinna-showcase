@@ -106,8 +106,9 @@ var GIFT_HEADERS     = ['claim', 'device', 'game', 'score', 'name', 'created', '
    fresh spin; any other scan of that code is a second scan and is told so. */
 /* The wheel. One row per product; quantity is how many are left. A product at
    0 is off the wheel and comes back when it is restocked. A blank quantity is
-   "not counted" -- how the products from before stock arrive -- and stays on
-   the wheel until somebody sets a count. */
+   "not counted" -- how the catalogue products arrive -- and is OFF the wheel
+   until somebody sets a count: nothing reaches visitors before the admin
+   puts a number on it. */
 var STOCK_HEADERS    = ['product', 'quantity', 'updated', 'by'];
 /* QR codes and posters an admin uploaded. The picture itself lives in Drive
    (file_id); the row says what it is, which event it is for and whether it is
@@ -1806,7 +1807,7 @@ function stockTab_() {
   var fresh = !book.getSheetByName(T_STOCK);
   var sh = tab_(book, T_STOCK, STOCK_HEADERS);
   if (fresh) {
-    /* the first time: the products the wheel already had, not counted */
+    /* the first time: the products the wheel already had, not counted (off the wheel until a number is set) */
     var t = now_();
     giftProducts_(settings_().gift_products).forEach(function (p) {
       sh.appendRow([cell_(p), '', t, 'the product list before stock']);
@@ -1817,7 +1818,7 @@ function stockTab_() {
 /* Every product on the booth, the same names as PRODUCTS in index.html and as the
    pictures in products/ (the wheel finds a picture by the name: lower case, anything
    that is not a letter or a digit turned into a dash). Each is put on the Gift stock
-   list ONCE, not counted, so it is on the wheel until somebody sets a number; a product
+   list ONCE, not counted, so it stays off the wheel until somebody sets a number; a product
    an admin later removes is not brought back. tools/stock-catalogue.test.mjs keeps this
    list, index.html and the pictures in step. */
 var CATALOGUE = [
@@ -1870,8 +1871,8 @@ function seedCatalogue_(locked) {
     return added;
   } finally { if (lock) { flushSheets_(); lock.releaseLock(); } }
 }
-/* blank is "not counted"; anything else is a whole number, and something
-   that is not a number reads as none left -- less on the wheel, not more */
+/* blank is "not counted" (off the wheel); anything else is a whole number, and
+   something that is not a number reads as none left -- less on the wheel, not more */
 function qty_(v) {
   var s = String(v == null ? '' : v).trim();
   if (s === '') return null;
@@ -1886,11 +1887,11 @@ function stock_() {
   }).filter(function (x) { return x.product; });
 }
 function wheel_() {
-  return stock_().filter(function (x) { return x.quantity === null || x.quantity > 0; }).slice(0, STOCK_MAX);
+  return stock_().filter(function (x) { return x.quantity !== null && x.quantity > 0; }).slice(0, STOCK_MAX);
 }
 function stockPublic_() {
   return stock_().map(function (x) {
-    return { product: x.product, quantity: x.quantity, on_wheel: x.quantity === null || x.quantity > 0,
+    return { product: x.product, quantity: x.quantity, on_wheel: x.quantity !== null && x.quantity > 0,
              updated: x.updated, by: x.by };
   });
 }
@@ -2216,7 +2217,7 @@ var GUIDE = [
     'A product at *0* leaves the wheel by itself. Restock it and it is back on the next spin.',
     'Use *Add* to restock (it adds to what is left, so gifts handed out meanwhile are not undone). Use *Set* only to correct a count after counting the boxes.',
     'When every product is at 0 the games stop giving out new codes, so nobody is handed a code the counter cannot honour.',
-    'A product showing *not counted* stays on the wheel until you set a number for it.'
+    'A product showing *not counted* is off the wheel until you set a number for it. Only the products with a number above 0 are on the wheel.'
   ] },
 
   { t: 'h', s: 'Letting a device play again' },

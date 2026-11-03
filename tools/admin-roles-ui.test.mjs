@@ -131,6 +131,8 @@ console.log('\n── the owner');
 
 console.log('\n── claims: letting a device play again');
 {
+  /* a product with no count is off the wheel, so one needs a number before the gift can be on */
+  H.call({ action:'admin.stock.set', token:own.token, product:H.tabs['Gift stock'].rows[1][0], quantity:50 });
   H.call({ action:'admin.settings', token:own.token, settings:{ gift_active:'yes' } });
   const k1 = H.call({ action:'gift.claim', device:'phoneAAA1', score:9000, game:'facy-run', name:'Siti' });
   H.call({ action:'admin.gift.redeem', token:own.token, claim:k1.claim });

@@ -35,8 +35,9 @@ console.log('\nthe stock list fills itself');
 const H = load({ catalogue:true }), own = H.signIn(OWNER), A = o => H.call({ token:own.token, ...o });
 const stockRows = () => H.tabs['Gift stock'].rows.slice(1).filter(r=>r[0]);
 let g = A({ action:'admin.get' });
-chk('opening the admin lists every catalogue product, none counted',
-  g.stock.length===19 && gsNames.every(n=>g.stock.filter(x=>x.product===n).length===1) && g.stock.every(x=>x.quantity===null && x.on_wheel), g.stock.map(x=>x.product));
+chk('opening the admin lists every catalogue product, none counted and none on the wheel',
+  g.stock.length===19 && gsNames.every(n=>g.stock.filter(x=>x.product===n).length===1) && g.stock.every(x=>x.quantity===null && !x.on_wheel), g.stock.map(x=>x.product));
+chk('...so the wheel is empty until the admin puts a number on a product', H.call({ action:'gift.wheel' }).products.length===0);
 chk('the first eight came from the old product list, the rest from the catalogue',
   g.stock.filter(x=>/before stock/.test(x.by)).length===8 && g.stock.filter(x=>x.by==='product catalogue').length===11);
 const n0 = stockRows().length; A({ action:'admin.get' });
@@ -58,7 +59,9 @@ console.log('\nthe wheel the visitor sees');
 const wheelNow = () => H.call({ action:'gift.wheel' });
 let w = wheelNow();
 chk('anybody can ask what is on the wheel', w.ok===true && Array.isArray(w.products), w);
-chk('...it is every product that is not out of stock', JSON.stringify(w.products)===JSON.stringify(g.stock.filter(x=>x.on_wheel).map(x=>x.product)), w.products);
+chk('...it is only the products with a count above 0 (a blank count is not on it)', JSON.stringify(w.products)===JSON.stringify(g.stock.filter(x=>x.on_wheel).map(x=>x.product)), w.products);
+chk('...the two she counted are on it, no more',
+  JSON.stringify([...w.products].sort())===JSON.stringify(['5% B5 Centella Calming Gel Cream','A product typed by hand']), w.products);
 chk('...the one at 0 is not on it, the removed one is not on it', !w.products.includes('Ceramide B5 Balancing Moisturizer') && !w.products.includes('Retinol Anti-Aging Serum'));
 chk('...and no count is given away', !JSON.stringify(w).match(/"quantity"|101/));
 A({ action:'admin.stock.set', product:'Ceramide B5 Balancing Moisturizer', quantity:3 });
