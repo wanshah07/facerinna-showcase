@@ -343,6 +343,9 @@ function doPost(e) {
       level = isFinite(level) ? Math.max(0, Math.min(level, 999)) : 0;
     }
 
+    var dk = dupKey_(body, id, name, score);
+    if (seenRun_(dk)) return dupReply_(id, name);
+
     if (!underRate_(id, name))
       return json_({ ok: false, error: 'too many runs too quickly — wait a moment' });
 
@@ -357,7 +360,10 @@ function doPost(e) {
     var now = new Date();
     var lock = LockService.getScriptLock();
     lock.waitLock(20000);
+    var all, repeat = false;
     try {
+      if (seenRun_(dk)) { repeat = true; all = boards_(); }   /* the other copy got the lock first */
+      else {
       tab_().appendRow([
         now,
         now.getTime(),
@@ -380,9 +386,11 @@ function doPost(e) {
          poster is waiting on this reply with a result screen already up, and
          walking every row written today to tell them they came third is the one
          piece of work here that gets slower the better the day goes. */
-      var all = boards_();
+      all = boards_();
       all[id] = merge_(all[id] || { rows: [], n: 0 }, name, score, now.getTime(), secs, level);
       putBoards_(all);
+      markRun_(dk);
+      }
     } finally {
       lock.releaseLock();
     }
@@ -397,6 +405,32 @@ function doPost(e) {
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
   }
+}
+
+function dupReply_(game, name) {
+  var b = (boards_()[game]) || { rows: [], n: 0 }, rank = null, best = null;
+  for (var i = 0; i < b.rows.length; i++) {
+    if (String(b.rows[i].n).toLowerCase() === name.toLowerCase()) { rank = i + 1; best = b.rows[i].s; break; }
+  }
+  return json_({ ok: true, rank: rank, best: best, players: b.n, rows: b.rows.slice(0, 5), repeat: true });
+}
+/* The same run arriving twice is one run: a reply lost on the way back so the page sent it again, a
+   double tap, a retry from the queue. Each run carries an id (rid) made by the page and kept here for
+   ten minutes. A page from before that sends none, so the same device, game, name and score inside
+   fifteen seconds stands for the same run (a real run takes far longer than that). Cache only, so it
+   costs no sheet read, and it makes a second post cheap: no lock wait, no write. */
+var DUP_SECS = 600, DUP_FALLBACK_SECS = 15;
+function dupKey_(body, game, name, score) {
+  var rid = String((body && body.rid) || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+  if (rid.length >= 8) return { key: 'd:' + rid, secs: DUP_SECS };
+  return { key: 'd:' + game + ':' + String((body && body.device) || '').slice(0, 40) + ':' + name.toLowerCase() + ':' + score,
+           secs: DUP_FALLBACK_SECS };
+}
+function seenRun_(dk) {
+  try { return !!CacheService.getScriptCache().get(dk.key); } catch (e) { return false; }
+}
+function markRun_(dk) {
+  try { CacheService.getScriptCache().put(dk.key, '1', dk.secs); } catch (e) {}
 }
 
 /* A booth run takes the better part of a minute, so a dozen posts from one

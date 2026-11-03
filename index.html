@@ -2267,10 +2267,13 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
     var saved=raw ? JSON.parse(raw) : null, cfg=(saved && saved.cfg) || {}, st=cfg.settings || {};
     /* No settings yet, or ones older than the page's own three-minute rhythm: the parts an admin can hide
        wait (html.booth-wait) until the live answer arrives, so a hidden section is never painted for a
-       beat and then pulled out from under the visitor. A page that never gets an answer lets go after 15 s. */
-    if(!saved || !(saved.at > 0) || Date.now() - saved.at > 180000){
+       beat and then pulled out from under the visitor. A page that never gets an answer lets go after 20 s. */
+    /* (A local copy of the file with no script address of its own, a test or a developer's browser, has no
+       settings coming and so nothing to wait for.) */
+    var local = /^(127\.0\.0\.1|localhost)$/.test(location.hostname) && typeof window.__BOOTH_API !== 'string';
+    if(!local && (!saved || !(saved.at > 0) || Date.now() - saved.at > 180000)){
       de.classList.add('booth-wait');
-      setTimeout(function(){ de.classList.remove('booth-wait'); }, 15000);
+      setTimeout(function(){ de.classList.remove('booth-wait'); }, 20000);
     }
     if(!raw) return;
     var open = sessionStorage.getItem('fx.booth.unlocked')==='1';
@@ -8368,7 +8371,9 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   function retrySoon(){
     if(gotLive || retries >= RETRY_MS.length) return;
     clearTimeout(retryT);
-    retryT = setTimeout(function(){ refresh(true); }, (window.__boothRetryMs || RETRY_MS)[retries++] || 45000);
+    /* spread by +-25%, so a crowd that all failed together does not all come back together */
+    var wait = (window.__boothRetryMs || RETRY_MS)[retries++] || 45000;
+    retryT = setTimeout(function(){ refresh(true); }, Math.round(wait * (0.75 + Math.random() * 0.5)));
   }
 
   function refresh(force){
@@ -8391,8 +8396,10 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
       if(j && j.ok && j.settings){ gotLive=true; retries=0; remember(j); apply(j, adminFlag); }
       else retrySoon();
     }).catch(function(){ retrySoon(); /* offline: the cached copy stands meanwhile */
-      /* nothing to wait for on a phone that cannot reach the script at all */
-      if(!gotLive && !cached()) releaseWait();
+      /* A failed ask is not a reason to show what the admin hid: under a crowd the script answers with errors
+         for a while, and the held parts stay held through the retries (the head script lets go after 20 s at the
+         latest). Only a phone that is really offline has nothing to wait for. */
+      if(!gotLive && !cached() && navigator.onLine === false) releaseWait();
     });
   }
   window.__boothRefresh = refresh;   /* the tests, and nothing else */
@@ -8409,7 +8416,8 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
          proved by reading the source, which is not the same as proving the
          page asks. */
       (function tick(){
-        setTimeout(function(){ refresh(false); tick(); }, window.__boothPollMs || POLL_MS);
+        /* ...and the same for the steady rhythm: screens opened at the same moment drift apart */
+        setTimeout(function(){ refresh(false); tick(); }, Math.round((window.__boothPollMs || POLL_MS) * (0.85 + Math.random() * 0.3)));
       })();
       /* the moments a change matters most: somebody has just looked back at
          the screen, or the network has just come back */

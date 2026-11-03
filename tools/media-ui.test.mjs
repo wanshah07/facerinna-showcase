@@ -258,8 +258,15 @@ console.log('\n── the real thing: the script, the page, a visitor and an adm
     await c.addInitScript(a=>{ window.__BOOTH_API=a; window.__boothRetryMs=[400,800,1500]; }, API);
     const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
     const t0=Date.now(); await p.goto(BASE+'/index.html',{waitUntil:'load'});
-    const hid=await until(()=>p.evaluate(()=>getComputedStyle(document.getElementById('talk')).display==='none'), 10000);
-    chk('a slow script: the page asks again and hides what is off within seconds', hid && globalThis.FAIL_CONFIG===0, {hid, left:globalThis.FAIL_CONFIG, ms:Date.now()-t0});
+    /* what is off must not be on screen at ANY moment while the asks fail and are repeated, and it is settled
+       (answered and let go) within seconds */
+    let everShown=false;
+    const hid=await until(async()=>{
+      const st=await p.evaluate(()=>{ const t=document.getElementById('talk'); return { shown:getComputedStyle(t).display!=='none' && t.getBoundingClientRect().height>0, waiting:document.documentElement.classList.contains('booth-wait') }; });
+      if(st.shown) everShown=true;
+      return !st.shown && !st.waiting;
+    }, 10000, 40);
+    chk('a slow script: the page asks again and hides what is off within seconds, never showing it meanwhile', hid && !everShown && globalThis.FAIL_CONFIG===0, {hid, everShown, left:globalThis.FAIL_CONFIG, ms:Date.now()-t0});
     chk('no page errors', errs.length===0, errs[0]);
     await c.close();
   }

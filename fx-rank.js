@@ -157,8 +157,16 @@
     return a.t - b.t;
   }
   function mmss(sec) { sec = Math.max(0, Math.round(sec || 0)); var m = Math.floor(sec / 60), r = sec % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+  /* One id per finished run, made here and kept on the payload if it is queued and tried again, so the
+     script can tell a run it already has from a new one: a reply lost on the way back no longer becomes
+     a second row. */
+  function runId() {
+    var a = '';
+    while (a.length < 16) a += Math.random().toString(36).slice(2);
+    return a.slice(0, 12) + Date.now().toString(36).slice(-4);
+  }
   function send(score) {
-    var payload = { game: CFG.id, name: player || 'Player', score: score, device: deviceId() };
+    var payload = { game: CFG.id, name: player || 'Player', score: score, device: deviceId(), rid: runId() };
     var x = extra(); if (x) { payload.secs = x.secs; payload.level = x.level; }
     return post(payload).then(function (res) {
       if (res && res.ok === true) {

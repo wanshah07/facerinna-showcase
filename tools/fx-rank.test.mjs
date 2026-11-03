@@ -82,6 +82,7 @@ console.log('\nnetwork up: the score goes out and the shared board comes back');
   check('payload has game/name/score', s.posts[0].body.game==='match-lab' &&
                                        s.posts[0].body.name==='Ahmad' && s.posts[0].body.score===120);
   check('device id sent',             !!s.posts[0].body.device);
+  check('a run id is sent, so a repeat of the same run can be told from a new one', /^[A-Za-z0-9]{12,40}$/.test(s.posts[0].body.rid || ''), s.posts[0].body.rid);
   check('NO application/json (would trip CORS preflight)',
         !/application\/json/i.test(s.posts[0].ct));
   check('shared names on screen',     t.includes('Zara') && t.includes('Ken'));
@@ -99,6 +100,7 @@ console.log('\nnetwork down: the popup still works and nothing is lost');
   check('says it is holding a score', /waiting to send/.test(t));
   const q = await s.pg.evaluate(()=>localStorage.getItem('fx.rank.queue'));
   check('queued to localStorage',     !!q && JSON.parse(q).length === 1);
+  check('...and the queued run keeps its id, so a re-send is the same run', !!q && /^[A-Za-z0-9]{12,40}$/.test(JSON.parse(q)[0].rid || ''), q);
   await s.ctx.close();
 }
 
