@@ -6986,127 +6986,19 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeClin();});
     }
   }, true);
 
-  /* At a booth nobody thinks to press a button, so the board shows itself when
-     the games come into view — including on the way back from a game, which is
-     exactly when the new score has landed. It only does this when there is
-     something to show, it will not do it twice inside a minute, and the first
-     scroll or tap sends it away early. */
+  /* The board opens ONLY when the visitor taps "Booth ranking". It used to show itself when
+     the games came into view; arriving at the games now shows the games and nothing else. */
   const section=document.getElementById('game');
+  /* Fetched once on load, so the first tap already has the shared board in it. */
+  fetchShared();
+  /* Locked or hidden, the games are not on offer, so neither is the board that ranks them (it is a
+     sibling of the section, so nothing that hides the section hides it): one left open is shut. */
   if(section){
-    /* How much of the screen the games are filling. Asked directly rather than
-       left to an observer alone: in the deck the slide is scaled and scrolled
-       programmatically, and an observer that misses one of those crossings
-       misses the only moment that matters. */
-    function share(){
-      const r=section.getBoundingClientRect();
-      const seen=Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
-      return seen>0 ? seen/Math.min(innerHeight, r.height||innerHeight) : 0;
-    }
-    /* The board shows itself in BOTH modes now. It used to be deck-only, and
-       the reason was real: on the scrolling page the games are one section
-       among fifteen, and a board that opened while you were on your way past
-       read as arriving at random. Refusing to open there answered that by
-       giving up. What actually separates the two cases is not the deck — it is
-       whether the person ARRIVED or is merely PASSING THROUGH, and that can be
-       asked directly:
-
-         arrived  = the games fill most of the screen, and the scrolling has
-                    stopped
-         passing  = they cross the screen while the page is still moving
-
-       So each mode gets the threshold and the wait its own motion deserves.
-       The deck moves in discrete, programmatic jumps and settles at once; the
-       page is dragged by a finger or a trackpad and keeps coasting. */
-    const deck=()=>document.body.classList.contains('slides');
-    const NEED  =()=> deck() ? 0.55 : 0.78;   // how much of the screen counts as arrival
-    const SETTLE=()=> deck() ? 250  : 650;    // how long stillness must last first
-    /* Not on the way back from UV Card, though. The board opens on arrival
-       because that is when a new score has landed; UV Card keeps no score,
-       so a visitor pressing its Booth button, brought to the games and then
-       covered by a board about five other games, would only be puzzled.
-       Held off for a minute after such an arrival -- a flag would not do,
-       because the first look at the section, taken before the page has
-       even scrolled to it, reads as "left" and re-arms it -- and after that
-       the board behaves as it always has. */
-    const HOLD_UNTIL = /\buv-card\.html/.test(document.referrer||'') ? Date.now()+60000 : 0;
-    let armed=true, pending=null, lastMove=0;
-    function consider(){
-      /* Locked or hidden, the games are not on offer, so neither is the board
-         that ranks them -- and the board is a sibling of the section, so
-         nothing that hides the section hides it. The Play buttons and the
-         ranking button are inside the section and go with it; this is the one
-         piece that has to be told. */
-      if(section.classList.contains('booth-sec-locked') || getComputedStyle(section).display==='none'){
-        if(modal.classList.contains('open')) close();
-        armed=true;
-        if(pending){ clearTimeout(pending); pending=null; }
-        return;
-      }
-      const need=NEED();
-      if(share() < need){                              // left, so it may fire again
-        armed=true;
-        if(pending){ clearTimeout(pending); pending=null; }
-        return;
-      }
-      if(!armed || pending) return;
-      if(modal.classList.contains('open')) return;
-      if(Date.now() < HOLD_UNTIL) return;
-      /* An empty board opens too. It used to refuse, which is why the board
-         looked broken on a freshly moved domain: localStorage is bound to an
-         origin, so my.facerinna.com started with nothing, and a guard meant to
-         avoid showing an empty panel instead showed nothing at all with no way
-         to tell that apart from a fault. The empty state was already written
-         and reads as an invitation — "the board fills itself as people play,
-         start one of the games" — which is the right thing for a booth stand
-         before anyone has played. */
-      /* No cooldown: every arrival at the games shows the board, however many
-         times you come back. `armed` only clears once the section has actually
-         left the screen, so one arrival still opens it once. */
-      armed=false;
-      const wait=SETTLE();
-      pending=setTimeout(function tick(){
-        pending=null;
-        if(share() < NEED() || modal.classList.contains('open')) return;
-        /* On the page, the wait is measured from the LAST scroll, not from the
-           first qualifying frame — a slow drag would otherwise satisfy a fixed
-           delay while still moving. Momentum scrolling is exactly this case. */
-        const quiet=Date.now()-lastMove;
-        if(!deck() && quiet < wait){ pending=setTimeout(tick, wait-quiet); return; }
-        open(true);
-      }, wait);
-    }
-    let queued=false;
-    const ping=()=>{ if(!queued){ queued=true; requestAnimationFrame(function(){ queued=false; consider(); }); } };
-    addEventListener('scroll', function(){ lastMove=Date.now(); ping(); }, {passive:true, capture:true});
-    addEventListener('resize', ping);
-    if(typeof IntersectionObserver!=='undefined')
-      new IntersectionObserver(ping,{threshold:[0,.2,.55,.9]}).observe(section);
-    setInterval(ping, 1200);                            // last resort, costs nothing
-    ping();
-
-    /* Once on load, so the first time the board opens by itself it already has
-       the room in it rather than showing this screen's scores and widening a
-       beat later in front of whoever is reading it. */
-    fetchShared();
-
-    /* Scrolling, tapping or driving the deck all mean the person wants the page
-       back, so any of them sends the board away early. The grace period is the
-       point: a trackpad throws wheel events for a second after the fingers
-       lift, and without it the board opened and was killed by the tail of the
-       very scroll that brought it up — a flash, and nothing more. */
-    const GRACE=1200;
-    function dismiss(e){
-      if(!auto) return;
-      if(Date.now()-lastAuto < GRACE) return;
-      if(e && e.target && e.target.closest && e.target.closest('.rank-panel')) return;
-      close();
-    }
-    ['wheel','touchstart','pointerdown'].forEach(function(t){
-      addEventListener(t, dismiss, {passive:true});
-    });
-    addEventListener('keydown', function(e){
-      if(e.key!=='Escape') dismiss(e);
-    }, true);
+    const gone=function(){
+      if(modal.classList.contains('open') && (section.classList.contains('booth-sec-locked') || getComputedStyle(section).display==='none')) close();
+    };
+    addEventListener('resize', gone);
+    setInterval(gone, 1200);
   }
 })();
 
