@@ -548,9 +548,8 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
 
 /* --------------------------- the ranking board goes with the games ----
    The board is a sibling of the games section, so nothing that hides the
-   section hides it. The control matters as much as the check: if arriving
-   at an open games section did not open the board, "it did not open" would
-   pass for the wrong reason. */
+   section hides it. The board opens only when its button is tapped (arriving at the games
+   does not open it), so the control for "it shut" is the same tap. */
 {
   const c=await ctx(); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   const board = p => p.evaluate(()=>document.getElementById('rankModal').classList.contains('open'));
@@ -560,7 +559,10 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   S.sectionRows.find(x=>x.id==='game').mode='show';
   await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1200);
   await arrive(p);
-  chk('board: arriving at the games opens the ranking by itself', await until(()=>board(p), 6000));
+  await sleep(3500);
+  chk('board: arriving at the games does NOT open the ranking by itself', (await board(p))===false);
+  await p.evaluate(()=>document.getElementById('rankBtn').click());
+  chk('board: the Booth ranking button opens it', await until(()=>board(p), 3000));
 
   S.sectionRows.find(x=>x.id==='game').mode='locked';
   await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1400);
@@ -574,7 +576,8 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   S.sectionRows.find(x=>x.id==='game').mode='show';
   await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1200);
   await arrive(p);
-  await until(()=>board(p), 6000);
+  await p.evaluate(()=>document.getElementById('rankBtn').click());
+  await until(()=>board(p), 3000);
   S.sectionRows.find(x=>x.id==='game').mode='locked';
   await p.evaluate(()=>{ window.__boothApply({settings:{page_mode:'open',welcome:'show'}, segments:[],
     section_states:[{id:'game',label:'Games',mode:'locked',message:''}]}, false); });

@@ -312,7 +312,7 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
   chk('booth: the section stays put a while later', (await sleep(1500), (l=await landed(p)).gameTop>=0 && l.gameTop<=120), l);
   await c.close();
 
-  /* the board still shows itself on an arrival from anywhere else */
+  /* and no arrival at the games opens the board by itself, from anywhere: it opens on a tap */
   const c2=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   /* no booth script: the live one may have the games section hidden for the
      day, and then there is rightly no board to open */
@@ -320,7 +320,9 @@ for(const size of [{width:844,height:390},{width:360,height:640}]){
   const p2=await c2.newPage();
   await p2.goto(BASE+'/index.html#game',{waitUntil:'load'}); await sleep(3500);
   l=await landed(p2);
-  chk('booth: arriving at the games any other way still opens the board', l.board, l);
+  chk('booth: arriving at the games any other way does not open the board either', !l.board, l);
+  await p2.evaluate(()=>document.getElementById('rankBtn').click()); await sleep(500);
+  chk('booth: the Booth ranking button opens it', (await landed(p2)).board);
   await c2.close();
   await new Promise(r=>srv.close(r));
   chk('booth: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
