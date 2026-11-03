@@ -227,6 +227,30 @@ kbd{display:inline-block;min-width:1.9em;padding:.02em .45em;border-radius:7px;b
   .padL,.padR{padding-bottom:66px}
 }
 
+
+/* ── a phone held upright: the board gets the room ───────────────────────
+   It was cramped: the Booth and Ranking buttons had a row of their own under the
+   controls, the stats took two rows, and the board got what was left (a Safari
+   window is about 660px tall). Now those two buttons sit in the header row, the
+   stats are one slim row, and nothing is reserved under the controls. */
+@media (orientation:portrait) and (max-width:700px){
+  .app{padding-bottom:calc(var(--safe-b) + 8px);gap:clamp(5px,1vh,10px)}
+  .hd{padding:0 46px}
+  .brand img{height:clamp(18px,3.1vh,28px)}
+  .tag{font-size:10px;padding:.32em .7em}
+  .hd .btn.sm{min-height:38px;padding:.45em .95em;font-size:13px}
+  .fxr-back,.fxr-show{top:calc(var(--safe-t) + 8px)!important;bottom:auto!important;width:38px!important;height:38px!important;line-height:36px!important;font-size:16px!important}
+  .fxr-back{left:calc(var(--safe-l) + 8px)!important}
+  .fxr-pop{top:calc(var(--safe-t) + 56px)!important;max-height:calc(100dvh - 68px - var(--safe-t) - var(--safe-b))!important}
+  .fxr-show{right:calc(var(--safe-r) + 8px)!important}
+  .padL,.padR{padding-bottom:0!important}
+  .left .card{grid-template-columns:repeat(4,1fr)!important;gap:0 6px!important;padding:6px 10px!important}
+  .left .stat span{font-size:9px!important}
+  .left .stat b,.left .stat.big b{font-size:clamp(15px,2.5vh,26px)!important}
+  .left .giftbox{grid-column:1 / -1}
+  .right .card{padding:4px 8px!important}
+  .nexts canvas,.holdc canvas{width:clamp(38px,6.2vh,60px)!important;height:auto!important;aspect-ratio:1}
+}
 </style>
 </head>
 <body>
