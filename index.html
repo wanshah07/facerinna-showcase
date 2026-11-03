@@ -2186,6 +2186,12 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
    the welcome strip from it. */
 html.booth-veiled body > :not(#boothVeil){visibility:hidden}
 html.booth-no-welcome .hero-marquee{display:none!important}
+/* Until the booth settings are known, everything an admin can hide waits (the head script sets
+   html.booth-wait, apply() lets go): the hero is there at once, the rest follows in a moment. */
+html.booth-wait :is(#range,#heroes,#evidence,#gallery,#clinic,#qrcore,#talk,#game),
+html.booth-wait [data-media^="builtin-"],
+html.booth-wait :is(header,footer) a:is([href="#range"],[href="#heroes"],[href="#evidence"],[href="#gallery"],[href="#clinic"],[href="#qrcore"],[href="#talk"],[href="#game"]){display:none!important}
+html.booth-wait :is(#range,#heroes,#evidence,#gallery,#clinic,#qrcore,#talk,#game) + div:has(>.divider-line){display:none!important}
 #boothVeil{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:24px;
   background:radial-gradient(120% 80% at 50% 0%,#1f4c7a,#0b1620 70%);color:#EAF4FF;font-family:'Inter',system-ui,sans-serif;visibility:visible}
 #boothVeil .bv{max-width:420px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:22px;
@@ -2257,11 +2263,29 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
 <script>
 (function(){
   try{
-    var raw=localStorage.getItem('fx.booth.config'); if(!raw) return;
-    var cfg=JSON.parse(raw).cfg||{}, st=cfg.settings||{};
+    var de=document.documentElement, raw=localStorage.getItem('fx.booth.config');
+    var saved=raw ? JSON.parse(raw) : null, cfg=(saved && saved.cfg) || {}, st=cfg.settings || {};
+    /* No settings yet, or ones older than the page's own three-minute rhythm: the parts an admin can hide
+       wait (html.booth-wait) until the live answer arrives, so a hidden section is never painted for a
+       beat and then pulled out from under the visitor. A page that never gets an answer lets go after 15 s. */
+    if(!saved || !(saved.at > 0) || Date.now() - saved.at > 180000){
+      de.classList.add('booth-wait');
+      setTimeout(function(){ de.classList.remove('booth-wait'); }, 15000);
+    }
+    if(!raw) return;
     var open = sessionStorage.getItem('fx.booth.unlocked')==='1';
-    if((st.page_mode==='locked' && !open) || st.page_mode==='hidden') document.documentElement.classList.add('booth-veiled');
-    if(st.welcome==='hide') document.documentElement.classList.add('booth-no-welcome');
+    if((st.page_mode==='locked' && !open) || st.page_mode==='hidden') de.classList.add('booth-veiled');
+    if(st.welcome==='hide') de.classList.add('booth-no-welcome');
+    /* what the last answer hid, hidden from the first frame; the loader below swaps this for classes */
+    var css='';
+    (cfg.section_states||[]).forEach(function(x){
+      if(x && x.mode==='hidden' && /^[A-Za-z0-9_-]+$/.test(x.id||'')) css+='#'+x.id+',:is(header,footer) a[href="#'+x.id+'"]{display:none!important}'+
+        '#'+x.id+' + div:has(>.divider-line){display:none!important}';
+    });
+    (cfg.builtin_off||[]).forEach(function(id){
+      id=String(id).replace(/[^\w-]/g,''); if(id) css+='[data-media="'+id+'"]{display:none!important}[data-media="'+id+'"] + div:has(>.divider-line){display:none!important}';
+    });
+    if(css){ var el=document.createElement('style'); el.id='boothPre'; el.textContent=css; document.head.appendChild(el); }
   }catch(e){}
 })();
 </script>
@@ -5861,6 +5885,7 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
     try{ el=document.querySelector(id); }catch(err){ return; }
     if(!el || el.hidden) return;
     e.preventDefault();
+    window.__navTarget={ id:id, at:Date.now() };   /* the booth loader lands here again if the page re-flows */
 
     const html=document.documentElement;
     const snap=html.style.scrollSnapType;
@@ -8004,8 +8029,8 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   var API = (typeof window.__BOOTH_API === 'string') ? window.__BOOTH_API
     : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
   var CACHE='fx.booth.config', UNLOCKED='fx.booth.unlocked', ADMIN='fx.admin.token';
-  if(!API) return;
   var html=document.documentElement;
+  if(!API){ html.classList.remove('booth-wait'); return; }
 
   function post(body, ms){
     var ctl = ('AbortController' in window) ? new AbortController() : null;
@@ -8372,8 +8397,28 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
 
   /* ---- apply ---- */
   var lastKey=null;
-  function apply(cfg, isAdmin){
+  /* A visitor who tapped a header link while the page was still settling, or before the hidden parts
+     were known, has the page re-flowed under them: the segment they asked for is put back at the top. */
+  function realign(){
+    var t=window.__navTarget; if(!t || Date.now()-t.at>12000) return;
+    var el=null; try{ el=document.querySelector(t.id); }catch(e){} if(!el || !el.offsetHeight) return;
+    [60, 500].forEach(function(ms){ setTimeout(function(){
+      var off=el.getBoundingClientRect().top-72;
+      if(Math.abs(off)>2) scrollTo({ top:Math.max(0, scrollY+off), behavior:'instant' });
+    }, ms); });
+  }
+  function releaseWait(){
+    var pre=document.getElementById('boothPre'); if(pre) pre.remove();
+    if(!html.classList.contains('booth-wait')) return;
+    html.classList.remove('booth-wait');
+    dispatchEvent(new Event('resize'));
+    realign();
+  }
+  function apply(cfg, isAdmin, fromCache){
     if(!cfg || !cfg.settings) return;
+    /* the copy kept on the phone paints what it hid; only the live answer lets the held parts go */
+    if(fromCache && html.classList.contains('booth-wait')){ var pre=document.getElementById('boothPre'); if(pre) pre.remove(); }
+    else releaseWait();
     var key=JSON.stringify(cfg)+'|'+(isAdmin?1:0)+'|'+(previewOn()?1:0); if(key===lastKey) return; lastKey=key;
     lastCfg=cfg; lastAdmin=!!isAdmin;
     var preview=!!isAdmin && previewOn();
@@ -8402,6 +8447,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     drawSegments(cfg.segments);
     drawDocs(cfg.documents);
     drawMedia(cfg, preview);
+    realign();
   }
   window.__boothApply = apply;   /* the tests, and nothing else */
 
@@ -8452,7 +8498,10 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     return post({ action:'config' }, 10000).then(function(j){
       if(j && j.ok && j.settings){ gotLive=true; retries=0; remember(j); apply(j, adminFlag); }
       else retrySoon();
-    }).catch(function(){ retrySoon(); /* offline: the cached copy stands meanwhile */ });
+    }).catch(function(){ retrySoon(); /* offline: the cached copy stands meanwhile */
+      /* nothing to wait for on a phone that cannot reach the script at all */
+      if(!gotLive && !cached()) releaseWait();
+    });
   }
   window.__boothRefresh = refresh;   /* the tests, and nothing else */
 
@@ -8460,7 +8509,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     var seen=cached();
     isAdminSession().then(function(admin){
       adminFlag = admin;
-      if(seen) apply(seen, admin);
+      if(seen) apply(seen, admin, true);
       return refresh(true);
     }).then(function(){
       /* setTimeout rather than setInterval, so the wait is read fresh each
