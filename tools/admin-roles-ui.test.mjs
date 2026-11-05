@@ -224,6 +224,17 @@ console.log('\n── the counter screen, for staff without Counter');
   await c.close();
 }
 
+console.log('\n── on a narrow phone: the tournament list stays inside its card');
+for (const w of [320, 360]) {
+  const {c,p,errs}=await asPerson(own.token, w, 800);
+  await p.click('#tabSettings'); await sleep(300);
+  const r=await p.evaluate(()=>{ const l=document.getElementById('tourList'); if(!l) return {none:true}; const card=l.closest('.card').getBoundingClientRect();
+    const over=[...l.querySelectorAll('li')].filter(li=>{ const b=li.getBoundingClientRect(); return b.right>card.right+1 || b.left<card.left-1 || [...li.querySelectorAll('input,label,em')].some(e=>e.getBoundingClientRect().right>card.right+1); }).length;
+    return { rows:l.querySelectorAll('li').length, over, sideways:document.documentElement.scrollWidth>innerWidth }; });
+  chk(`${w}px: all twelve tournament rows are inside the card, the page does not scroll sideways`, r.rows===12 && r.over===0 && !r.sideways, r);
+  chk(`${w}px: no page errors`, errs.length===0, errs); await c.close();
+}
+
 console.log('\n── on a phone');
 {
   const {c,p,errs}=await asPerson(own.token, 390, 844);

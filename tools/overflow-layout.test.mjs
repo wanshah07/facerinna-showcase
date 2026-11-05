@@ -18,7 +18,7 @@ const read = async (vp, mobile) => {
     const cs=el=>getComputedStyle(el), h=el=>Math.round(el.getBoundingClientRect().height);
     const q=s=>document.querySelector(s);
     return {W:innerWidth,H:innerHeight, htmlX:cs(document.documentElement).overflowX, bodyX:cs(document.body).overflowX,
-            hero:h(q('.hero')), stage:h(q('.hero-stage')), shelf:h(q('.shelf-stage')),
+            hero:h(q('.hero')), stage:h(q('.hero-stage')), shelf:h(q('.shelf-stage')), card:Math.round(q('.cf-card').offsetWidth),
             sw:document.documentElement.scrollWidth};
   });
   await c.close(); return r;
@@ -29,7 +29,7 @@ chk('phone: html clips sideways overflow', ph.htmlX==='clip'||ph.htmlX==='hidden
 chk('phone: body too', ph.bodyX==='clip'||ph.bodyX==='hidden', ph.bodyX);
 chk('phone: no sideways scroll', ph.sw<=ph.W, ph.sw);
 chk('phone: the hero keeps its 5:4 ratio (narrow-screen rule, untouched)', ph.stage===Math.round(ph.W*4/5), {stage:ph.stage, want:Math.round(ph.W*4/5)});
-chk('phone: the shelf is 70svh, floored at 420', ph.shelf===Math.max(420,Math.round(ph.H*0.7)), {shelf:ph.shelf});
+chk('phone: the carousel stage is cut to its card (card x 1.45 + 80px), not a fixed height', ph.card>0 && Math.abs(ph.shelf-Math.round(ph.card*1.45+80))<=2, {shelf:ph.shelf, card:ph.card});
 chk('wide: the hero is the small viewport minus the nav (svh rule in force)', wd.hero===wd.H-64, {hero:wd.hero, want:wd.H-64});
 /* .hero-stage carries its own height rule, but inside the hero's flex column
    it is flex:1 1 auto and takes whatever is left after the brand strip and
@@ -37,7 +37,7 @@ chk('wide: the hero is the small viewport minus the nav (svh rule in force)', wd
    stays so under svh. The rule that actually sizes the hero is .hero's, and
    that is the one asserted above. */
 chk('wide: the stage is what the flex column leaves it, and sits inside the hero', wd.stage>0 && wd.stage<wd.hero, {stage:wd.stage, hero:wd.hero});
-chk('wide: the shelf is 100svh, capped at 900', wd.shelf===Math.min(900,Math.max(520,wd.H)), {shelf:wd.shelf});
+chk('wide: the carousel stage is cut to its card too (card x 1.45 + 80px)', wd.card>0 && Math.abs(wd.shelf-Math.round(wd.card*1.45+80))<=2, {shelf:wd.shelf, card:wd.card});
 chk('wide: html clips too', wd.htmlX==='clip'||wd.htmlX==='hidden', wd.htmlX);
 await b.close();
 console.log(bad? '\nSOMETHING DID NOT APPLY' : '\nthe rules apply'); process.exit(bad?1:0);

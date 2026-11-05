@@ -160,8 +160,8 @@ for(const [tag,w,h] of [['phone',390,844],['tablet',820,1180],['tablet sideways'
   let k=await cards();
   chk(`${tag}: the uploaded codes follow the built-in three`, k.length===5 && k.slice(0,3).every(x=>!x.media&&x.shown) && k.slice(3).every(x=>x.media&&x.shown), k);
   chk(`${tag}: a code with a link says where (and is not a made-up address)`, k[3].h4==='Whatsapp' && k[3].link==='https://wa.me/message/X' && k[4].link==='', k.slice(3));
-  chk(`${tag}: the poster has its own section, under the talk, built like the session poster`, await p.evaluate(()=>{ const s=document.getElementById('eventposters'); const t=document.getElementById('talk');
-    return !!s && !!(t.compareDocumentPosition(s)&Node.DOCUMENT_POSITION_FOLLOWING) && !!s.querySelector('.flyer-strip .flyer-head .eyebrow') && !!s.querySelector('.flyer-strip .flyer-frame img.flyer-thumb')
+  chk(`${tag}: the poster has its own section, ABOVE The Range (straight after the opening banner), built like the session poster`, await p.evaluate(()=>{ const s=document.getElementById('eventposters'); const t=document.getElementById('range'), h=document.getElementById('top');
+    return !!s && !!(t.compareDocumentPosition(s)&Node.DOCUMENT_POSITION_PRECEDING) && !!(h.compareDocumentPosition(s)&Node.DOCUMENT_POSITION_FOLLOWING) && s.nextElementSibling && s.nextElementSibling.nextElementSibling===t && !!s.querySelector('.flyer-strip .flyer-head .eyebrow') && !!s.querySelector('.flyer-strip .flyer-frame img.flyer-thumb')
       && !!s.querySelector('.flyer-actions .ep-view') && /Dermocosmetic Talk/.test(s.textContent) && /=w2400$/.test(s.querySelector('.flyer-actions a').href); }));
   const sz=await p.evaluate(()=>{ const a=document.querySelector('#talk .flyer-frame').getBoundingClientRect(), b=document.querySelector('#eventposters .flyer-frame').getBoundingClientRect();
     const sa=document.querySelector('#talk .flyer-strip').getBoundingClientRect(), sb=document.querySelector('#eventposters .flyer-strip').getBoundingClientRect();
