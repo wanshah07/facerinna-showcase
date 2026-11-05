@@ -120,6 +120,12 @@
 .tourlist .pts{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#5b6b80}
 .tourlist .pts input{width:84px;height:34px;padding:2px 8px;border-radius:8px;border:1px solid #c5d3e3;font:inherit;font-weight:700}
 .tourlist .pts input:disabled{opacity:.5}
+/* a narrow card (a phone): the name group may shrink and the points box drops to its own line under it,
+   instead of the row running out past the card's edge */
+.tourlist{min-width:0}
+.tourlist li{flex-wrap:wrap;row-gap:2px}
+.tourlist li > label:not(.pts){flex:1 1 150px;min-width:0;flex-wrap:wrap;row-gap:2px}
+.tourlist .pts{margin-left:auto;flex:0 0 auto}
 .gamerows .off span{color:#8095ab;text-decoration:line-through}
 .gamerows .check b{margin-left:auto;font-size:11px;letter-spacing:.06em;padding:3px 8px;border-radius:999px;
   background:#e3f6ee;color:#11734d;text-decoration:none}

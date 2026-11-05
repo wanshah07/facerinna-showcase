@@ -680,7 +680,7 @@ section{padding:74px 0;position:relative}
    by 33px. Height is in the size now, so the cards shrink when the stage does
    and the cut never happens. Above about 1500px nothing binds and the card is
    the same 340px it was. */
-.cf{--cf-card:clamp(190px,min(26vw,34vh),340px);
+.cf{--cf-card:var(--cf-size,clamp(190px,min(26vw,34vh),340px));
   position:absolute;inset:0;z-index:3;display:grid;place-items:center;
   perspective:calc(var(--cf-card) * 3);cursor:grab;outline:none;touch-action:pan-y}
 .cf:active{cursor:grabbing}
@@ -709,7 +709,6 @@ body.radial-theme .cf-card{
 .shelf-stage[data-dark] .cf-card{
   background:linear-gradient(160deg,rgba(30,38,62,.72),rgba(16,20,38,.68));
   border-color:rgba(255,255,255,.16);box-shadow:0 26px 54px rgba(0,0,0,.55)}
-@media(max-width:700px){.cf{--cf-card:clamp(150px,52vw,240px)}}
 @media(prefers-reduced-motion:reduce){.cf-card{transition:none}}
 
 /* ── AURORA BACKDROP (WebGL "Mesh drift" shader) ──────────────────────
@@ -2268,9 +2267,9 @@ body:not(.slides) .booth-seg .flyer-frame{max-width:min(100%,620px)}   /* outran
     /* No settings yet, or ones older than the page's own three-minute rhythm: the parts an admin can hide
        wait (html.booth-wait) until the live answer arrives, so a hidden section is never painted for a
        beat and then pulled out from under the visitor. A page that never gets an answer lets go after 20 s. */
-    /* (A local copy of the file with no script address of its own, a test or a developer's browser, has no
-       settings coming and so nothing to wait for.) */
-    var local = /^(127\.0\.0\.1|localhost)$/.test(location.hostname) && typeof window.__BOOTH_API !== 'string';
+    /* (A local copy of the file, opened from disk or from localhost with no script address of its own, a test or
+       a developer's browser, has no settings coming and so nothing to wait for.) */
+    var local = (location.protocol === 'file:' || /^(127\.0\.0\.1|localhost)$/.test(location.hostname)) && typeof window.__BOOTH_API !== 'string';
     if(!local && (!saved || !(saved.at > 0) || Date.now() - saved.at > 180000)){
       de.classList.add('booth-wait');
       setTimeout(function(){ de.classList.remove('booth-wait'); }, 20000);
@@ -2357,6 +2356,40 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
 .booth-preview-off::after{content:"Off for visitors";position:absolute;top:10px;right:10px;z-index:3;
   background:#c0392b;color:#fff;font:700 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.04em;
   padding:6px 10px;border-radius:999px;pointer-events:none}
+
+/* ---- product visuals, sized for the screen they are on -------------------------------------------
+   The range carousel, the product tiles and the hero products used to be one size on every screen: the
+   carousel card stopped at 340px (a ninth of a 4K screen's width, a quarter of a tablet's), the tiles
+   and hero products were fixed pixel sizes. --pv is the product-visual scale (1 is the laptop the page
+   was drawn on); the carousel card is sized from the screen's own width and height, and its stage is
+   cut to fit it instead of staying 900px on every big screen. The slide deck (TV mode) fits its own
+   slides and is left to do that. */
+:root{--pv:1}
+@media(min-width:701px) and (max-width:1199px){:root{--pv:1.12}}
+@media(min-width:1800px){:root{--pv:1.2}}
+@media(min-width:2400px){:root{--pv:1.6}}
+@media(min-width:3200px){:root{--pv:2.1}}
+body:not(.slides) .shelf-stage{--cf-size:clamp(170px,min(62vw,40vh),300px);           /* phone */
+  height:calc(var(--cf-size) * 1.45 + 80px);min-height:0;max-height:none}
+@media(min-width:701px){body:not(.slides) .shelf-stage{--cf-size:clamp(220px,min(40vw,36vh),440px)}}      /* tablet, kiosk */
+@media(min-width:1200px){body:not(.slides) .shelf-stage{--cf-size:clamp(240px,min(24vw,44vh),420px)}}    /* laptop, desktop */
+@media(min-width:1800px){body:not(.slides) .shelf-stage{--cf-size:clamp(300px,min(22vw,44vh),560px)}}    /* full HD screen, TV */
+@media(min-width:2400px){body:not(.slides) .shelf-stage{--cf-size:clamp(400px,min(22vw,44vh),760px)}}    /* QHD, 2.5K */
+@media(min-width:3200px){body:not(.slides) .shelf-stage{--cf-size:clamp(500px,min(22vw,44vh),900px)}}    /* 4K TV */
+body:not(.slides) .shelf-stage:fullscreen{height:100vh}
+body.slides .shelf-stage{--cf-size:clamp(190px,min(26vw,34vh),calc(340px * var(--pv)))}
+.cf-card .cf-tag{font-size:max(10px,calc(var(--cf-card) * .032))}
+@media(min-width:701px) and (max-width:1199px),(min-width:1800px){
+  body:not(.slides) #range .wrap,body:not(.slides) #heroes .wrap,body:not(.slides) .series-slide .wrap{max-width:calc(var(--maxw) * var(--pv))}
+  body:not(.slides) .series-slide{--maxw:calc(1400px * var(--pv))}
+  body:not(.slides) .thumb-grid{grid-template-columns:repeat(auto-fit,minmax(calc(200px * var(--pv)),calc(248px * var(--pv))));gap:calc(28px * var(--pv)) calc(22px * var(--pv))}
+  body:not(.slides) .series-slide .thumb-grid{grid-template-columns:repeat(var(--cols,4),minmax(0,calc(248px * var(--pv))))}
+  body:not(.slides) .thumb .art{height:calc(300px * var(--pv))}
+  body:not(.slides) .thumb .art img{max-height:calc(292px * var(--pv))}
+  body:not(.slides) .thumb h3{font-size:calc(1.02rem * var(--pv))}
+  body:not(.slides) #heroProducts{--card-h:calc(420px * var(--pv))}
+  body:not(.slides) .hp-visual img{height:min(calc(220px * var(--pv)), calc(var(--card-h) - var(--peek,106px) - 46px))}
+}
 </style>
 <link rel="stylesheet" href="fx-ui-polish.css">
 </head>
@@ -8249,12 +8282,13 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
         linksTo('qrcore').forEach(function(a){ a.classList.add('booth-link-hidden'); });
       }
     }
-    var talk=document.getElementById('talk');
+    /* The event's poster card sits ABOVE The Range, straight under the opening banner, so the
+       event now running is the first thing after the hero rather than far down past the talk. */
+    var talk=document.getElementById('range');
     if(posters.length && talk){
       var ev=String(st.active_event||'').replace(/[<>]/g,'');
       window.__DOCASSETS=window.__DOCASSETS||{};
-      var ref=talk.nextSibling, after=talk.nextElementSibling;   /* the divider under the talk belongs to it */
-      if(after && after.querySelector && after.querySelector('.divider-line')) ref=after.nextSibling;
+      var ref=talk;                                              /* each poster goes in front of The Range, in order */
       posters.forEach(function(m, i){
         var cap=(m.label||'').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
         var full=m.url.replace(/=w\d+$/, '=w2400'), key='uploaded/'+String(m.id).replace(/[^\w-]/g,'')+'-';
@@ -8272,11 +8306,11 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
             '<p class="flyer-note">The poster at print size &mdash; open it to zoom, or take the picture.</p>'+
           '</div></div>';
         var div=document.createElement('div'); div.className='wrap booth-media'; div.innerHTML='<div class="divider-line"></div>';
-        talk.parentNode.insertBefore(sec, ref); talk.parentNode.insertBefore(div, sec.nextSibling);
+        talk.parentNode.insertBefore(sec, ref); talk.parentNode.insertBefore(div, ref);
         var open=function(){ if(window.__openBook) window.__openBook({ name:cap||'Poster', read:'page', pages:1, pagePath:key, url:full }); };
         sec.querySelector('.ep-view').addEventListener('click', open);
         sec.querySelector('.flyer-thumb').addEventListener('click', open);
-        ref=div.nextSibling;                                   /* the next poster goes after this one */
+        /* the next poster goes after this one and still above The Range: ref stays The Range */
       });
     }
     /* a picture Drive will not hand over (deleted, or locked between two polls)
