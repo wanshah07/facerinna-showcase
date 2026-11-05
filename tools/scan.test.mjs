@@ -18,6 +18,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
+import { ROOT, PAGE } from './paths.mjs';
 const {chromium}=pkg;
 const PORT=8163, BASE='http://127.0.0.1:'+PORT, API=BASE+'/api';
 let bad=0; const chk=(l,ok,x)=>{ if(!ok) bad++;
@@ -224,7 +225,6 @@ console.log('\na code held up to the camera, with nobody touching the page');
   const y4m='/tmp/fx-scan-cam.y4m';
   const py=spawnSync('python3',['-c',`
 import cv2, numpy as np, sys
-import { ROOT, PAGE } from './paths.mjs';
 q=cv2.QRCodeEncoder_create().encode(sys.argv[1])
 q=cv2.copyMakeBorder(q,4,4,4,4,cv2.BORDER_CONSTANT,value=255)
 W,H=640,480
