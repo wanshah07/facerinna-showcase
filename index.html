@@ -703,8 +703,11 @@ section{padding:74px 0;position:relative}
   width:auto;height:auto;object-fit:contain;
   filter:drop-shadow(0 14px 16px rgba(23,50,79,.22));pointer-events:none;user-select:none}
 .cf-card .cf-tag{position:absolute;top:10px;left:12px;font-size:.58rem;font-weight:700;
-  letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--accent,var(--brand-deep));
+  letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--brand-deep);
   padding:3px 8px;border-radius:999px}
+/* --brand-deep rather than the card's own --accent: white 10px capitals on the
+   series accents read 2.7 to 3.1:1; the deep blue is 5.7:1 and matches the
+   tag on the grid thumbnails below the shelf. */
 /* On the radial ground the card's own translucency lets the violet through
    and a white packshot loses its edge against it, so here the glass is
    solid. */
