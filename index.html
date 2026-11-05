@@ -44,10 +44,15 @@
    ============================================================ */
 
 :root{
-  --brand:#4898D8; --brand-deep:#2E7CBE; --brand-soft:#D9EAF8;
+  /* --brand-deep was #2E7CBE and --muted #8299AD. Measured against WCAG AA on
+     5 Nov 2026: the deep blue read 4.4:1 on white and 3.9:1 on --surface-2 under
+     the 12px chips and eyebrows, the muted grey 2.95:1 on white under the 11px
+     metric notes and form labels. The same hues one step deeper: 5.7 / 5.0 and
+     4.8 / 4.2. The aurora theme sets its own values below and is untouched. */
+  --brand:#4898D8; --brand-deep:#276AA5; --brand-soft:#D9EAF8;
   --navy:#16324F; --teal:#0E9AA3; --teal-deep:#0A7278; --gold:#C9A24B;
   --bg:#EFF5FA; --surface:#FFFFFF; --surface-2:#E9F2FA; --line:#D9E5F1;
-  --ink:#1D344E; --ink-2:#52697F; --muted:#8299AD;
+  --ink:#1D344E; --ink-2:#52697F; --muted:#5F7589;
   --shadow-sm:0 1px 2px rgba(23,50,79,.06), 0 4px 14px rgba(23,50,79,.05);
   --shadow-md:0 10px 30px rgba(23,50,79,.10), 0 2px 6px rgba(23,50,79,.06);
   --shadow-lg:0 26px 60px rgba(23,50,79,.16);
@@ -698,7 +703,7 @@ section{padding:74px 0;position:relative}
   width:auto;height:auto;object-fit:contain;
   filter:drop-shadow(0 14px 16px rgba(23,50,79,.22));pointer-events:none;user-select:none}
 .cf-card .cf-tag{position:absolute;top:10px;left:12px;font-size:.58rem;font-weight:700;
-  letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--accent,var(--brand));
+  letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--accent,var(--brand-deep));
   padding:3px 8px;border-radius:999px}
 /* On the radial ground the card's own translucency lets the violet through
    and a white packshot loses its edge against it, so here the glass is
@@ -899,7 +904,7 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 .series-head .sdot{width:11px;height:11px;border-radius:50%;background:var(--accent,var(--brand));flex:0 0 auto;
   align-self:center}
 .series-head h3{font-size:1.28rem;margin:0;font-weight:600}
-.series-head .scount{font-size:.76rem;color:var(--muted);font-weight:600;background:var(--surface-2);
+.series-head .scount{font-size:.76rem;color:var(--ink-2);font-weight:600;background:var(--surface-2);
   padding:3px 10px;border-radius:999px;align-self:center}
 .series-desc{color:var(--ink-2);font-size:.87rem;margin:8px 0 20px}
 /* capped tracks so the widest series (5 products) still lands on one row,
@@ -946,7 +951,8 @@ body.space-theme .nav-trust::before{background:rgba(255,255,255,.22)}
 @media(max-width:640px){
   .series-slide .thumb-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 12px}}
 .thumb .active{display:none}
-.thumb .tag-best{position:absolute;top:0;right:-2px;background:var(--brand);color:#fff;font-size:.6rem;font-weight:700;
+/* --brand-deep, not --brand: white 10px capitals on the lighter blue were 3.1:1 */
+.thumb .tag-best{position:absolute;top:0;right:-2px;background:var(--brand-deep);color:#fff;font-size:.6rem;font-weight:700;
   letter-spacing:.06em;padding:4px 9px;border-radius:999px;box-shadow:0 4px 10px rgba(46,124,190,.4)}
 
 /* HERO PRODUCTS */
@@ -1953,7 +1959,8 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
 .footer{background:var(--navy);color:#D7E5F2;padding:52px 0 30px}
 .footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:34px}
 .footer .brand{color:#fff}
-.footer h4{font-family:'Inter';font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--brand);margin:0 0 14px}
+/* #6FB6E8, not var(--brand): the brand blue read 4.2:1 on the navy under 12px capitals; this is 6:1 */
+.footer h4{font-family:'Inter';font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:#6FB6E8;margin:0 0 14px}
 .footer a{color:#BCD2E6;text-decoration:none;font-size:.9rem;display:block;padding:6px 0;margin-bottom:3px;transition:.2s}
 .footer a:hover{color:#fff}
 .footer .fine{border-top:1px solid rgba(255,255,255,.12);margin-top:34px;padding-top:20px;font-size:.78rem;color:#8FA9C0;
@@ -2149,6 +2156,12 @@ body.slides.bleed-slide .halal-fab{bottom:var(--fab-bottom,22px);right:98px}
      one word a line. It takes the full row and the link columns pair up under
      it, which is how the block stacks on a phone anyway. */
   .footer-grid > div:first-child{grid-column:1 / -1}
+}
+/* At a phone's width half a row is about 160px, and overflow-wrap:anywhere
+   then breaks the e-mail address mid-word ("facerinnamalaysi / a.com"). The
+   Reach us column takes the whole row there; Explore and Evidence still pair. */
+@media(max-width:480px){
+  .footer-grid > div:last-child{grid-column:1 / -1}
 }
 /* The links hand over to the burger at 1460.
    It was 1060, and that was too low by about four hundred pixels: measured on
@@ -3001,7 +3014,7 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
 <section id="clinic" class="sec-tight">
   <div class="wrap">
     <div class="sec-head reveal">
-      <span class="eyebrow">Clinic Partnership Program</span>
+      <span class="eyebrow">Clinic Partnership Programme</span>
       <h2>Grow your clinic together with FACERINNA</h2>
       <p>A clinic partnership programme designed to increase awareness, drive trials and build long-term clinic growth.</p>
     </div>
