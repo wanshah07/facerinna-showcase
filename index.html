@@ -2358,38 +2358,57 @@ body.slides .eventposter .flyer-frame{max-width:min(100%, calc((100vh - var(--fl
   padding:6px 10px;border-radius:999px;pointer-events:none}
 
 /* ---- product visuals, sized for the screen they are on -------------------------------------------
-   The range carousel, the product tiles and the hero products used to be one size on every screen: the
-   carousel card stopped at 340px (a ninth of a 4K screen's width, a quarter of a tablet's), the tiles
-   and hero products were fixed pixel sizes. --pv is the product-visual scale (1 is the laptop the page
-   was drawn on); the carousel card is sized from the screen's own width and height, and its stage is
-   cut to fit it instead of staying 900px on every big screen. The slide deck (TV mode) fits its own
-   slides and is left to do that. */
+   Product cards read like a shop shelf: a small card, not a poster. The range carousel's front card, the
+   product tiles and the hero products are sized from the screen (--pv is the scale: 1 is a laptop), so a
+   phone, a tablet, a desktop and a TV each get a card of a comfortable size, and the carousel stage is cut
+   to fit its card instead of staying 900px tall. The slide deck (TV mode) fits its own slides and is left
+   to do that. */
 :root{--pv:1}
-@media(min-width:701px) and (max-width:1199px){:root{--pv:1.12}}
-@media(min-width:1800px){:root{--pv:1.2}}
-@media(min-width:2400px){:root{--pv:1.6}}
-@media(min-width:3200px){:root{--pv:2.1}}
-body:not(.slides) .shelf-stage{--cf-size:clamp(170px,min(62vw,40vh),300px);           /* phone */
+@media(min-width:1800px){:root{--pv:1.1}}
+@media(min-width:2400px){:root{--pv:1.3}}
+@media(min-width:3200px){:root{--pv:1.6}}
+body:not(.slides) .shelf-stage{--cf-size:clamp(150px,min(50vw,34vh),230px);                       /* phone */
   height:calc(var(--cf-size) * 1.45 + 80px);min-height:0;max-height:none}
-@media(min-width:701px){body:not(.slides) .shelf-stage{--cf-size:clamp(220px,min(40vw,36vh),440px)}}      /* tablet, kiosk */
-@media(min-width:1200px){body:not(.slides) .shelf-stage{--cf-size:clamp(240px,min(24vw,44vh),420px)}}    /* laptop, desktop */
-@media(min-width:1800px){body:not(.slides) .shelf-stage{--cf-size:clamp(300px,min(22vw,44vh),560px)}}    /* full HD screen, TV */
-@media(min-width:2400px){body:not(.slides) .shelf-stage{--cf-size:clamp(400px,min(22vw,44vh),760px)}}    /* QHD, 2.5K */
-@media(min-width:3200px){body:not(.slides) .shelf-stage{--cf-size:clamp(500px,min(22vw,44vh),900px)}}    /* 4K TV */
+@media(min-width:701px){body:not(.slides) .shelf-stage{--cf-size:clamp(200px,min(30vw,32vh),300px)}}   /* tablet, kiosk */
+@media(min-width:1200px){body:not(.slides) .shelf-stage{--cf-size:clamp(220px,min(19vw,36vh),300px)}}  /* laptop, desktop */
+@media(min-width:1800px){body:not(.slides) .shelf-stage{--cf-size:clamp(260px,min(17vw,36vh),380px)}}  /* full HD screen, TV */
+@media(min-width:2400px){body:not(.slides) .shelf-stage{--cf-size:clamp(320px,min(14vw,36vh),460px)}}  /* QHD, 2.5K */
+@media(min-width:3200px){body:not(.slides) .shelf-stage{--cf-size:clamp(380px,min(12vw,36vh),560px)}}  /* 4K TV */
 body:not(.slides) .shelf-stage:fullscreen{height:100vh}
 body.slides .shelf-stage{--cf-size:clamp(190px,min(26vw,34vh),calc(340px * var(--pv)))}
-.cf-card .cf-tag{font-size:max(10px,calc(var(--cf-card) * .032))}
-@media(min-width:701px) and (max-width:1199px),(min-width:1800px){
-  body:not(.slides) #range .wrap,body:not(.slides) #heroes .wrap,body:not(.slides) .series-slide .wrap{max-width:calc(var(--maxw) * var(--pv))}
-  body:not(.slides) .series-slide{--maxw:calc(1400px * var(--pv))}
-  body:not(.slides) .thumb-grid{grid-template-columns:repeat(auto-fit,minmax(calc(200px * var(--pv)),calc(248px * var(--pv))));gap:calc(28px * var(--pv)) calc(22px * var(--pv))}
-  body:not(.slides) .series-slide .thumb-grid{grid-template-columns:repeat(var(--cols,4),minmax(0,calc(248px * var(--pv))))}
-  body:not(.slides) .thumb .art{height:calc(300px * var(--pv))}
-  body:not(.slides) .thumb .art img{max-height:calc(292px * var(--pv))}
-  body:not(.slides) .thumb h3{font-size:calc(1.02rem * var(--pv))}
-  body:not(.slides) #heroProducts{--card-h:calc(420px * var(--pv))}
-  body:not(.slides) .hp-visual img{height:min(calc(220px * var(--pv)), calc(var(--card-h) - var(--peek,106px) - 46px))}
+.cf-card .cf-tag{font-size:max(10px,calc(var(--cf-card) * .045))}
+/* the product tiles: about 225px wide, the picture about 220px tall */
+body:not(.slides) #range .wrap,body:not(.slides) #heroes .wrap,body:not(.slides) .series-slide .wrap{max-width:calc(var(--maxw) * var(--pv))}
+body:not(.slides) .series-slide{--maxw:calc(1400px * var(--pv))}
+body:not(.slides) .thumb .art{height:calc(230px * var(--pv))}
+body:not(.slides) .thumb .art img{max-height:calc(222px * var(--pv))}
+body:not(.slides) .thumb h3{font-size:calc(1rem * var(--pv))}
+@media(min-width:641px){
+  body:not(.slides) .thumb-grid{grid-template-columns:repeat(auto-fit,minmax(calc(180px * var(--pv)),calc(225px * var(--pv))));gap:calc(24px * var(--pv)) calc(18px * var(--pv))}
+  body:not(.slides) .series-slide .thumb-grid{grid-template-columns:repeat(var(--cols,4),minmax(0,calc(225px * var(--pv))))}
 }
+body:not(.slides) #heroProducts{--card-h:calc(420px * var(--pv))}
+body:not(.slides) .hp-visual img{height:min(calc(220px * var(--pv)), calc(var(--card-h) - var(--peek,106px) - 46px))}
+
+/* ---- the events strip: what is on now or coming up, short, above The Range. Each card opens the Events page. ---- */
+#eventsNow{padding:22px 0 6px}
+#eventsNow .evs-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+#eventsNow .evs-all{font-size:.86rem;font-weight:600;color:var(--brand-deep);text-decoration:none;white-space:nowrap}
+#eventsNow .evs-all:hover{text-decoration:underline}
+.evs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:12px}
+.evs-card{display:flex;align-items:center;gap:13px;padding:11px 14px;border-radius:16px;min-width:0;
+  background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm);text-decoration:none;color:inherit;
+  transition:transform .2s ease,box-shadow .2s ease}
+.evs-card:hover,.evs-card:focus-visible{transform:translateY(-2px);box-shadow:var(--shadow-md,var(--shadow-sm))}
+.evs-date{flex:0 0 auto;width:54px;text-align:center;border-radius:12px;background:var(--brand-soft);color:var(--brand-deep);padding:6px 2px;line-height:1.05}
+.evs-date b{display:block;font-family:'Fraunces',Georgia,serif;font-size:1.3rem}
+.evs-date span{font-size:.64rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.evs-body{min-width:0;flex:1}
+.evs-title{font-weight:700;font-size:.95rem;line-height:1.25;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.evs-where{margin-top:2px;font-size:.8rem;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evs-chip{display:inline-block;margin-top:5px;font-size:.64rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--brand-soft);color:var(--brand-deep)}
+.evs-chip.live{background:#dff5e8;color:#0e6b48}
+.evs-go{flex:0 0 auto;font-size:1.15rem;color:var(--brand)}
 </style>
 <link rel="stylesheet" href="fx-ui-polish.css">
 </head>
@@ -2485,6 +2504,15 @@ body.slides .shelf-stage{--cf-size:clamp(190px,min(26vw,34vh),calc(340px * var(-
   </div>
 </section>
 
+
+<!-- EVENTS: a short strip of the events on now or coming up, read from the same sheet as the Events page.
+     Each card opens that page. Hidden until there is something to show. -->
+<section id="eventsNow" class="sec-tight" hidden>
+  <div class="wrap">
+    <div class="evs-head"><span class="eyebrow" id="evsEyebrow">Coming up</span><a class="evs-all" href="events/">See all events &rarr;</a></div>
+    <div class="evs-grid" id="evsGrid"></div>
+  </div>
+</section>
 
 <!-- RANGE / THUMBNAILS -->
 <section id="range">
@@ -8282,13 +8310,12 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
         linksTo('qrcore').forEach(function(a){ a.classList.add('booth-link-hidden'); });
       }
     }
-    /* The event's poster card sits ABOVE The Range, straight under the opening banner, so the
-       event now running is the first thing after the hero rather than far down past the talk. */
-    var talk=document.getElementById('range');
+    var talk=document.getElementById('talk');
     if(posters.length && talk){
       var ev=String(st.active_event||'').replace(/[<>]/g,'');
       window.__DOCASSETS=window.__DOCASSETS||{};
-      var ref=talk;                                              /* each poster goes in front of The Range, in order */
+      var ref=talk.nextSibling, after=talk.nextElementSibling;   /* the divider under the talk belongs to it */
+      if(after && after.querySelector && after.querySelector('.divider-line')) ref=after.nextSibling;
       posters.forEach(function(m, i){
         var cap=(m.label||'').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
         var full=m.url.replace(/=w\d+$/, '=w2400'), key='uploaded/'+String(m.id).replace(/[^\w-]/g,'')+'-';
@@ -8306,11 +8333,11 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
             '<p class="flyer-note">The poster at print size &mdash; open it to zoom, or take the picture.</p>'+
           '</div></div>';
         var div=document.createElement('div'); div.className='wrap booth-media'; div.innerHTML='<div class="divider-line"></div>';
-        talk.parentNode.insertBefore(sec, ref); talk.parentNode.insertBefore(div, ref);
+        talk.parentNode.insertBefore(sec, ref); talk.parentNode.insertBefore(div, sec.nextSibling);
         var open=function(){ if(window.__openBook) window.__openBook({ name:cap||'Poster', read:'page', pages:1, pagePath:key, url:full }); };
         sec.querySelector('.ep-view').addEventListener('click', open);
         sec.querySelector('.flyer-thumb').addEventListener('click', open);
-        /* the next poster goes after this one and still above The Range: ref stays The Range */
+        ref=div.nextSibling;                                   /* the next poster goes after this one */
       });
     }
     /* a picture Drive will not hand over (deleted, or locked between two polls)
@@ -8596,6 +8623,128 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
 })();
 </script>
 
+<script>
+/* The events strip. The rows come from the same public sheet the Events page reads (the owner edits that sheet; a row
+   with show = FALSE stays off here too). Only what is on now or still to come is shown, the first three, as short
+   cards. The last good answer is kept on the device, so a screen with no signal still shows it. All text goes in
+   with textContent: a cell is never read as HTML. */
+(function(){
+  var sec=document.getElementById('eventsNow'), grid=document.getElementById('evsGrid'), eyebrow=document.getElementById('evsEyebrow');
+  if(!sec || !grid) return;
+  var SHEET='1fZ5fj_1q1ABjXSEkGjnj8A8_55nnTq_nq4rgO7LZ5K8', GID='0', KEY='fx.events.strip', MAX=3, DAY=86400000, WEEK=7*DAY;
+  var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function parseCSV(text){
+    var rows=[], row=[], cur='', q=false, i=0;
+    text=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    for(; i<text.length; i++){
+      var c=text[i];
+      if(q){ if(c==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=c; }
+      else if(c==='"') q=true;
+      else if(c===','){ row.push(cur); cur=''; }
+      else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; }
+      else cur+=c;
+    }
+    if(cur.length || row.length){ row.push(cur); rows.push(row); }
+    return rows.filter(function(r){ return r.some(function(c){ return String(c).trim()!==''; }); });
+  }
+  function objects(rows){
+    if(!rows.length) return [];
+    var head=rows[0].map(function(h){ return String(h).trim().toLowerCase().replace(/\s+/g,'_'); });
+    return rows.slice(1).map(function(r){ var o={}; head.forEach(function(h,i){ o[h]=(r[i]==null?'':String(r[i]).trim()); }); return o; });
+  }
+  function parseDate(s){
+    s=String(s||'').trim(); if(!s) return null;
+    var mk=function(y,mo,da){ var d=new Date(y,mo-1,da); return (isNaN(d.getTime()) || d.getMonth()!==mo-1) ? null : d; };
+    var m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s); if(m) return mk(+m[1],+m[2],+m[3]);
+    var g=/^Date\((\d{4}),(\d{1,2}),(\d{1,2})/.exec(s); if(g) return mk(+g[1],+g[2]+1,+g[3]);
+    var q=/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/.exec(s);
+    if(q){ var a=+q[1], b=+q[2], y=+q[3]; if(a>12 && b<=12) return mk(y,b,a); if(b>12 && a<=12) return mk(y,a,b); }
+    return null;
+  }
+  function midnight(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+  function jsonp(ms){
+    return new Promise(function(resolve,reject){
+      var cb='__evs_cb_'+Date.now(), el=document.createElement('script'), done=false;
+      function clean(){ clearTimeout(t); try{ delete window[cb]; }catch(e){ window[cb]=undefined; } if(el.parentNode) el.parentNode.removeChild(el); }
+      var t=setTimeout(function(){ if(!done){ done=true; clean(); reject(new Error('timeout')); } }, ms||12000);
+      window[cb]=function(p){
+        if(done) return; done=true; clean();
+        try{
+          if(!p || !p.table) throw new Error('malformed');
+          var cell=function(c){
+            if(c==null || c.v==null) return '';
+            if(typeof c.v==='string'){ var d=/^Date\((\d{4}),(\d{1,2}),(\d{1,2})/.exec(c.v); if(d){ var pad=function(n){ return (n<10?'0':'')+n; }; return d[1]+'-'+pad(+d[2]+1)+'-'+pad(+d[3]); } return c.v; }
+            return c.f!=null ? String(c.f) : String(c.v);
+          };
+          var out=[(p.table.cols||[]).map(function(c){ return (c.label||'').trim(); })];
+          (p.table.rows||[]).forEach(function(r){ out.push((r.c||[]).map(cell)); });
+          resolve(out);
+        }catch(e){ reject(e); }
+      };
+      el.onerror=function(){ if(!done){ done=true; clean(); reject(new Error('blocked')); } };
+      el.src='https://docs.google.com/spreadsheets/d/'+SHEET+'/gviz/tq?tqx=out:json;responseHandler:'+cb+'&gid='+GID+'&cacheBust='+Date.now();
+      document.head.appendChild(el);
+    });
+  }
+  function csv(){
+    return fetch('https://docs.google.com/spreadsheets/d/'+SHEET+'/export?format=csv&gid='+GID+'&cacheBust='+Date.now(), {cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }).then(parseCSV);
+  }
+  /* what to show: on now first, then the soonest to come; finished and hidden rows are left out */
+  function pick(list){
+    var today=midnight(new Date()), out=[];
+    list.forEach(function(e){
+      if(!e || !e.event || /^false$/i.test(String(e.show||'TRUE'))) return;
+      var a=parseDate(e.start_date), b=parseDate(e.end_date)||a;
+      if(!a) return; if(b<a) b=a;
+      if(today>b) return;
+      out.push({ e:e, a:a, b:b, live:today>=a, days:Math.round((a-today)/DAY) });
+    });
+    out.sort(function(x,y){ return x.live!==y.live ? (x.live?-1:1) : x.a-y.a; });
+    return out.slice(0,MAX);
+  }
+  function span(a,b){
+    if(!b || a.getTime()===b.getTime()) return a.getDate()+' '+MON[a.getMonth()];
+    return a.getMonth()===b.getMonth() ? a.getDate()+' – '+b.getDate()+' '+MON[b.getMonth()]
+                                       : a.getDate()+' '+MON[a.getMonth()]+' – '+b.getDate()+' '+MON[b.getMonth()];
+  }
+  function el(tag, cls, text){ var n=document.createElement(tag); if(cls) n.className=cls; if(text!=null) n.textContent=text; return n; }
+  function draw(list){
+    var shown=pick(list); grid.textContent='';
+    shown.forEach(function(x){
+      var card=el('a','evs-card'); card.href='events/';
+      var date=el('div','evs-date'); date.appendChild(el('b',null,String(x.a.getDate()))); date.appendChild(el('span',null,MON[x.a.getMonth()]));
+      var body=el('div','evs-body');
+      body.appendChild(el('div','evs-title',x.e.event));
+      var where=[span(x.a,x.b), x.e.location].filter(Boolean).join(' · ');
+      body.appendChild(el('div','evs-where',where));
+      var label=x.live ? 'Happening now' : x.days===0 ? 'Today' : x.days===1 ? 'Tomorrow' : x.days<=14 ? 'In '+x.days+' days' : 'Upcoming';
+      body.appendChild(el('span','evs-chip'+(x.live?' live':''),label));
+      card.appendChild(date); card.appendChild(body); card.appendChild(el('span','evs-go','›'));
+      grid.appendChild(card);
+    });
+    var live=shown.filter(function(x){ return x.live; }).length;
+    eyebrow.textContent = !shown.length ? 'Coming up' : live===shown.length ? 'Happening now' : live ? 'Events' : 'Coming up';
+    var was=sec.hidden; sec.hidden=!shown.length;
+    /* the page below has just moved: a header link tapped a moment ago is landed on again */
+    if(was && !sec.hidden){
+      var t=window.__navTarget; if(t && Date.now()-t.at<12000){ var te=null; try{ te=document.querySelector(t.id); }catch(e){}
+        if(te && te.offsetHeight) setTimeout(function(){ var off=te.getBoundingClientRect().top-72; if(Math.abs(off)>2) scrollTo({top:Math.max(0,scrollY+off),behavior:'instant'}); },60); }
+    }
+  }
+  function saved(){ try{ var c=JSON.parse(localStorage.getItem(KEY)||'null'); return c && c.rows && Date.now()-c.at<WEEK ? c.rows : null; }catch(e){ return null; } }
+  function load(){
+    csv().catch(function(){ return jsonp(12000); }).then(function(rows){
+      var list=objects(rows);
+      if(!list.length) return;
+      try{ localStorage.setItem(KEY, JSON.stringify({at:Date.now(), rows:list})); }catch(e){}
+      draw(list);
+    }).catch(function(){ /* unreachable: whatever was last seen stays */ });
+  }
+  var have=saved(); if(have) draw(have);
+  if(document.readyState==='complete') load(); else addEventListener('load', load);
+})();
+</script>
 <script src="fx-gift.js"></script>
 <!-- Cloudflare Web Analytics: page views only, no cookies, no browser storage.
      A module script runs after the page is parsed, so an offline booth is unaffected. -->

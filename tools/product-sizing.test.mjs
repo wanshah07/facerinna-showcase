@@ -4,6 +4,9 @@
    screen: the card stopped at 340px (9% of a 4K TV's width, a quarter of a tablet's), the tiles and hero
    products were fixed pixel sizes, and the carousel's stage stayed 900px tall on every big screen.
 
+   The cards are meant to read like a shop shelf (a small card, about 225px wide with a picture about 220px
+   tall on a laptop), not a poster, and to grow only a little for a big screen.
+
    For each screen this loads the page and checks the front card is a sensible share of the screen, that
    the stage fits it (nothing of the carousel is cut off by the stage), that nothing makes the page scroll
    sideways, and that the tiles and the hero products grow on a big screen and are unchanged on a laptop. */
@@ -60,18 +63,17 @@ for (const m of all) {
   chk(`${m.name}: nothing of the carousel is cut off by its stage, and the page does not scroll sideways`, !m.clipped && !m.sideways, { clipped: m.clipped, sideways: m.sideways, stage: m.stage, card: m.card });
   chk(`${m.name}: no page errors`, m.errs.length === 0, m.errs);
 }
-for (const k of ['phone360', 'phone390', 'phone430']) chk(`${R[k].name}: the front card fills most of the phone's width (55-68%)`, R[k].share >= .55 && R[k].share <= .68, R[k].share);
-chk(`tablet 820: the front card is a good share of the width (36-44%), not a quarter`, R.tablet820.share >= .36 && R.tablet820.share <= .44, R.tablet820.share);
-chk(`kiosk 1080x1920: the front card is 36-44% of the width`, R.kiosk1080.share >= .36 && R.kiosk1080.share <= .44, R.kiosk1080.share);
-chk(`laptop 1366: unchanged in size (about 24% of the width)`, R.laptop1366.share >= .22 && R.laptop1366.share <= .26 && R.laptop1366.thumb === 292, [R.laptop1366.share, R.laptop1366.thumb]);
-chk(`desktop 1920x1080: the card is bigger than the old 340px cap (at least 400px)`, R.desktop1920.card >= 400, R.desktop1920.card);
-chk(`QHD 2560x1440: bigger again (at least 520px)`, R.QHD2560.card >= 520, R.QHD2560.card);
-chk(`TV 3840x2160: the card is at least 780px (it was 340px, a ninth of the width)`, R.TV3840.card >= 780, R.TV3840.card);
-chk(`the card never takes more than 45% of the screen's height`, all.every(m => m.card / m.vh <= .45), all.map(m => [m.name, (m.card / m.vh).toFixed(2)]));
-chk(`the stage is cut to the card instead of staying 900px (TV and desktop)`, R.desktop1920.stage < 800 && R.TV3840.stage > 1100, [R.desktop1920.stage, R.TV3840.stage]);
-chk(`the product tiles grow with the screen: laptop 292px, desktop larger, TV at least double`, R.desktop1920.thumb > R.laptop1366.thumb && R.TV3840.thumb >= 2 * R.laptop1366.thumb - 10, [R.laptop1366.thumb, R.desktop1920.thumb, R.TV3840.thumb]);
-chk(`the hero products grow the same way`, R.desktop1920.hero > R.laptop1366.hero && R.TV3840.hero >= 2 * R.laptop1366.hero - 10, [R.laptop1366.hero, R.desktop1920.hero, R.TV3840.hero]);
-chk(`a phone keeps the tiles and hero products as they were`, R.phone390.thumb === 292 && R.phone390.hero >= 215 && R.phone390.hero <= 222, [R.phone390.thumb, R.phone390.hero]);
+for (const k of ['phone360', 'phone390', 'phone430']) chk(`${R[k].name}: the front card is about half the phone's width (46-56%)`, R[k].share >= .46 && R[k].share <= .56, R[k].share);
+chk(`tablet 820: the front card is a modest share of the width (26-34%)`, R.tablet820.share >= .26 && R.tablet820.share <= .34, R.tablet820.share);
+chk(`kiosk 1080x1920: the front card is 24-32% of the width`, R.kiosk1080.share >= .24 && R.kiosk1080.share <= .32, R.kiosk1080.share);
+chk(`laptop 1366: a small card, about the size it always was (230-290px), the picture about 220px`, R.laptop1366.card >= 230 && R.laptop1366.card <= 290 && R.laptop1366.thumb >= 215 && R.laptop1366.thumb <= 225, [R.laptop1366.card, R.laptop1366.thumb]);
+chk(`desktop 1920x1080: a little bigger (290-380px), not a poster`, R.desktop1920.card >= 290 && R.desktop1920.card <= 380, R.desktop1920.card);
+chk(`QHD 2560x1440: 320-460px`, R.QHD2560.card >= 320 && R.QHD2560.card <= 460, R.QHD2560.card);
+chk(`TV 3840x2160: bigger than a laptop's but still a card (400-560px; it was 340)`, R.TV3840.card >= 400 && R.TV3840.card <= 560, R.TV3840.card);
+chk(`no screen's card takes more than 36% of its height, or more than 52% of its width`, all.every(m => m.card / m.vh <= .36 && m.share <= .52), all.map(m => [m.name, (m.card / m.vh).toFixed(2), m.share.toFixed(2)]));
+chk(`the stage is cut to the card (card x 1.45 + 80px), not a fixed 900px`, all.every(m => Math.abs(m.stage - Math.round(m.card * 1.45 + 80)) <= 3), all.map(m => [m.name, m.stage, m.card]));
+chk(`the product tiles are about 220px tall on a laptop and phone, and grow on a big screen (TV at least 1.4 times)`, R.laptop1366.thumb >= 215 && R.laptop1366.thumb <= 225 && R.phone390.thumb === R.laptop1366.thumb && R.desktop1920.thumb > R.laptop1366.thumb && R.TV3840.thumb >= 1.4 * R.laptop1366.thumb, [R.phone390.thumb, R.laptop1366.thumb, R.desktop1920.thumb, R.TV3840.thumb]);
+chk(`the hero products grow the same way (laptop and phone as they were, TV at least 1.4 times)`, R.laptop1366.hero >= 215 && R.laptop1366.hero <= 222 && R.desktop1920.hero > R.laptop1366.hero && R.TV3840.hero >= 1.4 * R.laptop1366.hero, [R.laptop1366.hero, R.desktop1920.hero, R.TV3840.hero]);
 
 srv.close(); await b.close();
 console.log(bad ? '\n' + bad + ' FAILED' : '\nproduct visuals are sized for every screen');
