@@ -41,12 +41,17 @@ const ONE = [HEAD, row('TRUE', 'Only One', plus(9), plus(12), 'Sunway Pyramid')]
 const NONE = [HEAD, row('TRUE', 'Old Event (finished)', plus(-9), plus(-5), 'Past Hall')].join('\n');
 
 const b = await chromium.launch();
-async function open({ w = 1366, h = 768, mobile = false, sheet = CSV, cache = null }) {
+async function open({ w = 1366, h = 768, mobile = false, sheet = CSV, cache = null, states = null, delay = 0 }) {
   const c = await b.newContext({ viewport: { width: w, height: h }, isMobile: mobile, hasTouch: mobile });
   await c.route(u => !u.href.startsWith(BASE) && !/docs\.google\.com\/spreadsheets/.test(u.href), r => r.abort());
   await c.route(/docs\.google\.com\/spreadsheets/, r => sheet === null ? r.abort()
     : r.fulfill({ status: 200, contentType: 'text/csv', headers: { 'Access-Control-Allow-Origin': '*' }, body: sheet }));
-  await c.addInitScript(([cache]) => { window.__BOOTH_API = ''; try { if (cache) localStorage.setItem('fx.events.strip', cache); } catch (e) {} }, [cache]);
+  if (states) {
+    const CONFIG = { ok: true, settings: { page_mode: 'open', welcome: 'show', games_off: '', gift_active: 'no', tour_active: 'no' },
+      section_states: states, builtin_off: [], documents: [], media: [], segments: [], gift_needs: {} };
+    await c.route(BASE + '/api', async r => { await sleep(delay); r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(CONFIG) }); });
+  }
+  await c.addInitScript(([cache, api]) => { window.__BOOTH_API = api; try { if (cache) localStorage.setItem('fx.events.strip', cache); } catch (e) {} }, [cache, states ? BASE + '/api' : '']);
   const p = await c.newPage(); const errs = [];
   p.on('pageerror', e => errs.push(e.message));
   await p.goto(BASE + '/index.html', { waitUntil: 'load' }); await sleep(2500);
@@ -115,6 +120,29 @@ console.log('\nthe sheet cannot be reached');
   const old = await open({ sheet: null, cache: JSON.stringify({ at: Date.now() - 9 * 86400000, rows }) }); const ro = await read(old.p);
   chk('...but not a copy more than a week old', !ro.shown, ro);
   await old.c.close();
+}
+
+console.log('\nthe admin switch (Sections tab: Events strip)');
+{
+  const vis = (p, id) => p.evaluate(i => { const e = document.getElementById(i); return !!e && !e.hidden && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().height > 0; }, id);
+  const link = p => p.evaluate(() => [...document.querySelectorAll('a[href="#eventsNow"]')].some(a => getComputedStyle(a).display !== 'none'));
+  const on = await open({ states: [], delay: 300 }); await sleep(1500);
+  chk('switched on (the default): the strip is shown', await vis(on.p, 'eventsNow') && await vis(on.p, 'range'));
+  await on.c.close();
+  const off = await open({ states: [{ id: 'eventsNow', label: 'Events strip', mode: 'hidden', message: '' }], delay: 300 }); await sleep(1500);
+  const ro = await read(off.p);
+  chk('switched off: the strip is not on the page, even though the sheet has events', !(await vis(off.p, 'eventsNow')), ro.shown);
+  chk('...and the page under it is untouched (The Range, the divider below it, the next segment)', await vis(off.p, 'range') && await vis(off.p, 'heroes')
+    && await off.p.evaluate(() => { const d = document.getElementById('range').nextElementSibling; return getComputedStyle(d).display !== 'none'; }));
+  chk('...no gap is left above The Range', await off.p.evaluate(() => document.getElementById('range').getBoundingClientRect().top - document.getElementById('top').getBoundingClientRect().bottom < 120));
+  chk('no page errors', off.errs.length === 0, off.errs);
+  await off.c.close();
+  const held = await open({ states: [{ id: 'eventsNow', label: 'Events strip', mode: 'hidden', message: '' }], delay: 2500, cache: null }); await sleep(900);
+  chk('before the answer arrives the strip waits too: it is never painted and then taken away', !(await vis(held.p, 'eventsNow')));
+  await held.c.close();
+  const lock = await open({ states: [{ id: 'eventsNow', label: 'Events strip', mode: 'locked', message: '' }], delay: 300 }); await sleep(1500);
+  chk('a lock request (nothing to lock) is treated as off', !(await vis(lock.p, 'eventsNow')) && !(await lock.p.evaluate(() => !!document.querySelector('#eventsNow .booth-lock'))));
+  await lock.c.close();
 }
 
 srv.close(); await b.close();

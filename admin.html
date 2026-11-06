@@ -843,7 +843,7 @@ function renderSections(rows){
     el.innerHTML='<div><div class="t" style="text-transform:none">'+esc(r.label)+'</div>'+
       '<div class="secctl">'+
         '<select class="secmode" aria-label="State of '+esc(r.label)+'">'+
-          ['show','locked','hidden'].map(function(m){ return '<option value="'+m+'"'+(r.mode===m?' selected':'')+'>'+
+          (r.id==='eventsNow' ? ['show','hidden'] : ['show','locked','hidden']).map(function(m){ return '<option value="'+m+'"'+(r.mode===m?' selected':'')+'>'+
             (m==='show'?'Show':m==='locked'?'Locked':'Hidden')+'</option>'; }).join('')+
         '</select>'+
         '<input class="secpass lockonly" type="text" autocomplete="off" placeholder="Passcode (blank = site passcode)" value="'+esc(r.passcode||'')+'">'+

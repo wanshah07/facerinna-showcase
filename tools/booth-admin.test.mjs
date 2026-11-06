@@ -189,9 +189,9 @@ check('titles are cut, not refused', call({action:'admin.segment.save',token,seg
 
 console.log('\nsections of the page');
 check('setUp gave every section a row, all showing',
-  tabs['Sections'].rows.length===9 && call({action:'admin.get',token}).section_rows.every(x=>x.mode==='show'));
+  tabs['Sections'].rows.length===10 && call({action:'admin.get',token}).section_rows.every(x=>x.mode==='show'));
 check('the section rows are in the order of the page, not the sheet',
-  call({action:'admin.get',token}).section_rows.map(x=>x.id).join()==='range,heroes,evidence,gallery,clinic,qrcore,talk,game');
+  call({action:'admin.get',token}).section_rows.map(x=>x.id).join()==='eventsNow,range,heroes,evidence,gallery,clinic,qrcore,talk,game');
 check('a page with nothing changed sends no section states', call({action:'config'}).section_states.length===0);
 check('an unknown section is refused', call({action:'admin.section.set',token,id:'nope',mode:'hidden'}).ok===false);
 check('a stranger cannot change one', call({action:'admin.section.set',id:'qrcore',mode:'hidden'}).ok===false);
@@ -200,7 +200,16 @@ r=call({action:'admin.section.set',token,id:'qrcore',mode:'hidden'});
 cfg=call({action:'config'});
 check('hiding the QR section reaches the page', r.ok && cfg.section_states.length===1
   && cfg.section_states[0].id==='qrcore' && cfg.section_states[0].mode==='hidden' && cfg.section_states[0].label==='QR Code');
-check('...and the other seven are left alone', call({action:'admin.get',token}).section_rows.filter(x=>x.mode==='show').length===7);
+check('...and the other eight are left alone', call({action:'admin.get',token}).section_rows.filter(x=>x.mode==='show').length===8);
+
+r=call({action:'admin.section.set',token,id:'eventsNow',mode:'hidden'});
+cfg=call({action:'config'});
+check('the events strip is a section of its own: switching it off reaches the page',
+  r.ok && cfg.section_states.some(x=>x.id==='eventsNow' && x.mode==='hidden' && x.label==='Events strip'));
+r=call({action:'admin.section.set',token,id:'eventsNow',mode:'locked'});
+check('...it has nothing to lock: a lock request becomes off', r.ok && call({action:'config'}).section_states.filter(x=>x.id==='eventsNow')[0].mode==='hidden');
+r=call({action:'admin.section.set',token,id:'eventsNow',mode:'show'});
+check('...and switching it on again sends nothing for it', r.ok && !call({action:'config'}).section_states.some(x=>x.id==='eventsNow'));
 
 /* the site passcode is 'booth2026' by now, set earlier */
 r=call({action:'admin.section.set',token,id:'game',mode:'locked',message:'Ask at the counter'});
