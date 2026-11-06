@@ -53,7 +53,7 @@
   --surface-2:#f4f3ef;
   --ink:#0b0b0b;
   --ink-2:#52514e;
-  --muted:#898781;
+  --muted:#6b6963;   /* was #898781, 3.5:1 on the surface; 5.4:1 now, so 11-12px labels read at AA */
   --grid:#e1e0d9;
   --axis:#c3c2b7;
   --hair:rgba(11,11,11,.10);
@@ -1222,7 +1222,8 @@ function thumbsHTML(){
       " style='--ptint:"+(PARAM_TINT[sec.id]||"var(--fr)")+"'"+
       " aria-pressed='"+(active===sec.id)+"'>"+
       "<span class='ill'>"+
-            (PARAM_PHOTO[sec.id] ? "<img src='"+PARAM_PHOTO[sec.id].u+"' alt='"+esc(PARAM_PHOTO[sec.id].a)+
+            (PARAM_PHOTO[sec.id] ? "<img src='"+PARAM_PHOTO[sec.id].u+"' srcset='"+PARAM_PHOTO[sec.id].u+" 1x, "+
+             PARAM_PHOTO[sec.id].u.replace("w=560&h=287","w=1120&h=574")+" 2x' alt='"+esc(PARAM_PHOTO[sec.id].a)+
              "' loading='lazy' decoding='async' onerror='this.remove()'>" : "")+
             statHTML(sec)+"</span>"+
       (bd ? "<span class='badge "+sec.tech.badge+"' title='"+esc(bd[1]+" — "+bd[2])+"'>"+

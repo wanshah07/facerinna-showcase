@@ -82,7 +82,7 @@
   #benchmark .leading-relaxed{line-height:1.625}
   #benchmark .text-navy{color:#16324F}
   #benchmark .text-ink2{color:#52697F}
-  #benchmark .text-brandDeep{color:#2E7CBE}
+  #benchmark .text-brandDeep{color:#276AA5}
   #benchmark .max-w-\[46ch\]{max-width:46ch}
   #benchmark .text-\[1\.1rem\]{font-size:1.1rem}
   #benchmark .text-\[0\.95rem\]{font-size:.95rem}
@@ -108,7 +108,7 @@
   #benchmark .focus-visible\:outline:focus-visible{outline-style:solid}
   #benchmark .focus-visible\:outline-2:focus-visible{outline-width:2px}
   #benchmark .focus-visible\:outline-offset-\[3px\]:focus-visible{outline-offset:3px}
-  #benchmark .focus-visible\:outline-brandDeep:focus-visible{outline-color:#2E7CBE}
+  #benchmark .focus-visible\:outline-brandDeep:focus-visible{outline-color:#276AA5}
 
   @media (prefers-reduced-motion:reduce){
     #benchmark .motion-reduce\:transition-none{transition:none}
@@ -125,11 +125,11 @@
    ============================================================ */
 
 :root{
-  --brand:#4898D8; --brand-deep:#2E7CBE; --brand-soft:#D9EAF8;
+  --brand:#4898D8; --brand-deep:#276AA5; --brand-soft:#D9EAF8;  /* deep was #2E7CBE: 4.4:1 on white and 3.6:1 on the soft blue the glossary codes sit on; 5.7 and 5.0 now */
   --navy:#16324F; --teal:#0E9AA3; --teal-deep:#0A7278; --teal-soft:#D6F3F1;
   --gold:#C9A24B; --gold-deep:#A9812F; --gold-soft:#F5E9CE;
   --bg:#EFF5FA; --surface:#FFFFFF; --surface-2:#E9F2FA; --line:#D9E5F1;
-  --ink:#1D344E; --ink-2:#52697F; --muted:#8299AD;
+  --ink:#1D344E; --ink-2:#52697F; --muted:#5F7589;  /* muted was #8299AD, 2.95:1 on white under 11px notes; 4.8:1 now */
   --amber:#8A6417; --amber-bg:#FFF7E6; --amber-line:#F0D9A0;
   --red:#A83A34; --red-bg:#FCEBEA; --red-line:#F0C4C0;
   --green:#177A5C; --green-bg:#E7F8F1; --green-line:#BCE7D6;
@@ -365,7 +365,7 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
 .gd-dir.other{background:var(--surface-2);color:var(--ink-2)}
 .gd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:14px 0}
 .gd-box{background:var(--surface-2);border-radius:12px;padding:11px 13px}
-.gd-box .k{font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.gd-box .k{font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-bottom:3px}
 .gd-box .v{font-size:.86rem;color:var(--ink);line-height:1.4}
 .gd-marketing{background:linear-gradient(150deg,var(--brand-soft),#FFF);border:1.5px dashed var(--brand);border-radius:14px;padding:14px 16px;margin-top:6px}
 .gd-marketing .k{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--brand-deep);margin-bottom:4px}
@@ -779,7 +779,7 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
 .subj b{color:var(--muted);font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
 .subj.nohuman{background:var(--teal-soft);color:var(--teal-deep)}
 .rc-params{margin-top:8px}
-.rc-params .k{font-size:.62rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.rc-params .k{font-size:.62rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);margin-bottom:5px}
 .plist{display:flex;flex-wrap:wrap;gap:6px}
 .pitem{font-size:.76rem;font-weight:600;background:var(--brand-soft);color:var(--brand-deep);border-radius:999px;padding:4px 11px}
 
@@ -844,7 +844,7 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
 .build-stamp{opacity:.55;font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .footer-top{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:22px}
 .footer .brand-txt b{color:#fff}
-.footer .brand-txt span{color:var(--brand)}
+.footer .brand-txt span{color:#6FB6E8}  /* the brand blue on the navy was 4.2:1 under 10px capitals; 6:1 */
 .footer .fine{border-top:1px solid rgba(255,255,255,.12);padding-top:18px;font-size:.78rem;color:#8FA9C0;
   display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 .footer .fine a{color:#BCD2E6;text-decoration:underline dotted;text-underline-offset:3px}
@@ -964,7 +964,7 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
     <div class="range-tools" id="rangeTools">
       <div class="range-search">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input type="text" id="rangeSearch" placeholder="Search products or SKU codes…">
+        <input type="text" id="rangeSearch" aria-label="Search products or SKU codes" placeholder="Search products or SKU codes…">
       </div>
     </div>
     <div class="range-filters" id="rangeFilters"></div>
@@ -984,7 +984,7 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
     <div class="gloss-tools">
       <div class="gloss-search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input type="text" id="glossSearch" placeholder="Search by code, name or meaning (e.g. TEWL, brightening, sebum)…">
+        <input type="text" id="glossSearch" aria-label="Search the glossary" placeholder="Search by code, name or meaning (e.g. TEWL, brightening, sebum)…">
       </div>
       <div class="gloss-count" id="glossCount"></div>
     </div>
@@ -1200,7 +1200,7 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
     <div class="fine">
       <span>© 2026 FACERINNA® · Internal Regulatory Affairs reference. Not for external distribution.</span>
       <span id="footerSync">Loading data…</span>
-      <span class="build-stamp" title="Which published build you are looking at">build 2026-11-05 · fc837af</span>
+      <span class="build-stamp" title="Which published build you are looking at">build 2026-11-06 · afc7bcc</span>
 
     </div>
   </div>
@@ -1590,13 +1590,13 @@ function vaultGate(state, detail){
     const inp='width:100%;padding:11px 13px;border:1.5px solid #d5dfea;border-radius:11px;font:inherit;min-width:0';
     el.innerHTML='<div style="background:#fff;border-radius:18px;padding:26px 24px;max-width:392px;width:100%;'
       +'box-shadow:0 30px 70px rgba(10,22,40,.4);text-align:center;margin:auto">'
-      +'<div style="font-size:.7rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#6b7f96">Regulatory affairs</div>'
+      +'<div style="font-size:.7rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#5F7589">Regulatory affairs</div>'
       +'<h3 style="margin:.5rem 0 .3rem;font-family:\'Fraunces\',Georgia,serif;font-size:1.24rem">Test Report &amp; Claims Vault</h3>'
       +'<p id="vgMsg" style="margin:0 0 16px;font-size:.9rem;color:#48607a;line-height:1.5"></p>'
       +'<form id="vgForm" style="display:grid;gap:9px;text-align:left">'
-      +'<input id="vgName" type="text" required autocomplete="name" placeholder="Your name" style="'+inp+'">'
-      +'<input id="vgEmail" type="email" required autocomplete="email" placeholder="you@company.com" style="'+inp+'">'
-      +'<input id="vgOrg" type="text" autocomplete="organization" placeholder="Clinic or company (optional)" style="'+inp+'">'
+      +'<input id="vgName" type="text" required autocomplete="name" aria-label="Your name" placeholder="Your name" style="'+inp+'">'
+      +'<input id="vgEmail" type="email" required autocomplete="email" aria-label="Your e-mail address" placeholder="you@company.com" style="'+inp+'">'
+      +'<input id="vgOrg" type="text" autocomplete="organization" aria-label="Clinic or company (optional)" placeholder="Clinic or company (optional)" style="'+inp+'">'
       +'<label style="display:flex;gap:8px;align-items:flex-start;font-size:.76rem;color:#5a7290;line-height:1.45;margin:2px 0 4px">'
       +'<input id="vgConsent" type="checkbox" style="margin-top:2px;flex:none">'
       +'<span>I agree that FACERINNA may keep my name, email and organisation to '
@@ -1606,12 +1606,12 @@ function vaultGate(state, detail){
       +'</form>'
       /* asking for a code, and then spending it */
       +'<form id="vgCodeForm" style="display:none;gap:9px;text-align:left">'
-      +'<input id="vgCodeEmail" type="email" required autocomplete="email" placeholder="you@company.com" style="'+inp+'">'
+      +'<input id="vgCodeEmail" type="email" required autocomplete="email" aria-label="Your e-mail address" placeholder="you@company.com" style="'+inp+'">'
       +'<button type="submit" style="padding:11px 13px;border:0;border-radius:11px;background:#1b6fb8;color:#fff;'
       +'font:inherit;font-weight:700;cursor:pointer">Email me a code</button>'
       +'</form>'
       +'<form id="vgPinForm" style="display:none;gap:9px;text-align:left">'
-      +'<input id="vgPin" type="text" required inputmode="numeric" autocomplete="one-time-code" '
+      +'<input id="vgPin" type="text" required inputmode="numeric" autocomplete="one-time-code" aria-label="6-digit code" '
       +'pattern="[0-9]*" maxlength="6" placeholder="6-digit code" style="'+inp+';letter-spacing:6px;text-align:center;font-weight:700">'
       +'<button type="submit" style="padding:11px 13px;border:0;border-radius:11px;background:#1b6fb8;color:#fff;'
       +'font:inherit;font-weight:700;cursor:pointer">Unlock</button>'
@@ -2002,7 +2002,7 @@ const PRODUCTS = [
 const SNAP_REPORTS = [];
 const SNAP_SERIES = [];
 const SNAP_SKUS = [];
-const SNAPSHOT_DATE = "2026-11-05";
+const SNAPSHOT_DATE = "2026-11-06";
 const SNAP_THUMBS = [];
 
 /* ============================================================
