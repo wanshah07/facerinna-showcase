@@ -369,6 +369,7 @@ body.slides{--slide-top:calc(118px + var(--rb,0px));scrollbar-width:none}   /* h
    54px was dead space that pushed every slide's first line down the screen */
 body.slides.chips-off{--slide-top:calc(76px + var(--rb,0px))}
 body.slides::-webkit-scrollbar{width:0;height:0}
+body.slides > #eventsNow{display:none}
 body.slides > .wrap{display:none}          /* the 1px inter-section dividers */
 /* the HEADER, not anything with class "nav" — the hero slideshow's arrows are
    .nav too, and this rule was pinning them both to the top-left corner of the
@@ -2187,10 +2188,10 @@ html.booth-veiled body > :not(#boothVeil){visibility:hidden}
 html.booth-no-welcome .hero-marquee{display:none!important}
 /* Until the booth settings are known, everything an admin can hide waits (the head script sets
    html.booth-wait, apply() lets go): the hero is there at once, the rest follows in a moment. */
-html.booth-wait :is(#range,#heroes,#evidence,#gallery,#clinic,#qrcore,#talk,#game),
+html.booth-wait :is(#eventsNow,#range,#heroes,#evidence,#gallery,#clinic,#qrcore,#talk,#game),
 html.booth-wait [data-media^="builtin-"],
-html.booth-wait :is(header,footer) a:is([href="#range"],[href="#heroes"],[href="#evidence"],[href="#gallery"],[href="#clinic"],[href="#qrcore"],[href="#talk"],[href="#game"]){display:none!important}
-html.booth-wait :is(#range,#heroes,#evidence,#gallery,#clinic,#qrcore,#talk,#game) + div:has(>.divider-line){display:none!important}
+html.booth-wait :is(header,footer) a:is([href="#eventsNow"],[href="#range"],[href="#heroes"],[href="#evidence"],[href="#gallery"],[href="#clinic"],[href="#qrcore"],[href="#talk"],[href="#game"]){display:none!important}
+html.booth-wait :is(#eventsNow,#range,#heroes,#evidence,#gallery,#clinic,#qrcore,#talk,#game) + div:has(>.divider-line){display:none!important}
 #boothVeil{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:24px;
   background:radial-gradient(120% 80% at 50% 0%,#1f4c7a,#0b1620 70%);color:#EAF4FF;font-family:'Inter',system-ui,sans-serif;visibility:visible}
 #boothVeil .bv{max-width:420px;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:22px;
@@ -6127,8 +6128,9 @@ addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passi
         bPrev=document.getElementById('presPrev'), bNext=document.getElementById('presNext'),
         countEl=document.getElementById('presCount');
   let mode=null;
+  /* the events strip is three small cards: on a whole screen it is mostly empty, so the deck leaves it out */
   const slides=()=>Array.from(document.querySelectorAll('body > section, body > footer'))
-                       .filter(el=>!el.hidden);
+                       .filter(el=>!el.hidden && el.id!=='eventsNow');
 
   /* Each slide's contents get a wrapper purely so the horizontal deck has a
      single element to scale. It is layout-neutral while --k is 1. */
@@ -8110,6 +8112,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     if(isAdmin) return;                      /* an admin sees the page whole; the ribbon says so */
     (list||[]).forEach(function(st){
       var el=document.getElementById(st.id); if(!el) return;
+      if(st.id==='eventsNow' && st.mode==='locked') st={id:st.id, mode:'hidden'};   /* the strip has nothing to lock: on or off */
       if(st.mode==='hidden'){
         el.classList.add('booth-sec-hidden');
         setTimeout(function(){ dispatchEvent(new Event('resize')); }, 0);

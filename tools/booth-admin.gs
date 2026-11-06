@@ -355,6 +355,7 @@ function tourGames_(raw) {
 /* Where a segment may be placed: after one of these sections, or at the end.
    Sent to the admin page so its menu cannot drift from the real page. */
 var SECTIONS = [
+  ['eventsNow','Events strip'],
   ['range',   'The Range'],
   ['heroes',  'Hero Products'],
   ['evidence','Clinical Study'],
@@ -814,6 +815,8 @@ function setSection_(b, by) {
   if (!SECTIONS.some(function (x) { return x[0] === id && x[0] !== 'end'; }))
     return json_({ ok: false, error: 'no such section' });
   var mode = sectionMode_(b.mode);
+  /* The events strip is only a few links to the Events page: it is on or off, there is nothing to lock. */
+  if (id === 'eventsNow' && mode === 'locked') mode = 'hidden';
   var pass = String(b.passcode == null ? '' : b.passcode).trim().slice(0, 64);
   var msg  = String(b.message == null ? '' : b.message).trim().slice(0, 400);
   /* A locked section with no passcode of its own falls back to the site
