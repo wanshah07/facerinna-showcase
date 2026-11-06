@@ -2410,6 +2410,18 @@ body:not(.slides) .hp-visual img{height:min(calc(220px * var(--pv)), calc(var(--
 .evs-chip{display:inline-block;margin-top:5px;font-size:.64rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--brand-soft);color:var(--brand-deep)}
 .evs-chip.live{background:#dff5e8;color:#0e6b48}
 .evs-go{flex:0 0 auto;font-size:1.15rem;color:var(--brand)}
+/* Spotlight glow (the "glow card" look): a soft blue light follows the pointer across the cards and lights the
+   border nearest to it. Coordinates are each card's own, so it works inside any scroll; nothing blocks a tap or a
+   scroll (no touch-action); a screen with no pointer or that asks for less motion keeps the plain card. */
+.evs-card{position:relative;isolation:isolate;--mx:-999px;--my:-999px;--hue:212}
+.evs-card::before,.evs-card::after{content:"";position:absolute;pointer-events:none;border-radius:inherit;opacity:0;transition:opacity .3s ease}
+.evs-card::before{inset:-1px;padding:2px;
+  background:radial-gradient(150px 150px at var(--mx) var(--my),hsl(var(--hue) 100% 58% / .95),transparent 72%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.evs-card::after{inset:0;z-index:-1;background:radial-gradient(220px 220px at var(--mx) var(--my),hsl(var(--hue) 100% 70% / .16),transparent 70%)}
+.evs-grid.glow .evs-card::before,.evs-grid.glow .evs-card::after{opacity:1}
+@media (prefers-reduced-motion:reduce){.evs-card::before,.evs-card::after{display:none}}
 </style>
 <link rel="stylesheet" href="fx-ui-polish.css">
 </head>
@@ -8745,6 +8757,21 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     }).catch(function(){ /* unreachable: whatever was last seen stays */ });
   }
   var have=saved(); if(have) draw(have);
+  /* the spotlight glow: one listener for the page, at most one update a frame, three cards to place it on */
+  if(window.matchMedia && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+    var px=0, py=0, raf=0;
+    var paint=function(){ raf=0;
+      if(sec.hidden || !grid.firstChild) return;
+      var g=grid.getBoundingClientRect(); if(g.bottom<-200 || g.top>innerHeight+200) return;
+      grid.classList.add('glow');
+      [].forEach.call(grid.children, function(c){ var r=c.getBoundingClientRect();
+        c.style.setProperty('--mx',(px-r.left).toFixed(1)+'px'); c.style.setProperty('--my',(py-r.top).toFixed(1)+'px');
+        c.style.setProperty('--hue',(198+Math.max(0,Math.min(1,px/innerWidth))*44).toFixed(0)); });
+    };
+    var move=function(e){ px=e.clientX; py=e.clientY; if(!raf) raf=requestAnimationFrame(paint); };
+    document.addEventListener('pointermove', move, {passive:true});
+    document.addEventListener('pointerdown', move, {passive:true});
+  }
   if(document.readyState==='complete') load(); else addEventListener('load', load);
 })();
 </script>
