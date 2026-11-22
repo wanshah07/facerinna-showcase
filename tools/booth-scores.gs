@@ -67,13 +67,24 @@
  *   that says nothing about the cause. The events registration endpoint on
  *   this same site already works exactly this way.
  *
- * WHAT THIS CANNOT DO
- *   It cannot stop someone posting a made-up score. The endpoint is public and
- *   the page is readable, so anyone who can read the code can imitate its
- *   requests. The checks below reject the careless — impossible numbers, a
- *   flood from one name, a game id that does not exist — and that is the
- *   honest limit of it. If a prize turns on the top score, an organiser should
- *   see the winning run happen. Better to know that now than after.
+ * WHAT THIS CAN AND CANNOT DO
+ *   The endpoint is public and the page is readable, so anyone who can read the
+ *   code can imitate its requests, and nothing here can prove a score was
+ *   earned. What the server checks (see doPost) is that a post is the shape an
+ *   honest game could send: a known game, a whole-number score inside a ceiling
+ *   derived from that game's own rules (see GAMES), a clean name, a tournament
+ *   time no human could beat, a run id not seen before, and a pace no person
+ *   plays at. A post that fails any of it gets a bare {"ok":false} (no reason,
+ *   so the reply cannot be used to probe the ceilings) and is written to the
+ *   "Rejected" tab with the reason, never to the leaderboard.
+ *
+ *   It is a fence, not a lock. A forger who stays under a ceiling, and rotates
+ *   device ids and names to slip the rate limits, still gets a score on the
+ *   board: the ceilings only remove the absurd ones. Five games have no
+ *   ceiling the code can prove, so theirs are generous on purpose (see GAMES). If a prize turns
+ *   on the top score, an organiser should see the winning run happen, and
+ *   should glance at the Rejected tab afterwards: a burst of "score-range"
+ *   rows is someone trying.
  */
 
 /* ------------------------------------------------------------------ config */
@@ -91,21 +102,120 @@ function sheetId_() {
 var SHEET_ID = sheetId_();   /* [REDACTED]; set ADMIN_WORKBOOK_ID in Script Properties */
 var TAB      = 'Scores';
 
-/* The six games, by the id each game page declares in window.FX_RANK. A post
+/* The games, by the id each game page declares in window.FX_RANK. A post
    naming anything else is refused: it is either a typo or somebody poking, and
-   neither belongs in the board. */
+   neither belongs in the board.
+
+   WHAT `max` IS, AND HOW EACH ONE WAS WORKED OUT
+   `max` is the most a run of that game can plausibly score, read off the game's
+   own source (22 Nov 2026) rather than guessed. A post above it is refused. It
+   is inclusive: a score equal to `max` is accepted. Four groups of game:
+
+   BOUNDED -- the rules cap the score, so the ceiling is the arithmetic best
+   case, rounded up to a clean figure for a little headroom:
+
+     pack-match  5,000   Score is PER ROUND, not a running total (loadRound sets
+                G.score = 0). A correct pick pays 400 x min(3, 1 + floor(streak/2)),
+                a wrong one -150, and a cleared round adds 500 per heart left
+                (max 3). The six rounds need 3,3,3,4,3,3 correct picks, so the best
+                round is 4 picks: 400+800+800+1,200 = 3,200, plus 3 x 500 = 1,500
+                = 4,700. (pack-match.html, resolve() and finish().)
+     shelf-shot  7,000   Per level, score resets. +600 per correct pack (at most 3
+                a level), +100 per shelf board or post destroyed (3 shelves x 3
+                blocks = 9), -250 per wrong pack, +1,000 per drop left over on a
+                win. A win needs at least one drop, so at most ammo-1 = 4 are left
+                (the biggest level has 5). Worst level: 3x600 + 9x100 + 4x1,000
+                = 6,700. (shelf-shot.html, damage() and finish().)
+     deep-lab   18,000   Per level, score resets. +500 per target (at most 6),
+                +100 per block (at most 16), +1,000 per drop left over (at most 4).
+                Worst level, Early fine lines: 6x500 + 16x100 + 4x1,000 = 8,600.
+                The ceiling is NOT 8,600: it is the game's own highest 3-star par,
+                18,000, because the source cannot rule out a shard or chain path
+                I did not trace, and the game itself calls 18,000 a 3-star run.
+                (deep-lab.html, LEVEL_DEFS, damage() and finish().)
+     facy-run   16,000   One fixed level (seeded, so identical every run), 180 s.
+                Counted by building the level: 69 capsules x 100 = 6,900; 5 skin
+                type blocks x 300 = 1,500; 6 stray ? blocks x 100 = 600; 5 concern
+                gates x 500 = 2,500 (a wrong bubble pays nothing); 13 enemies
+                (8 bumps + 5 rays) stomped x 150 = 1,950; flag 1,000 plus a time
+                bonus of at most 1,500 = 2,500. Total 15,950.
+     skin-iq         5   Five questions, one point each.
+     tournament 60,000   Up to 5,000 a round (booth-admin.gs TOUR_MAX, the admin
+                sets each round's own figure), up to twelve rounds. Also see
+                TOUR_MIN_ROUND_SECS below.
+
+   LADDER -- no time limit, the score climbs a level at a time, and the top is
+   set by how far a person can get. The ceiling is the score at the highest level
+   a human could plausibly reach, and the assumption is stated:
+
+     match-lab  40,000   No timer: a run lasts until three hearts are lost, so a
+                flawless run never ends. A bubble pays at most 30 (a right match
+                at x3 streak; a dodged trap pays 3) and bubbles spawn no faster
+                than one every 0.95 s once the ramp is done (t > 62 s), so the
+                best possible rate is 30 / 0.95 = 31.6 points a second. Assuming
+                nobody plays one flawless run for more than 20 minutes (1,200 s):
+                31.6 x 1,200 = 37,900, rounded up. (match-lab.html, catchBubble().)
+     magic-tiles 50,000  A tile pays (60 + 20 x combo) x level, combo capped at 9,
+                so at most 240 x level. Level L ends when the score reaches
+                targetFor(L) = 900 + 700 (L-1), so while on level L the score is
+                below that target plus the tile that crossed it. Tile speed is
+                150 + 34 (L-1) px/s on a 640 px board: at level 40 that is
+                1,476 px/s, a tile crossing the board in 0.43 s with a new one
+                every 0.42 s, which no hand follows. Level 40: 900 + 700 x 39 =
+                28,200, plus two tiles landing in the same frame, 2 x 240 x 40 =
+                19,200, = 47,400, rounded up. (magic-tiles-4k.html, tapLane().)
+     pack-slicer 50,000  Same shape. A slice pays (70 + 25 x combo) x level (combo
+                capped at 9, at most 295 x level); level L ends at targetFor(L) =
+                800 + 650 (L-1). Level 40: 800 + 650 x 39 = 26,150, plus two
+                slices in one frame, 2 x 295 x 40 = 23,600, = 49,750.
+                (pack-slicer-4k.html.)
+
+   NOT TIGHTENED -- the code gives no ceiling below the one these games already
+   had, so those stay as they were. They are the weakest point of this check,
+   and that is stated here rather than hidden behind a number that looks derived:
+
+     lab-run   100,000   Score is 0.6 per metre plus 10 per drop. Speed ramps from
+                14 to 30 m/s and a held turbo multiplies it by 1.55 (46.5 m/s),
+                so distance pays at most 27.9 a second; drop rows come at most
+                every 8.4 m with up to 5 drops (50), 5.95 a metre. The best
+                possible rate, perfect dodging with turbo held and every drop
+                taken, is about 305 a second: 100,000 is 5.5 minutes of that.
+     pack-drop 100,000   A line clear pays [0,100,300,500,800][rows] x level, plus
+                200 x level per star, plus bombs (60 + 25n) x level; level is
+                1 + floor(lines / 5) and gravity stops rising at level 22. No
+                timer, quadratic in level, no human limit I can prove.
+     pack-crush 200,000  Level L needs 6,000 + 2,200 (L-1) points in 25 to 18
+                moves, plus 300 for every move left. The targets alone to level 10
+                are 159,000, and the move bonuses add up to 7,500 a level.
+                200,000 is a flawless run of about nine levels.
+     pack-recall 200,000  A level is 8 pairs: (120 + 40 x streak) x level with
+                streak capped at 6 is 2,280 x level, plus the one gold pair on a packs
+                round (500 x level), plus 150 x level for each try left (at most 9).
+                Cumulative to level 10, flawless, is about 208,000.
+     match-factory 200,000  One 30-move run (level never advances). Each cascade
+                step pays (60 + 30 x combo) x (1 + 0.35 x (cleared - 3)), combo
+                capped at 9, on an 8 x 8 board. A move can chain, so the best case
+                is in the hundreds of thousands; a normal run is a few thousand.
+
+   To tighten these five, let the booth run for an hour, read the Scores tab
+   (or run preview()) and set each `max` to well above the best honest score: that
+   one number is the cheapest anti-nonsense control here and costs one re-deploy.
+   If a game's scoring changes, re-derive its line above. */
+function isGame_(id) {
+  return typeof id === 'string' && Object.prototype.hasOwnProperty.call(GAMES, id);
+}
 var GAMES = {
-  'match-lab':  { name: 'Match Lab',  max: 100000 },
-  'pack-match': { name: 'Pack Match', max: 100000 },
-  'shelf-shot': { name: 'Shelf Shot', max: 100000 },
-  'deep-lab':   { name: 'Deep Lab',   max: 100000 },
+  'match-lab':  { name: 'Match Lab',  max: 40000 },
+  'pack-match': { name: 'Pack Match', max: 5000 },
+  'shelf-shot': { name: 'Shelf Shot', max: 7000 },
+  'deep-lab':   { name: 'Deep Lab',   max: 18000 },
   'lab-run':    { name: 'Lab Run',    max: 100000 },
-  'facy-run':   { name: 'Facy Run',   max: 100000 },
+  'facy-run':   { name: 'Facy Run',   max: 16000 },
   'pack-drop':  { name: 'Pack Drop',  max: 100000 },
   'pack-crush': { name: 'Pack Crush', max: 200000 },
   'pack-recall': { name: 'Pack Recall', max: 200000 },
-  'magic-tiles': { name: 'Magic Tiles', max: 200000 },
-  'pack-slicer': { name: 'Pack Slicer', max: 200000 },
+  'magic-tiles': { name: 'Magic Tiles', max: 50000 },
+  'pack-slicer': { name: 'Pack Slicer', max: 50000 },
   'match-factory': { name: 'Match Factory', max: 200000 },
   /* the tournament books its total here: up to 5,000 points a round (the admin sets each),
      twelve rounds. It is ranked on its own rule, see better_: most points, then the
@@ -114,16 +224,30 @@ var GAMES = {
   'skin-iq':    { name: 'Skin IQ',    max: 5 }
 };
 
-/* Ceilings start generous on purpose. Watch the real scores for an hour, then
-   tighten each `max` to something a good run cannot reach — that single number
-   is the most useful anti-nonsense control here, and it costs one re-deploy. */
-
 var NAME_MAX   = 18;   /* matches the name field's maxlength on the game pages */
 var KEEP       = 500;  /* rows read back per game; the sheet keeps everything  */
 var RATE_N     = 12;   /* posts allowed per name+game ...                      */
 var RATE_SECS  = 60;   /* ... per this many seconds                            */
+/* A booth iPad is one device and many visitors, and a phone that was offline
+   flushes its queue (up to 50 runs) the moment it reconnects, so the per-device
+   brake is a flood brake, not a pace: no honest device posts 60 runs in a minute. */
+var DEVICE_N   = 60;   /* posts allowed per device, all games together ...     */
+var DEVICE_SECS = 60;  /* ... per this many seconds                            */
+var BODY_MAX   = 2000; /* bytes; an honest post is about 150                   */
+/* The tournament is the one game that sends how long the run took (`secs`, the
+   sum of its rounds). A round cannot be played in under a few seconds, and a
+   5,000-point round cannot be made faster than any other, so a total of S points
+   took at least ceil(S / 5000) rounds. Only a time that WAS sent is held to it: a
+   missing time ranks as the slowest (see order_), so leaving it out gains nothing,
+   and an old page that sends none is not turned away. */
+var TOUR_ROUND_MAX = 5000, TOUR_MIN_ROUND_SECS = 3;
+/* The Rejected tab: a bounded log, so a flood of bad posts cannot fill the workbook. */
+var REJ_TAB    = 'Rejected';
+var REJ_KEEP   = 1000; /* rows kept; the oldest go first                        */
+var REJ_LOG_N  = 30;   /* rows written per minute, whatever arrives             */
 
 var HEADERS = ['when', 'ts', 'game', 'name', 'score', 'device', 'hidden', 'agent', 'seconds', 'level'];
+var REJ_HEADERS = ['when', 'reason', 'game', 'name', 'score', 'device', 'detail'];
 
 /* ------------------------------------------------------------------- setup */
 
@@ -137,13 +261,29 @@ function setUp() {
     sh.hideColumns(2);                       /* epoch ms: for tie-breaks, not reading */
     sh.hideColumns(8);                       /* user agent: for spotting a bot        */
   }
-  return 'Ready. Tab "' + TAB + '" has ' + (sh.getLastRow() - 1) + ' score row(s).';
+  rejTab_();                                 /* the log of refused posts, beside the board */
+  return 'Ready. Tab "' + TAB + '" has ' + (sh.getLastRow() - 1) + ' score row(s); tab "' + REJ_TAB + '" is ready.';
 }
 
 function tab_() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
   if (!ss) throw new Error('No spreadsheet. Set ADMIN_WORKBOOK_ID in Script Properties.');
   return ss.getSheetByName(TAB) || ss.insertSheet(TAB);
+}
+
+/* The log of refused posts. Made on first use as well as by setUp, because a
+   deployment that was set up before this tab existed never runs setUp again. */
+function rejTab_() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  if (!ss) throw new Error('No spreadsheet. Set ADMIN_WORKBOOK_ID in Script Properties.');
+  var sh = ss.getSheetByName(REJ_TAB);
+  if (!sh) {
+    sh = ss.insertSheet(REJ_TAB);
+    sh.appendRow(REJ_HEADERS);
+    sh.setFrozenRows(1);
+    sh.getRange(1, 1, 1, REJ_HEADERS.length).setFontWeight('bold');
+  }
+  return sh;
 }
 
 /* --------------------------------------------------------------- responses */
@@ -173,7 +313,7 @@ function doGet(e) {
     }
 
     var one = String(p.game || '');
-    if (!GAMES[one]) return json_({ ok: false, error: 'unknown game' });
+    if (!isGame_(one)) return json_({ ok: false, error: 'unknown game' });
     var g = b[one] || { rows: [], n: 0 };
     return json_({ ok: true, game: one, rows: g.rows.slice(0, top), players: g.n, at: Date.now() });
   } catch (err) {
@@ -199,7 +339,7 @@ function readAll_() {
     var r = vals[i];
     if (r[5] === true || String(r[5]).toUpperCase() === 'TRUE') continue;  /* hidden */
     var id = String(r[1]);
-    if (!GAMES[id]) continue;
+    if (!isGame_(id)) continue;
     (out[id] = out[id] || []).push({
       n: String(r[2]),
       s: Number(r[3]),
@@ -320,23 +460,93 @@ function cell_(v) {
   return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
 }
 
-function doPost(e) {
+/* A name is shown on the board and written into a spreadsheet, and it is the one
+   field a stranger fully controls. Control characters become a space, invisible
+   formatting characters (zero-width, bidi overrides, BOM) are dropped, runs of
+   whitespace collapse, and any leading = + - @ is stripped (with the cell_ guard
+   below as a second line), so a name cannot turn into a formula or hide behind an
+   invisible prefix. Not a string at all (a number, an object) is no name. */
+var NAME_CONTROL = /[\u0000-\u001f\u007f-\u009f]/g;
+var NAME_INVISIBLE = /[\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff\ufff9-\ufffb]/g;
+function cleanName_(v) {
+  if (typeof v !== 'string') return '';
+  var s = v.replace(NAME_CONTROL, ' ').replace(NAME_INVISIBLE, '').replace(/\s+/g, ' ').trim();
+  s = s.replace(/^[\s=+\-@]+/, '');
+  s = s.slice(0, NAME_MAX);
+  var last = s.charCodeAt(s.length - 1);
+  if (last >= 0xD800 && last <= 0xDBFF) s = s.slice(0, -1);   /* never leave half an emoji */
+  return s.trim();
+}
+
+/* The fewest seconds a tournament total can honestly have taken. */
+function minTourSecs_(score) {
+  return Math.max(1, Math.ceil(score / TOUR_ROUND_MAX)) * TOUR_MIN_ROUND_SECS;
+}
+
+/* Every refusal comes through here: the log gets the reason, the player gets a
+   bare {"ok":false}. The page treats any ok:false as "refused, do not queue it
+   again", and a reason in the reply would only tell a forger which ceiling or
+   limit to feel for next. */
+function reject_(reason, body, detail) {
+  logReject_(reason, body, detail);
+  return json_({ ok: false });
+}
+
+function clip_(v, n) {
+  var t;
+  if (v === undefined || v === null) t = '';
+  else if (typeof v === 'object') { try { t = JSON.stringify(v); } catch (x) { t = '[object]'; } }
+  else t = String(v);
+  return t.replace(NAME_CONTROL, ' ').slice(0, n);
+}
+
+/* Best effort and never in the way: a log that fails must not fail the reply,
+   and a flood of bad posts is capped at REJ_LOG_N rows a minute so it cannot
+   fill the workbook. The stored text is whatever a stranger sent, so every cell
+   goes through cell_. No lock: appendRow is one atomic call. */
+function logReject_(reason, body, detail) {
   try {
-    var body = {};
-    try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); }
-    catch (bad) { return json_({ ok: false, error: 'bad json' }); }
+    var cache = CacheService.getScriptCache();
+    var n = parseInt(cache.get('rl'), 10) || 0;
+    if (n >= REJ_LOG_N) return;
+    cache.put('rl', String(n + 1), 60);
+    var b = (body && typeof body === 'object') ? body : {};
+    var sh = rejTab_();
+    sh.appendRow([new Date(), reason, cell_(clip_(b.game, 30)), cell_(clip_(b.name, 40)),
+                  cell_(clip_(b.score, 24)), cell_(clip_(b.device, 40)), cell_(clip_(detail, 80))]);
+    /* every 50th row, trim to the newest REJ_KEEP */
+    var total = (parseInt(cache.get('rj'), 10) || 0) + 1;
+    cache.put('rj', String(total), 21600);
+    if (total % 50 === 0) {
+      var last = sh.getLastRow();
+      if (last > REJ_KEEP + 1) sh.deleteRows(2, last - 1 - REJ_KEEP);
+    }
+  } catch (x) { try { Logger.log('reject log failed: ' + x); } catch (y) {} }
+}
 
-    var id = String(body.game || '');
-    if (!GAMES[id]) return json_({ ok: false, error: 'unknown game' });
+function doPost(e) {
+  var body = null;
+  try {
+    /* ---- 1. is it the shape of a score at all? (no state, no lock) ---- */
+    var raw = String((e && e.postData && e.postData.contents) || '{}');
+    if (raw.length > BODY_MAX) return reject_('too-large', null, raw.length + ' chars');
+    try { body = JSON.parse(raw); }
+    catch (bad) { return reject_('bad-json', null, raw); }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return reject_('bad-body', null, raw);
 
-    var name = String(body.name || '').trim().replace(/\s+/g, ' ').slice(0, NAME_MAX);
-    if (!name) return json_({ ok: false, error: 'no name' });
+    var id = (typeof body.game === 'string') ? body.game : '';
+    if (!isGame_(id)) return reject_('unknown-game', body);
 
-    var score = Number(body.score);
-    if (!isFinite(score) || Math.floor(score) !== score)
-      return json_({ ok: false, error: 'score must be a whole number' });
+    var name = cleanName_(body.name);
+    if (!name) return reject_('bad-name', body);
+
+    /* A real number, not the text of one: Number('12') used to be let through. */
+    var score = body.score;
+    if (typeof score !== 'number' || !isFinite(score) || Math.floor(score) !== score)
+      return reject_('score-not-whole-number', body);
     if (score < 0 || score > GAMES[id].max)
-      return json_({ ok: false, error: 'score out of range' });
+      return reject_('score-out-of-range', body, 'max ' + GAMES[id].max);
+    score = score + 0;                                   /* -0 is 0 */
 
     /* Only the tournament keeps how long the run took and how far it got: they decide a tie. */
     var secs = 0, level = 0;
@@ -344,15 +554,24 @@ function doPost(e) {
       secs = Math.floor(Number(body.secs)); level = Math.floor(Number(body.level));
       secs = isFinite(secs) ? Math.max(0, Math.min(secs, 86400)) : 0;
       level = isFinite(level) ? Math.max(0, Math.min(level, 999)) : 0;
+      /* a time that was sent must be one a person could have taken */
+      if (secs > 0 && secs < minTourSecs_(score))
+        return reject_('tournament-too-fast', body, 'secs ' + secs + ' < ' + minTourSecs_(score));
     }
 
+    /* ---- 2. have we seen this run, and is this device or name flooding? ----
+       Cache only, so a refusal here costs no sheet read, no lock wait and no write.
+       A repeat is answered ok (see dupReply_) because the page sends the same
+       run again when a reply is lost, and that is an honest retry, not a forgery:
+       it is not written twice, and it does not count against the rate limits. */
     var dk = dupKey_(body, id, name, score);
-    if (seenRun_(dk)) return dupReply_(id, name);
+    if (seenRun_(dk)) { logReject_('duplicate-run', body); return dupReply_(id, name); }
 
-    if (!underRate_(id, name))
-      return json_({ ok: false, error: 'too many runs too quickly — wait a moment' });
+    if (!underRate_(id, name)) return reject_('rate-limit-name', body);
+    if (!underDeviceRate_(body.device)) return reject_('rate-limit-device', body);
 
-    /* Two people finishing at the same instant both read the same last row and
+    /* ---- 3. under the lock: the last look, the write, the cached board ----
+       Two people finishing at the same instant both read the same last row and
        one write lands on top of the other. The lock is the whole reason the
        board can be trusted at a busy booth. It stays held through the cached
        board's read-merge-write below too: releasing it right after the sheet
@@ -365,7 +584,7 @@ function doPost(e) {
     lock.waitLock(20000);
     var all, repeat = false;
     try {
-      if (seenRun_(dk)) { repeat = true; all = boards_(); }   /* the other copy got the lock first */
+      if (seenRun_(dk)) { repeat = true; all = boards_(); logReject_('duplicate-run', body); }   /* the other copy got the lock first */
       else {
       tab_().appendRow([
         now,
@@ -406,7 +625,8 @@ function doPost(e) {
     }
     return json_({ ok: true, rank: rank, best: best, players: all[id].n, rows: rows.slice(0, 5) });
   } catch (err) {
-    return json_({ ok: false, error: String(err && err.message || err) });
+    /* the cause goes to the log, not to whoever sent the post */
+    return reject_('error', body, String(err && err.message || err));
   }
 }
 
@@ -445,6 +665,22 @@ function underRate_(game, name) {
   var n = parseInt(cache.get(key), 10) || 0;
   if (n >= RATE_N) return false;
   cache.put(key, String(n + 1), RATE_SECS);
+  return true;
+}
+
+/* One device cannot post faster than a flood brake allows, whatever games or
+   names it uses. A post with no device at all shares one bucket: every honest
+   page sends a device id, so that bucket is only ever used by something that is
+   not one, and it cannot lock an honest device out (they have their own). The
+   id is whatever the sender chose, so a forger who changes it every request
+   dodges this; the per-name limit and the ceilings are what still apply then. */
+function underDeviceRate_(device) {
+  var d = String(device == null ? '' : device).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) || 'none';
+  var cache = CacheService.getScriptCache();
+  var key = 'rd:' + d;
+  var n = parseInt(cache.get(key), 10) || 0;
+  if (n >= DEVICE_N) return false;
+  cache.put(key, String(n + 1), DEVICE_SECS);
   return true;
 }
 
