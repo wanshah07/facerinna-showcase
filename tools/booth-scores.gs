@@ -608,15 +608,28 @@ function doPost(e) {
          poster is waiting on this reply with a result screen already up, and
          walking every row written today to tell them they came third is the one
          piece of work here that gets slower the better the day goes. */
-      all = boards_();
-      all[id] = merge_(all[id] || { rows: [], n: 0 }, name, score, now.getTime(), secs, level);
-      putBoards_(all);
+      /* The run is durable from here, so it is marked NOW, before anything that can throw.
+         markRun_ used to come after the board refresh: a cache or sheet read failing in
+         between left a stored score with no run mark, the caller got a rejection, and the
+         page's honest retry wrote the same run a second time. */
       markRun_(dk);
+      try {
+        all = boards_();
+        all[id] = merge_(all[id] || { rows: [], n: 0 }, name, score, now.getTime(), secs, level);
+        putBoards_(all);
+      } catch (e3) {
+        /* The score is saved; only the cached board is stale. That is not a rejection, so it
+           stays out of the Rejected log, and the reply below falls back to an empty board
+           (the next read rebuilds it from the sheet). */
+        try { Logger.log('board refresh failed after write: ' + e3); } catch (e4) {}
+        all = null;
+      }
       }
     } finally {
       lock.releaseLock();
     }
 
+    if (!all || !all[id]) { all = {}; all[id] = { rows: [], n: 0 }; }
     var rows = all[id].rows, rank = null, best = null;
     for (var i = 0; i < rows.length; i++) {
       if (String(rows[i].n).toLowerCase() === name.toLowerCase()) {

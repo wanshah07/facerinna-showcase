@@ -60,12 +60,13 @@ const LockService = { getScriptLock: () => ({
   waitLock(){ if (locks.fail) throw new Error('Lock timeout: secret-internal-detail'); locks.held++; },
   releaseLock(){ locks.held--; } }) };
 const cacheStore = new Map();
+const cacheFail = { board: null };     /* set to the board's cache key to make reading it throw */
 /* remove() included deliberately. The first version of this stub had only
    get/put, so dropBoards_() threw, its try/catch swallowed it, and the board
    went on serving rows that had just been hidden -- which is exactly the
    failure the cache can cause and exactly what "board empties" is for. */
 const CacheService = { getScriptCache: () => ({
-  get: k => cacheStore.get(k) ?? null,
+  get: k => { if (cacheFail.board && k === cacheFail.board) throw new Error('cache unavailable'); return cacheStore.get(k) ?? null; },
   put: (k,v) => cacheStore.set(k,v),
   remove: k => cacheStore.delete(k) }) };
 const ContentService = { MimeType:{JSON:'json'},
@@ -82,7 +83,7 @@ const PropertiesService = { getScriptProperties: () => ({
 PROPS['ADMIN_WORKBOOK_ID'] = BOOK_ID;
 
 const mod = eval(`(() => { ${src}
-  return { doPost, doGet, bests_, setUp, hideAllSoFar, readAll_, GAMES, REJ_KEEP, REJ_LOG_N, DEVICE_N }; })()`);
+  return { CACHE_KEY, doPost, doGet, bests_, setUp, hideAllSoFar, readAll_, GAMES, REJ_KEEP, REJ_LOG_N, DEVICE_N }; })()`);
 
 const post = o => JSON.parse(mod.doPost({ postData:{ contents: JSON.stringify(o), type:'text/plain' } }));
 const get  = q => JSON.parse(mod.doGet({ parameter: q }));
@@ -517,6 +518,19 @@ console.log('\nthe Rejected log is bounded');
   for (let i = 0; i < 50; i++) { cacheStore.delete('rl'); post({ game: 'nope', name: 'Trim', score: 1, device: 'trim-dev' }); }
   check('past ' + mod.REJ_KEEP + ' rows the oldest are dropped (header kept)', rejected.rows.length <= mod.REJ_KEEP + 1 && rejected.rows[0][1] === 'reason', rejected.rows.length);
   check('...and the newest are kept', rejected.rows[rejected.rows.length - 1][1] === 'unknown-game');
+}
+
+console.log('\na failure AFTER the score is stored');
+{
+  reset();
+  const p1 = { game: 'shelf-shot', name: 'Late', score: 4100, device: 'late-dev', rid: 'rid-late-abcdef' };
+  cacheFail.board = mod.CACHE_KEY;
+  let first; try { first = post(p1); } finally { cacheFail.board = null; }
+  check('the score is on the sheet', scoreRows() === 1);
+  check('the caller is told ok, not rejected, so the page does not retry', first && first.ok === true, JSON.stringify(first));
+  check('a board-refresh failure is not logged as a rejection', rejRows() === 0, reasons());
+  const retry = post(p1);
+  check('an honest retry of the same run is a duplicate, not a second row', scoreRows() === 1 && retry.repeat === true, scoreRows());
 }
 
 console.log(ok ? '\nall good' : '\nSOMETHING IS WRONG');
