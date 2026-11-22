@@ -1200,7 +1200,7 @@ section::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;
     <div class="fine">
       <span>© 2026 FACERINNA® · Internal Regulatory Affairs reference. Not for external distribution.</span>
       <span id="footerSync">Loading data…</span>
-      <span class="build-stamp" title="Which published build you are looking at">build 2026-11-22 · afc7bcc</span>
+      <span class="build-stamp" title="Which published build you are looking at">build 2026-11-22 · 302844d</span>
 
     </div>
   </div>
@@ -1268,9 +1268,14 @@ const VAULT_ENDPOINT = "https://script.google.com/macros/s/AKfycbxSfLoqRohdEn2R4
 const VAULT_LOCKED = !!VAULT_ENDPOINT;
 
 const VA_TOKEN_KEY = 'fx.vault.token';
-function vaToken(){ try{ return localStorage.getItem(VA_TOKEN_KEY) || ''; }catch(e){ return ''; } }
-function vaStore(t){ try{ localStorage.setItem(VA_TOKEN_KEY, t); }catch(e){} }
-function vaClear(){ try{ localStorage.removeItem(VA_TOKEN_KEY); }catch(e){} }
+/* sessionStorage, not localStorage: the vault token is a per-person,
+   revocable key, and keeping it out of localStorage means it dies with the
+   tab/session instead of persisting on disk for a same-origin XSS to sweep.
+   Read and write must use the SAME store, so all three go through these
+   helpers and nowhere else. */
+function vaToken(){ try{ return sessionStorage.getItem(VA_TOKEN_KEY) || ''; }catch(e){ return ''; } }
+function vaStore(t){ try{ sessionStorage.setItem(VA_TOKEN_KEY, t); }catch(e){} }
+function vaClear(){ try{ sessionStorage.removeItem(VA_TOKEN_KEY); }catch(e){} }
 
 /* The approval mail links to this page with #vault=<token>. Read it once, then
    strip it: a fragment holding a key should not survive in the address bar,
