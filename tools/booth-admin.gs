@@ -71,8 +71,16 @@
 
 /* ------------------------------------------------------------------ config */
 
-/* The scores workbook: separate TABS in the same book, not another book. */
-var SHEET_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
+/* The scores workbook: separate TABS in the same book, not another book.
+   The workbook id is a secret, so it is not committed here. It lives in
+   Script Properties under ADMIN_WORKBOOK_ID (Project Settings -> Script
+   properties). A run without it fails loudly rather than open the wrong book. */
+function sheetId_() {
+  var id = PropertiesService.getScriptProperties().getProperty('ADMIN_WORKBOOK_ID');
+  if (!id) throw new Error('ADMIN_WORKBOOK_ID is not set in Script Properties (Project Settings -> Script properties).');
+  return id;
+}
+var SHEET_ID = sheetId_();   /* [REDACTED]; set ADMIN_WORKBOOK_ID in Script Properties */
 
 /* Where the sign-in link lands. Must be the admin page's real address. */
 var ADMIN_URL = 'https://my.facerinna.com/admin.html';

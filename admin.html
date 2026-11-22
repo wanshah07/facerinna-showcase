@@ -757,7 +757,7 @@ $('loginForm').addEventListener('submit', function(e){
 $('sendAgain').addEventListener('click', function(){ toEmailStep(); loginSay(''); loginErr(''); $('loginEmail').focus(); });
 $('signOut').addEventListener('click', function(){
   var t = state.token;
-  state.token = null; try{ localStorage.removeItem(KEY); }catch(e){}
+  state.token = null; try{ sessionStorage.removeItem(KEY); }catch(e){}
   if(t) api('logout', { token:t }).catch(function(){});
   toLogin();
 });
@@ -765,7 +765,7 @@ $('signOut').addEventListener('click', function(){
 /* ---- the app ---------------------------------------------------------- */
 function enter(token, email){
   state.token = token; state.email = email;
-  try{ localStorage.setItem(KEY, token); }catch(e){}
+  try{ sessionStorage.setItem(KEY, token); }catch(e){}
   show('viewLogin', false); show('app', true); show('who', true);
   $('whoEmail').textContent = email;
   return refresh();
@@ -789,7 +789,7 @@ function refresh(){
     if(!state.legacy && can('claims')) renderClaims(d.claims);
     if(!state.legacy && can('visitors')) visConfigured(d.visitors);
   }).catch(function(err){
-    if(/signed out|no longer/.test(err.message)){ toast('Signed out: '+err.message, true); state.token=null; try{ localStorage.removeItem(KEY); }catch(e){} toLogin(); }
+    if(/signed out|no longer/.test(err.message)){ toast('Signed out: '+err.message, true); state.token=null; try{ sessionStorage.removeItem(KEY); }catch(e){} toLogin(); }
     else toast('Could not load: '+err.message, true);
   });
 }
@@ -1732,11 +1732,11 @@ function start(){
       .catch(function(err){ toLogin(); $('loginErr').textContent = err.message; show('loginErr', true); });
     return;
   }
-  var t=null; try{ t = localStorage.getItem(KEY); }catch(e){}
+  var t=null; try{ t = sessionStorage.getItem(KEY); }catch(e){}
   if(t){
     state.token = t;
     api('whoami').then(function(r){ return enter(t, r.email); })
-      .catch(function(){ state.token=null; try{ localStorage.removeItem(KEY); }catch(e){} toLogin(); });
+      .catch(function(){ state.token=null; try{ sessionStorage.removeItem(KEY); }catch(e){} toLogin(); });
   } else toLogin();
 }
 start();

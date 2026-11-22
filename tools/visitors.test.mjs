@@ -49,7 +49,7 @@ await new Promise(r=>srv.listen(PORT,'127.0.0.1',r));
 const b=await chromium.launch();
 async function asPerson(token){
   const c=await b.newContext({viewport:{width:1280,height:900}, acceptDownloads:true});
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, token]);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, token]);
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto(BASE+'/admin.html',{waitUntil:'load'});
   await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));
@@ -133,7 +133,7 @@ console.log('── opened before the script has answered');
   /* a slow script: the tab is clicked while admin.get is still on its way */
   globalThis.SLOW_GET = 1500;
   const c=await b.newContext({viewport:{width:1280,height:900}});
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
   const p=await c.newPage();
   await p.goto(BASE+'/admin.html',{waitUntil:'load'});
   await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));

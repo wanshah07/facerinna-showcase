@@ -74,7 +74,7 @@ var KEY = 'fx.admin.token';
 var $ = function(id){ return document.getElementById(id); };
 var show = function(id, on){ $(id).classList.toggle('hidden', !on); };
 
-function token(){ try{ return localStorage.getItem(KEY) || ''; }catch(e){ return ''; } }
+function token(){ try{ return sessionStorage.getItem(KEY) || ''; }catch(e){ return ''; } }
 function post(body){
   var ctl = ('AbortController' in window) ? new AbortController() : null;
   var t = ctl && setTimeout(function(){ ctl.abort(); }, 20000);

@@ -29,7 +29,8 @@
   if (!API) return;
 
   function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  if (read(ADMIN)) return;
+  function adminToken() { try { return sessionStorage.getItem(ADMIN); } catch (e) { return null; } }
+  if (adminToken()) return;
 
   function isOff(cfg) {
     var raw = cfg && cfg.settings && cfg.settings.games_off;

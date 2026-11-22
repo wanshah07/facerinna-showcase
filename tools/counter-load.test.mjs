@@ -106,7 +106,7 @@ for(let i=0;i<N;i++){
   const p=await c.newPage(); p.on('pageerror',e=>errs.push(e.message));
   await p.goto(BASE+'/scan.html',{waitUntil:'load'});
   /* signed in after load, so the camera never starts: this is about the script */
-  await p.evaluate(t=>localStorage.setItem('fx.admin.token',t), own.token);
+  await p.evaluate(t=>sessionStorage.setItem('fx.admin.token',t), own.token);
   pages.push(p);
 }
 const t0=Date.now();

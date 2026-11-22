@@ -87,7 +87,7 @@ for(const [tag,w,h,mob] of [['phone',390,844,true],['desk',1440,900,false]]){
   await p.waitForTimeout(1200);
   chk(`${tag}: the right code puts the rows on the screen`, !(await vis('#vaultGate')));
   chk(`${tag}: ...by keeping the token this browser now has`,
-      await p.evaluate(()=>localStorage.getItem('fx.vault.token')) === 'TOK-FROM-CODE');
+      await p.evaluate(()=>sessionStorage.getItem('fx.vault.token')) === 'TOK-FROM-CODE');
   chk(`${tag}: ...and the token is what bought them`, seen.includes('data'), seen);
   chk(`${tag}: nothing was asked of the script that should not have been`,
       seen.every(a=>['code','redeem','data'].includes(a)), seen);
@@ -108,7 +108,7 @@ for(const [tag,w,h,mob] of [['phone',390,844,true],['desk',1440,900,false]]){
         await text('#vgMsg'));
     chk(`${tag}: ${mode}: ...and does not show the request form`, !(await vis('#vgForm')));
     chk(`${tag}: ${mode}: ...and keeps the sign-in`,
-        await p.evaluate(()=>localStorage.getItem('fx.vault.token')) === 'TOK-FROM-CODE');
+        await p.evaluate(()=>sessionStorage.getItem('fx.vault.token')) === 'TOK-FROM-CODE');
   }
   MODE='ok';
   await p.reload({waitUntil:'load'}); await p.waitForTimeout(1200);
@@ -118,7 +118,7 @@ for(const [tag,w,h,mob] of [['phone',390,844,true],['desk',1440,900,false]]){
   MODE='unknown';
   await p.reload({waitUntil:'load'}); await p.waitForTimeout(1200);
   chk(`${tag}: a token the sheet no longer knows is forgotten`,
-      await p.evaluate(()=>localStorage.getItem('fx.vault.token')) === null);
+      await p.evaluate(()=>sessionStorage.getItem('fx.vault.token')) === null);
   chk(`${tag}: ...and the request form comes back`, await vis('#vgForm'));
   chk(`${tag}: the way back in is named as the approval mail names it`,
       /Sign in with a code/.test(await text('#vgSwitch')), await text('#vgSwitch'));

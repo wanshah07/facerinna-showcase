@@ -58,15 +58,17 @@
  * HOW A PERSON GETS IN (since 24 Sept 2026)
  *   Approving a row mails them to say so -- no link in it. On the vault page
  *   they type their email, get a six-digit code, type it once, and that
- *   device stays signed in for good. Any device, the same way, once each.
- *   There is no expiry. What ends it is the sheet: delete their row, or set
- *   its status to anything but "approved", and every device they signed in
- *   on is refused on its next load.
+ *   device stays signed in. Any device, the same way, once each. There is no
+ *   expiry unless you set one: a date in the row's "expires" column ends the
+ *   token once it has passed. What always ends it is the sheet: delete their
+ *   row, or set its status to anything but "approved", and every device they
+ *   signed in on is refused on its next load.
  *
  *   It used to be a mailed link good for 14 days. The link landed in
  *   whichever browser opened the mail -- usually the mail app's own, not the
  *   one in the visitor's hand -- and died a fortnight later wherever it had
- *   landed. Links already sent still work, and now do not expire either.
+ *   landed. Links already sent still work, and now do not expire either
+ *   unless the row carries an expiry.
  *
  * WHAT THIS DOES NOT DO
  *   It does not encrypt anything, and a signed-in device can be lent. What it
@@ -78,8 +80,15 @@
 /* ------------------------------------------------------------------ config */
 
 /* The workbook that holds the request list. The scores workbook is fine —
-   a separate TAB in the same book, not a separate book. */
-var SHEET_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
+   a separate TAB in the same book, not a separate book. The id is a secret:
+   it lives in Script Properties under ADMIN_WORKBOOK_ID (Project Settings ->
+   Script properties), never in this public file. */
+function sheetId_() {
+  var id = PropertiesService.getScriptProperties().getProperty('ADMIN_WORKBOOK_ID');
+  if (!id) throw new Error('ADMIN_WORKBOOK_ID is not set in Script Properties (Project Settings -> Script properties).');
+  return id;
+}
+var SHEET_ID = sheetId_();   /* [REDACTED]; set ADMIN_WORKBOOK_ID in Script Properties */
 var REQ_TAB  = 'Vault requests';
 
 /* Where an approved link should land. Must be the vault page's real address,
@@ -106,10 +115,11 @@ var REPORT_TABS = { reports: 'Reports', series: 'Series', skus: 'SKUs' };
 var THUMBS_BOOK  = '1F1zDeTnSrfZ7j7bIu7FfiHRW0eoXu3_n4NjFAmnWBfE';
 var GIDS = { thumbs: 524451717 };
 
-/* A signed-in device stays signed in until the row says otherwise; there is
-   no clock on it. The six-digit code is how a device signs in: it is mailed
-   to the approved address, it is worth one use, and it buys the row's token,
-   the same one on every device that address signs in on. */
+/* A signed-in device stays signed in until the row says otherwise -- a
+   status other than approved, the row deleted, or an "expires" date that has
+   passed. The six-digit code is how a device signs in: it is mailed to the
+   approved address, it is worth one use, and it buys the row's token, the
+   same one on every device that address signs in on. */
 var CODE_MINS  = 10;     /* a code is worth nothing after this long */
 var CODE_TRIES = 5;      /* wrong guesses before that code is dead */
 var CODE_GAP_MS = 60000; /* one code a minute per address */
@@ -420,8 +430,15 @@ function vaultData_(b) {
     var status = String(v[i][4] || '').trim().toLowerCase();
     if (status !== 'approved') return json_({ ok: false, reason: 'revoked' });
 
-    /* No expiry check: a signed-in device stays signed in until the row says
-       otherwise. The "expires" column is left in place and no longer read. */
+    /* A token whose "expires" date has passed is refused. A blank expires
+       means no clock -- the row itself is the on/off switch, as before. */
+    var exp = v[i][6];
+    if (exp) {
+      var expAt = new Date(exp).getTime();
+      if (isFinite(expAt) && expAt <= Date.now())
+        return json_({ ok: false, reason: 'expired' });
+    }
+
     var d;
     try { d = readVault_(); }
     catch (err) {

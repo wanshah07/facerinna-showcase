@@ -53,7 +53,7 @@ await new Promise(r=>srv.listen(PORT,'127.0.0.1',r));
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 async function open_(query, token){
   const c=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ if(t) localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, token||'']);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ if(t) sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, token||'']);
   const p=await c.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto(BASE+'/redeem.html'+query,{waitUntil:'load'});

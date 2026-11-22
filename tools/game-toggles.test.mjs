@@ -101,7 +101,7 @@ async function open(url, {admin=null, w=1280, h=900, mob=false, cache=null}={}){
   const c=await b.newContext({viewport:{width:w,height:h},isMobile:mob,hasTouch:mob});
   await c.addInitScript(([a,t,cfg])=>{ window.__BOOTH_API=a;
     try{ localStorage.setItem('fx.player','Aina');
-         if(t) localStorage.setItem('fx.admin.token',t);
+         if(t) sessionStorage.setItem('fx.admin.token',t);
          if(cfg) localStorage.setItem('fx.booth.config', JSON.stringify(cfg)); }catch(e){} }, [API, admin, cache]);
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   p.on('dialog', d=>d.accept());

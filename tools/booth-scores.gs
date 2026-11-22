@@ -38,9 +38,10 @@
  *      any sheet by id, which is how one workbook holds the scores and the
  *      registrations side by side without the two scripts ever meeting.
  *   2. Delete the stub, paste this whole file.
- *   3. Put the workbook's id in SHEET_ID below — the long string between /d/
- *      and /edit in its address. Leave it blank ONLY if you made this from
- *      Extensions -> Apps Script on a sheet that has no other script.
+ *   3. Put the workbook's id in Script Properties (Project Settings ->
+ *      Script properties) as ADMIN_WORKBOOK_ID — the long string between /d/
+ *      and /edit in its address. It is not committed in this file, which is
+ *      public.
  *   4. Run -> setUp once. It builds the Scores tab with its headers and frozen
  *      row, beside whatever tabs are already there. Grant the permissions it
  *      asks for. You only ever do this once.
@@ -77,15 +78,17 @@
 
 /* ------------------------------------------------------------------ config */
 
-/* The workbook to write into: the long string between /d/ and /edit in its
-   address. A standalone script has nothing bound to it, so this is how one
-   workbook can hold the scores and the event registrations in separate tabs
-   while their two scripts stay entirely separate projects.
-
-   Blank falls back to the bound sheet, which only works if this project was
-   made from Extensions -> Apps Script on a sheet that had no script already.
-   Read the warning at the top of this file before choosing that. */
-var SHEET_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
+/* The workbook to write into: read from Script Properties, not committed
+   here -- the id is the admin/vault/scores book and does not belong in a
+   public repo. Set it once: Project Settings -> Script properties ->
+   ADMIN_WORKBOOK_ID = the long string between /d/ and /edit in its address.
+   A run without it fails loudly rather than open the wrong book. */
+function sheetId_() {
+  var id = PropertiesService.getScriptProperties().getProperty('ADMIN_WORKBOOK_ID');
+  if (!id) throw new Error('ADMIN_WORKBOOK_ID is not set in Script Properties (Project Settings -> Script properties).');
+  return id;
+}
+var SHEET_ID = sheetId_();   /* [REDACTED]; set ADMIN_WORKBOOK_ID in Script Properties */
 var TAB      = 'Scores';
 
 /* The six games, by the id each game page declares in window.FX_RANK. A post
@@ -138,8 +141,8 @@ function setUp() {
 }
 
 function tab_() {
-  var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActive();
-  if (!ss) throw new Error('No spreadsheet. Bind this script to a Sheet, or set SHEET_ID.');
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  if (!ss) throw new Error('No spreadsheet. Set ADMIN_WORKBOOK_ID in Script Properties.');
   return ss.getSheetByName(TAB) || ss.insertSheet(TAB);
 }
 

@@ -55,6 +55,15 @@ const CacheService = { getScriptCache: () => ({
 const ContentService = { MimeType:{JSON:'json'},
   createTextOutput: s => ({ setMimeType: () => s }) };
 const Logger = { log(){} };
+/* The script reads its workbook id from Script Properties now, not source.
+   A placeholder stands in for the real id, which is a secret. */
+const BOOK_ID = 'ADMIN-WORKBOOK-ID-PLACEHOLDER';
+const PROPS = {};
+const PropertiesService = { getScriptProperties: () => ({
+  getProperty: k => (k in PROPS ? PROPS[k] : null),
+  setProperty: (k,v) => { PROPS[k]=String(v); },
+  deleteProperty: k => { delete PROPS[k]; } }) };
+PROPS['ADMIN_WORKBOOK_ID'] = BOOK_ID;
 
 const mod = eval(`(() => { ${src}
   return { doPost, doGet, bests_, setUp, hideAllSoFar, readAll_ }; })()`);
@@ -70,8 +79,8 @@ mod.setUp();
 
 console.log('the workbook it writes to');
 check('opened by id, not the bound sheet', opened.length > 0);
-check('and it is the id in the config',
-      opened[0] === '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso');
+check('and it is the id read from script properties',
+      opened[0] === 'ADMIN-WORKBOOK-ID-PLACEHOLDER');
 
 console.log('\naccepting good runs');
 check('first score accepted',            post({game:'match-lab',name:'Ahmad',score:120}).ok === true);

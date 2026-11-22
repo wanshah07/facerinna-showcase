@@ -161,7 +161,8 @@ var NUM=['No','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Te
 var fmt=function(n){return Math.round(n).toLocaleString('en-US')};
 function read(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function write(k,v){try{localStorage.setItem(k,v)}catch(e){}}
-var isAdmin=!!read(ADMIN), cfg=null, games=[];
+function admin(){try{return sessionStorage.getItem(ADMIN)}catch(e){return null}}
+var isAdmin=!!admin(), cfg=null, games=[];
 
 function only(id){['tLoading','tClosed','tLobby','tLast'].forEach(function(x){$(x).hidden=x!==id});}
 

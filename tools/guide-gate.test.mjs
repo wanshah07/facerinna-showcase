@@ -74,7 +74,7 @@ console.log('the page file itself');
 const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 async function open_(tok, opts){
   const c=await b.newContext(Object.assign({viewport:{width:1280,height:900}}, opts||{}));
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ if(t) localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, tok||'']);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ if(t) sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, tok||'']);
   const p=await c.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto(BASE+'/index.html',{waitUntil:'domcontentloaded'});
@@ -155,13 +155,13 @@ console.log('\na device that has never been signed in, signing in with a code');
   await p.click('#guideBody button[type=submit]');
   chk('a wrong code is refused, with the tries left, and no guide',
       await until(async()=>/not right/i.test(await panelText(p))) && !/At the counter/.test(await panelText(p)));
-  chk('...and nothing is kept for it', await p.evaluate(()=>{ try{ return !localStorage.getItem('fx.admin.token'); }catch(e){ return true; } }));
+  chk('...and nothing is kept for it', await p.evaluate(()=>{ try{ return !sessionStorage.getItem('fx.admin.token'); }catch(e){ return true; } }));
 
   await p.fill('#guideBody input[inputmode=numeric]', GOOD_CODE);
   await p.click('#guideBody button[type=submit]');
   chk('the right code opens the guide on this device', await until(async()=>/At the counter/.test(await panelText(p))));
   chk('...and the device stays signed in, so it need not be typed again',
-      await p.evaluate(()=>{ try{ return localStorage.getItem('fx.admin.token'); }catch(e){ return null; } })===TOKEN);
+      await p.evaluate(()=>{ try{ return sessionStorage.getItem('fx.admin.token'); }catch(e){ return null; } })===TOKEN);
   chk('no page errors', errs.length===0, errs[0]);
   await c.close();
 }
@@ -173,7 +173,7 @@ console.log('\na sign-in the script has stopped honouring');
   chk('is offered a code rather than left stuck',
       await until(()=>p.$('#guideBody form input[type=email]').then(x=>!!x)));
   chk('...and the dead token is thrown away',
-      await p.evaluate(()=>{ try{ return !localStorage.getItem('fx.admin.token'); }catch(e){ return true; } }));
+      await p.evaluate(()=>{ try{ return !sessionStorage.getItem('fx.admin.token'); }catch(e){ return true; } }));
   chk('no page errors', errs.length===0, errs[0]);
   await c.close();
 }

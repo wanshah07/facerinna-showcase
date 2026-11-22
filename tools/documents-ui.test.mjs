@@ -47,7 +47,7 @@ console.log('\n── admin writes a document');
 let docId;
 {
   const c=await b.newContext({viewport:{width:1280,height:900}, acceptDownloads:true});
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog', d=>d.accept());
   await p.goto(BASE+'/admin.html',{waitUntil:'load'});
   await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));
@@ -171,7 +171,7 @@ console.log('\n── the PDF');
 console.log('\n── the admin reads the signed copy');
 {
   const c=await b.newContext({viewport:{width:1280,height:900}, acceptDownloads:true});
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog', d=>d.accept());
   await p.goto(BASE+'/admin.html',{waitUntil:'load'});
   await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));

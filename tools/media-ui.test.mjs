@@ -50,7 +50,7 @@ const ONE_PX=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQV
 
 async function asPerson(token, w=1280, h=900){
   const c=await b.newContext({viewport:{width:w,height:h}});
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, token]);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, token]);
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   p.on('dialog', d=>d.accept('Pharmacy Day'));
   await p.goto(BASE+'/admin.html',{waitUntil:'load'});
@@ -220,7 +220,7 @@ console.log('\n── the real thing: the script, the page, a visitor and an adm
   call({action:'admin.media.set',id:'builtin-poster-session-talk',on:false});
   const open=async(admin)=>{
     const c=await b.newContext({viewport:{width:1280,height:900}});
-    await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; if(t) try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, admin?own.token:null]);
+    await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; if(t) try{ sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, admin?own.token:null]);
     await c.route(u=>u.hostname==='lh3.googleusercontent.com', r=>r.fulfill({contentType:'image/png',body:ONE_PX}));
     const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
     await p.goto(BASE+'/index.html',{waitUntil:'load'});

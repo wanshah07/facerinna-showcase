@@ -7825,7 +7825,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
     : 'https://script.google.com/macros/s/AKfycbyXD0qJ_aYCCowg8_U552PYiO5GXaq8hBGiLX1tQle0N7ELYUocBLGUPO-cwdEmy1C8/exec';
   var ADMIN = 'fx.admin.token';
   var el = function(tag, cls){ var n = document.createElement(tag); if(cls) n.className = cls; return n; };
-  function token(){ try{ return localStorage.getItem(ADMIN) || ''; }catch(e){ return ''; } }
+  function token(){ try{ return sessionStorage.getItem(ADMIN) || ''; }catch(e){ return ''; } }
 
   /* One way out to the script, with a timeout, so a booth on a dead hall wifi
      says so rather than sitting on a spinner until somebody gives up. */
@@ -7936,7 +7936,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
       post({ action:'redeem', email:addr, code:digits.value }).then(function(j){
         busy(false, 'Open the guide');
         if(j && j.ok === true && j.token){
-          try{ localStorage.setItem(ADMIN, j.token); }catch(e){}
+          try{ sessionStorage.setItem(ADMIN, j.token); }catch(e){}
           return ask();                      /* straight through to the guide */
         }
         var why = (j && j.reason) || '';
@@ -7973,7 +7973,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
       .then(function(j){
         if(j && j.ok === true){ loaded = true; return draw(j); }
         var err = (j && j.error) || 'no answer';
-        if(/signed out/i.test(err)){ try{ localStorage.removeItem(ADMIN); }catch(e){} return askForCode(); }
+        if(/signed out/i.test(err)){ try{ sessionStorage.removeItem(ADMIN); }catch(e){} return askForCode(); }
         gate('That did not work', err, true);
       })
       .catch(function(e){ gate('That did not work', 'Could not reach the booth script: ' + (e && e.message || e), true); })
@@ -8439,7 +8439,7 @@ if ('serviceWorker' in navigator) addEventListener('load', function(){
   window.__boothApply = apply;   /* the tests, and nothing else */
 
   function isAdminSession(){
-    var t=null; try{ t=localStorage.getItem(ADMIN); }catch(e){}
+    var t=null; try{ t=sessionStorage.getItem(ADMIN); }catch(e){}
     if(!t) return Promise.resolve(false);
     /* preview is false for somebody whose areas do not include the page or
        its sections -- counter staff see the page as visitors do. A script

@@ -8,7 +8,9 @@ import crypto from 'node:crypto';
 import { ROOT, PAGE } from './paths.mjs';
 const src = fs.readFileSync(ROOT+'tools/booth-admin.gs','utf8');
 
-const BOOK_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
+/* The id the script reads from Script Properties. A placeholder in the repo:
+   the real id is a secret and lives in the deployed script's properties. */
+const BOOK_ID = 'ADMIN-WORKBOOK-ID-PLACEHOLDER';
 const tabs = {};
 const mkSheet = o => ({
   getLastRow: () => o.rows.length,
@@ -56,6 +58,8 @@ const PropertiesService = { getScriptProperties: () => ({
   getProperty: k => (k in PROPS ? PROPS[k] : null),
   setProperty: (k,v) => { PROPS[k]=String(v); },
   deleteProperty: k => { delete PROPS[k]; } }) };
+/* The script reads its workbook id from here now, not from source. */
+PROPS['ADMIN_WORKBOOK_ID'] = BOOK_ID;
 const Session = { getEffectiveUser: () => ({ getEmail: () => OWNER }) };
 const Logger = { log(){} };
 /* Apps Script's script cache: shared by every run, values forgotten after

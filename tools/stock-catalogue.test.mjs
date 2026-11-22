@@ -93,7 +93,7 @@ await new Promise(r=>srv.listen(PORT,'127.0.0.1',r));
 const b=await chromium.launch();
 {
   const c=await b.newContext({viewport:{width:1280,height:900}});
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto(BASE+'/admin.html',{waitUntil:'load'});
   await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));

@@ -69,7 +69,7 @@ const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-
 async function open_(tok){
   const c=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,permissions:['camera']});
   await c.addInitScript(WAKE_STUB);
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ if(t) localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, tok||'']);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ if(t) sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, tok||'']);
   const p=await c.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto(BASE+'/scan.html',{waitUntil:'domcontentloaded'});
@@ -175,12 +175,12 @@ console.log('\na counter that has never been signed in');
   await p.click('#gateGo');
   chk('a wrong code is refused and keeps nothing',
       await until(async()=>/not right/i.test(await txt(p,'gateSay')))
-      && await p.evaluate(()=>{ try{ return !localStorage.getItem('fx.admin.token'); }catch(e){ return true; } }));
+      && await p.evaluate(()=>{ try{ return !sessionStorage.getItem('fx.admin.token'); }catch(e){ return true; } }));
   await p.fill('#gateCode',CODE);
   await p.click('#gateGo');
   chk('the right one opens the camera and is kept for the day',
       await until(()=>vis(p,'camWrap'))
-      && await p.evaluate(()=>{ try{ return localStorage.getItem('fx.admin.token'); }catch(e){ return null; } })===TOKEN);
+      && await p.evaluate(()=>{ try{ return sessionStorage.getItem('fx.admin.token'); }catch(e){ return null; } })===TOKEN);
   chk('no page errors', errs.length===0, errs[0]);
   await c.close();
 }
@@ -192,7 +192,7 @@ console.log('\na sign-in the script has stopped honouring');
   chk('asks for a new one rather than failing at the visitor',
       await until(()=>vis(p,'gate')) && /expired/i.test(await txt(p,'lead')));
   chk('...and throws the dead one away',
-      await p.evaluate(()=>{ try{ return !localStorage.getItem('fx.admin.token'); }catch(e){ return true; } }));
+      await p.evaluate(()=>{ try{ return !sessionStorage.getItem('fx.admin.token'); }catch(e){ return true; } }));
   chk('...and lets the phone sleep again, rather than holding it awake on a form',
       await until(()=>p.evaluate(()=>window.__scan.awake()===false && window.__wake.freed>=1)),
       await p.evaluate(()=>window.__wake));
@@ -252,7 +252,7 @@ print('ok')`, 'https://my.facerinna.com/redeem.html?c='+A, y4m],{encoding:'utf8'
        BarcodeDetector is the case this file ships jsQR for */
     await c.addInitScript(WAKE_STUB);
     await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ delete window.BarcodeDetector; }catch(e){}
-      try{ localStorage.setItem('fx.admin.token', t); }catch(e){} }, [API, TOKEN]);
+      try{ sessionStorage.setItem('fx.admin.token', t); }catch(e){} }, [API, TOKEN]);
     const p=await c.newPage();
     const errs=[]; p.on('pageerror',e=>errs.push(e.message));
     await p.goto(BASE+'/scan.html',{waitUntil:'domcontentloaded'});

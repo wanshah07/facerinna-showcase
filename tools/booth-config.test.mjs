@@ -185,7 +185,7 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   chk('hidden: a notice covers the page, with no passcode box', v && v.covers && !v.input && /Back on Monday/.test(v.text), v);
 
   /* an admin sees through it */
-  await p.evaluate(()=>localStorage.setItem('fx.admin.token','11111111-1111-4111-8111-111111111111'));
+  await p.evaluate(()=>sessionStorage.setItem('fx.admin.token','11111111-1111-4111-8111-111111111111'));
   await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1500);
   chk('hidden: a signed-in admin sees the page with a ribbon instead', (await veil(p))===null && await p.evaluate(()=>/Admin preview/.test((document.getElementById('boothRibbon')||{}).textContent||'')));
   S.settings.page_mode='open'; S.settings.welcome='show';
@@ -212,7 +212,7 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   chk('admin: ...and stays signed out', await p.evaluate(()=>document.getElementById('app').hidden));
   await p.fill('#loginCode','482913'); await p.click('#loginBtn');
   chk('admin: the right code signs in', await until(()=>p.evaluate(()=>!document.getElementById('app').hidden)));
-  chk('admin: ...and keeps the session', await p.evaluate(()=>localStorage.getItem('fx.admin.token')==='33333333-3333-4333-8333-333333333333'));
+  chk('admin: ...and keeps the session', await p.evaluate(()=>sessionStorage.getItem('fx.admin.token')==='33333333-3333-4333-8333-333333333333'));
   await p.click('#signOut'); await sleep(200);
   chk('admin: signing out goes back to the address step', await p.evaluate(()=>!document.getElementById('viewLogin').hidden && document.getElementById('codeStep').hidden));
   S.tokens['33333333-3333-4333-8333-333333333333']=undefined;
@@ -225,7 +225,7 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   chk('admin: the link signs in', await until(()=>p.evaluate(()=>!document.getElementById('app').hidden)));
   chk('admin: the key is taken off the address bar', await p.evaluate(()=>!location.hash));
   chk('admin: it says who is signed in', await p.evaluate(()=>document.getElementById('whoEmail').textContent==='wan@facerinna.test'));
-  chk('admin: the session is kept', await p.evaluate(()=>localStorage.getItem('fx.admin.token')==='33333333-3333-4333-8333-333333333333'));
+  chk('admin: the session is kept', await p.evaluate(()=>sessionStorage.getItem('fx.admin.token')==='33333333-3333-4333-8333-333333333333'));
   const st=await p.evaluate(()=>({open:document.getElementById('modeOpen').checked, pass:document.getElementById('passcode').value, lock:document.getElementById('lockMessage').value, welcome:document.getElementById('welcome').checked}));
   chk('admin: the settings tab shows what the sheet holds', st.open && st.pass==='booth2026' && /Ask the team/.test(st.lock) && st.welcome, st);
 
@@ -263,7 +263,7 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   await p.click('#tabAdmins');
   chk('admin: the admins tab lists the sheet, read-only', await p.evaluate(()=>document.querySelectorAll('#adminList .item').length===1 && /wan@facerinna.test/.test(document.getElementById('adminList').textContent) && !document.querySelector('#viewAdmins input')));
   await p.click('#signOut');
-  chk('admin: sign out returns to the form and forgets the session', await until(()=>p.evaluate(()=>!document.getElementById('viewLogin').hidden && !localStorage.getItem('fx.admin.token'))) && S.posted.some(x=>x.action==='logout'));
+  chk('admin: sign out returns to the form and forgets the session', await until(()=>p.evaluate(()=>!document.getElementById('viewLogin').hidden && !sessionStorage.getItem('fx.admin.token'))) && S.posted.some(x=>x.action==='logout'));
   chk('admin: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
   await c.close();
 }
@@ -340,7 +340,7 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   chk('section: the other lock is its own affair', (await look(p,'game')).lock===true);
 
   /* an admin sees the page whole */
-  await p.evaluate(()=>localStorage.setItem('fx.admin.token','11111111-1111-4111-8111-111111111111'));
+  await p.evaluate(()=>sessionStorage.setItem('fx.admin.token','11111111-1111-4111-8111-111111111111'));
   await p.goto(BASE+'/index.html',{waitUntil:'load'}); await sleep(1600);
   chk('section: a signed-in admin sees what a visitor sees, and the ribbon names it',
       (await look(p,'game')).lock && !(await look(p,'game')).contents && (await look(p,'qrcore')).shown
@@ -349,7 +349,7 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
   chk('section: "Show the hidden parts" shows them all, the locked one opened',
       (await look(p,'game')).contents && !(await look(p,'game')).lock && (await look(p,'qrcore')).shown);
   await p.evaluate(()=>sessionStorage.removeItem('fx.booth.preview'));
-  await p.evaluate(()=>localStorage.removeItem('fx.admin.token'));
+  await p.evaluate(()=>sessionStorage.removeItem('fx.admin.token'));
   sec('game').mode='show'; sec('talk').mode='show'; sec('talk').passcode='';
   chk('section: no page errors'+(errs.length?': '+errs[0]:''), errs.length===0);
   await c.close();
@@ -392,7 +392,7 @@ const veil = p => p.evaluate(()=>{ const v=document.getElementById('boothVeil');
 /* ------------------------------------------- the admin's sections tab */
 {
   const c=await ctx(); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  await c.addInitScript(()=>{ localStorage.setItem('fx.admin.token','11111111-1111-4111-8111-111111111111'); });
+  await c.addInitScript(()=>{ sessionStorage.setItem('fx.admin.token','11111111-1111-4111-8111-111111111111'); });
   await p.goto(BASE+'/admin.html',{waitUntil:'load'});
   await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));
   chk('admin: the View page button stays in this tab', await p.evaluate(()=>{

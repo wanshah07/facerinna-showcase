@@ -53,7 +53,7 @@ console.log('\n── the booth page, with nobody having touched admin');
 console.log('\n── admin: from a template, and Duplicate');
 {
   const c=await b.newContext({viewport:{width:1280,height:900}});
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, own.token]);
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog', d=>d.accept());
   await p.goto(BASE+'/admin.html',{waitUntil:'load'});
   await until(()=>p.evaluate(()=>!document.getElementById('app').hidden));

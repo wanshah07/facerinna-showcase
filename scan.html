@@ -122,9 +122,9 @@ var KEY = 'fx.admin.token';
 var $ = function(id){ return document.getElementById(id); };
 var show = function(id, on){ $(id).classList.toggle('hidden', !on); };
 
-function token(){ try{ return localStorage.getItem(KEY) || ''; }catch(e){ return ''; } }
-function keep(t){ try{ localStorage.setItem(KEY, t); }catch(e){} }
-function drop(){ try{ localStorage.removeItem(KEY); }catch(e){} }
+function token(){ try{ return sessionStorage.getItem(KEY) || ''; }catch(e){ return ''; } }
+function keep(t){ try{ sessionStorage.setItem(KEY, t); }catch(e){} }
+function drop(){ try{ sessionStorage.removeItem(KEY); }catch(e){} }
 function post(body, ms){
   var ctl = ('AbortController' in window) ? new AbortController() : null;
   var t = ctl && setTimeout(function(){ ctl.abort(); }, ms || 20000);

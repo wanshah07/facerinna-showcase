@@ -39,7 +39,7 @@ async function ctx(settings, opts={}){
     const out=q.action==='config'?{ok:true,settings:Object.assign({gift_active:'no',games_off:''},settings),gift_needs:opts.needs||{},tour_max:opts.max||{},tour_default:1500}:{ok:true};
     await r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(out)});
   });
-  await c.addInitScript(([api,admin])=>{ window.__BOOTH_API=api; try{ localStorage.setItem('fx.player','Tester'); if(admin) localStorage.setItem('fx.admin.token','tok'); }catch(e){} },[BASE+'/api',!!opts.admin]);
+  await c.addInitScript(([api,admin])=>{ window.__BOOTH_API=api; try{ localStorage.setItem('fx.player','Tester'); if(admin) sessionStorage.setItem('fx.admin.token','tok'); }catch(e){} },[BASE+'/api',!!opts.admin]);
   const p=await c.newPage(); const errs=[];
   p.on('pageerror',e=>errs.push(e.message));
   return {c,p,errs,posts,cfgCalls};

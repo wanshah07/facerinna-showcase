@@ -9,8 +9,11 @@ const src = fs.readFileSync(ROOT+'tools/vault-access.gs','utf8');
 
 /* --- a fake workbook set, shaped exactly like the real tabs --- */
 const REQ = { name:'Vault requests', rows: [] };
+/* The id the script reads from Script Properties. A placeholder in the repo:
+   the real id is a secret and lives in the deployed script's properties. */
+const BOOK_ID = 'ADMIN-WORKBOOK-ID-PLACEHOLDER';
 const books = {
-  '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso': { byName: { 'Vault requests': REQ } },
+  [BOOK_ID]: { byName: { 'Vault requests': REQ } },
   'REBUILT-REPORTS-BOOK': { byName: {
      Reports: { grid: [['note','ignore me'],
                  ['No.','Code','SKU','Report No','Lab','Date','Subject','Param',
@@ -159,6 +162,8 @@ const PropertiesService = { getScriptProperties: () => ({
   getProperty: k => (k in PROPS ? PROPS[k] : null),
   setProperty: (k,v) => { PROPS[k] = String(v); },
   deleteProperty: k => { delete PROPS[k]; } }) };
+/* The script reads its workbook id from here now, not from source. */
+PROPS['ADMIN_WORKBOOK_ID'] = BOOK_ID;
 const Session = { getScriptTimeZone: () => 'UTC',
                   getEffectiveUser: () => ({ getEmail: () => 'owner@facerinna.test' }) };
 const Logger = { log(){} };
@@ -255,10 +260,13 @@ check('the same token now fails', call({action:'data',token:TOKEN}).reason === '
 statusCell('lim@clinic.my','approved');
 check('and putting it back works', call({action:'data',token:TOKEN}).ok === true);
 
-console.log('\nno clock on a sign-in');
+console.log('\nan expiry date, when set, ends a sign-in');
 REQ.rows[1][6] = new Date(Date.now() - 400 * 86400000);
-check('an "expires" date long past is ignored: still signed in', call({action:'data',token:TOKEN}).ok === true);
+check('an "expires" date long past refuses the token', call({action:'data',token:TOKEN}).reason === 'expired');
+REQ.rows[1][6] = new Date(Date.now() + 400 * 86400000);
+check('an "expires" date still ahead leaves it signed in', call({action:'data',token:TOKEN}).ok === true);
 REQ.rows[1][6] = '';
+check('a blank "expires" is no clock: still signed in', call({action:'data',token:TOKEN}).ok === true);
 const second = signIn('lim@clinic.my');
 check('a second device signing in gets the same token, so one row is one door',
       second.ok === true && second.token === TOKEN, second);
@@ -500,8 +508,10 @@ const rr = REQ.rows.find(x=>x[2]==='coded@clinic.my');
 const OLD = rr[5]; rr[6] = new Date(Date.now() - 86400000);
 const again = signIn('coded@clinic.my');
 check('signing in again hands back the same token', again.ok === true && again.token === OLD, again);
-check('...and it still reads the vault, so no device already signed in is dropped',
-      call({action:'data', token:OLD}).ok === true);
+check('...and the old expiry date now refuses it, not silently ignored',
+      call({action:'data', token:OLD}).reason === 'expired');
+rr[6] = '';
+check('...clearing the date restores it', call({action:'data', token:OLD}).ok === true);
 
 console.log('\ndeleting the row is what ends it, on every device at once');
 const at = REQ.rows.findIndex(x=>x[2]==='coded@clinic.my');

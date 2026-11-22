@@ -6,7 +6,9 @@ import fs from 'fs';
 import crypto from 'node:crypto';
 import { ROOT, PAGE } from './paths.mjs';
 
-export const BOOK_ID = '1J9QAO7PUO4caLhDBsKMGZ5tofv4Gqy5-QSVlo_hBEso';
+/* The id the script reads from Script Properties. A placeholder in the repo:
+   the real id is a secret and lives in the deployed script's properties. */
+export const BOOK_ID = 'ADMIN-WORKBOOK-ID-PLACEHOLDER';
 export const OWNER = 'owner@facerinna.test';
 
 /* opts.extra: a second script file of the same project (templates.gs), run first;
@@ -90,6 +92,8 @@ export function load(opts){
     getProperty: k => (k in PROPS ? PROPS[k] : null),
     setProperty: (k,v) => { PROPS[k]=String(v); },
     deleteProperty: k => { delete PROPS[k]; } }) };
+  /* The script reads its workbook id from here now, not from source. */
+  PROPS['ADMIN_WORKBOOK_ID'] = BOOK_ID;
   /* Apps Script's script cache: shared by every run, values forgotten after
      their TTL. The test can reach the store to age an entry. */
   const CACHE = new Map();

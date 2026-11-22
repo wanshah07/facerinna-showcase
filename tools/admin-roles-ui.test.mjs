@@ -43,7 +43,7 @@ const rowOf = e => H.tabs['Admins'].rows.find(r => String(r[0]).toLowerCase() ==
 
 async function asPerson(token, w=1280, h=900){
   const c=await b.newContext({viewport:{width:w,height:h}});
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, token]);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ sessionStorage.setItem('fx.admin.token',t); }catch(e){} }, [API, token]);
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   p.on('dialog', d=>d.accept());
   await p.goto(BASE+'/admin.html',{waitUntil:'load'});
@@ -214,7 +214,7 @@ console.log('\n── the counter screen, for staff without Counter');
   await until(()=>p.evaluate(()=>/Counter is not ticked/.test(document.getElementById('gateSay').textContent)));
   chk('signed in, and told plainly that Counter is not ticked', await p.evaluate(()=>/Counter is not ticked/.test(document.getElementById('gateSay').textContent)
     && !document.getElementById('gate').classList.contains('hidden') && document.getElementById('camWrap').classList.contains('hidden')));
-  chk('...keeping the sign-in, so a tick is enough', await p.evaluate(()=>!!localStorage.getItem('fx.admin.token')));
+  chk('...keeping the sign-in, so a tick is enough', await p.evaluate(()=>!!sessionStorage.getItem('fx.admin.token')));
   await p.click('#gateGo'); await sleep(400);
   chk('tapping again before the tick: still refused', await p.evaluate(()=>/Counter is not ticked/.test(document.getElementById('gateSay').textContent)));
   H.call({ action:'admin.team.save', token:own.token, person:{ email:'late@clinic.test', role:'staff', access:['guide','counter'] } });

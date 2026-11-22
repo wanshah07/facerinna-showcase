@@ -70,7 +70,7 @@ const b=await chromium.launch();
 async function open(url,{admin=null,w=1280,h=900}={}){
   const c=await b.newContext({viewport:{width:w,height:h}});
   await c.route(u=>!u.href.startsWith(BASE),r=>r.abort());
-  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.player','Aina'); if(t) localStorage.setItem('fx.admin.token',t); }catch(e){} },[API,admin]);
+  await c.addInitScript(([a,t])=>{ window.__BOOTH_API=a; try{ localStorage.setItem('fx.player','Aina'); if(t) sessionStorage.setItem('fx.admin.token',t); }catch(e){} },[API,admin]);
   const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept());
   await p.goto(BASE+url,{waitUntil:'load'});
   return {c,p,errs};
